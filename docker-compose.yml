@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:18.4
+    container_name: hello-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hello
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # postgres:18 이미지는 기본 데이터 경로가 변경되어, 클래식 경로를 명시해 볼륨 영속성을 보장
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hello"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    container_name: hello-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    container_name: hello-rabbitmq
+    restart: unless-stopped
+    environment:
+      # 기본 guest 계정은 loopback에서만 접속 가능하므로 전용 계정을 생성
+      RABBITMQ_DEFAULT_USER: rabbitmq
+      RABBITMQ_DEFAULT_PASS: rabbitmq
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # 관리 UI (http://localhost:15672)
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
