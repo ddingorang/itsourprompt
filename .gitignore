@@ -1,0 +1,13 @@
+# Sensitive environment files
+.env
+.env.*
+!.env.example
+!.env.example.*
+
+# IDE files
+.idea/
+*.iml
+
+# Gradle build output
+**/.gradle/
+**/build/
