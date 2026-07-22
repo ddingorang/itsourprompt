@@ -1,4 +1,7 @@
 package com.promptstudio.problem.entity;
 
-public class ProblemFile {
+public record ProblemFile(
+        String path,
+        String content
+) {
 }
