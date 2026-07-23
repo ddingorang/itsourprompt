@@ -144,9 +144,7 @@ public class AiCodeService {
 
     private String createUserPrompt(Problem problem, String userPrompt) {
         StringBuilder message = new StringBuilder();
-        message.append("[문제 명세]\n")
-                .append(problem.specMd())
-                .append("\n\n[현재 프로젝트 파일]\n");
+        message.append("\n\n[현재 프로젝트 파일]\n");
 
         for (ProblemFile file : problem.files()) {
             message.append("--- ")
