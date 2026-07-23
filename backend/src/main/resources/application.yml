@@ -17,6 +17,15 @@ spring:
     open-in-view: false
   jooq:
     sql-dialect: POSTGRES
+  ai:
+    openai:
+      api-key: ${NVIDIA_API_KEY}
+      base-url: https://integrate.api.nvidia.com/v1
+      chat:
+        model: ${NVIDIA_MODEL}
+        max-tokens: 4096
+    model:
+      embedding: none
 
 server:
   port: 8080

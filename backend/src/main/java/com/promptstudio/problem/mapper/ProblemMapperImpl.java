@@ -4,6 +4,7 @@ import com.promptstudio.problem.dto.response.ProblemListResponse;
 import com.promptstudio.problem.entity.Problem;
 import com.promptstudio.problem.entity.ProblemFile;
 import com.promptstudio.problem.dto.response.ProblemDetailResponse;
+import com.promptstudio.problem.dto.response.RunResponse;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -49,5 +50,16 @@ public class ProblemMapperImpl implements ProblemMapper {
                 problem.specMd(),
                 files
         );
+    }
+
+    @Override
+    public List<RunResponse.RunFileResponse> toRunFileResponses(List<ProblemFile> files) {
+        List<RunResponse.RunFileResponse> responses = new ArrayList<>();
+
+        for (ProblemFile file : files) {
+            responses.add(new RunResponse.RunFileResponse(file.path(), file.content()));
+        }
+
+        return responses;
     }
 }
