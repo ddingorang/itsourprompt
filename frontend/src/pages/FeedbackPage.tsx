@@ -33,8 +33,7 @@ export default function FeedbackPage() {
         <section className="hero">
           <h1>
             MAKE IT<br />
-            MORE<br />
-            PRECISE
+            MORE PRECISE
           </h1>
         </section>
 
