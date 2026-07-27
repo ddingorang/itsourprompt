@@ -174,6 +174,15 @@ export const problemDetailPageStyles = `
     word-break: keep-all;
   }
 
+  .spec-content h1,
+  .spec-content h2,
+  .spec-content h3,
+  .spec-content h4,
+  .spec-content h5,
+  .spec-content h6 {
+    color: var(--white);
+  }
+
   .chips { margin-top: 15px; }
   .chip {
     display: inline-block;

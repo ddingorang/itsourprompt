@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { submitFeedback } from '../features/feedback/api';
@@ -293,8 +294,9 @@ export default function ProblemDetailPage() {
         <aside className="column action-column">
           <section className="mission-card">
             <div className="label">CURRENT PROBLEM</div>
-            <h2>{problem.title}</h2>
-            <p className="spec-content">{problem.specMd}</p>
+            <div className="spec-content">
+              <ReactMarkdown>{problem.specMd}</ReactMarkdown>
+            </div>
             <div className="chips">
               <span className="chip">READ ONLY</span>
               <span className="chip">STATELESS</span>
