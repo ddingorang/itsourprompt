@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom';
 import { getProblems } from '../features/problem/api';
 import type { ProblemSummary } from '../features/problem/types';
 import { ApiProblemError } from '../shared/api/apiClient';
-import { problemListPageStyles } from './ProblemListPage.style';
+import { homePageStyles } from './HomePage.style';
 
-export default function ProblemListPage() {
+export default function HomePage() {
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export default function ProblemListPage() {
 
   return (
     <>
-      <style>{problemListPageStyles}</style>
+      <style>{homePageStyles}</style>
 
       <header className="site-header">
         <Link className="logo" to="/problems" aria-label="문제 목록으로 이동">

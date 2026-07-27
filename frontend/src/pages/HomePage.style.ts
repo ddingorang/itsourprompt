@@ -1,4 +1,4 @@
-export const problemListPageStyles = `
+export const homePageStyles = `
   :root {
     --accent: #d6ff50;
     --black: #090909;

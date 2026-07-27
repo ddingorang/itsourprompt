@@ -1,17 +1,17 @@
 import { createBrowserRouter } from 'react-router-dom'
 
-import ProblemListPage from '../pages/ProblemListPage'
+import HomePage from '../pages/HomePage'
 import ProblemDetailPage from '../pages/ProblemDetailPage'
 import FeedbackPage from '../pages/FeedbackPage'
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <ProblemListPage />,
+    element: <HomePage />,
   },
   {
     path: '/problems',
-    element: <ProblemListPage />,
+    element: <HomePage />,
   },
   {
     path: '/problems/:problemId',
