@@ -1,9 +1,10 @@
 package com.promptstudio.global.exception;
 
-import com.promptstudio.ai.exception.AiProviderException;
-import com.promptstudio.ai.exception.AiRequestTimeoutException;
-import com.promptstudio.ai.exception.AiFeedbackTimeoutException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
+import com.promptstudio.problem.port.CodeGenerationException;
+import com.promptstudio.problem.port.CodeGenerationTimeoutException;
+import com.promptstudio.problem.port.FeedbackGenerationException;
+import com.promptstudio.problem.port.FeedbackTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -33,8 +34,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
-    @ExceptionHandler(AiProviderException.class)
-    public ResponseEntity<ApiErrorResponse> handleAiProvider(AiProviderException exception) {
+    @ExceptionHandler({CodeGenerationException.class, FeedbackGenerationException.class})
+    public ResponseEntity<ApiErrorResponse> handleGenerationFailure(RuntimeException exception) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "ai-provider-error",
                 exception.getMessage()
@@ -43,8 +44,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
     }
 
-    @ExceptionHandler(AiRequestTimeoutException.class)
-    public ResponseEntity<ApiErrorResponse> handleAiTimeout(AiRequestTimeoutException exception) {
+    @ExceptionHandler(CodeGenerationTimeoutException.class)
+    public ResponseEntity<ApiErrorResponse> handleCodeGenerationTimeout(CodeGenerationTimeoutException exception) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "run-timeout",
                 exception.getMessage()
@@ -53,8 +54,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(response);
     }
 
-    @ExceptionHandler(AiFeedbackTimeoutException.class)
-    public ResponseEntity<ApiErrorResponse> handleAiFeedbackTimeout(AiFeedbackTimeoutException exception) {
+    @ExceptionHandler(FeedbackTimeoutException.class)
+    public ResponseEntity<ApiErrorResponse> handleFeedbackTimeout(FeedbackTimeoutException exception) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "feedback-timeout",
                 exception.getMessage()
