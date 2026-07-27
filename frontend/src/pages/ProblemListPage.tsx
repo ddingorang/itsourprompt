@@ -53,14 +53,7 @@ export default function ProblemListPage() {
 
       <main className="problem-list-page">
         <header className="problem-list-header">
-          <div>
-            <p className="problem-list-eyebrow">PROBLEM LIST</p>
-            <h1>
-              PRACTICE MORE
-              <br />
-              PROMPT BETTER
-            </h1>
-          </div>
+          <h1 className="problem-list-eyebrow">PROBLEM LIST</h1>
         </header>
 
         <section className="problem-list-controls" aria-label="문제 목록 정보">

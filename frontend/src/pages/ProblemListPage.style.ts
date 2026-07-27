@@ -65,17 +65,10 @@ export const problemListPageStyles = `
   }
 
   .problem-list-eyebrow {
-    margin: 0 0 14px;
-    color: var(--accent);
-    font: 700 20px/1.4 var(--font-mono);
-    letter-spacing: .08em;
-  }
-
-  .problem-list-header h1 {
     margin: 0;
-    font-size: clamp(36px, 6vw, 64px);
-    line-height: .82;
-    letter-spacing: -.065em;
+    color: var(--accent);
+    font: 700 clamp(36px, 6vw, 64px)/.82 var(--font-mono);
+    letter-spacing: -.04em;
   }
 
   .problem-list-controls {
