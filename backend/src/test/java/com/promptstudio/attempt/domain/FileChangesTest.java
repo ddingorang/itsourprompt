@@ -1,5 +1,6 @@
-package com.promptstudio.problem.domain;
+package com.promptstudio.attempt.domain;
 
+import com.promptstudio.problem.domain.ProblemFile;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

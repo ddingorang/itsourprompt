@@ -1,18 +1,20 @@
 package com.promptstudio.ai;
 
 import com.openai.errors.OpenAIServiceException;
-import com.promptstudio.problem.domain.GeneratedCode;
-import com.promptstudio.problem.domain.Problem;
-import com.promptstudio.problem.port.CodeGenerationException;
-import com.promptstudio.problem.port.CodeGenerationTimeoutException;
-import com.promptstudio.problem.port.CodeGenerator;
+import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.port.CodeGenerator;
+import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.attempt.port.CodeGenerationException;
+import com.promptstudio.attempt.port.CodeGenerationTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -44,26 +46,24 @@ public class NvidiaCodeGenerator implements CodeGenerator {
     }
 
     @Override
-    public GeneratedCode generate(Problem problem, String userPrompt) {
-        String systemPrompt = CodeGenerationPrompts.systemPrompt();
-        String requestPrompt = CodeGenerationPrompts.userPrompt(problem, userPrompt);
+    public GeneratedCode generate(Attempt attempt, String userPrompt) {
+        List<Message> messages = CodeGenerationPrompts.messages(attempt, userPrompt);
         long startedAt = System.nanoTime();
 
         log.info(
-                "[NVIDIA RUN] request started | model={} | endpoint={} | maxTokens={} | inputChars={} (system={}, user={}) | files={}",
+                "[NVIDIA RUN] request started | model={} | endpoint={} | maxTokens={} | inputChars={} | attemptId={} | turns={} | files={}",
                 nvidiaModel,
                 createChatCompletionsUrl(),
                 maxTokens,
-                systemPrompt.length() + requestPrompt.length(),
-                systemPrompt.length(),
-                requestPrompt.length(),
-                problem.files().size()
+                totalChars(messages),
+                attempt.id(),
+                attempt.turns().size(),
+                attempt.currentFiles().size()
         );
 
         try {
             String rawResponse = aiCallExecutor.call(() -> chatClient.prompt()
-                    .system(systemPrompt)
-                    .user(requestPrompt)
+                    .messages(messages)
                     .call()
                     .content(), AI_REQUEST_TIMEOUT_MINUTES);
             log.info(
@@ -94,6 +94,16 @@ public class NvidiaCodeGenerator implements CodeGenerator {
             logProviderFailure(cause);
             throw new CodeGenerationException("AI 코드 생성 요청에 실패했습니다.", cause);
         }
+    }
+
+    private int totalChars(List<Message> messages) {
+        int total = 0;
+
+        for (Message message : messages) {
+            total += message.getText().length();
+        }
+
+        return total;
     }
 
     private String createChatCompletionsUrl() {

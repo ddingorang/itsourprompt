@@ -1,10 +1,12 @@
 package com.promptstudio.global.exception;
 
+import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
+import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
-import com.promptstudio.problem.port.CodeGenerationException;
-import com.promptstudio.problem.port.CodeGenerationTimeoutException;
-import com.promptstudio.problem.port.FeedbackGenerationException;
-import com.promptstudio.problem.port.FeedbackTimeoutException;
+import com.promptstudio.attempt.port.CodeGenerationException;
+import com.promptstudio.attempt.port.CodeGenerationTimeoutException;
+import com.promptstudio.attempt.port.FeedbackGenerationException;
+import com.promptstudio.attempt.port.FeedbackTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -22,6 +24,26 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(AttemptNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleAttemptNotFound(AttemptNotFoundException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "attempt-not-found",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(AttemptHasNoTurnsException.class)
+    public ResponseEntity<ApiErrorResponse> handleAttemptHasNoTurns(AttemptHasNoTurnsException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "attempt-has-no-turns",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.badRequest().body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

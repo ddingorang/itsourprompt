@@ -1,9 +1,9 @@
-package com.promptstudio.problem.domain;
+package com.promptstudio.attempt.domain;
 
 import java.util.List;
 
-public record Submission(
-        String prompt,
+public record Turn(
+        String userPrompt,
         String aiSummary,
         List<FileChange> changes
 ) {

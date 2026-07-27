@@ -2,9 +2,9 @@ package com.promptstudio.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.promptstudio.problem.domain.GeneratedCode;
+import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.problem.domain.ProblemFile;
-import com.promptstudio.problem.port.CodeGenerationException;
+import com.promptstudio.attempt.port.CodeGenerationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

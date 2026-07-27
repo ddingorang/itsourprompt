@@ -1,4 +1,4 @@
-package com.promptstudio.problem.domain;
+package com.promptstudio.attempt.domain;
 
 public record FileChange(
         String path,

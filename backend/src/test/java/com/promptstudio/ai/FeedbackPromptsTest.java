@@ -1,8 +1,9 @@
 package com.promptstudio.ai;
 
-import com.promptstudio.problem.domain.FileChange;
+import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.Turn;
+import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.problem.domain.Problem;
-import com.promptstudio.problem.domain.Submission;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -14,29 +15,37 @@ class FeedbackPromptsTest {
     private final Problem problem = new Problem(1L, "제목", "명세", List.of());
 
     @Test
-    void 사용자_프롬프트에_제출_정보를_모두_포함한다() {
-        Submission submission = new Submission(
-                "프롬프트 원문",
-                "작업 요약",
-                List.of(new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED))
-        );
+    void 사용자_프롬프트에_문제_명세와_모든_턴_기록을_포함한다() {
+        Attempt attempt = new Attempt(1L, 1L, List.of(), List.of(
+                new Turn("첫 프롬프트", "첫 요약", List.of(
+                        new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED)
+                )),
+                new Turn("두 번째 프롬프트", "두 번째 요약", List.of(
+                        new FileChange("src/Util.java", FileChange.ChangeType.ADDED)
+                ))
+        ));
 
-        String prompt = FeedbackPrompts.userPrompt(problem, submission);
+        String prompt = FeedbackPrompts.userPrompt(problem, attempt);
 
         assertThat(prompt)
                 .contains("[Problem title]\n제목")
                 .contains("[Problem specification]\n명세")
-                .contains("[User prompt]\n프롬프트 원문")
-                .contains("[AI work summary]\n작업 요약")
-                .contains("- MODIFIED: src/Main.java");
+                .contains("[Turn 1 user prompt]\n첫 프롬프트")
+                .contains("[Turn 1 AI work summary]\n첫 요약")
+                .contains("[Turn 1 changed files]\n- MODIFIED: src/Main.java")
+                .contains("[Turn 2 user prompt]\n두 번째 프롬프트")
+                .contains("[Turn 2 AI work summary]\n두 번째 요약")
+                .contains("[Turn 2 changed files]\n- ADDED: src/Util.java");
     }
 
     @Test
-    void 변경_파일이_없으면_표시_문구를_넣는다() {
-        Submission submission = new Submission("프롬프트", "요약", List.of());
+    void 턴에_변경_파일이_없으면_표시_문구를_넣는다() {
+        Attempt attempt = new Attempt(1L, 1L, List.of(), List.of(
+                new Turn("프롬프트", "요약", List.of())
+        ));
 
-        String prompt = FeedbackPrompts.userPrompt(problem, submission);
+        String prompt = FeedbackPrompts.userPrompt(problem, attempt);
 
-        assertThat(prompt).contains("(no changed files)");
+        assertThat(prompt).contains("[Turn 1 changed files]\n(no changed files)");
     }
 }
