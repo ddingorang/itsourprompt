@@ -44,7 +44,7 @@ export const feedbackPageStyles = `
   .header-meta { color: var(--muted); }
 
   .feedback-main {
-    width: min(1180px, calc(100% - 48px));
+    width: calc(100% - 10vw);
     margin: 0 auto;
     padding: clamp(32px, 5vw, 56px) 0 80px;
   }

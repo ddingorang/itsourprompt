@@ -57,9 +57,9 @@ export const problemDetailPageStyles = `
   .column { min-width: 0; }
   .file-column,
   .viewer-column { border-right: 1px solid var(--line); }
-  .file-column { padding: 22px 18px; }
+  .file-column { padding: 22px 24px; }
   .viewer-column { padding: 22px 28px 40px; }
-  .action-column { padding: 22px; }
+  .action-column { padding: 22px 24px; }
 
   .label {
     color: var(--accent);
