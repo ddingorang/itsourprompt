@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 
+import PromptFeedback from '../features/feedback/PromptFeedback';
 import { getFeedbackResult } from '../features/submission/storage';
 import Button from '../shared/components/Button';
 import { buttonStyles } from '../shared/components/Button.style';
@@ -62,7 +63,7 @@ export default function FeedbackPage() {
               <article className="box outline">
                 <div className="label">FEEDBACK.MD</div>
                 <h2>프롬프트 피드백</h2>
-                <p className="feedback-copy">{result.feedback}</p>
+                <PromptFeedback feedback={result.feedback} />
               </article>
             </section>
 

@@ -1,0 +1,42 @@
+.feedback-markdown {
+  color: #f5f5f0;
+  line-height: 1.75;
+  word-break: keep-all;
+}
+
+.feedback-markdown h2 {
+  margin: 32px 0 16px;
+  color: #d6ff50;
+  font-size: 22px;
+}
+
+.feedback-markdown h3 {
+  margin: 24px 0 12px;
+  font-size: 18px;
+}
+
+.feedback-markdown p {
+  margin: 12px 0;
+}
+
+.feedback-markdown ul,
+.feedback-markdown ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.feedback-markdown li {
+  margin: 8px 0;
+}
+
+.feedback-markdown strong {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.feedback-markdown code {
+  padding: 2px 6px;
+  background: #232323;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
