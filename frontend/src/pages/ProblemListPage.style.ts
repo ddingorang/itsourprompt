@@ -45,7 +45,7 @@ export const problemListPageStyles = `
   .problem-list-main {
     width: min(1180px, calc(100% - 48px));
     margin: 0 auto;
-    padding: clamp(56px, 8vw, 96px) 0 80px;
+    padding: clamp(32px, 5vw, 56px) 0 80px;
   }
 
   .eyebrow {
@@ -59,7 +59,7 @@ export const problemListPageStyles = `
   .hero h1 {
     margin: 14px 0 54px;
     max-width: 820px;
-    font-size: clamp(66px, 10vw, 132px);
+    font-size: clamp(48px, 8vw, 88px);
     line-height: .78;
     letter-spacing: -.075em;
   }
@@ -124,7 +124,7 @@ export const problemListPageStyles = `
   @media (max-width: 760px) {
     .site-header { padding: 0 20px; }
     .header-meta { display: none; }
-    .problem-list-main { width: min(100% - 32px, 680px); padding-top: 48px; }
+    .problem-list-main { width: min(100% - 32px, 680px); padding-top: 32px; }
     .hero h1 { margin-bottom: 34px; }
     .problem-row {
       grid-template-columns: 44px minmax(0, 1fr) 28px;

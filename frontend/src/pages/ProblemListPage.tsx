@@ -51,8 +51,7 @@ export default function ProblemListPage() {
 
         <section className="hero">
           <h1>
-            ONE<br />
-            PROMPT<br />
+            ONE PROMPT<br />
             ONE RUN
           </h1>
         </section>
