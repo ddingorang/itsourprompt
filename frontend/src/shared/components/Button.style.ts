@@ -11,7 +11,7 @@ export const buttonStyles = `
     letter-spacing: -.01em;
     text-decoration: none;
     cursor: pointer;
-    transition: filter .18s ease, border-color .18s ease, color .18s ease,
+    transition: background .18s ease, border-color .18s ease, color .18s ease,
       opacity .18s ease;
   }
 
@@ -37,14 +37,21 @@ export const buttonStyles = `
     width: 100%;
   }
 
-  .app-button:hover:not(:disabled):not([aria-disabled='true']) {
-    filter: brightness(.95);
+  .app-button--primary:hover:not(:disabled):not([aria-disabled='true']),
+  .app-button--primary:focus-visible:not(:disabled):not([aria-disabled='true']) {
+    outline: none;
+    background: transparent;
+    color: var(--accent);
   }
 
   .app-button--secondary:hover:not(:disabled):not([aria-disabled='true']),
-  .app-button--ghost:hover:not(:disabled):not([aria-disabled='true']) {
+  .app-button--secondary:focus-visible:not(:disabled):not([aria-disabled='true']),
+  .app-button--ghost:hover:not(:disabled):not([aria-disabled='true']),
+  .app-button--ghost:focus-visible:not(:disabled):not([aria-disabled='true']) {
     border-color: var(--accent);
-    color: var(--accent);
+    outline: none;
+    background: var(--accent);
+    color: var(--black);
   }
 
   .app-button:disabled,

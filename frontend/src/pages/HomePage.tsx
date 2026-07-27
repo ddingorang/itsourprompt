@@ -47,18 +47,18 @@ export default function HomePage() {
       </header>
 
       <main className="problem-list-main">
-        <div className="eyebrow">PRACTICE / PROBLEM QUEUE</div>
+        <div className="eyebrow">PROMPT ENGINEERING PRACTICE</div>
 
         <section className="hero">
-          <h1>
-            ONE PROMPT<br />
-            ONE RUN
-          </h1>
-        </section>
-
-        <section className="controls" aria-label="문제 목록 정보">
-          <div className="count">
-            AVAILABLE PROBLEMS / {String(problems.length).padStart(2, '0')}
+          <div className="hero-content">
+            <h1>
+              ONE PROMPT<br />
+              ONE RUN
+            </h1>
+            <Link className="problem-list-link" to="/problems">
+              VIEW PROBLEMS
+              <span aria-hidden="true">↗</span>
+            </Link>
           </div>
         </section>
 
@@ -68,7 +68,7 @@ export default function HomePage() {
 
         {!isLoading && !errorMessage && (
           <section className="problem-list">
-            {problems.map((problem) => (
+            {problems.slice(0, 3).map((problem) => (
               <Link
                 className="problem-row"
                 key={problem.id}

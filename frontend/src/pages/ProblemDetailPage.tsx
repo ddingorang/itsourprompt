@@ -276,8 +276,8 @@ export default function ProblemDetailPage() {
                 {runResult ? 'RUN RESULT' : 'SKELETON'}
               </div>
               <h1>
-                Read first<br />
-                Prompt once
+                CRAFT IT<br />
+                CLARIFY IT
               </h1>
             </div>
             <span className="read-only">READ ONLY</span>
