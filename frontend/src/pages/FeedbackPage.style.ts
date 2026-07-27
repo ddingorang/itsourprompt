@@ -108,6 +108,7 @@ export const feedbackPageStyles = `
   }
 
   .prompt-copy {
+    margin-top: 18px;
     min-height: 220px;
     padding: 18px;
     border: 1px solid #393939;

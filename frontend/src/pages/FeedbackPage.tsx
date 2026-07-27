@@ -55,13 +55,11 @@ export default function FeedbackPage() {
             <section className="content-grid">
               <article className="box">
                 <div className="label">SUBMITTED PROMPT</div>
-                <h2>사용자가 작성한 프롬프트</h2>
                 <p className="prompt-copy">{result.prompt}</p>
               </article>
 
               <article className="box outline">
                 <div className="label">FEEDBACK.MD</div>
-                <h2>프롬프트 피드백</h2>
                 <PromptFeedback feedback={result.feedback} />
               </article>
             </section>
