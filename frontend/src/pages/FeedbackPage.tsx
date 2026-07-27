@@ -17,7 +17,7 @@ export default function FeedbackPage() {
       <style>{feedbackPageStyles + buttonStyles}</style>
 
       <header className="site-header">
-        <Link className="logo" to="/problems">
+        <Link className="logo" to="/" aria-label="홈으로 이동">
           prompt<i>.</i>practice
         </Link>
         <span className="header-meta">
@@ -28,20 +28,11 @@ export default function FeedbackPage() {
       </header>
 
       <main className="feedback-main">
-        <div className="label">SUBMISSION / PROMPT FEEDBACK</div>
-
-        <section className="hero">
-          <h1>
-            MAKE IT<br />
-            MORE PRECISE
-          </h1>
-        </section>
-
         <section className="principle">
-          <strong>RUN RESULT + FEEDBACK</strong>
+          <h1>PROMPT FEEDBACK</h1>
           <span>
             INTENT RECONSTRUCTION
-            <br />+ 1–2 SUGGESTIONS
+            <br />+ SUGGESTIONS
           </span>
         </section>
 

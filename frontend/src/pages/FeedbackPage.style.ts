@@ -55,15 +55,6 @@ export const feedbackPageStyles = `
     letter-spacing: .08em;
   }
 
-  .hero { display: block; }
-  .hero h1 {
-    margin: 14px 0 54px;
-    max-width: 820px;
-    font-size: clamp(48px, 8vw, 88px);
-    line-height: .78;
-    letter-spacing: -.075em;
-  }
-
   .principle {
     display: flex;
     align-items: center;
@@ -74,10 +65,10 @@ export const feedbackPageStyles = `
     color: var(--black);
   }
 
-  .principle strong {
-    font-size: clamp(24px, 4vw, 42px);
-    line-height: 1;
-    letter-spacing: -.055em;
+  .principle h1 {
+    margin: 0;
+    font: 700 clamp(36px, 6vw, 64px)/.82 var(--font-mono);
+    letter-spacing: -.04em;
   }
 
   .principle span {
@@ -133,7 +124,6 @@ export const feedbackPageStyles = `
     .site-header { padding: 0 20px; }
     .header-meta { display: none; }
     .feedback-main { width: min(100% - 32px, 680px); padding-top: 32px; }
-    .hero h1 { margin-bottom: 34px; }
     .principle { align-items: flex-start; flex-direction: column; }
     .principle span { text-align: left; }
     .content-grid { grid-template-columns: 1fr; }

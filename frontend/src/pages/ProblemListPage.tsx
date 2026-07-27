@@ -16,10 +16,13 @@ export default function ProblemListPage() {
 
     getProblems()
       .then((response) => {
-        if (isMounted) setProblems(response.problems);
+        if (isMounted) {
+          setProblems(response.problems);
+        }
       })
       .catch((error: unknown) => {
         if (!isMounted) return;
+
         setErrorMessage(
           error instanceof ApiProblemError
             ? error.problem.detail
@@ -27,7 +30,9 @@ export default function ProblemListPage() {
         );
       })
       .finally(() => {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       });
 
     return () => {
@@ -40,46 +45,51 @@ export default function ProblemListPage() {
       <style>{problemListPageStyles}</style>
 
       <header className="site-header">
-        <Link className="logo" to="/problems" aria-label="문제 목록으로 이동">
+        <Link className="logo" to="/" aria-label="홈으로 이동">
           prompt<i>.</i>practice
         </Link>
         <div className="header-meta">ANONYMOUS SESSION / NO HISTORY</div>
       </header>
 
-      <main className="problem-list-main">
-        <div className="eyebrow">PRACTICE / PROBLEM QUEUE</div>
+      <main className="problem-list-page">
+        <header className="problem-list-header">
+          <h1 className="problem-list-eyebrow">PROBLEM LIST</h1>
+        </header>
 
-        <section className="hero">
-          <h1>
-            ONE PROMPT<br />
-            ONE RUN
-          </h1>
-        </section>
-
-        <section className="controls" aria-label="문제 목록 정보">
-          <div className="count">
+        <section className="problem-list-controls" aria-label="문제 목록 정보">
+          <div className="problem-count">
             AVAILABLE PROBLEMS / {String(problems.length).padStart(2, '0')}
           </div>
         </section>
 
-        {isLoading && <div className="page-state">문제 목록을 불러오는 중입니다…</div>}
+        {isLoading && (
+          <div className="problem-list-state">문제 목록을 불러오는 중입니다…</div>
+        )}
 
-        {errorMessage && <div className="page-state error">{errorMessage}</div>}
+        {errorMessage && (
+          <div className="problem-list-state problem-list-error">
+            {errorMessage}
+          </div>
+        )}
 
-        {!isLoading && !errorMessage && (
-          <section className="problem-list">
+        {!isLoading && !errorMessage && problems.length === 0 && (
+          <div className="problem-list-state">등록된 문제가 없습니다.</div>
+        )}
+
+        {!isLoading && !errorMessage && problems.length > 0 && (
+          <section className="problem-list-items" aria-label="문제 목록">
             {problems.map((problem) => (
               <Link
-                className="problem-row"
+                className="problem-list-item"
                 key={problem.id}
                 to={`/problems/${problem.id}`}
               >
-                <span className="number">
+                <span className="problem-number">
                   {String(problem.id).padStart(2, '0')}
                 </span>
-                <div className="problem-title">{problem.title}</div>
-                <span className="arrow" aria-hidden="true">
-                  ↗
+                <span className="problem-title">{problem.title}</span>
+                <span className="problem-action" aria-hidden="true">
+                  START PRACTICE <span className="problem-arrow">↗</span>
                 </span>
               </Link>
             ))}

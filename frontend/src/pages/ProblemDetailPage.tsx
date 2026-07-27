@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { submitFeedback } from '../features/feedback/api';
@@ -229,7 +230,7 @@ export default function ProblemDetailPage() {
       <style>{problemDetailPageStyles + buttonStyles}</style>
 
       <header className="site-header">
-        <Link className="logo" to="/problems">
+        <Link className="logo" to="/" aria-label="홈으로 이동">
           prompt<i>.</i>practice
         </Link>
         <div className="header-title">
@@ -239,7 +240,7 @@ export default function ProblemDetailPage() {
 
       <main className="workspace">
         <aside className="column file-column">
-          <div className="label">PROJECT / FILE TREE</div>
+          <div className="label">FILE EXPLORER</div>
           <h2 className="section-title">problem-{problem.id}</h2>
 
           <div className="file-tree">
@@ -275,10 +276,6 @@ export default function ProblemDetailPage() {
                 {selectedFile.split('/').pop()?.toUpperCase() || 'FILE'} /{' '}
                 {runResult ? 'RUN RESULT' : 'SKELETON'}
               </div>
-              <h1>
-                Read first<br />
-                Prompt once
-              </h1>
             </div>
             <span className="read-only">READ ONLY</span>
           </div>
@@ -297,8 +294,9 @@ export default function ProblemDetailPage() {
         <aside className="column action-column">
           <section className="mission-card">
             <div className="label">CURRENT PROBLEM</div>
-            <h2>{problem.title}</h2>
-            <p className="spec-content">{problem.specMd}</p>
+            <div className="spec-content">
+              <ReactMarkdown>{problem.specMd}</ReactMarkdown>
+            </div>
             <div className="chips">
               <span className="chip">READ ONLY</span>
               <span className="chip">STATELESS</span>

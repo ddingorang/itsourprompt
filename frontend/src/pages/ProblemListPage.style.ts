@@ -38,97 +38,168 @@ export const problemListPageStyles = `
     letter-spacing: .04em;
   }
 
-  .logo { font: 900 20px/1 var(--font-sans); letter-spacing: -1.6px; }
-  .logo i { color: var(--accent); font-style: normal; }
+  .logo {
+    font: 900 20px/1 var(--font-sans);
+    letter-spacing: -1.6px;
+  }
+
+  .logo i {
+    color: var(--accent);
+    font-style: normal;
+  }
+
   .header-meta { color: var(--muted); }
 
-  .problem-list-main {
+  .problem-list-page {
     width: calc(100% - 10vw);
     margin: 0 auto;
     padding: clamp(32px, 5vw, 56px) 0 80px;
   }
 
-  .eyebrow {
+  .problem-list-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 54px;
+  }
+
+  .problem-list-eyebrow {
+    margin: 0;
     color: var(--accent);
-    font: 700 20px/1.4 var(--font-mono);
-    letter-spacing: .08em;
+    font: 700 clamp(36px, 6vw, 64px)/.82 var(--font-mono);
+    letter-spacing: -.04em;
   }
 
-  .hero { display: block; }
-
-  .hero h1 {
-    margin: 14px 0 54px;
-    max-width: 820px;
-    font-size: clamp(48px, 8vw, 88px);
-    line-height: .78;
-    letter-spacing: -.075em;
-  }
-
-  .controls {
+  .problem-list-controls {
     padding: 15px 0;
     border-top: 1px solid var(--white);
     border-bottom: 1px solid var(--line);
   }
 
-  .count { font: 700 11px var(--font-mono); letter-spacing: .06em; }
-  .problem-list { border-bottom: 1px solid var(--line); }
+  .problem-count {
+    color: var(--muted);
+    font: 700 11px var(--font-mono);
+    letter-spacing: .06em;
+    white-space: nowrap;
+  }
 
-  .problem-row {
+  .problem-list-items {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .problem-list-item {
     display: grid;
-    grid-template-columns: 76px minmax(0, 1fr) 42px;
-    gap: 16px;
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    gap: 20px;
     align-items: center;
-    min-height: 108px;
-    padding: 22px 0;
+    min-height: 96px;
+    padding: 20px 0;
     border-top: 1px solid var(--line);
-    transition: background .18s ease, padding .18s ease;
+    color: inherit;
+    text-decoration: none;
+    transition: padding .18s ease, background .18s ease, color .18s ease;
   }
 
-  .problem-row:first-child { border-top: 0; }
-  .problem-row:hover,
-  .problem-row:focus-visible {
-    padding-left: 14px;
+  .problem-list-item:first-child {
+    border-top: 0;
+  }
+
+  .problem-list-item:hover,
+  .problem-list-item:focus-visible {
     padding-right: 14px;
+    padding-left: 14px;
     outline: none;
-    background: var(--panel);
+    background: var(--accent);
+    color: var(--black);
   }
 
-  .number { color: var(--muted); font: 12px var(--font-mono); }
+  .problem-number {
+    color: var(--muted);
+    font: 12px var(--font-mono);
+    transition: color .18s ease;
+  }
 
   .problem-title {
     min-width: 0;
-    font-size: clamp(18px, 2.2vw, 25px);
+    font-size: clamp(17px, 2vw, 23px);
     font-weight: 800;
-    letter-spacing: -.035em;
+    letter-spacing: -.03em;
     word-break: keep-all;
   }
 
-  .arrow {
+  .problem-action {
     justify-self: end;
     color: var(--accent);
-    font-size: 24px;
+    font: 800 11px/1 var(--font-sans);
+    letter-spacing: .02em;
+    white-space: nowrap;
+    transition: color .18s ease;
+  }
+
+  .problem-arrow {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 18px;
     transition: transform .18s ease;
   }
 
-  .problem-row:hover .arrow { transform: translate(3px, -3px); }
+  .problem-list-item:hover .problem-number,
+  .problem-list-item:focus-visible .problem-number,
+  .problem-list-item:hover .problem-action,
+  .problem-list-item:focus-visible .problem-action {
+    color: var(--black);
+  }
 
-  .page-state {
-    padding: 44px 0;
+  .problem-list-item:hover .problem-arrow,
+  .problem-list-item:focus-visible .problem-arrow {
+    transform: translate(3px, -3px);
+  }
+
+  .problem-list-state {
+    padding: 48px 0;
     border-bottom: 1px solid var(--line);
     color: var(--muted);
     font: 12px/1.7 var(--font-mono);
   }
 
-  .page-state.error { color: #ff786b; }
+  .problem-list-error {
+    color: #ff786b;
+  }
 
-  @media (max-width: 760px) {
-    .site-header { padding: 0 20px; }
-    .header-meta { display: none; }
-    .problem-list-main { width: min(100% - 32px, 680px); padding-top: 32px; }
-    .hero h1 { margin-bottom: 34px; }
-    .problem-row {
-      grid-template-columns: 44px minmax(0, 1fr) 28px;
-      min-height: 100px;
+  @media (max-width: 640px) {
+    .site-header {
+      padding: 0 20px;
+    }
+
+    .header-meta {
+      display: none;
+    }
+
+    .problem-list-page {
+      width: min(calc(100% - 32px), 1080px);
+      padding-top: 40px;
+    }
+
+    .problem-list-header {
+      align-items: start;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .problem-list-item {
+      grid-template-columns: 42px minmax(0, 1fr) auto;
+      gap: 12px;
+      min-height: 88px;
+    }
+
+    .problem-action {
+      font-size: 0;
+    }
+
+    .problem-arrow {
+      margin-left: 0;
+      font-size: 18px;
     }
   }
 `;
