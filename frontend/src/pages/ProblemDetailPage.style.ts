@@ -63,7 +63,7 @@ export const problemDetailPageStyles = `
 
   .label {
     color: var(--accent);
-    font: 700 11px/1.5 var(--font-mono);
+    font: 700 14px/1.5 var(--font-mono);
     letter-spacing: .08em;
   }
 
@@ -121,13 +121,6 @@ export const problemDetailPageStyles = `
     margin-bottom: 20px;
   }
 
-  .viewer-top h1 {
-    margin: 10px 0 0;
-    font-size: clamp(24px, 3vw, 38px);
-    line-height: 1;
-    letter-spacing: -.055em;
-    word-break: keep-all;
-  }
 
   .read-only {
     flex: 0 0 auto;

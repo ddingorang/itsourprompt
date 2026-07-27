@@ -239,7 +239,7 @@ export default function ProblemDetailPage() {
 
       <main className="workspace">
         <aside className="column file-column">
-          <div className="label">PROJECT / FILE TREE</div>
+          <div className="label">FILE EXPLORER</div>
           <h2 className="section-title">problem-{problem.id}</h2>
 
           <div className="file-tree">
@@ -275,10 +275,6 @@ export default function ProblemDetailPage() {
                 {selectedFile.split('/').pop()?.toUpperCase() || 'FILE'} /{' '}
                 {runResult ? 'RUN RESULT' : 'SKELETON'}
               </div>
-              <h1>
-                CRAFT IT<br />
-                CLARIFY IT
-              </h1>
             </div>
             <span className="read-only">READ ONLY</span>
           </div>
