@@ -1,10 +1,10 @@
 package com.promptstudio.ai;
 
+import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.problem.domain.Problem;
-import com.promptstudio.problem.domain.Submission;
-import com.promptstudio.problem.port.FeedbackGenerationException;
-import com.promptstudio.problem.port.FeedbackGenerator;
-import com.promptstudio.problem.port.FeedbackTimeoutException;
+import com.promptstudio.attempt.port.FeedbackGenerationException;
+import com.promptstudio.attempt.port.FeedbackTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -29,16 +29,17 @@ public class NvidiaFeedbackGenerator implements FeedbackGenerator {
     }
 
     @Override
-    public String generate(Problem problem, Submission submission) {
+    public String generate(Problem problem, Attempt attempt) {
         String systemPrompt = FeedbackPrompts.systemPrompt();
-        String userPrompt = FeedbackPrompts.userPrompt(problem, submission);
+        String userPrompt = FeedbackPrompts.userPrompt(problem, attempt);
         long startedAt = System.nanoTime();
 
         log.info(
-                "[NVIDIA FEEDBACK] request started | problemId={} | inputChars={} | changedFiles={}",
+                "[NVIDIA FEEDBACK] request started | problemId={} | attemptId={} | inputChars={} | turns={}",
                 problem.id(),
+                attempt.id(),
                 systemPrompt.length() + userPrompt.length(),
-                submission.changes().size()
+                attempt.turns().size()
         );
 
         try {

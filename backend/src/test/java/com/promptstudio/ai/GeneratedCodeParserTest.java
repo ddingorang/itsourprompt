@@ -1,8 +1,8 @@
 package com.promptstudio.ai;
 
-import com.promptstudio.problem.domain.GeneratedCode;
+import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.problem.domain.ProblemFile;
-import com.promptstudio.problem.port.CodeGenerationException;
+import com.promptstudio.attempt.port.CodeGenerationException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

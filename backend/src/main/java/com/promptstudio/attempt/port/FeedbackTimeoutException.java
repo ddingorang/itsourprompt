@@ -1,4 +1,4 @@
-package com.promptstudio.problem.port;
+package com.promptstudio.attempt.port;
 
 public class FeedbackTimeoutException extends RuntimeException {
 
