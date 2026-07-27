@@ -40,7 +40,7 @@ export default function HomePage() {
       <style>{homePageStyles}</style>
 
       <header className="site-header">
-        <Link className="logo" to="/problems" aria-label="문제 목록으로 이동">
+        <Link className="logo" to="/" aria-label="홈으로 이동">
           prompt<i>.</i>practice
         </Link>
         <div className="header-meta">ANONYMOUS SESSION / NO HISTORY</div>

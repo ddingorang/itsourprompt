@@ -229,7 +229,7 @@ export default function ProblemDetailPage() {
       <style>{problemDetailPageStyles + buttonStyles}</style>
 
       <header className="site-header">
-        <Link className="logo" to="/problems">
+        <Link className="logo" to="/" aria-label="홈으로 이동">
           prompt<i>.</i>practice
         </Link>
         <div className="header-title">

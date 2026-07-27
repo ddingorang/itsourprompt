@@ -17,7 +17,7 @@ export default function FeedbackPage() {
       <style>{feedbackPageStyles + buttonStyles}</style>
 
       <header className="site-header">
-        <Link className="logo" to="/problems">
+        <Link className="logo" to="/" aria-label="홈으로 이동">
           prompt<i>.</i>practice
         </Link>
         <span className="header-meta">
