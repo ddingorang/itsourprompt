@@ -1,7 +1,7 @@
 package com.promptstudio.problem.repository;
 
-import com.promptstudio.problem.entity.Problem;
-import com.promptstudio.problem.entity.ProblemFile;
+import com.promptstudio.problem.domain.Problem;
+import com.promptstudio.problem.domain.ProblemFile;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;

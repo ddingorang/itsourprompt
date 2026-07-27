@@ -1,12 +1,12 @@
 package com.promptstudio.problem.controller;
 
 import com.promptstudio.global.exception.ApiErrorResponse;
-import com.promptstudio.problem.dto.response.ProblemDetailResponse;
-import com.promptstudio.problem.dto.response.ProblemListResponse;
-import com.promptstudio.problem.dto.request.RunRequest;
-import com.promptstudio.problem.dto.response.RunResponse;
-import com.promptstudio.problem.dto.request.SubmitRequest;
-import com.promptstudio.problem.dto.response.SubmitResponse;
+import com.promptstudio.problem.controller.request.RunRequest;
+import com.promptstudio.problem.controller.request.SubmitRequest;
+import com.promptstudio.problem.controller.response.ProblemDetailResponse;
+import com.promptstudio.problem.controller.response.ProblemListResponse;
+import com.promptstudio.problem.controller.response.RunResponse;
+import com.promptstudio.problem.controller.response.SubmitResponse;
 import com.promptstudio.problem.service.ProblemService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -31,9 +31,11 @@ import jakarta.validation.Valid;
 public class ProblemController {
 
     private final ProblemService problemService;
+    private final ProblemWebMapper problemWebMapper;
 
-    public ProblemController(ProblemService problemService) {
+    public ProblemController(ProblemService problemService, ProblemWebMapper problemWebMapper) {
         this.problemService = problemService;
+        this.problemWebMapper = problemWebMapper;
     }
 
     @GetMapping
@@ -61,7 +63,7 @@ public class ProblemController {
             )
     )
     public ProblemListResponse getProblems() {
-        return problemService.getProblems();
+        return problemWebMapper.toListResponse(problemService.getProblems());
     }
 
     @GetMapping("/{id}")
@@ -82,7 +84,7 @@ public class ProblemController {
             )
     })
     public ProblemDetailResponse getProblem(@PathVariable("id") Long id) {
-        return problemService.getProblem(id);
+        return problemWebMapper.toDetailResponse(problemService.getProblem(id));
     }
 
     @PostMapping("/{id}/run")
@@ -121,7 +123,7 @@ public class ProblemController {
             @PathVariable("id") Long id,
             @Valid @RequestBody RunRequest request
     ) {
-        return problemService.runProblem(id, request);
+        return problemWebMapper.toRunResponse(problemService.run(id, request.prompt()));
     }
 
     @PostMapping("/{id}/submit")
@@ -160,6 +162,7 @@ public class ProblemController {
             @PathVariable("id") Long id,
             @Valid @RequestBody SubmitRequest request
     ) {
-        return problemService.submitProblem(id, request);
+        String feedback = problemService.submit(id, problemWebMapper.toSubmission(request));
+        return new SubmitResponse(feedback);
     }
 }
