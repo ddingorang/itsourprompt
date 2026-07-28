@@ -51,7 +51,7 @@ export default function HomePage() {
 
         <section className="hero">
           <div className="hero-content">
-            <h1>
+            <h1 className="font-bold">
               ONE PROMPT<br />
               ONE RUN
             </h1>

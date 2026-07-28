@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router-dom';
 import PromptFeedback from '../features/feedback/PromptFeedback';
 import { getFeedbackResult } from '../features/submission/storage';
 import Button from '../shared/components/Button';
-import { buttonStyles } from '../shared/components/Button.style';
 import { feedbackPageStyles } from './FeedbackPage.style';
 
 export default function FeedbackPage() {
@@ -14,7 +13,7 @@ export default function FeedbackPage() {
 
   return (
     <>
-      <style>{feedbackPageStyles + buttonStyles}</style>
+      <style>{feedbackPageStyles}</style>
 
       <header className="site-header">
         <Link className="logo" to="/" aria-label="홈으로 이동">
@@ -39,7 +38,9 @@ export default function FeedbackPage() {
         {!matchesCurrentProblem ? (
           <section className="page-state">
             <div>저장된 피드백 결과가 없습니다. 문제를 실행하고 다시 제출해주세요.</div>
-            <Button to="/problems">BACK TO PROBLEMS ↗</Button>
+            <Button className="mt-5" to="/problems">
+              BACK TO PROBLEMS ↗
+            </Button>
           </section>
         ) : (
           <>
@@ -56,7 +57,9 @@ export default function FeedbackPage() {
             </section>
 
             <div className="actions">
-              <Button to="/problems">BACK TO PROBLEMS ↗</Button>
+              <Button className="max-[760px]:w-full" to="/problems">
+                BACK TO PROBLEMS ↗
+              </Button>
             </div>
           </>
         )}

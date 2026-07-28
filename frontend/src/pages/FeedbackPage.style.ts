@@ -118,8 +118,6 @@ export const feedbackPageStyles = `
     line-height: 1.7;
   }
 
-  .page-state .app-button { margin-top: 20px; }
-
   @media (max-width: 760px) {
     .site-header { padding: 0 20px; }
     .header-meta { display: none; }
@@ -128,6 +126,5 @@ export const feedbackPageStyles = `
     .principle span { text-align: left; }
     .content-grid { grid-template-columns: 1fr; }
     .actions { justify-content: stretch; }
-    .actions .app-button { width: 100%; }
   }
 `;

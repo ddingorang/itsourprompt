@@ -14,7 +14,6 @@ import type {
 } from '../features/submission/types';
 import { ApiProblemError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
-import { buttonStyles } from '../shared/components/Button.style';
 import { problemDetailPageStyles } from './ProblemDetailPage.style';
 
 type StatusType = 'normal' | 'error';
@@ -214,7 +213,7 @@ export default function ProblemDetailPage() {
   if (!problem) {
     return (
       <>
-        <style>{problemDetailPageStyles + buttonStyles}</style>
+        <style>{problemDetailPageStyles}</style>
         <div className="page-state error">
           <div>
             <p>{status?.message ?? '문제를 찾을 수 없습니다.'}</p>
@@ -227,7 +226,7 @@ export default function ProblemDetailPage() {
 
   return (
     <>
-      <style>{problemDetailPageStyles + buttonStyles}</style>
+      <style>{problemDetailPageStyles}</style>
 
       <header className="site-header">
         <Link className="logo" to="/" aria-label="홈으로 이동">

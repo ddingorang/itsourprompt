@@ -8,11 +8,13 @@
   margin: 32px 0 16px;
   color: #d6ff50;
   font-size: 22px;
+  font-weight: 700;
 }
 
 .feedback-markdown h3 {
   margin: 24px 0 12px;
   font-size: 18px;
+  font-weight: 700;
 }
 
 .feedback-markdown p {

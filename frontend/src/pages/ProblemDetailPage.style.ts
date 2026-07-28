@@ -22,7 +22,7 @@ export const problemDetailPageStyles = `
     font-family: var(--font-sans);
   }
 
-  button, textarea { font: inherit; }
+  textarea { font: inherit; }
   button { cursor: pointer; }
   a { color: inherit; text-decoration: none; }
 
@@ -67,7 +67,12 @@ export const problemDetailPageStyles = `
     letter-spacing: .08em;
   }
 
-  .section-title { margin: 10px 0 22px; font-size: 22px; letter-spacing: -.04em; }
+  .section-title {
+    margin: 10px 0 22px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -.04em;
+  }
 
   .file-tree {
     display: grid;
@@ -160,6 +165,7 @@ export const problemDetailPageStyles = `
   .mission-card h2 {
     margin: 10px 0 12px;
     font-size: 25px;
+    font-weight: 700;
     line-height: 1.05;
     letter-spacing: -.045em;
   }
@@ -174,6 +180,13 @@ export const problemDetailPageStyles = `
     word-break: keep-all;
   }
 
+  .spec-content h1 {
+  margin: 10px 0 12px;
+  font-size: 30px;
+  line-height: 1.05;
+  letter-spacing: -.045em;
+}
+  
   .spec-content h1,
   .spec-content h2,
   .spec-content h3,
@@ -181,6 +194,7 @@ export const problemDetailPageStyles = `
   .spec-content h5,
   .spec-content h6 {
     color: var(--white);
+    font-weight: 700;
   }
 
   .chips { margin-top: 15px; }
@@ -238,7 +252,11 @@ export const problemDetailPageStyles = `
     background: #121212;
   }
 
-  .result-card h3 { margin: 10px 0; font-size: 15px; }
+  .result-card h3 {
+    margin: 10px 0;
+    font-size: 15px;
+    font-weight: 700;
+  }
   .ai-response {
     max-height: 180px;
     overflow: auto;
