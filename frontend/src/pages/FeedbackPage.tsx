@@ -13,13 +13,7 @@ export default function FeedbackPage() {
 
   return (
     <div className="min-h-screen min-w-80 bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <Header mobileBreakpoint="760">
-        <span className="text-[#a3a3a3] max-[760px]:hidden">
-          {result
-            ? `PROBLEM ${String(result.problemId).padStart(2, '0')} / FEEDBACK RESULT`
-            : 'FEEDBACK RESULT'}
-        </span>
-      </Header>
+      <Header mobileBreakpoint="760" />
 
       <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
         <section className="flex items-center justify-between gap-[18px] bg-[#d6ff50] px-[22px] py-5 text-[#090909] max-[760px]:flex-col max-[760px]:items-start">

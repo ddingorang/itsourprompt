@@ -28,17 +28,7 @@ const recentActivity = [
 export default function MyPage() {
   return (
     <div className="min-h-screen min-w-80 bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <Header>
-        <nav className="flex items-center gap-7">
-          <Link
-            className="text-[#a3a3a3] transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none max-[480px]:hidden"
-            to="/problems"
-          >
-            PROBLEMS
-          </Link>
-          <span className="text-[#d6ff50]">MY PAGE</span>
-        </nav>
-      </Header>
+      <Header />
 
       <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(36px,5vw,64px)] pb-24 max-[640px]:w-[calc(100%_-_40px)]">
         <div className="mb-[54px] font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">

@@ -1,26 +1,30 @@
-import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 type HeaderProps = {
-  children?: ReactNode;
   variant?: 'default' | 'workspace';
   mobileBreakpoint?: '640' | '760';
+  mode?: 'guest' | 'authenticated';
+  onLogout?: () => void;
 };
 
 const defaultHeaderClasses = {
   '640':
-    'sticky top-0 z-10 flex min-h-[66px] items-center justify-between border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[640px]:px-5',
+    'sticky top-0 z-10 flex min-h-[66px] items-center justify-between gap-6 border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[640px]:px-5 max-[480px]:flex-col max-[480px]:items-start max-[480px]:gap-3 max-[480px]:py-4',
   '760':
-    'sticky top-0 z-10 flex min-h-[66px] items-center justify-between border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[760px]:px-5',
+    'sticky top-0 z-10 flex min-h-[66px] items-center justify-between gap-6 border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[760px]:px-5 max-[480px]:flex-col max-[480px]:items-start max-[480px]:gap-3 max-[480px]:py-4',
 };
 
 const workspaceHeaderClasses =
-  'grid min-h-[66px] grid-cols-[auto_minmax(0,1fr)] items-center gap-6 border-b border-[#343434] bg-[#090909] px-6 font-mono text-[15px] max-[700px]:px-4';
+  'flex min-h-[66px] items-center justify-between gap-6 border-b border-[#343434] bg-[#090909] px-6 font-mono text-[15px] tracking-[0.04em] max-[700px]:px-4 max-[480px]:flex-col max-[480px]:items-start max-[480px]:gap-3 max-[480px]:py-4';
+
+const menuLinkClasses =
+  'text-[#a3a3a3] transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none';
 
 export default function Header({
-  children,
   variant = 'default',
   mobileBreakpoint = '640',
+  mode = 'guest',
+  onLogout,
 }: HeaderProps) {
   const headerClasses =
     variant === 'workspace'
@@ -36,7 +40,46 @@ export default function Header({
       >
         prompt<i className="not-italic text-[#d6ff50]">.</i>practice
       </Link>
-      {children}
+      <nav
+        className="flex items-center gap-3 whitespace-nowrap max-[480px]:w-full max-[480px]:justify-between max-[480px]:gap-2 max-[480px]:text-xs"
+        aria-label="주요 메뉴"
+      >
+        <Link className={menuLinkClasses} to="/problems">
+          PROBLEM LIST
+        </Link>
+        <span className="text-[#555]" aria-hidden="true">
+          |
+        </span>
+        {mode === 'guest' ? (
+          <>
+            <Link className={menuLinkClasses} to="/login">
+              LOGIN
+            </Link>
+            <span className="text-[#555]" aria-hidden="true">
+              |
+            </span>
+            <Link className={menuLinkClasses} to="/signup">
+              SIGN UP
+            </Link>
+          </>
+        ) : (
+          <>
+            <Link className={menuLinkClasses} to="/my">
+              PROFILE
+            </Link>
+            <span className="text-[#555]" aria-hidden="true">
+              |
+            </span>
+            <button
+              className={`${menuLinkClasses} cursor-pointer border-0 bg-transparent p-0 font-inherit tracking-inherit`}
+              type="button"
+              onClick={onLogout}
+            >
+              LOGOUT
+            </button>
+          </>
+        )}
+      </nav>
     </header>
   );
 }

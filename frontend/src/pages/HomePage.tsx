@@ -37,11 +37,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen min-w-80 bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <Header mobileBreakpoint="760">
-        <div className="text-[#a3a3a3] max-[760px]:hidden">
-          ANONYMOUS SESSION / NO HISTORY
-        </div>
-      </Header>
+      <Header mobileBreakpoint="760" />
 
       <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
         <div className="font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
