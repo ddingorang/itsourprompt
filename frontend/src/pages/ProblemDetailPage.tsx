@@ -234,7 +234,7 @@ export default function ProblemDetailPage() {
 
   return (
     <div className="min-h-screen min-w-80 bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <header className="grid min-h-[66px] grid-cols-[auto_minmax(0,1fr)] items-center gap-6 border-b border-[#343434] bg-[#090909] px-6 font-mono text-[11px] max-[700px]:px-4">
+      <header className="grid min-h-[66px] grid-cols-[auto_minmax(0,1fr)] items-center gap-6 border-b border-[#343434] bg-[#090909] px-6 font-mono text-[15px] max-[700px]:px-4">
         <Link
           className="text-xl leading-none font-black tracking-[-1.6px] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
           to="/"

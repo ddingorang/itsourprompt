@@ -41,7 +41,7 @@ export default function ProblemListPage() {
 
   return (
     <div className="min-h-screen bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <header className="sticky top-0 z-10 flex min-h-[66px] items-center justify-between border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[11px] tracking-[0.04em] backdrop-blur-[12px] max-[640px]:px-5">
+      <header className="sticky top-0 z-10 flex min-h-[66px] items-center justify-between border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[640px]:px-5">
         <Link
           className="text-xl leading-none font-black tracking-[-1.6px] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
           to="/"
