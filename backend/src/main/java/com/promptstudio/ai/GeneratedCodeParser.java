@@ -39,7 +39,7 @@ final class GeneratedCodeParser {
 
             return new GeneratedCode(response.files(), response.aiResponse());
         } catch (JsonProcessingException exception) {
-            log.warn("NVIDIA AI가 JSON이 아닌 응답을 반환했습니다. responseBody={}",
+            log.warn("OpenAI가 JSON이 아닌 응답을 반환했습니다. responseBody={}",
                     abbreviate(rawResponse));
             throw new CodeGenerationException("AI가 올바른 JSON 형식의 응답을 반환하지 않았습니다.", exception);
         }
