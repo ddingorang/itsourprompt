@@ -41,7 +41,7 @@ export default function ProblemListPage() {
 
   return (
     <div className="min-h-screen bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <header className="sticky top-0 z-10 flex min-h-[66px] items-center justify-between border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[11px] tracking-[0.04em] backdrop-blur-[12px] max-[640px]:px-5">
+      <header className="sticky top-0 z-10 flex min-h-[66px] items-center justify-between border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[640px]:px-5">
         <Link
           className="text-xl leading-none font-black tracking-[-1.6px] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
           to="/"
@@ -96,20 +96,17 @@ export default function ProblemListPage() {
                 key={problem.id}
                 to={`/problems/${problem.id}`}
               >
-                <span className="font-mono text-xs text-[#a3a3a3] transition-colors duration-200 group-hover:text-[#090909] group-focus-visible:text-[#090909]">
+                <span className="font-mono text-[17px] text-[#a3a3a3] transition-colors duration-200 group-hover:text-[#090909] group-focus-visible:text-[#090909]">
                   {String(problem.id).padStart(2, '0')}
                 </span>
-                <span className="min-w-0 text-[clamp(17px,2vw,23px)] font-extrabold tracking-[-0.03em] [word-break:keep-all]">
+                <span className="min-w-0 text-[clamp(17px,2vw,23px)] font-bold tracking-[-0.03em] [word-break:keep-all]">
                   {problem.title}
                 </span>
                 <span
-                  className="justify-self-end whitespace-nowrap text-[11px] leading-none font-extrabold tracking-[0.02em] text-[#d6ff50] transition-colors duration-200 group-hover:text-[#090909] group-focus-visible:text-[#090909] max-[640px]:text-[0]"
+                  className="justify-self-end text-2xl text-[#d6ff50] transition-[color,transform] duration-200 group-hover:translate-x-[3px] group-hover:-translate-y-[3px] group-hover:text-[#090909] group-focus-visible:translate-x-[3px] group-focus-visible:-translate-y-[3px] group-focus-visible:text-[#090909]"
                   aria-hidden="true"
                 >
-                  START PRACTICE{' '}
-                  <span className="ml-2 inline-block text-lg transition-transform duration-200 group-hover:translate-x-[3px] group-hover:-translate-y-[3px] group-focus-visible:translate-x-[3px] group-focus-visible:-translate-y-[3px] max-[640px]:ml-0">
-                    ↗
-                  </span>
+                  ↗
                 </span>
               </Link>
             ))}
