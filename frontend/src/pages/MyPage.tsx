@@ -48,11 +48,11 @@ export default function MyPage() {
 
       <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(36px,5vw,64px)] pb-24 max-[640px]:w-[calc(100%_-_40px)]">
         <div className="mb-[54px] font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-          USER PROFILE / 001
+          USER PROFILE
         </div>
 
         <section className="grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[#f5f5ef] max-[820px]:grid-cols-1">
-          <div className="flex min-h-[300px] flex-col justify-between border-r border-[#343434] p-[clamp(24px,4vw,48px)] max-[820px]:min-h-[260px] max-[820px]:border-r-0 max-[820px]:border-b">
+          <div className="flex min-h-[220px] flex-col justify-between border-r border-[#343434] p-[clamp(24px,4vw,48px)] max-[820px]:min-h-[200px] max-[820px]:border-r-0 max-[820px]:border-b">
             <div className="flex items-center gap-5">
               <div
                 className="grid size-16 shrink-0 place-items-center rounded-full bg-[#d6ff50] text-2xl font-black text-[#090909]"
@@ -71,9 +71,6 @@ export default function MyPage() {
             </div>
 
             <div>
-              <p className="mb-3 max-w-[420px] text-sm leading-6 text-[#a3a3a3] [word-break:keep-all]">
-                더 명확한 질문과 더 나은 답변을 연습하고 있어요.
-              </p>
               <span className="inline-flex items-center gap-2 font-mono text-[13px] tracking-[0.08em] text-[#777]">
                 <span className="size-1.5 rounded-full bg-[#d6ff50]" />
                 MEMBER SINCE 2026.07
@@ -91,11 +88,11 @@ export default function MyPage() {
                   0{index + 1} / {stat.label}
                 </span>
                 <div className="flex items-baseline gap-2">
-                  <strong className="font-mono text-[clamp(38px,6vw,72px)] leading-none tracking-[-0.08em]">
+                  <strong className="font-mono text-[clamp(32px,5vw,60px)] leading-none tracking-[-0.08em]">
                     {stat.value}
                   </strong>
                   {stat.unit && (
-                    <span className="font-mono text-[10px] text-[#d6ff50]">
+                    <span className="font-mono text-[12px] text-[#d6ff50]">
                       {stat.unit}
                     </span>
                   )}
@@ -107,7 +104,7 @@ export default function MyPage() {
 
         <section className="mt-[clamp(52px,8vw,96px)]">
           <div className="flex items-end justify-between gap-6 pb-5">
-              <div className="font-mono text-[clamp(28px,5vw,52px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+              <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
                 YOUR PROGRESS
               </div>
           </div>
