@@ -6,6 +6,11 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
+# 빌드 시 --build-arg VITE_API_BASE_URL=http://i15a505.p.ssafy.io/api 로 주입
+# (Vite는 빌드 타임에 값을 정적 JS로 인라인하므로 ENV로 미리 넣어야 함)
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 COPY package*.json ./
 RUN npm ci
 
