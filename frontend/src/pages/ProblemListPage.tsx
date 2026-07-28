@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { getProblems } from '../features/problem/api';
 import type { ProblemSummary } from '../features/problem/types';
 import { ApiProblemError } from '../shared/api/apiClient';
+import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
 export default function ProblemListPage() {
@@ -41,10 +42,10 @@ export default function ProblemListPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div className="flex min-h-screen flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
       <Header />
 
-      <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(32px,5vw,56px)] pb-20 max-[640px]:w-[min(calc(100%_-_32px),1080px)] max-[640px]:pt-10">
+      <main className="mx-auto w-[calc(100%_-_10vw)] flex-1 pt-[clamp(32px,5vw,56px)] pb-20 max-[640px]:w-[min(calc(100%_-_32px),1080px)] max-[640px]:pt-10">
         <header className="flex items-end justify-between gap-6 pb-[54px] max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-4">
           <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
             PROBLEM LIST
@@ -103,6 +104,7 @@ export default function ProblemListPage() {
           </section>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

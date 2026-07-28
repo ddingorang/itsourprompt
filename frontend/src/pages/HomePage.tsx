@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { getProblems } from '../features/problem/api';
 import type { ProblemSummary } from '../features/problem/types';
 import { ApiProblemError } from '../shared/api/apiClient';
+import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
 export default function HomePage() {
@@ -36,10 +37,10 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen min-w-80 bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
       <Header mobileBreakpoint="760" />
 
-      <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
+      <main className="mx-auto w-[calc(100%_-_10vw)] flex-1 pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
         <div className="font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
           PROMPT ENGINEERING PRACTICE
         </div>
@@ -98,6 +99,7 @@ export default function HomePage() {
           </section>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

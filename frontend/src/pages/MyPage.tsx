@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
 const stats = [
@@ -27,10 +28,10 @@ const recentActivity = [
 
 export default function MyPage() {
   return (
-    <div className="min-h-screen min-w-80 bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
       <Header />
 
-      <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(36px,5vw,64px)] pb-24 max-[640px]:w-[calc(100%_-_40px)]">
+      <main className="mx-auto w-[calc(100%_-_10vw)] flex-1 pt-[clamp(36px,5vw,64px)] pb-24 max-[640px]:w-[calc(100%_-_40px)]">
         <div className="mb-[54px] font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
           USER PROFILE
         </div>
@@ -124,6 +125,7 @@ export default function MyPage() {
           * 로그인 및 실제 학습 데이터 연동 전 표시되는 임시 화면입니다.
         </p>
       </main>
+      <Footer />
     </div>
   );
 }

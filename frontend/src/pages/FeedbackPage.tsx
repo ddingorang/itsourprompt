@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import PromptFeedback from '../features/feedback/PromptFeedback';
 import { getFeedbackResult } from '../features/submission/storage';
 import Button from '../shared/components/Button';
+import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
 export default function FeedbackPage() {
@@ -12,10 +13,10 @@ export default function FeedbackPage() {
     result && (!problemId || result.problemId === Number(problemId));
 
   return (
-    <div className="min-h-screen min-w-80 bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
       <Header mobileBreakpoint="760" />
 
-      <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
+      <main className="mx-auto w-[calc(100%_-_10vw)] flex-1 pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
         <section className="flex items-center justify-between gap-[18px] bg-[#d6ff50] px-[22px] py-5 text-[#090909] max-[760px]:flex-col max-[760px]:items-start">
           <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em]">
             PROMPT FEEDBACK
@@ -64,6 +65,7 @@ export default function FeedbackPage() {
           </>
         )}
       </main>
+      <Footer />
     </div>
   );
 }
