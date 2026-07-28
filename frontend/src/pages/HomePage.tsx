@@ -91,7 +91,7 @@ export default function HomePage() {
                 key={problem.id}
                 to={`/problems/${problem.id}`}
               >
-                <span className="font-mono text-xs text-[#a3a3a3]">
+                <span className="font-mono text-[17px] text-[#a3a3a3]">
                   {String(problem.id).padStart(2, '0')}
                 </span>
                 <div className="min-w-0 text-[clamp(18px,2.2vw,25px)] font-bold tracking-[-0.035em] [word-break:keep-all]">
