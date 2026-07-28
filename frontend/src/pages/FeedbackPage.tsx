@@ -1,8 +1,9 @@
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import PromptFeedback from '../features/feedback/PromptFeedback';
 import { getFeedbackResult } from '../features/submission/storage';
 import Button from '../shared/components/Button';
+import Header from '../shared/components/Header';
 
 export default function FeedbackPage() {
   const { problemId } = useParams();
@@ -12,20 +13,13 @@ export default function FeedbackPage() {
 
   return (
     <div className="min-h-screen min-w-80 bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <header className="sticky top-0 z-10 flex min-h-[66px] items-center justify-between border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[760px]:px-5">
-        <Link
-          className="text-xl leading-none font-black tracking-[-1.6px] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
-          to="/"
-          aria-label="홈으로 이동"
-        >
-          prompt<i className="not-italic text-[#d6ff50]">.</i>practice
-        </Link>
+      <Header mobileBreakpoint="760">
         <span className="text-[#a3a3a3] max-[760px]:hidden">
           {result
             ? `PROBLEM ${String(result.problemId).padStart(2, '0')} / FEEDBACK RESULT`
             : 'FEEDBACK RESULT'}
         </span>
-      </header>
+      </Header>
 
       <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
         <section className="flex items-center justify-between gap-[18px] bg-[#d6ff50] px-[22px] py-5 text-[#090909] max-[760px]:flex-col max-[760px]:items-start">

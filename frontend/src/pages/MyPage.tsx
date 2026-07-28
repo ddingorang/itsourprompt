@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import Header from '../shared/components/Header';
 
 const stats = [
   { label: 'SOLVED', value: '12' },
@@ -27,14 +28,7 @@ const recentActivity = [
 export default function MyPage() {
   return (
     <div className="min-h-screen min-w-80 bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <header className="sticky top-0 z-10 flex min-h-[66px] items-center justify-between border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[640px]:px-5">
-        <Link
-          className="text-xl leading-none font-black tracking-[-1.6px] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
-          to="/"
-          aria-label="홈으로 이동"
-        >
-          prompt<i className="not-italic text-[#d6ff50]">.</i>practice
-        </Link>
+      <Header>
         <nav className="flex items-center gap-7">
           <Link
             className="text-[#a3a3a3] transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none max-[480px]:hidden"
@@ -44,7 +38,7 @@ export default function MyPage() {
           </Link>
           <span className="text-[#d6ff50]">MY PAGE</span>
         </nav>
-      </header>
+      </Header>
 
       <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(36px,5vw,64px)] pb-24 max-[640px]:w-[calc(100%_-_40px)]">
         <div className="mb-[54px] font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
