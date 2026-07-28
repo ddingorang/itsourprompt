@@ -1,10 +1,74 @@
 package com.promptstudio.attempt.domain;
 
-import java.util.List;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderColumn;
+import jakarta.persistence.Table;
 
-public record Turn(
-        String userPrompt,
-        String aiSummary,
-        List<FileChange> changes
-) {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+@Entity
+@Table(name = "attempt_turn")
+public class Turn {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "user_prompt", nullable = false, columnDefinition = "text")
+    private String userPrompt;
+
+    @Column(name = "ai_summary", nullable = false, columnDefinition = "text")
+    private String aiSummary;
+
+    @ElementCollection
+    @CollectionTable(name = "turn_file_change", joinColumns = @JoinColumn(name = "turn_id"))
+    @OrderColumn(name = "ordinal")
+    private List<FileChange> changes = new ArrayList<>();
+
+    protected Turn() {
+    }
+
+    public Turn(String userPrompt, String aiSummary, List<FileChange> changes) {
+        this.userPrompt = userPrompt;
+        this.aiSummary = aiSummary;
+        this.changes = new ArrayList<>(changes);
+    }
+
+    public String userPrompt() {
+        return userPrompt;
+    }
+
+    public String aiSummary() {
+        return aiSummary;
+    }
+
+    public List<FileChange> changes() {
+        return List.copyOf(changes);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof Turn turn)) {
+            return false;
+        }
+
+        return id != null && id.equals(turn.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
 }

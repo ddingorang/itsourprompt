@@ -1,0 +1,39 @@
+package com.promptstudio.attempt.service;
+
+import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.attempt.exception.AttemptNotFoundException;
+import com.promptstudio.attempt.repository.AttemptRepository;
+import com.promptstudio.problem.domain.Problem;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * 어템프트를 변경하는 트랜잭션 경계. 엔티티는 이 클래스 밖으로 나가지 않는다.
+ * AI 호출처럼 오래 걸리는 작업은 여기 들어오기 전에 끝나 있어야 한다.
+ */
+@Component
+class AttemptWriter {
+
+    private final AttemptRepository attemptRepository;
+
+    AttemptWriter(AttemptRepository attemptRepository) {
+        this.attemptRepository = attemptRepository;
+    }
+
+    @Transactional
+    AttemptView start(Problem problem) {
+        return AttemptView.from(attemptRepository.save(Attempt.start(problem)));
+    }
+
+    @Transactional
+    AttemptView appendTurn(Long attemptId, String userPrompt, GeneratedCode generated) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        attempt.applyTurn(userPrompt, generated);
+
+        return AttemptView.from(attempt);
+    }
+}

@@ -27,34 +27,32 @@ class AttemptTest {
     @Test
     void 턴을_적용하면_현재_파일이_생성_결과로_교체된다() {
         Attempt attempt = Attempt.start(problem);
-        GeneratedCode generated = new GeneratedCode(
+
+        attempt.applyTurn("메서드 추가해줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
                 "메서드를 추가했습니다."
-        );
+        ));
 
-        Attempt applied = attempt.applyTurn("메서드 추가해줘", generated);
-
-        assertThat(applied.currentFiles())
+        assertThat(attempt.currentFiles())
                 .containsExactly(new ProblemFile("src/Main.java", "class Main { void run() {} }"));
-        assertThat(applied.turns()).hasSize(1);
-        assertThat(applied.turns().getFirst().userPrompt()).isEqualTo("메서드 추가해줘");
-        assertThat(applied.turns().getFirst().aiSummary()).isEqualTo("메서드를 추가했습니다.");
+        assertThat(attempt.turns()).hasSize(1);
+        assertThat(attempt.turns().getFirst().userPrompt()).isEqualTo("메서드 추가해줘");
+        assertThat(attempt.turns().getFirst().aiSummary()).isEqualTo("메서드를 추가했습니다.");
     }
 
     @Test
     void 턴을_적용하면_이전_파일_대비_변경_목록을_턴에_기록한다() {
         Attempt attempt = Attempt.start(problem);
-        GeneratedCode generated = new GeneratedCode(
+
+        attempt.applyTurn("요청", new GeneratedCode(
                 List.of(
                         new ProblemFile("src/Main.java", "class Main { void run() {} }"),
                         new ProblemFile("src/Util.java", "class Util {}")
                 ),
                 "요약"
-        );
+        ));
 
-        Attempt applied = attempt.applyTurn("요청", generated);
-
-        assertThat(applied.turns().getFirst().changes()).containsExactly(
+        assertThat(attempt.turns().getFirst().changes()).containsExactly(
                 new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED),
                 new FileChange("src/Util.java", FileChange.ChangeType.ADDED)
         );
@@ -62,32 +60,19 @@ class AttemptTest {
 
     @Test
     void 턴을_적용하면_직전_턴의_결과를_기준으로_변경_목록을_계산한다() {
-        Attempt attempt = Attempt.start(problem)
-                .applyTurn("첫 요청", new GeneratedCode(
-                        List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
-                        "첫 요약"
-                ));
+        Attempt attempt = Attempt.start(problem);
+        attempt.applyTurn("첫 요청", new GeneratedCode(
+                List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
+                "첫 요약"
+        ));
 
-        Attempt applied = attempt.applyTurn("두 번째 요청", new GeneratedCode(
+        attempt.applyTurn("두 번째 요청", new GeneratedCode(
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} void stop() {} }")),
                 "두 번째 요약"
         ));
 
-        assertThat(applied.turns()).hasSize(2);
-        assertThat(applied.turns().get(1).changes())
+        assertThat(attempt.turns()).hasSize(2);
+        assertThat(attempt.turns().get(1).changes())
                 .containsExactly(new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED));
-    }
-
-    @Test
-    void 턴을_적용해도_기존_어템프트는_변하지_않는다() {
-        Attempt attempt = Attempt.start(problem);
-
-        attempt.applyTurn("요청", new GeneratedCode(
-                List.of(new ProblemFile("src/Main.java", "변경된 내용")),
-                "요약"
-        ));
-
-        assertThat(attempt.turns()).isEmpty();
-        assertThat(attempt.currentFiles()).containsExactly(new ProblemFile("src/Main.java", "class Main {}"));
     }
 }

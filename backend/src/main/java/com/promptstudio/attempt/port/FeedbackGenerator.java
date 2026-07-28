@@ -1,9 +1,9 @@
 package com.promptstudio.attempt.port;
 
-import com.promptstudio.attempt.domain.Attempt;
-import com.promptstudio.problem.domain.Problem;
+import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.problem.domain.ProblemView;
 
 public interface FeedbackGenerator {
 
-    String generate(Problem problem, Attempt attempt);
+    String generate(ProblemView problem, AttemptView attempt);
 }

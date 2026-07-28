@@ -2,8 +2,8 @@ package com.promptstudio.problem.controller;
 
 import com.promptstudio.problem.controller.response.ProblemDetailResponse;
 import com.promptstudio.problem.controller.response.ProblemListResponse;
-import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
+import com.promptstudio.problem.domain.ProblemView;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -12,10 +12,10 @@ import java.util.List;
 @Component
 public class ProblemWebMapper {
 
-    public ProblemListResponse toListResponse(List<Problem> problems) {
+    public ProblemListResponse toListResponse(List<ProblemView> problems) {
         List<ProblemListResponse.ProblemSummaryResponse> summaries = new ArrayList<>();
 
-        for (Problem problem : problems) {
+        for (ProblemView problem : problems) {
             summaries.add(new ProblemListResponse.ProblemSummaryResponse(
                     problem.id(),
                     problem.title()
@@ -25,7 +25,7 @@ public class ProblemWebMapper {
         return new ProblemListResponse(summaries);
     }
 
-    public ProblemDetailResponse toDetailResponse(Problem problem) {
+    public ProblemDetailResponse toDetailResponse(ProblemView problem) {
         List<ProblemDetailResponse.ProblemFileResponse> files = new ArrayList<>();
 
         for (ProblemFile file : problem.files()) {

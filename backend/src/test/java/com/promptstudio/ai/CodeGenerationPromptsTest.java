@@ -1,7 +1,6 @@
 package com.promptstudio.ai;
 
-import com.promptstudio.attempt.domain.Attempt;
-import com.promptstudio.attempt.domain.Turn;
+import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.problem.domain.ProblemFile;
 import org.junit.jupiter.api.Test;
@@ -33,15 +32,15 @@ class CodeGenerationPromptsTest {
 
     @Test
     void 턴_히스토리를_사용자와_어시스턴트_메시지로_변환한다() {
-        Attempt attempt = new Attempt(
+        AttemptView attempt = new AttemptView(
                 1L,
                 1L,
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
                 List.of(
-                        new Turn("첫 요청", "첫 요약", List.of(
+                        new AttemptView.TurnView("첫 요청", "첫 요약", List.of(
                                 new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED)
                         )),
-                        new Turn("두 번째 요청", "두 번째 요약", List.of())
+                        new AttemptView.TurnView("두 번째 요청", "두 번째 요약", List.of())
                 )
         );
 
@@ -60,7 +59,7 @@ class CodeGenerationPromptsTest {
 
     @Test
     void 마지막_사용자_메시지에_현재_파일과_새_요청을_포함한다() {
-        Attempt attempt = new Attempt(1L, 1L, List.of(
+        AttemptView attempt = new AttemptView(1L, 1L, List.of(
                 new ProblemFile("src/Main.java", "class Main {}"),
                 new ProblemFile("src/Util.java", "class Util {}")
         ), List.of());
@@ -88,7 +87,7 @@ class CodeGenerationPromptsTest {
                 .containsExactly(MessageType.SYSTEM, MessageType.USER);
     }
 
-    private Attempt attemptWithoutTurns() {
-        return new Attempt(1L, 1L, List.of(new ProblemFile("src/Main.java", "class Main {}")), List.of());
+    private AttemptView attemptWithoutTurns() {
+        return new AttemptView(1L, 1L, List.of(new ProblemFile("src/Main.java", "class Main {}")), List.of());
     }
 }

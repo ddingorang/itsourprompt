@@ -1,9 +1,8 @@
 package com.promptstudio.ai;
 
-import com.promptstudio.attempt.domain.Attempt;
-import com.promptstudio.attempt.domain.Turn;
+import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
-import com.promptstudio.problem.domain.Problem;
+import com.promptstudio.problem.domain.ProblemView;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -12,15 +11,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class FeedbackPromptsTest {
 
-    private final Problem problem = new Problem(1L, "제목", "명세", List.of());
+    private final ProblemView problem = new ProblemView(1L, "제목", "명세", List.of());
 
     @Test
     void 사용자_프롬프트에_문제_명세와_모든_턴_기록을_포함한다() {
-        Attempt attempt = new Attempt(1L, 1L, List.of(), List.of(
-                new Turn("첫 프롬프트", "첫 요약", List.of(
+        AttemptView attempt = new AttemptView(1L, 1L, List.of(), List.of(
+                new AttemptView.TurnView("첫 프롬프트", "첫 요약", List.of(
                         new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED)
                 )),
-                new Turn("두 번째 프롬프트", "두 번째 요약", List.of(
+                new AttemptView.TurnView("두 번째 프롬프트", "두 번째 요약", List.of(
                         new FileChange("src/Util.java", FileChange.ChangeType.ADDED)
                 ))
         ));
@@ -40,8 +39,8 @@ class FeedbackPromptsTest {
 
     @Test
     void 턴에_변경_파일이_없으면_표시_문구를_넣는다() {
-        Attempt attempt = new Attempt(1L, 1L, List.of(), List.of(
-                new Turn("프롬프트", "요약", List.of())
+        AttemptView attempt = new AttemptView(1L, 1L, List.of(), List.of(
+                new AttemptView.TurnView("프롬프트", "요약", List.of())
         ));
 
         String prompt = FeedbackPrompts.userPrompt(problem, attempt);

@@ -1,8 +1,8 @@
 package com.promptstudio.ai;
 
-import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.port.FeedbackGenerator;
-import com.promptstudio.problem.domain.Problem;
+import com.promptstudio.problem.domain.ProblemView;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.attempt.port.FeedbackTimeoutException;
 import org.slf4j.Logger;
@@ -36,7 +36,7 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
     }
 
     @Override
-    public String generate(Problem problem, Attempt attempt) {
+    public String generate(ProblemView problem, AttemptView attempt) {
         String systemPrompt = FeedbackPrompts.systemPrompt();
         String userPrompt = FeedbackPrompts.userPrompt(problem, attempt);
         OpenAiChatOptions chatOptions = chatOptionsFactory.forFeedback();

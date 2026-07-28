@@ -1,7 +1,6 @@
 package com.promptstudio.ai;
 
-import com.promptstudio.attempt.domain.Attempt;
-import com.promptstudio.attempt.domain.Turn;
+import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.problem.domain.ProblemFile;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
@@ -36,16 +35,16 @@ final class CodeGenerationPrompts {
                 """;
     }
 
-    static List<Message> messages(Attempt attempt, String userPrompt) {
+    static List<Message> messages(AttemptView attempt, String userPrompt) {
         List<Message> messages = new ArrayList<>();
         messages.add(new SystemMessage(systemPrompt()));
 
-        for (Turn turn : attempt.turns()) {
+        for (AttemptView.TurnView turn : attempt.turns()) {
             messages.add(new UserMessage(turn.userPrompt()));
             messages.add(new AssistantMessage(turn.aiSummary()));
         }
 
-        messages.add(new UserMessage(currentStatePrompt(attempt.currentFiles(), userPrompt)));
+        messages.add(new UserMessage(currentStatePrompt(attempt.files(), userPrompt)));
 
         return List.copyOf(messages);
     }

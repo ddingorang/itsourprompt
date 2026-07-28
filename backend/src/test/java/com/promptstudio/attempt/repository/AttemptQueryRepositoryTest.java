@@ -1,0 +1,82 @@
+package com.promptstudio.attempt.repository;
+
+import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.FileChange;
+import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.problem.domain.Problem;
+import com.promptstudio.problem.domain.ProblemFile;
+import com.promptstudio.problem.repository.ProblemRepository;
+import com.promptstudio.support.DatabaseTest;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class AttemptQueryRepositoryTest extends DatabaseTest {
+
+    private static final ProblemFile SKELETON = new ProblemFile("src/Main.java", "class Main {}");
+
+    @Autowired
+    private AttemptQueryRepository attemptQueryRepository;
+
+    @Autowired
+    private AttemptRepository attemptRepository;
+
+    @Autowired
+    private ProblemRepository problemRepository;
+
+    @Test
+    void 저장한_어템프트를_조회한다() {
+        Attempt saved = attemptRepository.save(Attempt.start(newProblem()));
+
+        AttemptView view = attemptQueryRepository.findById(saved.id()).orElseThrow();
+
+        assertThat(view.id()).isEqualTo(saved.id());
+        assertThat(view.problemId()).isEqualTo(saved.problemId());
+        assertThat(view.files()).containsExactly(SKELETON);
+        assertThat(view.turns()).isEmpty();
+    }
+
+    @Test
+    void 턴_순서와_변경파일_순서를_보존한다() {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        attempt.applyTurn(
+                "Main을 채워줘",
+                new GeneratedCode(List.of(new ProblemFile("src/Main.java", "생성된 내용")), "첫 요약")
+        );
+        attempt.applyTurn(
+                "Util도 만들어줘",
+                new GeneratedCode(
+                        List.of(
+                                new ProblemFile("src/Main.java", "생성된 내용"),
+                                new ProblemFile("src/Util.java", "class Util {}")
+                        ),
+                        "둘째 요약"
+                )
+        );
+        attemptRepository.save(attempt);
+
+        AttemptView view = attemptQueryRepository.findById(attempt.id()).orElseThrow();
+
+        assertThat(view.turns()).hasSize(2);
+        assertThat(view.turns().get(0).userPrompt()).isEqualTo("Main을 채워줘");
+        assertThat(view.turns().get(0).aiSummary()).isEqualTo("첫 요약");
+        assertThat(view.turns().get(0).changes())
+                .containsExactly(new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED));
+        assertThat(view.turns().get(1).userPrompt()).isEqualTo("Util도 만들어줘");
+        assertThat(view.turns().get(1).changes())
+                .containsExactly(new FileChange("src/Util.java", FileChange.ChangeType.ADDED));
+    }
+
+    @Test
+    void 없는_ID면_빈_Optional을_반환한다() {
+        assertThat(attemptQueryRepository.findById(9999L)).isEmpty();
+    }
+
+    private Problem newProblem() {
+        return problemRepository.save(new Problem(null, "Hello World 출력", "# Hello World 출력", List.of(SKELETON)));
+    }
+}

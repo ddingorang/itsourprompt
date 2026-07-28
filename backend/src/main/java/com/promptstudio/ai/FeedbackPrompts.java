@@ -1,9 +1,8 @@
 package com.promptstudio.ai;
 
-import com.promptstudio.attempt.domain.Attempt;
-import com.promptstudio.attempt.domain.Turn;
+import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
-import com.promptstudio.problem.domain.Problem;
+import com.promptstudio.problem.domain.ProblemView;
 
 import java.util.List;
 
@@ -28,7 +27,7 @@ final class FeedbackPrompts {
                 """;
     }
 
-    static String userPrompt(Problem problem, Attempt attempt) {
+    static String userPrompt(ProblemView problem, AttemptView attempt) {
         StringBuilder message = new StringBuilder();
         message.append("[Problem title]\n")
                 .append(problem.title())
@@ -36,10 +35,10 @@ final class FeedbackPrompts {
                 .append(problem.specMd())
                 .append("\n");
 
-        List<Turn> turns = attempt.turns();
+        List<AttemptView.TurnView> turns = attempt.turns();
 
         for (int index = 0; index < turns.size(); index++) {
-            Turn turn = turns.get(index);
+            AttemptView.TurnView turn = turns.get(index);
             int turnNumber = index + 1;
             message.append("\n[Turn ")
                     .append(turnNumber)

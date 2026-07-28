@@ -10,11 +10,14 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
+  sql:
+    init:
+      mode: always
   jooq:
     sql-dialect: POSTGRES
   ai:

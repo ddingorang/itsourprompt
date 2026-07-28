@@ -1,7 +1,7 @@
 package com.promptstudio.ai;
 
 import com.openai.errors.OpenAIServiceException;
-import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.port.CodeGenerationException;
@@ -40,7 +40,7 @@ public class OpenAiCodeGenerator implements CodeGenerator {
     }
 
     @Override
-    public GeneratedCode generate(Attempt attempt, String userPrompt) {
+    public GeneratedCode generate(AttemptView attempt, String userPrompt) {
         List<Message> messages = CodeGenerationPrompts.messages(attempt, userPrompt);
         OpenAiChatOptions chatOptions = chatOptionsFactory.forCodeGeneration("attempt-" + attempt.id());
         long startedAt = System.nanoTime();
@@ -52,7 +52,7 @@ public class OpenAiCodeGenerator implements CodeGenerator {
                 totalChars(messages),
                 attempt.id(),
                 attempt.turns().size(),
-                attempt.currentFiles().size()
+                attempt.files().size()
         );
 
         try {
