@@ -96,20 +96,17 @@ export default function ProblemListPage() {
                 key={problem.id}
                 to={`/problems/${problem.id}`}
               >
-                <span className="font-mono text-xs text-[#a3a3a3] transition-colors duration-200 group-hover:text-[#090909] group-focus-visible:text-[#090909]">
+                <span className="font-mono text-[17px] text-[#a3a3a3] transition-colors duration-200 group-hover:text-[#090909] group-focus-visible:text-[#090909]">
                   {String(problem.id).padStart(2, '0')}
                 </span>
-                <span className="min-w-0 text-[clamp(17px,2vw,23px)] font-extrabold tracking-[-0.03em] [word-break:keep-all]">
+                <span className="min-w-0 text-[clamp(17px,2vw,23px)] font-bold tracking-[-0.03em] [word-break:keep-all]">
                   {problem.title}
                 </span>
                 <span
-                  className="justify-self-end whitespace-nowrap text-[11px] leading-none font-extrabold tracking-[0.02em] text-[#d6ff50] transition-colors duration-200 group-hover:text-[#090909] group-focus-visible:text-[#090909] max-[640px]:text-[0]"
+                  className="justify-self-end text-2xl text-[#d6ff50] transition-[color,transform] duration-200 group-hover:translate-x-[3px] group-hover:-translate-y-[3px] group-hover:text-[#090909] group-focus-visible:translate-x-[3px] group-focus-visible:-translate-y-[3px] group-focus-visible:text-[#090909]"
                   aria-hidden="true"
                 >
-                  START PRACTICE{' '}
-                  <span className="ml-2 inline-block text-lg transition-transform duration-200 group-hover:translate-x-[3px] group-hover:-translate-y-[3px] group-focus-visible:translate-x-[3px] group-focus-visible:-translate-y-[3px] max-[640px]:ml-0">
-                    ↗
-                  </span>
+                  ↗
                 </span>
               </Link>
             ))}
