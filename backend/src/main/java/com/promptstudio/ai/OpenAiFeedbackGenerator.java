@@ -8,6 +8,7 @@ import com.promptstudio.attempt.port.FeedbackTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ExecutionException;
@@ -15,27 +16,35 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @Component
-public class NvidiaFeedbackGenerator implements FeedbackGenerator {
+public class OpenAiFeedbackGenerator implements FeedbackGenerator {
 
     private static final long FEEDBACK_TIMEOUT_MINUTES = 5;
-    private static final Logger log = LoggerFactory.getLogger(NvidiaFeedbackGenerator.class);
+    private static final Logger log = LoggerFactory.getLogger(OpenAiFeedbackGenerator.class);
 
     private final ChatClient chatClient;
     private final AiCallExecutor aiCallExecutor;
+    private final OpenAiChatOptionsFactory chatOptionsFactory;
 
-    public NvidiaFeedbackGenerator(ChatClient.Builder chatClientBuilder, AiCallExecutor aiCallExecutor) {
+    public OpenAiFeedbackGenerator(
+            ChatClient.Builder chatClientBuilder,
+            AiCallExecutor aiCallExecutor,
+            OpenAiChatOptionsFactory chatOptionsFactory
+    ) {
         this.chatClient = chatClientBuilder.build();
         this.aiCallExecutor = aiCallExecutor;
+        this.chatOptionsFactory = chatOptionsFactory;
     }
 
     @Override
     public String generate(Problem problem, Attempt attempt) {
         String systemPrompt = FeedbackPrompts.systemPrompt();
         String userPrompt = FeedbackPrompts.userPrompt(problem, attempt);
+        OpenAiChatOptions chatOptions = chatOptionsFactory.forFeedback();
         long startedAt = System.nanoTime();
 
         log.info(
-                "[NVIDIA FEEDBACK] request started | problemId={} | attemptId={} | inputChars={} | turns={}",
+                "[OPENAI FEEDBACK] request started | model={} | problemId={} | attemptId={} | inputChars={} | turns={}",
+                chatOptions.getModel(),
                 problem.id(),
                 attempt.id(),
                 systemPrompt.length() + userPrompt.length(),
@@ -46,6 +55,7 @@ public class NvidiaFeedbackGenerator implements FeedbackGenerator {
             String feedback = aiCallExecutor.call(() -> chatClient.prompt()
                     .system(systemPrompt)
                     .user(userPrompt)
+                    .options(chatOptions.mutate())
                     .call()
                     .content(), FEEDBACK_TIMEOUT_MINUTES);
 
@@ -54,14 +64,14 @@ public class NvidiaFeedbackGenerator implements FeedbackGenerator {
             }
 
             log.info(
-                    "[NVIDIA FEEDBACK] response received | duration={} ms | feedbackChars={}",
+                    "[OPENAI FEEDBACK] response received | duration={} ms | feedbackChars={}",
                     elapsedMillis(startedAt),
                     feedback.length()
             );
             return feedback.trim();
         } catch (TimeoutException exception) {
             log.error(
-                    "[NVIDIA FEEDBACK] timed out | duration={} ms | timeout={} min",
+                    "[OPENAI FEEDBACK] timed out | duration={} ms | timeout={} min",
                     elapsedMillis(startedAt),
                     FEEDBACK_TIMEOUT_MINUTES
             );
@@ -70,7 +80,7 @@ public class NvidiaFeedbackGenerator implements FeedbackGenerator {
             Thread.currentThread().interrupt();
             throw new FeedbackGenerationException("AI feedback request was interrupted.", exception);
         } catch (ExecutionException exception) {
-            log.error("[NVIDIA FEEDBACK] request failed", exception.getCause());
+            log.error("[OPENAI FEEDBACK] request failed", exception.getCause());
             throw new FeedbackGenerationException("AI feedback request failed.", exception.getCause());
         }
     }

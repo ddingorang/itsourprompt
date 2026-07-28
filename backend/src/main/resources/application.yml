@@ -19,11 +19,11 @@ spring:
     sql-dialect: POSTGRES
   ai:
     openai:
-      api-key: ${NVIDIA_API_KEY}
-      base-url: https://integrate.api.nvidia.com/v1
+      api-key: ${OPENAI_API_KEY}
       chat:
-        model: ${NVIDIA_MODEL}
-        max-tokens: 4096
+        model: ${OPENAI_CODE_MODEL:gpt-5.6-luna}
+        timeout: 6m
+        max-retries: 2
     model:
       embedding: none
 

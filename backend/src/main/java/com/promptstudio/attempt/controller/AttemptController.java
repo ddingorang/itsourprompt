@@ -88,7 +88,7 @@ public class AttemptController {
     @PostMapping("/{id}/turns")
     @Operation(
             summary = "턴 추가",
-            description = "이전 대화 이력과 현재 파일을 NVIDIA AI에 전달해 코드를 갱신하고, 갱신된 어템프트 상태를 반환합니다."
+            description = "이전 대화 이력과 현재 파일을 OpenAI에 전달해 코드를 갱신하고, 갱신된 어템프트 상태를 반환합니다."
     )
     @ApiResponses({
             @ApiResponse(

@@ -74,6 +74,15 @@ class GeneratedCodeParserTest {
     }
 
     @Test
+    void 윈도우_경로_구분자가_섞인_경로는_거부한다() {
+        String raw = "{\"files\": [{\"path\": \"src\\\\Main.java\", \"content\": \"x\"}], \"aiResponse\": \"요약\"}";
+
+        assertThatThrownBy(() -> GeneratedCodeParser.parse(raw))
+                .isInstanceOf(CodeGenerationException.class)
+                .hasMessage("AI 응답에 허용되지 않는 파일 경로가 있습니다.");
+    }
+
+    @Test
     void 중복_경로는_거부한다() {
         String raw = """
                 {

@@ -10,7 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientResponseException;
 
@@ -20,41 +20,35 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @Component
-public class NvidiaCodeGenerator implements CodeGenerator {
+public class OpenAiCodeGenerator implements CodeGenerator {
 
     private static final long AI_REQUEST_TIMEOUT_MINUTES = 5;
-    private static final Logger log = LoggerFactory.getLogger(NvidiaCodeGenerator.class);
+    private static final Logger log = LoggerFactory.getLogger(OpenAiCodeGenerator.class);
 
     private final ChatClient chatClient;
     private final AiCallExecutor aiCallExecutor;
-    private final String nvidiaBaseUrl;
-    private final String nvidiaModel;
-    private final int maxTokens;
+    private final OpenAiChatOptionsFactory chatOptionsFactory;
 
-    public NvidiaCodeGenerator(
+    public OpenAiCodeGenerator(
             ChatClient.Builder chatClientBuilder,
             AiCallExecutor aiCallExecutor,
-            @Value("${spring.ai.openai.base-url}") String nvidiaBaseUrl,
-            @Value("${spring.ai.openai.chat.model}") String nvidiaModel,
-            @Value("${spring.ai.openai.chat.max-tokens}") int maxTokens
+            OpenAiChatOptionsFactory chatOptionsFactory
     ) {
         this.chatClient = chatClientBuilder.build();
         this.aiCallExecutor = aiCallExecutor;
-        this.nvidiaBaseUrl = nvidiaBaseUrl;
-        this.nvidiaModel = nvidiaModel;
-        this.maxTokens = maxTokens;
+        this.chatOptionsFactory = chatOptionsFactory;
     }
 
     @Override
     public GeneratedCode generate(Attempt attempt, String userPrompt) {
         List<Message> messages = CodeGenerationPrompts.messages(attempt, userPrompt);
+        OpenAiChatOptions chatOptions = chatOptionsFactory.forCodeGeneration("attempt-" + attempt.id());
         long startedAt = System.nanoTime();
 
         log.info(
-                "[NVIDIA RUN] request started | model={} | endpoint={} | maxTokens={} | inputChars={} | attemptId={} | turns={} | files={}",
-                nvidiaModel,
-                createChatCompletionsUrl(),
-                maxTokens,
+                "[OPENAI RUN] request started | model={} | maxCompletionTokens={} | inputChars={} | attemptId={} | turns={} | files={}",
+                chatOptions.getModel(),
+                chatOptions.getMaxCompletionTokens(),
                 totalChars(messages),
                 attempt.id(),
                 attempt.turns().size(),
@@ -64,24 +58,25 @@ public class NvidiaCodeGenerator implements CodeGenerator {
         try {
             String rawResponse = aiCallExecutor.call(() -> chatClient.prompt()
                     .messages(messages)
+                    .options(chatOptions.mutate())
                     .call()
                     .content(), AI_REQUEST_TIMEOUT_MINUTES);
             log.info(
-                    "[NVIDIA RUN] response received | duration={} ms | outputChars={}",
+                    "[OPENAI RUN] response received | duration={} ms | outputChars={}",
                     elapsedMillis(startedAt),
                     rawResponse == null ? 0 : rawResponse.length()
             );
             GeneratedCode result = GeneratedCodeParser.parse(rawResponse);
             log.info(
-                    "[NVIDIA RUN] response parsed | finalFiles={} | aiResponseChars={}",
+                    "[OPENAI RUN] response parsed | finalFiles={} | aiResponseChars={}",
                     result.files().size(),
                     result.summary().length()
             );
             return result;
         } catch (TimeoutException exception) {
             log.error(
-                    "[NVIDIA RUN] timed out | endpoint={} | duration={} ms | timeout={} min",
-                    createChatCompletionsUrl(),
+                    "[OPENAI RUN] timed out | model={} | duration={} ms | timeout={} min",
+                    chatOptions.getModel(),
                     elapsedMillis(startedAt),
                     AI_REQUEST_TIMEOUT_MINUTES
             );
@@ -91,7 +86,7 @@ public class NvidiaCodeGenerator implements CodeGenerator {
             throw new CodeGenerationException("AI 코드 생성 요청이 중단되었습니다.", exception);
         } catch (ExecutionException exception) {
             Throwable cause = exception.getCause();
-            logProviderFailure(cause);
+            logProviderFailure(chatOptions.getModel(), cause);
             throw new CodeGenerationException("AI 코드 생성 요청에 실패했습니다.", cause);
         }
     }
@@ -106,29 +101,17 @@ public class NvidiaCodeGenerator implements CodeGenerator {
         return total;
     }
 
-    private String createChatCompletionsUrl() {
-        String normalizedBaseUrl = nvidiaBaseUrl.endsWith("/")
-                ? nvidiaBaseUrl.substring(0, nvidiaBaseUrl.length() - 1)
-                : nvidiaBaseUrl;
-
-        if (normalizedBaseUrl.endsWith("/v1")) {
-            return normalizedBaseUrl + "/chat/completions";
-        }
-
-        return normalizedBaseUrl + "/v1/chat/completions";
-    }
-
     private long elapsedMillis(long startedAt) {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
     }
 
-    private void logProviderFailure(Throwable cause) {
+    private void logProviderFailure(String model, Throwable cause) {
         OpenAIServiceException openAiException = findCause(cause, OpenAIServiceException.class);
 
         if (openAiException != null) {
             log.error(
-                    "[NVIDIA RUN] request failed | endpoint={} | status={} | code={} | type={} | param={} | requestId={} | responseBody={}",
-                    createChatCompletionsUrl(),
+                    "[OPENAI RUN] request failed | model={} | status={} | code={} | type={} | param={} | requestId={} | responseBody={}",
+                    model,
                     openAiException.statusCode(),
                     openAiException.code().orElse("none"),
                     openAiException.type().orElse("none"),
@@ -144,7 +127,8 @@ public class NvidiaCodeGenerator implements CodeGenerator {
 
         if (responseException != null) {
             log.error(
-                    "NVIDIA API 호출 실패: status={}, responseBody={}",
+                    "OpenAI API 호출 실패: model={}, status={}, responseBody={}",
+                    model,
                     responseException.getStatusCode().value(),
                     GeneratedCodeParser.abbreviate(responseException.getResponseBodyAsString()),
                     cause
@@ -152,7 +136,7 @@ public class NvidiaCodeGenerator implements CodeGenerator {
             return;
         }
 
-        log.error("NVIDIA API 호출 중 응답 상태를 확인할 수 없는 예외가 발생했습니다.", cause);
+        log.error("OpenAI API 호출 중 응답 상태를 확인할 수 없는 예외가 발생했습니다.", cause);
     }
 
     private <T extends Throwable> T findCause(Throwable throwable, Class<T> type) {
