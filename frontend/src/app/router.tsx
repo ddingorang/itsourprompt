@@ -5,6 +5,7 @@ import ProblemListPage from '../pages/ProblemListPage'
 import ProblemDetailPage from '../pages/ProblemDetailPage'
 import FeedbackPage from '../pages/FeedbackPage'
 import MyPage from '../pages/MyPage'
+import AuthPlaceholderPage from '../pages/AuthPlaceholderPage'
 
 export const router = createBrowserRouter([
   {
@@ -26,5 +27,13 @@ export const router = createBrowserRouter([
   {
     path: '/my',
     element: <MyPage />,
+  },
+  {
+    path: '/login',
+    element: <AuthPlaceholderPage title="LOGIN" />,
+  },
+  {
+    path: '/signup',
+    element: <AuthPlaceholderPage title="SIGN UP" />,
   },
 ])
