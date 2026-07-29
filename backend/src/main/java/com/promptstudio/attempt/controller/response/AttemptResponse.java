@@ -17,9 +17,7 @@ public record AttemptResponse(
         @Schema(description = "지금까지 진행한 턴 목록")
         List<TurnResponse> turns,
         @Schema(description = "어템프트 상태", example = "IN_PROGRESS")
-        AttemptStatus status,
-        @Schema(description = "제출 후 저장된 프롬프트 피드백 (제출 전에는 null)")
-        String feedback
+        AttemptStatus status
 ) {
 
     @Schema(description = "어템프트의 현재 파일")

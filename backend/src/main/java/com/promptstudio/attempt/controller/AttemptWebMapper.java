@@ -30,8 +30,7 @@ public class AttemptWebMapper {
                 attempt.problemId(),
                 files,
                 turns,
-                attempt.status(),
-                attempt.feedback()
+                attempt.status()
         );
     }
 
