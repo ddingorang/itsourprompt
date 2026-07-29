@@ -13,12 +13,15 @@ import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.problem.repository.ProblemRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.function.Supplier;
+
 @Service
 public class AttemptService {
 
     private final ProblemRepository problemRepository;
     private final AttemptQueryRepository attemptQueryRepository;
     private final AttemptWriter attemptWriter;
+    private final IdempotencyGuard idempotencyGuard;
     private final CodeGenerator codeGenerator;
     private final FeedbackGenerator feedbackGenerator;
 
@@ -26,18 +29,30 @@ public class AttemptService {
             ProblemRepository problemRepository,
             AttemptQueryRepository attemptQueryRepository,
             AttemptWriter attemptWriter,
+            IdempotencyGuard idempotencyGuard,
             CodeGenerator codeGenerator,
             FeedbackGenerator feedbackGenerator
     ) {
         this.problemRepository = problemRepository;
         this.attemptQueryRepository = attemptQueryRepository;
         this.attemptWriter = attemptWriter;
+        this.idempotencyGuard = idempotencyGuard;
         this.codeGenerator = codeGenerator;
         this.feedbackGenerator = feedbackGenerator;
     }
 
     public AttemptView startAttempt(Long problemId) {
-        return attemptWriter.start(getProblem(problemId));
+        return startAttempt(problemId, null);
+    }
+
+    public AttemptView startAttempt(Long problemId, String idempotencyKey) {
+        String key = normalizeKey(idempotencyKey);
+
+        if (key == null) {
+            return attemptWriter.start(getProblem(problemId), null);
+        }
+
+        return withIdempotency(key, () -> attemptWriter.start(getProblem(problemId), key));
     }
 
     public AttemptView getAttempt(Long attemptId) {
@@ -46,10 +61,53 @@ public class AttemptService {
     }
 
     public AttemptView addTurn(Long attemptId, String userPrompt) {
+        return addTurn(attemptId, userPrompt, null);
+    }
+
+    public AttemptView addTurn(Long attemptId, String userPrompt, String idempotencyKey) {
+        String key = normalizeKey(idempotencyKey);
+
+        if (key == null) {
+            return generateTurn(attemptId, userPrompt, null);
+        }
+
+        return withIdempotency(key, () -> generateTurn(attemptId, userPrompt, key));
+    }
+
+    private AttemptView generateTurn(Long attemptId, String userPrompt, String idempotencyKey) {
         AttemptView attempt = getAttempt(attemptId);
         GeneratedCode generated = codeGenerator.generate(attempt, userPrompt);
 
-        return attemptWriter.appendTurn(attemptId, userPrompt, generated);
+        return attemptWriter.appendTurn(attemptId, userPrompt, generated, idempotencyKey);
+    }
+
+    private AttemptView withIdempotency(String key, Supplier<AttemptView> action) {
+        return switch (idempotencyGuard.reserve(key)) {
+            case IdempotencyGuard.Reservation.Replay(Long attemptId) -> getAttempt(attemptId);
+            case IdempotencyGuard.Reservation.Acquired ignored -> runOwning(key, action);
+        };
+    }
+
+    private AttemptView runOwning(String key, Supplier<AttemptView> action) {
+        try {
+            return action.get();
+        } catch (RuntimeException e) {
+            try {
+                idempotencyGuard.release(key);
+            } catch (RuntimeException releaseFailure) {
+                e.addSuppressed(releaseFailure);
+            }
+
+            throw e;
+        }
+    }
+
+    private String normalizeKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            return null;
+        }
+
+        return idempotencyKey;
     }
 
     public String generateFeedback(Long attemptId) {

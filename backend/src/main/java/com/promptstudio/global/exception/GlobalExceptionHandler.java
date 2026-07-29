@@ -2,6 +2,7 @@ package com.promptstudio.global.exception;
 
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
+import com.promptstudio.attempt.exception.DuplicateRequestException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.attempt.port.CodeGenerationException;
 import com.promptstudio.attempt.port.CodeGenerationTimeoutException;
@@ -44,6 +45,16 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(DuplicateRequestException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateRequest(DuplicateRequestException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "duplicate-request",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

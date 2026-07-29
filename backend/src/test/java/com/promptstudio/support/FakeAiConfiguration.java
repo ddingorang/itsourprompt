@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @TestConfiguration
 public class FakeAiConfiguration {
@@ -34,15 +35,33 @@ public class FakeAiConfiguration {
                 "생성 요약"
         );
 
+        private final AtomicInteger invocationCount = new AtomicInteger();
+
         private AttemptView receivedAttempt;
         private String receivedPrompt;
+        private RuntimeException nextFailure;
 
         @Override
         public GeneratedCode generate(AttemptView attempt, String userPrompt) {
+            invocationCount.incrementAndGet();
             this.receivedAttempt = attempt;
             this.receivedPrompt = userPrompt;
 
+            if (nextFailure != null) {
+                RuntimeException failure = nextFailure;
+                nextFailure = null;
+
+                throw failure;
+            }
+
             return result;
+        }
+
+        /**
+         * 다음 호출 한 번만 실패시킨다.
+         */
+        public void failNextWith(RuntimeException failure) {
+            this.nextFailure = failure;
         }
 
         public AttemptView receivedAttempt() {
@@ -51,6 +70,20 @@ public class FakeAiConfiguration {
 
         public String receivedPrompt() {
             return receivedPrompt;
+        }
+
+        public int invocationCount() {
+            return invocationCount.get();
+        }
+
+        /**
+         * 컨텍스트 캐시로 빈이 테스트끼리 공유되므로, 호출 횟수를 보는 테스트는 시작 전에 비워야 한다.
+         */
+        public void reset() {
+            invocationCount.set(0);
+            receivedAttempt = null;
+            receivedPrompt = null;
+            nextFailure = null;
         }
     }
 
