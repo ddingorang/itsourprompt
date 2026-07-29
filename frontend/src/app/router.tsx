@@ -4,6 +4,7 @@ import HomePage from '../pages/HomePage'
 import ProblemListPage from '../pages/ProblemListPage'
 import ProblemDetailPage from '../pages/ProblemDetailPage'
 import FeedbackPage from '../pages/FeedbackPage'
+import ErrorPage from '../pages/ErrorPage'
 import MyPage from '../pages/MyPage'
 import AuthPlaceholderPage from '../pages/AuthPlaceholderPage'
 
@@ -23,6 +24,10 @@ export const router = createBrowserRouter([
   {
     path: '/feedback/:problemId',
     element: <FeedbackPage />,
+  },
+  {
+    path: '/error',
+    element: <ErrorPage />,
   },
   {
     path: '/my',
