@@ -1,13 +1,21 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../features/auth/AuthContext';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
+// [임시 데이터] 통계 3종은 아직 백엔드 API가 없어 더미 값이다.
+// 실데이터 연동에는 예: GET /api/me/stats { solved, submissions, streakDays } 같은
+// 신규 API가 필요하다 (S15P11A505-backend/docs/auth-api.md §6 후속 과제 참고).
 const stats = [
   { label: 'SOLVED', value: '12' },
   { label: 'SUBMISSIONS', value: '28' },
   { label: 'STREAK', value: '04', unit: 'DAYS' },
 ];
 
+// [임시 데이터] 활동 내역도 더미다. 실데이터 연동에는 어템프트에 소유자(userId)를
+// 붙인 뒤 GET /api/me/attempts 로 조회하는 후속 작업이 필요하다.
+// 주의: 아래 Link가 activity.id를 problemId로 그대로 쓰고 있으므로,
+// 실데이터 연결 시 problemId를 별도 필드로 분리해야 한다.
 const recentActivity = [
   {
     id: 1,
@@ -26,10 +34,22 @@ const recentActivity = [
   },
 ];
 
+/** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (MEMBER SINCE 표기용) */
+function formatMemberSince(createdAt: string): string {
+  const date = new Date(createdAt);
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export default function MyPage() {
+  // 이 페이지는 ProtectedRoute로 감싸져 있어 user가 항상 존재한다(비로그인은 /login으로 이동됨).
+  const { user } = useAuth();
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <Header mode="authenticated" />
+      <Header />
 
       <main className="mx-auto w-[calc(100%_-_10vw)] flex-1 pt-[clamp(36px,5vw,64px)] pb-24 max-[640px]:w-[calc(100%_-_40px)]">
         <div className="mb-[54px] font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
@@ -43,14 +63,15 @@ export default function MyPage() {
                 className="grid size-16 shrink-0 place-items-center rounded-full bg-[#d6ff50] text-2xl font-black text-[#090909]"
                 aria-hidden="true"
               >
-                P
+                {/* 아바타 이니셜: 로그인 사용자 닉네임의 첫 글자 */}
+                {user.nickname.charAt(0).toUpperCase()}
               </div>
               <div>
                 <p className="mb-1 font-mono text-[13px] tracking-[0.12em] text-[#777]">
                   USER NAME
                 </p>
                 <h1 className="text-[clamp(28px,4vw,42px)] leading-none font-black tracking-[-0.05em]">
-                  프롬프터
+                  {user.nickname}
                 </h1>
               </div>
             </div>
@@ -58,7 +79,7 @@ export default function MyPage() {
             <div>
               <span className="inline-flex items-center gap-2 font-mono text-[13px] tracking-[0.08em] text-[#777]">
                 <span className="size-1.5 rounded-full bg-[#d6ff50]" />
-                MEMBER SINCE 2026.07
+                MEMBER SINCE {formatMemberSince(user.createdAt)}
               </span>
             </div>
           </div>
@@ -122,7 +143,7 @@ export default function MyPage() {
         </section>
 
         <p className="mt-5 font-mono text-[10px] leading-5 tracking-[0.04em] text-[#555]">
-          * 로그인 및 실제 학습 데이터 연동 전 표시되는 임시 화면입니다.
+          * 통계·활동 데이터는 추후 연동 예정입니다. (사용자 정보는 실제 데이터)
         </p>
       </main>
       <Footer />
