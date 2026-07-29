@@ -23,6 +23,12 @@ public class Problem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * 문제 저장소의 최상위 디렉토리명. 시더 시절에 만들어진 행은 비어 있을 수 있다.
+     */
+    @Column(name = "slug")
+    private String slug;
+
     @Column(nullable = false)
     private String title;
 
@@ -34,22 +40,48 @@ public class Problem {
     @OrderColumn(name = "ordinal")
     private List<ProblemFile> files = new ArrayList<>();
 
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
+
     protected Problem() {
     }
 
-    public Problem(String title, String specMd, List<ProblemFile> files) {
-        this(null, title, specMd, files);
+    public Problem(String slug, String title, String specMd, List<ProblemFile> files) {
+        this(null, slug, title, specMd, files);
     }
 
-    public Problem(Long id, String title, String specMd, List<ProblemFile> files) {
+    public Problem(Long id, String slug, String title, String specMd, List<ProblemFile> files) {
         this.id = id;
+        this.slug = slug;
         this.title = title;
         this.specMd = specMd;
         this.files = new ArrayList<>(files);
     }
 
+    /**
+     * 저장소에서 다시 읽어온 내용으로 갈아끼운다. slug는 문제의 식별자라 바뀌지 않는다.
+     */
+    public void updateFrom(String title, String specMd, List<ProblemFile> files) {
+        this.title = title;
+        this.specMd = specMd;
+        this.files.clear();
+        this.files.addAll(files);
+    }
+
+    public void activate() {
+        this.active = true;
+    }
+
+    public void deactivate() {
+        this.active = false;
+    }
+
     public Long id() {
         return id;
+    }
+
+    public String slug() {
+        return slug;
     }
 
     public String title() {
@@ -62,6 +94,10 @@ public class Problem {
 
     public List<ProblemFile> files() {
         return List.copyOf(files);
+    }
+
+    public boolean active() {
+        return active;
     }
 
     @Override

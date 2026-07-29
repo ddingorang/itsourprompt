@@ -29,6 +29,6 @@ public abstract class DatabaseTest {
 
     @BeforeEach
     void 테이블을_비운다() {
-        dsl.execute("TRUNCATE idempotency_record, turn_file_change, attempt_turn, attempt_file, attempt, problem_file, problem RESTART IDENTITY CASCADE");
+        dsl.execute("TRUNCATE idempotency_record, turn_file_change, attempt_turn, attempt_file, attempt, problem_file, problem, sync_state RESTART IDENTITY CASCADE");
     }
 }

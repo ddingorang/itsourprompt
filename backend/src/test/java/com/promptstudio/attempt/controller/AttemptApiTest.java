@@ -175,6 +175,19 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.code").value("attempt-already-submitted"));
     }
 
+    @Test
+    void 비활성_문제로_어템프트를_생성하면_409를_반환한다() throws Exception {
+        Problem problem = newProblem();
+        problem.deactivate();
+        problemRepository.save(problem);
+
+        mockMvc.perform(post("/api/attempts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"problemId\":" + problem.id() + "}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("problem-inactive"));
+    }
+
     private void addTurn(Long attemptId) throws Exception {
         mockMvc.perform(post("/api/attempts/{id}/turns", attemptId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -195,7 +208,7 @@ class AttemptApiTest extends DatabaseTest {
     }
 
     private Problem newProblem() {
-        return problemRepository.save(new Problem(null, "Hello World 출력", "# Hello World 출력", List.of(
+        return problemRepository.save(new Problem("hello-world", "Hello World 출력", "# Hello World 출력", List.of(
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
         )));
     }

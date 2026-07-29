@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AttemptTest {
 
-    private final Problem problem = new Problem(1L, "제목", "명세", List.of(
+    private final Problem problem = new Problem(1L, "hello-world", "제목", "명세", List.of(
             new ProblemFile("src/Main.java", "class Main {}")
     ));
 
