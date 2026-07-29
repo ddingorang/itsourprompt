@@ -8,12 +8,15 @@ import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
 import com.promptstudio.support.DatabaseTest;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 쓰기 seam. 저장은 JPA로, 확인은 조회 seam(jOOQ)으로 한다 — 운영 경로와 같은 조합이다.
@@ -30,6 +33,9 @@ class AttemptRepositoryTest extends DatabaseTest {
 
     @Autowired
     private ProblemRepository problemRepository;
+
+    @Autowired
+    private DSLContext dsl;
 
     @Test
     void 저장한_어템프트를_ID로_조회한다() {
@@ -108,6 +114,22 @@ class AttemptRepositoryTest extends DatabaseTest {
     @Test
     void 없는_ID면_빈_Optional을_반환한다() {
         assertThat(attemptRepository.findById(999L)).isEmpty();
+    }
+
+    @Test
+    void 같은_어템프트의_같은_ordinal에_턴을_두_번_저장하면_실패한다() {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+
+        insertTurn(attempt.id());
+
+        assertThatThrownBy(() -> insertTurn(attempt.id())).isInstanceOf(DuplicateKeyException.class);
+    }
+
+    private void insertTurn(Long attemptId) {
+        dsl.execute(
+                "INSERT INTO attempt_turn (attempt_id, ordinal, user_prompt, ai_summary) VALUES (?, 0, ?, ?)",
+                attemptId, "Hello 출력해줘", "생성 요약"
+        );
     }
 
     private GeneratedCode generated(String content, String summary) {
