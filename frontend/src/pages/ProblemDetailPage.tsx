@@ -431,7 +431,7 @@ export default function ProblemDetailPage() {
           </div>
         </aside>
 
-        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[#343434] px-7 pt-[22px] pb-10 max-[1080px]:border-r-0 max-[700px]:block max-[700px]:overflow-visible max-[700px]:border-b max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
+        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[#343434] px-7 py-[22px] max-[1080px]:border-r-0 max-[700px]:block max-[700px]:overflow-visible max-[700px]:border-b max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
           <div className="mb-5 flex items-start justify-between gap-[18px]">
             <div>
               <div className={labelClasses}>
