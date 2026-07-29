@@ -3,19 +3,11 @@ import { useLocation } from 'react-router-dom';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
-
-interface ErrorPageState {
-  title?: string;
-  message?: string;
-  problemTitle?: string;
-  status?: number;
-  returnPath?: string;
-  returnLabel?: string;
-}
+import type { ErrorPageState } from '../shared/types/error';
 
 export default function ErrorPage() {
   const { state } = useLocation();
-  const error = (state ?? {}) as ErrorPageState;
+  const errorState = (state ?? {}) as ErrorPageState;
 
   return (
     <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
@@ -31,9 +23,9 @@ export default function ErrorPage() {
             ERROR
           </h1>
 
-          {error.problemTitle && (
+          {errorState.problemTitle && (
             <p className="mt-6 font-mono text-xs tracking-[0.08em] text-[#d6ff50]">
-              {error.problemTitle}
+              {errorState.problemTitle}
             </p>
           )}
 
@@ -42,22 +34,22 @@ export default function ErrorPage() {
             role="alert"
           >
             <p className="font-bold text-[#f5f5ef]">
-              {error.title ?? '요청 처리 중 오류가 발생했습니다.'}
+              {errorState.title ?? '요청 처리 중 오류가 발생했습니다.'}
             </p>
             <p>
-              {error.message ??
+              {errorState.message ??
                 '잠시 후 다시 시도해주세요. 문제가 계속되면 이전 페이지로 돌아가주세요.'}
             </p>
-            {error.status && (
+            {errorState.status && (
               <p className="mt-2 font-mono text-xs tracking-[0.08em] text-[#777]">
-                ERROR CODE / {error.status}
+                ERROR CODE / {errorState.status}
               </p>
             )}
           </div>
 
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button to={error.returnPath ?? '/'}>
-              {error.returnLabel ?? '이전 화면으로'}
+            <Button to={errorState.returnPath ?? '/'}>
+              {errorState.returnLabel ?? '이전 화면으로'}
             </Button>
             <Button to="/problems" variant="secondary">
               문제 목록으로

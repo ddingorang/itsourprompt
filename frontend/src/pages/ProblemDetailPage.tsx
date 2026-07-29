@@ -6,7 +6,11 @@ import { submitFeedback } from '../features/feedback/api';
 import { getProblemDetail } from '../features/problem/api';
 import type { ProblemDetail, RepositoryFile } from '../features/problem/types';
 import { runProblem } from '../features/submission/api';
-import { saveFeedbackResult, saveRunResult } from '../features/submission/storage';
+import {
+  getRunResult,
+  saveFeedbackResult,
+  saveRunResult,
+} from '../features/submission/storage';
 import type {
   ChangedFile,
   ChangeType,
@@ -15,6 +19,7 @@ import type {
 import { ApiProblemError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Header from '../shared/components/Header';
+import type { ErrorPageState } from '../shared/types/error';
 
 type StatusType = 'normal' | 'error';
 
@@ -53,8 +58,20 @@ const changeColorClasses: Record<ChangeType, string> = {
   DELETED: 'text-[#ff786b]',
 };
 
-function getErrorMessage(error: unknown, fallback: string): string {
-  return error instanceof ApiProblemError ? error.problem.detail : fallback;
+interface ErrorInfo {
+  message: string;
+  status?: number;
+}
+
+function getErrorInfo(error: unknown, fallback: string): ErrorInfo {
+  if (error instanceof ApiProblemError) {
+    return {
+      message: error.problem.detail,
+      status: error.problem.status,
+    };
+  }
+
+  return { message: fallback };
 }
 
 function findFile(files: RepositoryFile[], path: string): RepositoryFile | undefined {
@@ -164,7 +181,36 @@ export default function ProblemDetailPage() {
     getProblemDetail(problemId)
       .then((response) => {
         if (!isMounted) return;
+        const storedRunResult = getRunResult();
+
         setProblem(response);
+
+        if (storedRunResult?.problemId === response.id) {
+          setRunResult(storedRunResult);
+          setFiles(storedRunResult.files);
+          setChangedFiles(storedRunResult.changedFiles);
+          setPromptLogs([
+            {
+              id: 1,
+              prompt: storedRunResult.prompt,
+              response: storedRunResult.aiResponse,
+            },
+          ]);
+          setSelectedFile(storedRunResult.files[0]?.path ?? '');
+          setExpandedFolders(
+            new Set(
+              getFolderPaths(
+                createFileTree(
+                  storedRunResult.files,
+                  storedRunResult.changedFiles,
+                ),
+              ),
+            ),
+          );
+          setActiveTab('logs');
+          return;
+        }
+
         setFiles(response.files);
         setSelectedFile(response.files[0]?.path ?? '');
         setExpandedFolders(
@@ -175,7 +221,7 @@ export default function ProblemDetailPage() {
         if (isMounted) {
           setStatus({
             type: 'error',
-            message: getErrorMessage(error, '문제 상세를 불러오지 못했습니다.'),
+            message: getErrorInfo(error, '문제 상세를 불러오지 못했습니다.').message,
           });
         }
       })
@@ -259,7 +305,10 @@ export default function ProblemDetailPage() {
       });
       showStatus('실행이 완료되었습니다. 변경 파일과 AI 응답을 확인해주세요.');
     } catch (error: unknown) {
-      showStatus(getErrorMessage(error, '실행에 실패했습니다. 다시 시도해주세요.'), 'error');
+      showStatus(
+        getErrorInfo(error, '실행에 실패했습니다. 다시 시도해주세요.').message,
+        'error',
+      );
     } finally {
       setIsRunning(false);
     }
@@ -291,18 +340,21 @@ export default function ProblemDetailPage() {
 
       navigate(`/feedback/${problem.id}`);
     } catch (error: unknown) {
+      const errorInfo = getErrorInfo(
+        error,
+        '피드백 생성에 실패했습니다. 잠시 후 다시 제출해주세요.',
+      );
+      const errorState: ErrorPageState = {
+        title: '피드백 생성에 실패했습니다.',
+        message: errorInfo.message,
+        problemTitle: problem.title,
+        status: errorInfo.status,
+        returnPath: `/problems/${problem.id}`,
+        returnLabel: '문제로 돌아가 다시 시도',
+      };
+
       navigate('/error', {
-        state: {
-          title: '피드백 생성에 실패했습니다.',
-          message: getErrorMessage(
-            error,
-            '피드백 생성에 실패했습니다. 잠시 후 다시 제출해주세요.',
-          ),
-          problemTitle: problem.title,
-          status: error instanceof ApiProblemError ? error.problem.status : undefined,
-          returnPath: `/problems/${problem.id}`,
-          returnLabel: '문제로 돌아가 다시 시도',
-        },
+        state: errorState,
       });
     } finally {
       setIsSubmitting(false);
