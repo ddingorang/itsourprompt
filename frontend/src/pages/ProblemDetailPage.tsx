@@ -394,8 +394,7 @@ export default function ProblemDetailPage() {
           <div className="mb-5 flex items-start justify-between gap-[18px]">
             <div>
               <div className={labelClasses}>
-                {selectedFile.split('/').pop()?.toUpperCase() || 'FILE'} /{' '}
-                {runResult ? 'RUN RESULT' : 'SKELETON'}
+                {selectedFile || 'FILE'}
               </div>
             </div>
             <span className="shrink-0 border border-[#494949] px-2 py-1.5 font-mono text-[9px] text-[#a3a3a3]">
@@ -404,13 +403,26 @@ export default function ProblemDetailPage() {
           </div>
 
           <div className="workspace-scrollbar min-h-0 flex-1 overflow-auto border border-[#292929] bg-[#202020] max-[700px]:min-h-[360px]">
-            <div className="sticky top-0 z-[1] flex min-w-max justify-between gap-3 border-b border-[#333] bg-[#202020] px-3.5 py-[11px] font-mono text-[10px] text-[#a3a3a3]">
-              <span>{selectedFile}</span>
-              <span>{runResult ? 'RESULT' : 'ORIGINAL'}</span>
+            <div
+              aria-hidden="true"
+              className="sticky top-0 z-[2] h-8 min-w-full border-b border-[#333] bg-[#151515]"
+            />
+            <div className="min-w-max py-3 font-mono text-xs leading-[1.9] whitespace-pre text-[#e3e3dd] [tab-size:2]">
+              {selectedCode.split('\n').map((line, index) => (
+                <div
+                  className="grid min-h-[1.9em] grid-cols-[2.0rem_max-content]"
+                  key={`${index}-${line}`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="sticky left-0 border-r border-[#333] bg-[#202020] pr-3 text-right text-[#686868] select-none"
+                  >
+                    {index + 1}
+                  </span>
+                  <code className="px-5">{line || ' '}</code>
+                </div>
+              ))}
             </div>
-            <pre className="m-0 min-w-max p-6 font-mono text-xs leading-[1.9] text-[#e3e3dd] [tab-size:2]">
-              <code>{selectedCode}</code>
-            </pre>
           </div>
         </section>
 
