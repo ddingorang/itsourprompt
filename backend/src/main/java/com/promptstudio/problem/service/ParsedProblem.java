@@ -4,7 +4,7 @@ import com.promptstudio.problem.domain.ProblemFile;
 
 import java.util.List;
 
-public record ParsedProblem(
+record ParsedProblem(
         String slug,
         String title,
         String specMd,

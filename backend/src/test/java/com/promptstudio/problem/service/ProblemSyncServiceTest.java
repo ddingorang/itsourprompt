@@ -3,6 +3,8 @@ package com.promptstudio.problem.service;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.domain.SyncState;
+import com.promptstudio.problem.exception.ProblemSyncFormatException;
+import com.promptstudio.problem.port.ProblemSourceException;
 import com.promptstudio.problem.repository.ProblemRepository;
 import com.promptstudio.problem.repository.SyncStateRepository;
 import com.promptstudio.support.DatabaseTest;
@@ -128,6 +130,22 @@ class ProblemSyncServiceTest extends DatabaseTest {
 
         assertThatThrownBy(() -> problemSyncService.sync())
                 .isInstanceOf(ProblemSyncFormatException.class);
+
+        assertThat(problemRepository.findAll())
+                .extracting(Problem::title)
+                .containsExactly("Hello World 출력");
+        assertThat(syncStateRepository.findById(SyncState.ID).orElseThrow().lastCommitSha()).isEqualTo("sha-1");
+    }
+
+    @Test
+    void 저장소_호출이_실패하면_문제와_커밋_SHA_모두_그대로_둔다() {
+        problemSource.serve("sha-1", helloWorldArchive("Hello World 출력"));
+        problemSyncService.sync();
+        problemSource.serve("sha-2", helloWorldArchive("인사 출력"));
+        problemSource.failNextWith(new ProblemSourceException("문제 저장소 아카이브 다운로드에 실패했습니다."));
+
+        assertThatThrownBy(() -> problemSyncService.sync())
+                .isInstanceOf(ProblemSourceException.class);
 
         assertThat(problemRepository.findAll())
                 .extracting(Problem::title)

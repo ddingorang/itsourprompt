@@ -23,7 +23,6 @@ public class FakeProblemSourceConfiguration {
 
         private String sha;
         private byte[] archiveZip;
-        private String requestedSha;
         private RuntimeException nextFailure;
 
         @Override
@@ -34,7 +33,6 @@ public class FakeProblemSourceConfiguration {
         @Override
         public byte[] downloadArchiveZip(String sha) {
             downloadCount.incrementAndGet();
-            this.requestedSha = sha;
 
             if (nextFailure != null) {
                 RuntimeException failure = nextFailure;
@@ -65,10 +63,6 @@ public class FakeProblemSourceConfiguration {
             return downloadCount.get();
         }
 
-        public String requestedSha() {
-            return requestedSha;
-        }
-
         /**
          * 컨텍스트 캐시로 빈이 테스트끼리 공유되므로, 호출 횟수를 보는 테스트는 시작 전에 비워야 한다.
          */
@@ -76,7 +70,6 @@ public class FakeProblemSourceConfiguration {
             downloadCount.set(0);
             sha = null;
             archiveZip = null;
-            requestedSha = null;
             nextFailure = null;
         }
     }

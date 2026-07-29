@@ -1,6 +1,7 @@
 package com.promptstudio.problem.service;
 
 import com.promptstudio.problem.domain.ProblemFile;
+import com.promptstudio.problem.exception.ProblemSyncFormatException;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.ByteArrayInputStream;
@@ -21,7 +22,7 @@ import java.util.zip.ZipInputStream;
  * 프리픽스를 뗀 뒤의 최상위 디렉토리 하나가 문제 하나이고, 그 디렉토리명이 slug가 된다.
  * 최상위 일반 파일과 `.`으로 시작하는 디렉토리는 문제가 아니므로 무시한다.
  */
-public final class ProblemArchiveParser {
+final class ProblemArchiveParser {
 
     private static final String PROBLEM_YML = "problem.yml";
     private static final String SPEC_MD = "spec.md";
@@ -31,7 +32,7 @@ public final class ProblemArchiveParser {
     private ProblemArchiveParser() {
     }
 
-    public static List<ParsedProblem> parse(byte[] archiveZip) {
+    static List<ParsedProblem> parse(byte[] archiveZip) {
         List<ParsedProblem> problems = new ArrayList<>();
 
         for (Map.Entry<String, Map<String, String>> candidate : readCandidates(archiveZip).entrySet()) {

@@ -6,7 +6,7 @@ import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.DuplicateRequestException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
-import com.promptstudio.attempt.exception.InactiveProblemException;
+import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.attempt.port.CodeGenerationException;
 import com.promptstudio.attempt.port.CodeGenerationTimeoutException;

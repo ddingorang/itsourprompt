@@ -1,4 +1,4 @@
-package com.promptstudio.attempt.exception;
+package com.promptstudio.problem.exception;
 
 public class InactiveProblemException extends RuntimeException {
 

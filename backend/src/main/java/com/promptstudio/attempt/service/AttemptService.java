@@ -8,7 +8,7 @@ import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
-import com.promptstudio.attempt.exception.InactiveProblemException;
+import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.attempt.repository.AttemptQueryRepository;

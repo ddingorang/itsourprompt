@@ -1,5 +1,6 @@
 package com.promptstudio.gitlab;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.promptstudio.problem.port.ProblemSourceClient;
 import com.promptstudio.problem.port.ProblemSourceException;
 import org.slf4j.Logger;
@@ -12,8 +13,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 /**
  * GitLab REST API로 문제 저장소를 읽는다. 전송 계층 예외는 포트 밖으로 새지 않게 번역한다.
@@ -45,27 +46,27 @@ public class GitLabProblemSourceClient implements ProblemSourceClient {
 
     @Override
     public Optional<String> latestCommitSha() {
-        List<Map<String, Object>> commits = call("최신 커밋 조회", () -> restClient.get()
+        List<GitLabCommit> commits = call("최신 커밋 조회", () -> restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path(COMMITS_PATH)
                         .queryParam("ref_name", branch)
                         .queryParam("per_page", 1)
                         .build(projectId))
                 .retrieve()
-                .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {
+                .body(new ParameterizedTypeReference<List<GitLabCommit>>() {
                 }));
 
         if (commits == null || commits.isEmpty()) {
             return Optional.empty();
         }
 
-        Object sha = commits.getFirst().get("id");
+        String sha = commits.getFirst().id();
 
         if (sha == null) {
             throw new ProblemSourceException("문제 저장소 커밋 응답에 id가 없습니다.");
         }
 
-        return Optional.of(String.valueOf(sha));
+        return Optional.of(sha);
     }
 
     @Override
@@ -85,9 +86,9 @@ public class GitLabProblemSourceClient implements ProblemSourceClient {
         return archive;
     }
 
-    private <T> T call(String operation, RestCall<T> restCall) {
+    private <T> T call(String operation, Supplier<T> restCall) {
         try {
-            return restCall.execute();
+            return restCall.get();
         } catch (RestClientResponseException exception) {
             log.error(
                     "GitLab API 호출 실패: operation={}, projectId={}, status={}, responseBody={}",
@@ -106,9 +107,7 @@ public class GitLabProblemSourceClient implements ProblemSourceClient {
         }
     }
 
-    @FunctionalInterface
-    private interface RestCall<T> {
-
-        T execute();
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record GitLabCommit(String id) {
     }
 }

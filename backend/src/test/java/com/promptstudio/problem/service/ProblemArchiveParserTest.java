@@ -1,6 +1,7 @@
 package com.promptstudio.problem.service;
 
 import com.promptstudio.problem.domain.ProblemFile;
+import com.promptstudio.problem.exception.ProblemSyncFormatException;
 import com.promptstudio.support.ProblemZips;
 import org.junit.jupiter.api.Test;
 

@@ -1,4 +1,4 @@
-package com.promptstudio.problem.service;
+package com.promptstudio.problem.exception;
 
 public class ProblemSyncFormatException extends RuntimeException {
 
