@@ -291,14 +291,17 @@ export default function ProblemDetailPage() {
 
       navigate(`/feedback/${problem.id}`);
     } catch (error: unknown) {
-      navigate(`/feedback/${problem.id}/error`, {
+      navigate('/error', {
         state: {
+          title: '피드백 생성에 실패했습니다.',
           message: getErrorMessage(
             error,
             '피드백 생성에 실패했습니다. 잠시 후 다시 제출해주세요.',
           ),
           problemTitle: problem.title,
           status: error instanceof ApiProblemError ? error.problem.status : undefined,
+          returnPath: `/problems/${problem.id}`,
+          returnLabel: '문제로 돌아가 다시 시도',
         },
       });
     } finally {
