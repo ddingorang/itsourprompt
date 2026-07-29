@@ -1,9 +1,12 @@
 package com.promptstudio.attempt.service;
 
+import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
+import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.attempt.repository.AttemptQueryRepository;
@@ -22,6 +25,7 @@ public class AttemptService {
     private final AttemptQueryRepository attemptQueryRepository;
     private final AttemptWriter attemptWriter;
     private final IdempotencyGuard idempotencyGuard;
+    private final FeedbackGenerationGuard feedbackGenerationGuard;
     private final CodeGenerator codeGenerator;
     private final FeedbackGenerator feedbackGenerator;
 
@@ -30,6 +34,7 @@ public class AttemptService {
             AttemptQueryRepository attemptQueryRepository,
             AttemptWriter attemptWriter,
             IdempotencyGuard idempotencyGuard,
+            FeedbackGenerationGuard feedbackGenerationGuard,
             CodeGenerator codeGenerator,
             FeedbackGenerator feedbackGenerator
     ) {
@@ -37,6 +42,7 @@ public class AttemptService {
         this.attemptQueryRepository = attemptQueryRepository;
         this.attemptWriter = attemptWriter;
         this.idempotencyGuard = idempotencyGuard;
+        this.feedbackGenerationGuard = feedbackGenerationGuard;
         this.codeGenerator = codeGenerator;
         this.feedbackGenerator = feedbackGenerator;
     }
@@ -75,7 +81,16 @@ public class AttemptService {
     }
 
     private AttemptView generateTurn(Long attemptId, String userPrompt, String idempotencyKey) {
+        if (feedbackGenerationGuard.isGenerating(attemptId)) {
+            throw new FeedbackGenerationInProgressException(attemptId);
+        }
+
         AttemptView attempt = getAttempt(attemptId);
+
+        if (attempt.status() == AttemptStatus.SUBMITTED) {
+            throw new AttemptAlreadySubmittedException(attemptId);
+        }
+
         GeneratedCode generated = codeGenerator.generate(attempt, userPrompt);
 
         return attemptWriter.appendTurn(attemptId, userPrompt, generated, idempotencyKey);
@@ -110,14 +125,28 @@ public class AttemptService {
         return idempotencyKey;
     }
 
-    public String generateFeedback(Long attemptId) {
-        AttemptView attempt = getAttempt(attemptId);
-
-        if (attempt.turns().isEmpty()) {
-            throw new AttemptHasNoTurnsException(attemptId);
+    public String submit(Long attemptId) {
+        if (!feedbackGenerationGuard.tryAcquire(attemptId)) {
+            throw new FeedbackGenerationInProgressException(attemptId);
         }
 
-        return feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
+        try {
+            AttemptView attempt = getAttempt(attemptId);
+
+            if (attempt.turns().isEmpty()) {
+                throw new AttemptHasNoTurnsException(attemptId);
+            }
+
+            if (attempt.status() == AttemptStatus.SUBMITTED) {
+                return attempt.feedback();
+            }
+
+            String feedback = feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
+
+            return attemptWriter.submit(attemptId, feedback);
+        } finally {
+            feedbackGenerationGuard.release(attemptId);
+        }
     }
 
     private Problem getProblem(Long problemId) {

@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.service;
 
 import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
@@ -43,6 +44,21 @@ class AttemptWriter {
         markCompleted(idempotencyKey, attemptId);
 
         return AttemptView.from(attempt);
+    }
+
+    @Transactional
+    String submit(Long attemptId, String feedback) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        // AI 호출 중 다른 요청이 먼저 제출을 끝냈다면 저장된 피드백을 그대로 반환한다.
+        if (attempt.status() == AttemptStatus.SUBMITTED) {
+            return attempt.feedback();
+        }
+
+        attempt.submit(feedback);
+
+        return attempt.feedback();
     }
 
     private void markCompleted(String idempotencyKey, Long attemptId) {

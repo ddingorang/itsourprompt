@@ -13,6 +13,8 @@ final class AttemptTables {
     static final Table<?> ATTEMPT = table(name("attempt"));
     static final Field<Long> ID = field(name("attempt", "id"), SQLDataType.BIGINT);
     static final Field<Long> PROBLEM_ID = field(name("attempt", "problem_id"), SQLDataType.BIGINT);
+    static final Field<String> STATUS = field(name("attempt", "status"), SQLDataType.VARCHAR);
+    static final Field<String> FEEDBACK = field(name("attempt", "feedback"), SQLDataType.CLOB);
 
     static final Table<?> ATTEMPT_FILE = table(name("attempt_file"));
     static final Field<Long> FILE_ATTEMPT_ID = field(name("attempt_file", "attempt_id"), SQLDataType.BIGINT);

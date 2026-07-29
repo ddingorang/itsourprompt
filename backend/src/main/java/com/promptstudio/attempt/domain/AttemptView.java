@@ -9,7 +9,9 @@ public record AttemptView(
         Long id,
         Long problemId,
         List<ProblemFile> files,
-        List<TurnView> turns
+        List<TurnView> turns,
+        AttemptStatus status,
+        String feedback
 ) {
 
     public static AttemptView from(Attempt attempt) {
@@ -19,7 +21,14 @@ public record AttemptView(
             turns.add(new TurnView(turn.userPrompt(), turn.aiSummary(), turn.changes()));
         }
 
-        return new AttemptView(attempt.id(), attempt.problemId(), attempt.currentFiles(), List.copyOf(turns));
+        return new AttemptView(
+                attempt.id(),
+                attempt.problemId(),
+                attempt.currentFiles(),
+                List.copyOf(turns),
+                attempt.status(),
+                attempt.feedback()
+        );
     }
 
     public record TurnView(

@@ -1,8 +1,10 @@
 package com.promptstudio.global.exception;
 
+import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.DuplicateRequestException;
+import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.attempt.port.CodeGenerationException;
 import com.promptstudio.attempt.port.CodeGenerationTimeoutException;
@@ -45,6 +47,28 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(AttemptAlreadySubmittedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAttemptAlreadySubmitted(AttemptAlreadySubmittedException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "attempt-already-submitted",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(FeedbackGenerationInProgressException.class)
+    public ResponseEntity<ApiErrorResponse> handleFeedbackGenerationInProgress(
+            FeedbackGenerationInProgressException exception
+    ) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "feedback-in-progress",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(DuplicateRequestException.class)

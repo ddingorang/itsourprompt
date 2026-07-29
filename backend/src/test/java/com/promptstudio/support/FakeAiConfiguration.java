@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @TestConfiguration
@@ -89,15 +90,66 @@ public class FakeAiConfiguration {
 
     public static class FakeFeedbackGenerator implements FeedbackGenerator {
 
+        private final AtomicInteger invocationCount = new AtomicInteger();
+
         private ProblemView receivedProblem;
         private AttemptView receivedAttempt;
+        private RuntimeException nextFailure;
+        private CountDownLatch nextEntered;
+        private CountDownLatch nextGate;
 
         @Override
         public String generate(ProblemView problem, AttemptView attempt) {
+            invocationCount.incrementAndGet();
             this.receivedProblem = problem;
             this.receivedAttempt = attempt;
 
+            block();
+
+            if (nextFailure != null) {
+                RuntimeException failure = nextFailure;
+                nextFailure = null;
+
+                throw failure;
+            }
+
             return "생성된 피드백";
+        }
+
+        /**
+         * 다음 호출 한 번만 실패시킨다.
+         */
+        public void failNextWith(RuntimeException failure) {
+            this.nextFailure = failure;
+        }
+
+        /**
+         * 다음 호출 한 번만 gate가 열릴 때까지 멈춘다. 생성 진행 중 상태를 테스트에서 관찰하기 위한 훅이다.
+         */
+        public void blockNextWith(CountDownLatch entered, CountDownLatch gate) {
+            this.nextEntered = entered;
+            this.nextGate = gate;
+        }
+
+        private void block() {
+            if (nextGate == null) {
+                return;
+            }
+
+            CountDownLatch entered = nextEntered;
+            CountDownLatch gate = nextGate;
+            nextEntered = null;
+            nextGate = null;
+
+            entered.countDown();
+
+            try {
+                gate.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+
+                throw new RuntimeException(e);
+            }
         }
 
         public ProblemView receivedProblem() {
@@ -106,6 +158,22 @@ public class FakeAiConfiguration {
 
         public AttemptView receivedAttempt() {
             return receivedAttempt;
+        }
+
+        public int invocationCount() {
+            return invocationCount.get();
+        }
+
+        /**
+         * 컨텍스트 캐시로 빈이 테스트끼리 공유되므로, 호출 횟수를 보는 테스트는 시작 전에 비워야 한다.
+         */
+        public void reset() {
+            invocationCount.set(0);
+            receivedProblem = null;
+            receivedAttempt = null;
+            nextFailure = null;
+            nextEntered = null;
+            nextGate = null;
         }
     }
 }

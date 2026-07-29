@@ -125,7 +125,7 @@ public class AttemptController {
             ),
             @ApiResponse(
                     responseCode = "409",
-                    description = "같은 Idempotency-Key의 요청이 처리 중",
+                    description = "같은 Idempotency-Key의 요청이 처리 중이거나, 이미 제출된 어템프트이거나, 피드백 생성이 진행 중",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
             ),
             @ApiResponse(
@@ -152,15 +152,16 @@ public class AttemptController {
         return attemptWebMapper.toAttemptResponse(attemptService.addTurn(id, request.prompt(), idempotencyKey));
     }
 
-    @PostMapping("/{id}/feedback")
+    @PostMapping("/{id}/submit")
     @Operation(
-            summary = "프롬프트 피드백 생성",
-            description = "문제 명세와 어템프트의 전체 턴 기록을 바탕으로 프롬프트 피드백을 생성합니다. 코드 내용은 전달하지 않습니다."
+            summary = "어템프트 제출",
+            description = "문제 명세와 어템프트의 전체 턴 기록을 바탕으로 프롬프트 피드백을 생성해 저장하고 어템프트를 종료합니다. "
+                    + "코드 내용은 전달하지 않습니다. 이미 제출된 어템프트를 다시 제출하면 AI를 재호출하지 않고 저장된 피드백을 반환합니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "프롬프트 피드백 생성 성공",
+                    description = "제출 성공",
                     content = @Content(schema = @Schema(implementation = FeedbackResponse.class))
             ),
             @ApiResponse(
@@ -174,6 +175,11 @@ public class AttemptController {
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
             ),
             @ApiResponse(
+                    responseCode = "409",
+                    description = "피드백 생성이 진행 중",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
+            ),
+            @ApiResponse(
                     responseCode = "502",
                     description = "AI 제공자 호출 실패",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
@@ -184,7 +190,7 @@ public class AttemptController {
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
             )
     })
-    public FeedbackResponse generateFeedback(@PathVariable("id") Long id) {
-        return new FeedbackResponse(attemptService.generateFeedback(id));
+    public FeedbackResponse submit(@PathVariable("id") Long id) {
+        return new FeedbackResponse(attemptService.submit(id));
     }
 }
