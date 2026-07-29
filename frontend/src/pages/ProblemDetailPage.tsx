@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -143,6 +143,7 @@ export default function ProblemDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -173,6 +174,14 @@ export default function ProblemDetailPage() {
       isMounted = false;
     };
   }, [problemId]);
+
+  useEffect(() => {
+    const textarea = promptTextareaRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
+  }, [prompt]);
 
   const fileTree = useMemo(
     () => createFileTree(files, changedFiles),
@@ -426,7 +435,7 @@ export default function ProblemDetailPage() {
           </div>
         </section>
 
-        <aside className="col-span-1 flex min-h-0 min-w-0 flex-col overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
+        <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-2 overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
           <section className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-b border-[#343434] pb-[22px] max-[1080px]:overflow-visible max-[1080px]:border-b-0 max-[1080px]:pb-0">
             <div
               className="grid grid-cols-2 border border-[#3f3f3f]"
@@ -510,27 +519,48 @@ export default function ProblemDetailPage() {
             </div>
           </section>
 
-          <section className="pt-[22px] max-[1080px]:pt-0 max-[700px]:pt-[22px]">
+          <section className="flex min-h-0 flex-col overflow-hidden pt-[22px] max-[1080px]:overflow-visible max-[1080px]:pt-0 max-[700px]:pt-[22px]">
             <div className={labelClasses}>PROMPT / MAX 4,000</div>
-            <div className="relative mt-2.5">
+            <div className="mt-2.5 flex shrink-0 flex-col border border-[#555] bg-[#131313] focus-within:border-[#d6ff50]">
               <textarea
-                className="min-h-[150px] w-full resize-y border border-[#555] bg-[#131313] p-3.5 pr-[62px] pb-14 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 focus:border-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-60"
+                ref={promptTextareaRef}
+                className="workspace-scrollbar min-h-12 max-h-24 w-full resize-none overflow-y-auto border-0 bg-transparent px-3.5 py-3 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isRunning || isSubmitting}
                 maxLength={4000}
                 onChange={(event) => setPrompt(event.target.value)}
                 placeholder="문제를 해결할 프롬프트를 입력하세요."
+                rows={1}
                 value={prompt}
               />
-              <button
-                aria-label="프롬프트 실행"
-                className="absolute right-3 bottom-3 grid size-10 cursor-pointer place-items-center rounded-full border border-[#d6ff50] bg-[#d6ff50] text-lg font-black text-[#090909] transition-colors hover:bg-transparent hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-45"
-                disabled={isRunning || isSubmitting || !prompt.trim()}
-                onClick={handleRun}
-                title="프롬프트 실행"
-                type="button"
-              >
-                {isRunning ? '…' : '↑'}
-              </button>
+              <div className="flex min-h-10 shrink-0 items-center justify-end px-2 pb-2">
+                <button
+                  aria-label="프롬프트 실행"
+                  className="grid size-9 cursor-pointer place-items-center rounded-full border border-[#d6ff50] bg-[#d6ff50] text-[#090909] transition-colors hover:bg-transparent hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={isRunning || isSubmitting || !prompt.trim()}
+                  onClick={handleRun}
+                  title="프롬프트 실행"
+                  type="button"
+                >
+                  {isRunning ? (
+                    '…'
+                  ) : (
+                    <svg
+                      aria-hidden="true"
+                      className="size-[17px]"
+                      fill="none"
+                      viewBox="0 0 18 18"
+                    >
+                      <path
+                        d="M9 15V3M4.5 7.5 9 3l4.5 4.5"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2.8"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             <div className="mt-2 flex justify-end font-mono text-[9px] text-[#777]">
               <span>
@@ -538,28 +568,29 @@ export default function ProblemDetailPage() {
               </span>
             </div>
 
-            <Button
-              className="mt-3"
-              disabled={isRunning || isSubmitting || !runResult}
-              fullWidth
-              onClick={handleSubmit}
-            >
-              {isSubmitting ? 'LOADING…' : 'GO TO FEEDBACK ↗'}
-            </Button>
-
-            {status && (
-              <div
-                className={[
-                  'mt-3.5 border border-[#484848] p-3 font-mono text-[10px] leading-[1.6] text-[#a3a3a3]',
-                  status.type === 'error'
-                    ? 'border-[#ff786b] text-[#ff786b]'
-                    : '',
-                ].join(' ')}
-                role="status"
+            <div className="mt-auto pt-3">
+              <Button
+                disabled={isRunning || isSubmitting || !runResult}
+                fullWidth
+                onClick={handleSubmit}
               >
-                {status.message}
-              </div>
-            )}
+                {isSubmitting ? 'LOADING…' : 'GO TO FEEDBACK ↗'}
+              </Button>
+
+              {status && (
+                <div
+                  className={[
+                    'mt-3.5 border border-[#484848] p-3 font-mono text-[10px] leading-[1.6] text-[#a3a3a3]',
+                    status.type === 'error'
+                      ? 'border-[#ff786b] text-[#ff786b]'
+                      : '',
+                  ].join(' ')}
+                  role="status"
+                >
+                  {status.message}
+                </div>
+              )}
+            </div>
 
           </section>
         </aside>
