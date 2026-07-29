@@ -31,9 +31,11 @@ interface PromptLog {
 
 type DetailTab = 'problem' | 'logs';
 
-interface TreeItem {
+interface FileTreeNode {
+  name: string;
   path: string;
-  depth: number;
+  type: 'folder' | 'file';
+  children: FileTreeNode[];
   changeType?: ChangeType;
   deleted?: boolean;
 }
@@ -59,10 +61,10 @@ function findFile(files: RepositoryFile[], path: string): RepositoryFile | undef
   return files.find((file) => file.path === path);
 }
 
-function createTreeItems(
+function createFileTree(
   files: RepositoryFile[],
   changedFiles: ChangedFile[],
-): TreeItem[] {
+): FileTreeNode[] {
   const changes = new Map(changedFiles.map((file) => [file.path, file.changeType]));
   const paths = new Set(files.map((file) => file.path));
 
@@ -70,14 +72,57 @@ function createTreeItems(
     .filter((file) => file.changeType === 'DELETED')
     .forEach((file) => paths.add(file.path));
 
-  return [...paths]
-    .sort((a, b) => a.localeCompare(b))
-    .map((path) => ({
-      path,
-      depth: Math.max(0, path.split('/').length - 1),
-      changeType: changes.get(path),
-      deleted: changes.get(path) === 'DELETED',
-    }));
+  const root: FileTreeNode[] = [];
+
+  [...paths].sort((a, b) => a.localeCompare(b)).forEach((path) => {
+    const segments = path.split('/').filter(Boolean);
+    let children = root;
+
+    segments.forEach((segment, index) => {
+      const nodePath = segments.slice(0, index + 1).join('/');
+      const isFile = index === segments.length - 1;
+      let node = children.find(
+        (child) => child.name === segment && child.type === (isFile ? 'file' : 'folder'),
+      );
+
+      if (!node) {
+        node = {
+          name: segment,
+          path: nodePath,
+          type: isFile ? 'file' : 'folder',
+          children: [],
+          ...(isFile
+            ? {
+                changeType: changes.get(path),
+                deleted: changes.get(path) === 'DELETED',
+              }
+            : {}),
+        };
+        children.push(node);
+      }
+
+      children = node.children;
+    });
+  });
+
+  const sortNodes = (nodes: FileTreeNode[]) => {
+    nodes.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    nodes.forEach((node) => sortNodes(node.children));
+  };
+
+  sortNodes(root);
+  return root;
+}
+
+function getFolderPaths(nodes: FileTreeNode[]): string[] {
+  return nodes.flatMap((node) =>
+    node.type === 'folder'
+      ? [node.path, ...getFolderPaths(node.children)]
+      : [],
+  );
 }
 
 export default function ProblemDetailPage() {
@@ -93,6 +138,7 @@ export default function ProblemDetailPage() {
   const [runResult, setRunResult] = useState<RunProblemResponse | null>(null);
   const [promptLogs, setPromptLogs] = useState<PromptLog[]>([]);
   const [activeTab, setActiveTab] = useState<DetailTab>('problem');
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<StatusMessage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
@@ -107,6 +153,9 @@ export default function ProblemDetailPage() {
         setProblem(response);
         setFiles(response.files);
         setSelectedFile(response.files[0]?.path ?? '');
+        setExpandedFolders(
+          new Set(getFolderPaths(createFileTree(response.files, []))),
+        );
       })
       .catch((error: unknown) => {
         if (isMounted) {
@@ -125,8 +174,8 @@ export default function ProblemDetailPage() {
     };
   }, [problemId]);
 
-  const treeItems = useMemo(
-    () => createTreeItems(files, changedFiles),
+  const fileTree = useMemo(
+    () => createFileTree(files, changedFiles),
     [files, changedFiles],
   );
 
@@ -161,6 +210,13 @@ export default function ProblemDetailPage() {
       setFiles(response.files);
       setChangedFiles(response.changedFiles);
       setRunResult(response);
+      setExpandedFolders((folders) => {
+        const nextFolders = new Set(folders);
+        getFolderPaths(createFileTree(response.files, response.changedFiles)).forEach(
+          (path) => nextFolders.add(path),
+        );
+        return nextFolders;
+      });
       setPromptLogs((logs) => [
         ...logs,
         {
@@ -221,6 +277,79 @@ export default function ProblemDetailPage() {
     }
   };
 
+  const toggleFolder = (path: string) => {
+    setExpandedFolders((folders) => {
+      const nextFolders = new Set(folders);
+      if (nextFolders.has(path)) nextFolders.delete(path);
+      else nextFolders.add(path);
+      return nextFolders;
+    });
+  };
+
+  const renderFileTree = (nodes: FileTreeNode[], depth = 0) =>
+    nodes.map((item) => {
+      if (item.type === 'folder') {
+        const isExpanded = expandedFolders.has(item.path);
+
+        return (
+          <div key={item.path}>
+            <button
+              aria-expanded={isExpanded}
+              className="grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_14px_max-content] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-[#a3a3a3] hover:text-[#f5f5ef]"
+              onClick={() => toggleFolder(item.path)}
+              style={{ paddingLeft: `${7 + depth * 14}px` }}
+              type="button"
+            >
+              <span className="text-[10px] text-[#777]" aria-hidden="true">
+                {isExpanded ? '▼' : '▶'}
+              </span>
+              <span className="text-[13px] text-[#d6ff50]" aria-hidden="true">
+                {isExpanded ? '▱' : '□'}
+              </span>
+              <span className="whitespace-nowrap">{item.name}</span>
+            </button>
+            {isExpanded && renderFileTree(item.children, depth + 1)}
+          </div>
+        );
+      }
+
+      return (
+        <button
+          className={[
+            'grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_max-content_28px] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-inherit hover:text-[#f5f5ef]',
+            selectedFile === item.path
+              ? 'bg-[#252525] text-[#d6ff50] hover:text-[#d6ff50]'
+              : '',
+            item.deleted ? 'opacity-60 line-through' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          key={item.path}
+          onClick={() => setSelectedFile(item.path)}
+          style={{ paddingLeft: `${7 + depth * 14}px` }}
+          title={item.path}
+          type="button"
+        >
+          <span className="text-[11px] text-[#777]" aria-hidden="true">
+            ◇
+          </span>
+          <span className="whitespace-nowrap">{item.name}</span>
+          <span
+            className={[
+              'text-right font-black',
+              selectedFile === item.path
+                ? 'text-[#d6ff50]'
+                : item.changeType
+                  ? changeColorClasses[item.changeType]
+                  : '',
+            ].join(' ')}
+          >
+            {item.changeType?.[0] ?? ''}
+          </span>
+        </button>
+      );
+    });
+
   if (isLoading) {
     return (
       <div className={pageStateClasses}>문제 상세를 불러오는 중입니다…</div>
@@ -245,49 +374,16 @@ export default function ProblemDetailPage() {
       <Header variant="workspace" />
 
       <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[230px_minmax(360px,1fr)_minmax(340px,390px)] max-[1080px]:grid-cols-[190px_minmax(0,1fr)] max-[700px]:block max-[700px]:overflow-visible">
-        <aside className="workspace-scrollbar min-h-0 min-w-0 overflow-auto border-r border-[#343434] px-6 py-[22px] max-[700px]:overflow-visible max-[700px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:py-[18px]">
+        <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[#343434] px-6 py-[22px] max-[700px]:overflow-visible max-[700px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:py-[18px]">
           <div className={labelClasses}>FILE EXPLORER</div>
-          <h2 className="mt-2.5 mb-[22px] text-[22px] font-bold tracking-[-0.04em]">
-            problem-{problem.id}
-          </h2>
 
-          <div className="mt-[18px] grid min-w-max select-none gap-[3px] font-mono text-xs leading-[1.5] text-[#a3a3a3]">
-            {treeItems.map((item) => (
-              <button
-                className={[
-                  'grid min-h-[34px] w-full cursor-pointer grid-cols-[max-content_28px] items-center gap-2 border-0 bg-transparent px-[7px] text-left font-inherit text-inherit hover:text-[#f5f5ef]',
-                  selectedFile === item.path
-                    ? 'bg-[#d6ff50] text-[#090909] hover:text-[#090909]'
-                    : '',
-                  item.deleted ? 'opacity-60 line-through' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                key={item.path}
-                onClick={() => setSelectedFile(item.path)}
-                style={{ paddingLeft: `${7 + Math.min(item.depth, 3) * 14}px` }}
-                type="button"
-              >
-                <span className="whitespace-nowrap">
-                  {item.path.split('/').pop()}
-                </span>
-                <span
-                  className={[
-                    'text-right font-black',
-                    selectedFile === item.path
-                      ? 'text-[#090909]'
-                      : item.changeType
-                        ? changeColorClasses[item.changeType]
-                        : '',
-                  ].join(' ')}
-                >
-                  {item.changeType?.[0] ?? ''}
-                </span>
-              </button>
-            ))}
+          <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-auto max-[700px]:flex-none max-[700px]:overflow-visible">
+            <div className="grid min-w-max select-none gap-[3px] font-mono text-xs leading-[1.5] text-[#a3a3a3]">
+              {renderFileTree(fileTree)}
+            </div>
           </div>
 
-          <div className="mt-7 grid gap-2 border-t border-[#343434] pt-4 font-mono text-[9px] text-[#767676]">
+          <div className="mt-4 grid shrink-0 gap-2 border-t border-[#343434] pt-4 font-mono text-[9px] text-[#767676]">
             <span>A / ADDED</span>
             <span>M / MODIFIED</span>
             <span>D / DELETED</span>
