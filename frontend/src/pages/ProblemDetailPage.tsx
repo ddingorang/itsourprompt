@@ -192,9 +192,10 @@ export default function ProblemDetailPage() {
     const textarea = promptTextareaRef.current;
     if (!textarea) return;
 
+    const maxHeight = status ? 82 : 112;
     textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
-  }, [prompt]);
+    textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+  }, [prompt, status]);
 
   const fileTree = useMemo(
     () => createFileTree(files, changedFiles),
@@ -467,7 +468,7 @@ export default function ProblemDetailPage() {
           </div>
         </section>
 
-        <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-2 overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
+        <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-[11fr_9fr] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
           <section className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-b border-[#343434] pb-[22px] max-[1080px]:overflow-visible max-[1080px]:border-b-0 max-[1080px]:pb-0">
             <div
               className="grid grid-cols-2 border border-[#3f3f3f]"
@@ -543,23 +544,24 @@ export default function ProblemDetailPage() {
             </div>
           </section>
 
-          <section className="flex min-h-0 flex-col overflow-hidden pt-[22px] max-[1080px]:overflow-visible max-[1080px]:pt-0 max-[700px]:pt-[22px]">
+          <section className="flex min-h-0 flex-col overflow-hidden pt-2 max-[1080px]:overflow-visible max-[1080px]:pt-0 max-[700px]:pt-[22px]">
             <div className={labelClasses}>PROMPT / MAX 4,000</div>
-            <div className="mt-2.5 flex shrink-0 flex-col border border-[#555] bg-[#131313] focus-within:border-[#d6ff50]">
+            <div className="mt-2 flex shrink-0 flex-col border border-[#555] bg-[#131313] focus-within:border-[#d6ff50]">
               <textarea
                 ref={promptTextareaRef}
-                className="workspace-scrollbar min-h-12 max-h-24 w-full resize-none overflow-y-auto border-0 bg-transparent px-3.5 py-3 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 disabled:cursor-not-allowed disabled:opacity-60"
+                className="workspace-scrollbar min-h-12 w-full resize-none overflow-y-auto border-0 bg-transparent px-3.5 py-3 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isRunning || isSubmitting}
                 maxLength={4000}
                 onChange={(event) => setPrompt(event.target.value)}
                 placeholder="문제를 해결할 프롬프트를 입력하세요."
                 rows={1}
+                style={{ maxHeight: status ? '82px' : '112px' }}
                 value={prompt}
               />
-              <div className="flex min-h-10 shrink-0 items-center justify-end px-2 pb-2">
+              <div className="flex min-h-9 shrink-0 items-center justify-end px-2 pb-2">
                 <button
                   aria-label="프롬프트 실행"
-                  className="grid size-9 cursor-pointer place-items-center rounded-full border border-[#d6ff50] bg-[#d6ff50] text-[#090909] transition-colors hover:bg-transparent hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-45"
+                  className="grid size-7 cursor-pointer place-items-center rounded-full border border-[#d6ff50] bg-[#d6ff50] text-[#090909] transition-colors hover:bg-transparent hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-45"
                   disabled={isRunning || isSubmitting || !prompt.trim()}
                   onClick={handleRun}
                   title="프롬프트 실행"
@@ -586,25 +588,17 @@ export default function ProblemDetailPage() {
                 </button>
               </div>
             </div>
-            <div className="mt-2 flex justify-end font-mono text-[9px] text-[#777]">
+            <div className="mt-1 flex justify-end font-mono text-[9px] text-[#777]">
               <span>
                 <b>{prompt.length.toLocaleString('ko-KR')}</b> / 4,000
               </span>
             </div>
 
-            <div className="mt-auto pt-3">
-              <Button
-                disabled={isRunning || isSubmitting || !runResult}
-                fullWidth
-                onClick={handleSubmit}
-              >
-                {isSubmitting ? 'LOADING…' : 'GO TO FEEDBACK ↗'}
-              </Button>
-
+            <div className="mt-auto pt-2">
               {status && (
                 <div
                   className={[
-                    'mt-3.5 border border-[#484848] p-3 font-mono text-[10px] leading-[1.6] text-[#a3a3a3]',
+                    'mb-2 border border-[#484848] p-2 font-mono text-[10px] leading-[1.5] text-[#a3a3a3]',
                     status.type === 'error'
                       ? 'border-[#ff786b] text-[#ff786b]'
                       : '',
@@ -614,6 +608,14 @@ export default function ProblemDetailPage() {
                   {status.message}
                 </div>
               )}
+
+              <Button
+                disabled={isRunning || isSubmitting || !runResult}
+                fullWidth
+                onClick={handleSubmit}
+              >
+                {isSubmitting ? 'LOADING…' : 'GO TO FEEDBACK ↗'}
+              </Button>
             </div>
 
           </section>
