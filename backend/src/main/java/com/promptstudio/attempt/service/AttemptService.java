@@ -7,6 +7,7 @@ import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
+import com.promptstudio.attempt.exception.FeedbackNotFoundException;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.attempt.repository.AttemptQueryRepository;
@@ -64,6 +65,16 @@ public class AttemptService {
     public AttemptView getAttempt(Long attemptId) {
         return attemptQueryRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+    }
+
+    public String getFeedback(Long attemptId) {
+        AttemptView attempt = getAttempt(attemptId);
+
+        if (attempt.status() != AttemptStatus.SUBMITTED) {
+            throw new FeedbackNotFoundException(attemptId);
+        }
+
+        return attempt.feedback();
     }
 
     public AttemptView addTurn(Long attemptId, String userPrompt) {
