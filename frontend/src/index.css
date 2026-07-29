@@ -1,1 +1,28 @@
 @import "tailwindcss";
+
+.workspace-scrollbar {
+  scrollbar-color: #666 #171717;
+  scrollbar-width: thin;
+}
+
+.workspace-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.workspace-scrollbar::-webkit-scrollbar-track {
+  background: #171717;
+}
+
+.workspace-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid #171717;
+  background: #666;
+}
+
+.workspace-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #d6ff50;
+}
+
+.workspace-scrollbar::-webkit-scrollbar-corner {
+  background: #171717;
+}
