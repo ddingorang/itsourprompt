@@ -38,7 +38,7 @@ class ProblemRepositoryTest extends DatabaseTest {
 
     @Test
     void 파일_순서를_보존한다() {
-        Problem saved = problemRepository.save(new Problem("제목", "명세", List.of(
+        Problem saved = problemRepository.save(new Problem("hello-world", "제목", "명세", List.of(
                 new ProblemFile("src/Main.java", "class Main {}"),
                 new ProblemFile("src/Util.java", "class Util {}"),
                 new ProblemFile("README.md", "# 안내")
@@ -70,7 +70,7 @@ class ProblemRepositoryTest extends DatabaseTest {
     }
 
     private Problem newProblem(String title) {
-        return new Problem(title, "# " + title, List.of(
+        return new Problem(null, title, "# " + title, List.of(
                 new ProblemFile("src/Main.java", "class Main {}")
         ));
     }

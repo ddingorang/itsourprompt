@@ -137,6 +137,6 @@ class AttemptRepositoryTest extends DatabaseTest {
     }
 
     private Problem newProblem() {
-        return problemRepository.save(new Problem("제목", "명세", List.of(SKELETON)));
+        return problemRepository.save(new Problem("hello-world", "제목", "명세", List.of(SKELETON)));
     }
 }

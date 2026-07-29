@@ -24,16 +24,19 @@ public class ProblemSeeder implements ApplicationRunner {
     private static List<Problem> seedProblems() {
         return List.of(
                 new Problem(
+                        "hello-world",
                         "Hello World 출력",
                         "# Hello World 출력\n\n표준 출력으로 `Hello, World!`를 출력하세요.",
                         List.of(new ProblemFile("src/main/java/Main.java", MAIN_JAVA_SKELETON))
                 ),
                 new Problem(
+                        "print-ssafy",
                         "SSAFY 출력",
                         "# SSAFY 출력\n\n표준 출력으로 `SSAFY`를 출력하세요.",
                         List.of(new ProblemFile("src/main/java/Main.java", MAIN_JAVA_SKELETON))
                 ),
                 new Problem(
+                        "welcome-message",
                         "환영 메시지 출력",
                         "# 환영 메시지 출력\n\n표준 출력으로 `프롬프트 스튜디오에 오신 것을 환영합니다!`를 출력하세요.",
                         List.of(new ProblemFile("src/main/java/Main.java", MAIN_JAVA_SKELETON))
