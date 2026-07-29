@@ -234,10 +234,10 @@ export default function ProblemDetailPage() {
   }
 
   return (
-    <div className="min-h-screen min-w-80 bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
       <Header variant="workspace" />
 
-      <main className="grid min-h-[calc(100vh_-_66px)] grid-cols-[230px_minmax(360px,1fr)_minmax(340px,390px)] max-[1080px]:grid-cols-[190px_minmax(0,1fr)] max-[700px]:block">
+      <main className="grid min-h-0 flex-1 grid-cols-[230px_minmax(360px,1fr)_minmax(340px,390px)] max-[1080px]:grid-cols-[190px_minmax(0,1fr)] max-[700px]:block">
         <aside className="min-w-0 border-r border-[#343434] px-6 py-[22px] max-[700px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:py-[18px]">
           <div className={labelClasses}>FILE EXPLORER</div>
           <h2 className="mt-2.5 mb-[22px] text-[22px] font-bold tracking-[-0.04em]">
