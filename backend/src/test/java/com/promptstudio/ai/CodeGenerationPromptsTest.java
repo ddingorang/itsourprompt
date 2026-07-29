@@ -1,5 +1,6 @@
 package com.promptstudio.ai;
 
+import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.problem.domain.ProblemFile;
@@ -41,7 +42,9 @@ class CodeGenerationPromptsTest {
                                 new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED)
                         )),
                         new AttemptView.TurnView("두 번째 요청", "두 번째 요약", List.of())
-                )
+                ),
+                AttemptStatus.IN_PROGRESS,
+                null
         );
 
         List<Message> messages = CodeGenerationPrompts.messages(attempt, "세 번째 요청");
@@ -62,7 +65,7 @@ class CodeGenerationPromptsTest {
         AttemptView attempt = new AttemptView(1L, 1L, List.of(
                 new ProblemFile("src/Main.java", "class Main {}"),
                 new ProblemFile("src/Util.java", "class Util {}")
-        ), List.of());
+        ), List.of(), AttemptStatus.IN_PROGRESS, null);
 
         List<Message> messages = CodeGenerationPrompts.messages(attempt, "Hello 출력해줘");
 
@@ -88,6 +91,7 @@ class CodeGenerationPromptsTest {
     }
 
     private AttemptView attemptWithoutTurns() {
-        return new AttemptView(1L, 1L, List.of(new ProblemFile("src/Main.java", "class Main {}")), List.of());
+        return new AttemptView(1L, 1L, List.of(new ProblemFile("src/Main.java", "class Main {}")), List.of(),
+                AttemptStatus.IN_PROGRESS, null);
     }
 }

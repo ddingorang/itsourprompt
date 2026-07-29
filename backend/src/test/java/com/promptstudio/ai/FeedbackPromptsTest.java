@@ -1,5 +1,6 @@
 package com.promptstudio.ai;
 
+import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.problem.domain.ProblemView;
@@ -22,7 +23,7 @@ class FeedbackPromptsTest {
                 new AttemptView.TurnView("두 번째 프롬프트", "두 번째 요약", List.of(
                         new FileChange("src/Util.java", FileChange.ChangeType.ADDED)
                 ))
-        ));
+        ), AttemptStatus.IN_PROGRESS, null);
 
         String prompt = FeedbackPrompts.userPrompt(problem, attempt);
 
@@ -41,7 +42,7 @@ class FeedbackPromptsTest {
     void 턴에_변경_파일이_없으면_표시_문구를_넣는다() {
         AttemptView attempt = new AttemptView(1L, 1L, List.of(), List.of(
                 new AttemptView.TurnView("프롬프트", "요약", List.of())
-        ));
+        ), AttemptStatus.IN_PROGRESS, null);
 
         String prompt = FeedbackPrompts.userPrompt(problem, attempt);
 

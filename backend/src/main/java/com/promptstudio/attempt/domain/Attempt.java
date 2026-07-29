@@ -1,5 +1,6 @@
 package com.promptstudio.attempt.domain;
 
+import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import jakarta.persistence.CascadeType;
@@ -7,6 +8,8 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -40,6 +43,13 @@ public class Attempt {
     @OrderColumn(name = "ordinal")
     private List<Turn> turns = new ArrayList<>();
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private AttemptStatus status = AttemptStatus.IN_PROGRESS;
+
+    @Column(name = "feedback")
+    private String feedback;
+
     protected Attempt() {
     }
 
@@ -53,9 +63,22 @@ public class Attempt {
     }
 
     public void applyTurn(String userPrompt, GeneratedCode generated) {
+        if (status == AttemptStatus.SUBMITTED) {
+            throw new AttemptAlreadySubmittedException(id);
+        }
+
         turns.add(new Turn(userPrompt, generated.summary(), FileChanges.diff(currentFiles, generated.files())));
         currentFiles.clear();
         currentFiles.addAll(generated.files());
+    }
+
+    public void submit(String feedback) {
+        if (status == AttemptStatus.SUBMITTED) {
+            throw new AttemptAlreadySubmittedException(id);
+        }
+
+        this.status = AttemptStatus.SUBMITTED;
+        this.feedback = feedback;
     }
 
     public Long id() {
@@ -72,6 +95,14 @@ public class Attempt {
 
     public List<Turn> turns() {
         return List.copyOf(turns);
+    }
+
+    public AttemptStatus status() {
+        return status;
+    }
+
+    public String feedback() {
+        return feedback;
     }
 
     @Override

@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -80,6 +81,73 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.turns[0].prompt").value("Hello 출력해줘"))
                 .andExpect(jsonPath("$.turns[0].aiResponse").value("생성 요약"))
                 .andExpect(jsonPath("$.turns[0].changedFiles[0].changeType").value("MODIFIED"));
+    }
+
+    @Test
+    void 어템프트를_조회하면_상태와_피드백이_포함된다() throws Exception {
+        Long attemptId = createAttempt();
+
+        mockMvc.perform(get("/api/attempts/{id}", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.feedback").value(nullValue()));
+    }
+
+    @Test
+    void 제출하면_피드백을_반환하고_조회에_반영된다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.feedback").value("생성된 피드백"));
+
+        mockMvc.perform(get("/api/attempts/{id}", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUBMITTED"))
+                .andExpect(jsonPath("$.feedback").value("생성된 피드백"));
+    }
+
+    @Test
+    void 다시_제출해도_저장된_피드백을_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.feedback").value("생성된 피드백"));
+    }
+
+    @Test
+    void 턴이_없으면_제출이_거부된다() throws Exception {
+        Long attemptId = createAttempt();
+
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("attempt-has-no-turns"));
+    }
+
+    @Test
+    void 제출된_어템프트에_턴을_추가하면_409를_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/attempts/{id}/turns", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\":\"한 번 더 고쳐줘\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("attempt-already-submitted"));
+    }
+
+    private void addTurn(Long attemptId) throws Exception {
+        mockMvc.perform(post("/api/attempts/{id}/turns", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\":\"Hello 출력해줘\"}"))
+                .andExpect(status().isOk());
     }
 
     private Long createAttempt() throws Exception {

@@ -25,7 +25,14 @@ public class AttemptWebMapper {
             turns.add(toTurnResponse(turn));
         }
 
-        return new AttemptResponse(attempt.id(), attempt.problemId(), files, turns);
+        return new AttemptResponse(
+                attempt.id(),
+                attempt.problemId(),
+                files,
+                turns,
+                attempt.status(),
+                attempt.feedback()
+        );
     }
 
     private AttemptResponse.TurnResponse toTurnResponse(AttemptView.TurnView turn) {

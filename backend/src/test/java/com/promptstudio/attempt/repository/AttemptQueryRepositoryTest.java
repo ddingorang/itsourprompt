@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.repository;
 
 import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.attempt.domain.GeneratedCode;
@@ -69,6 +70,24 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
         assertThat(view.turns().get(1).userPrompt()).isEqualTo("Util도 만들어줘");
         assertThat(view.turns().get(1).changes())
                 .containsExactly(new FileChange("src/Util.java", FileChange.ChangeType.ADDED));
+    }
+
+    @Test
+    void 상태와_피드백을_함께_조회한다() {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+
+        AttemptView started = attemptQueryRepository.findById(attempt.id()).orElseThrow();
+
+        assertThat(started.status()).isEqualTo(AttemptStatus.IN_PROGRESS);
+        assertThat(started.feedback()).isNull();
+
+        attempt.submit("저장된 피드백");
+        attemptRepository.save(attempt);
+
+        AttemptView submitted = attemptQueryRepository.findById(attempt.id()).orElseThrow();
+
+        assertThat(submitted.status()).isEqualTo(AttemptStatus.SUBMITTED);
+        assertThat(submitted.feedback()).isEqualTo("저장된 피드백");
     }
 
     @Test

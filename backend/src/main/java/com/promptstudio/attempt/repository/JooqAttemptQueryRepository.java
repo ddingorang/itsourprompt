@@ -1,5 +1,6 @@
 package com.promptstudio.attempt.repository;
 
+import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.problem.domain.ProblemFile;
@@ -18,12 +19,14 @@ import static com.promptstudio.attempt.repository.AttemptTables.CHANGE_ORDINAL;
 import static com.promptstudio.attempt.repository.AttemptTables.CHANGE_PATH;
 import static com.promptstudio.attempt.repository.AttemptTables.CHANGE_TURN_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.CHANGE_TYPE;
+import static com.promptstudio.attempt.repository.AttemptTables.FEEDBACK;
 import static com.promptstudio.attempt.repository.AttemptTables.FILE_ATTEMPT_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.FILE_CONTENT;
 import static com.promptstudio.attempt.repository.AttemptTables.FILE_ORDINAL;
 import static com.promptstudio.attempt.repository.AttemptTables.FILE_PATH;
 import static com.promptstudio.attempt.repository.AttemptTables.ID;
 import static com.promptstudio.attempt.repository.AttemptTables.PROBLEM_ID;
+import static com.promptstudio.attempt.repository.AttemptTables.STATUS;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_AI_SUMMARY;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_ATTEMPT_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_FILE_CHANGE;
@@ -45,14 +48,16 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
     @Override
     @Transactional(readOnly = true)
     public Optional<AttemptView> findById(Long id) {
-        return dsl.select(ID, PROBLEM_ID, filesField(), turnsField())
+        return dsl.select(ID, PROBLEM_ID, filesField(), turnsField(), STATUS, FEEDBACK)
                 .from(ATTEMPT)
                 .where(ID.eq(id))
                 .fetchOptional(record -> new AttemptView(
                         record.value1(),
                         record.value2(),
                         record.value3(),
-                        record.value4()
+                        record.value4(),
+                        AttemptStatus.valueOf(record.value5()),
+                        record.value6()
                 ));
     }
 
