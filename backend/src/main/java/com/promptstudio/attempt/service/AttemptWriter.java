@@ -5,6 +5,7 @@ import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.repository.AttemptRepository;
+import com.promptstudio.attempt.repository.IdempotencyRepository;
 import com.promptstudio.problem.domain.Problem;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,23 +18,36 @@ import org.springframework.transaction.annotation.Transactional;
 class AttemptWriter {
 
     private final AttemptRepository attemptRepository;
+    private final IdempotencyRepository idempotencyRepository;
 
-    AttemptWriter(AttemptRepository attemptRepository) {
+    AttemptWriter(AttemptRepository attemptRepository, IdempotencyRepository idempotencyRepository) {
         this.attemptRepository = attemptRepository;
+        this.idempotencyRepository = idempotencyRepository;
     }
 
     @Transactional
-    AttemptView start(Problem problem) {
-        return AttemptView.from(attemptRepository.save(Attempt.start(problem)));
+    AttemptView start(Problem problem, String idempotencyKey) {
+        Attempt attempt = attemptRepository.save(Attempt.start(problem));
+
+        markCompleted(idempotencyKey, attempt.id());
+
+        return AttemptView.from(attempt);
     }
 
     @Transactional
-    AttemptView appendTurn(Long attemptId, String userPrompt, GeneratedCode generated) {
+    AttemptView appendTurn(Long attemptId, String userPrompt, GeneratedCode generated, String idempotencyKey) {
         Attempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         attempt.applyTurn(userPrompt, generated);
+        markCompleted(idempotencyKey, attemptId);
 
         return AttemptView.from(attempt);
+    }
+
+    private void markCompleted(String idempotencyKey, Long attemptId) {
+        if (idempotencyKey != null) {
+            idempotencyRepository.markCompleted(idempotencyKey, attemptId);
+        }
     }
 }

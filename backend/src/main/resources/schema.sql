@@ -46,3 +46,10 @@ CREATE TABLE IF NOT EXISTS turn_file_change (
     change_type VARCHAR(20)  NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_turn_file_change_turn ON turn_file_change (turn_id, ordinal);
+
+CREATE TABLE IF NOT EXISTS idempotency_record (
+    idempotency_key VARCHAR(64) PRIMARY KEY,
+    attempt_id      BIGINT REFERENCES attempt (id) ON DELETE CASCADE,
+    status          VARCHAR(20)              NOT NULL,
+    created_at      TIMESTAMP WITH TIME ZONE NOT NULL
+);
