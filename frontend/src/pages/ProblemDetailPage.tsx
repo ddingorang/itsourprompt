@@ -449,7 +449,7 @@ export default function ProblemDetailPage() {
                 <button
                   aria-selected={activeTab === tab}
                   className={[
-                    'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-[11px] font-bold tracking-[0.06em]',
+                    'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm leading-[1.5] font-bold tracking-[0.08em]',
                     tab === 'problem' ? 'border-r border-[#3f3f3f]' : '',
                     activeTab === tab
                       ? 'border-b-2 border-b-[#d6ff50] text-[#d6ff50]'
@@ -485,14 +485,6 @@ export default function ProblemDetailPage() {
                     >
                       {problem.specMd}
                     </ReactMarkdown>
-                  </div>
-                  <div className="mt-[15px]">
-                    <span className="mr-1 mb-[5px] inline-block border border-[#4c4c4c] px-[7px] py-[5px] font-mono text-[9px] text-[#bdbdbd]">
-                      READ ONLY
-                    </span>
-                    <span className="mr-1 mb-[5px] inline-block border border-[#4c4c4c] px-[7px] py-[5px] font-mono text-[9px] text-[#bdbdbd]">
-                      STATELESS
-                    </span>
                   </div>
                 </>
               ) : promptLogs.length ? (
