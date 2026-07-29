@@ -23,8 +23,11 @@ public class ProblemService {
     public List<ProblemView> getProblems() {
         List<ProblemView> views = new ArrayList<>();
 
+        // 저장소에서 사라진 문제는 목록에서 감춘다. 이미 시작한 어템프트를 위해 단건 조회는 계속 열어 둔다.
         for (Problem problem : problemRepository.findAll()) {
-            views.add(ProblemView.from(problem));
+            if (problem.active()) {
+                views.add(ProblemView.from(problem));
+            }
         }
 
         return views;

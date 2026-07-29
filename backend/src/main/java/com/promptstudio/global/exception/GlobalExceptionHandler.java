@@ -6,6 +6,7 @@ import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.DuplicateRequestException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
+import com.promptstudio.attempt.exception.InactiveProblemException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.attempt.port.CodeGenerationException;
 import com.promptstudio.attempt.port.CodeGenerationTimeoutException;
@@ -28,6 +29,16 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(InactiveProblemException.class)
+    public ResponseEntity<ApiErrorResponse> handleInactiveProblem(InactiveProblemException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "problem-inactive",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(AttemptNotFoundException.class)

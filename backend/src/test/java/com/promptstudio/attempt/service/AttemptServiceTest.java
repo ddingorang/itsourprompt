@@ -7,6 +7,7 @@ import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
+import com.promptstudio.attempt.exception.InactiveProblemException;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
@@ -63,6 +64,17 @@ class AttemptServiceTest extends DatabaseTest {
         assertThatThrownBy(() -> attemptService.startAttempt(999L))
                 .isInstanceOf(ProblemNotFoundException.class)
                 .hasMessage("문제 ID 999를 찾을 수 없습니다.");
+    }
+
+    @Test
+    void 비활성_문제로_시작하면_예외를_던진다() {
+        Problem problem = newProblem();
+        problem.deactivate();
+        problemRepository.save(problem);
+
+        assertThatThrownBy(() -> attemptService.startAttempt(problem.id()))
+                .isInstanceOf(InactiveProblemException.class)
+                .hasMessage("문제 ID " + problem.id() + "는 비활성 상태여서 새로 시작할 수 없습니다.");
     }
 
     @Test
