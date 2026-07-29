@@ -291,10 +291,16 @@ export default function ProblemDetailPage() {
 
       navigate(`/feedback/${problem.id}`);
     } catch (error: unknown) {
-      showStatus(
-        getErrorMessage(error, '피드백 생성에 실패했습니다. 재실행 없이 다시 제출해주세요.'),
-        'error',
-      );
+      navigate(`/feedback/${problem.id}/error`, {
+        state: {
+          message: getErrorMessage(
+            error,
+            '피드백 생성에 실패했습니다. 잠시 후 다시 제출해주세요.',
+          ),
+          problemTitle: problem.title,
+          status: error instanceof ApiProblemError ? error.problem.status : undefined,
+        },
+      });
     } finally {
       setIsSubmitting(false);
     }
