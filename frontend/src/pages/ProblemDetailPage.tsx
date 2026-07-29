@@ -58,7 +58,17 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 function findFile(files: RepositoryFile[], path: string): RepositoryFile | undefined {
-  return files.find((file) => file.path === path);
+  const normalizedPath = normalizeRepositoryPath(path);
+  return files.find(
+    (file) => normalizeRepositoryPath(file.path) === normalizedPath,
+  );
+}
+
+function normalizeRepositoryPath(path: string): string {
+  return path
+    .replaceAll('\\', '/')
+    .replace(/\/+/g, '/')
+    .replace(/^\/+|\/+$/g, '');
 }
 
 function createFileTree(
@@ -75,12 +85,15 @@ function createFileTree(
   const root: FileTreeNode[] = [];
 
   [...paths].sort((a, b) => a.localeCompare(b)).forEach((path) => {
-    const segments = path.split('/').filter(Boolean);
+    const normalizedPath = normalizeRepositoryPath(path);
+    const segments = normalizedPath.split('/').filter(Boolean);
     let children = root;
 
     segments.forEach((segment, index) => {
-      const nodePath = segments.slice(0, index + 1).join('/');
       const isFile = index === segments.length - 1;
+      const nodePath = isFile
+        ? path
+        : segments.slice(0, index + 1).join('/');
       let node = children.find(
         (child) => child.name === segment && child.type === (isFile ? 'file' : 'folder'),
       );
@@ -322,12 +335,17 @@ export default function ProblemDetailPage() {
         );
       }
 
+      const isSelected =
+        normalizeRepositoryPath(selectedFile) ===
+        normalizeRepositoryPath(item.path);
+
       return (
         <button
+          aria-current={isSelected ? 'true' : undefined}
           className={[
             'grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_max-content_28px] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-inherit hover:text-[#f5f5ef]',
-            selectedFile === item.path
-              ? 'bg-[#252525] text-[#d6ff50] hover:text-[#d6ff50]'
+            isSelected
+              ? 'bg-[#d6ff50] text-[#090909] hover:text-[#090909]'
               : '',
             item.deleted ? 'opacity-60 line-through' : '',
           ]
@@ -335,19 +353,33 @@ export default function ProblemDetailPage() {
             .join(' ')}
           key={item.path}
           onClick={() => setSelectedFile(item.path)}
-          style={{ paddingLeft: `${7 + depth * 14}px` }}
+          style={{
+            paddingLeft: `${7 + depth * 14}px`,
+            ...(isSelected
+              ? {
+                  backgroundColor: '#d6ff50',
+                  color: '#090909',
+                }
+              : {}),
+          }}
           title={item.path}
           type="button"
         >
-          <span className="text-[11px] text-[#777]" aria-hidden="true">
+          <span
+            className={[
+              'text-[11px]',
+              isSelected ? 'text-[#090909]' : 'text-[#777]',
+            ].join(' ')}
+            aria-hidden="true"
+          >
             ◇
           </span>
           <span className="whitespace-nowrap">{item.name}</span>
           <span
             className={[
               'text-right font-black',
-              selectedFile === item.path
-                ? 'text-[#d6ff50]'
+              isSelected
+                ? 'text-[#090909]'
                 : item.changeType
                   ? changeColorClasses[item.changeType]
                   : '',
@@ -387,7 +419,7 @@ export default function ProblemDetailPage() {
           <div className={labelClasses}>FILE EXPLORER</div>
 
           <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-auto max-[700px]:flex-none max-[700px]:overflow-visible">
-            <div className="grid min-w-max select-none gap-[3px] font-mono text-xs leading-[1.5] text-[#a3a3a3]">
+            <div className="grid w-max min-w-full select-none gap-[3px] font-mono text-xs leading-[1.5] text-[#a3a3a3]">
               {renderFileTree(fileTree)}
             </div>
           </div>
