@@ -7,11 +7,12 @@ type HeaderProps = {
   onLogout?: () => void;
 };
 
-const defaultHeaderClasses = {
-  '640':
-    'sticky top-0 z-10 flex min-h-[66px] items-center justify-between gap-6 border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[640px]:px-5 max-[480px]:flex-col max-[480px]:items-start max-[480px]:gap-3 max-[480px]:py-4',
-  '760':
-    'sticky top-0 z-10 flex min-h-[66px] items-center justify-between gap-6 border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[760px]:px-5 max-[480px]:flex-col max-[480px]:items-start max-[480px]:gap-3 max-[480px]:py-4',
+const defaultHeaderBaseClasses =
+  'sticky top-0 z-10 flex min-h-[66px] items-center justify-between gap-6 border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[480px]:flex-col max-[480px]:items-start max-[480px]:gap-3 max-[480px]:py-4';
+
+const mobilePaddingClasses = {
+  '640': 'max-[640px]:px-5',
+  '760': 'max-[760px]:px-5',
 };
 
 const workspaceHeaderClasses =
@@ -32,7 +33,7 @@ export default function Header({
   const headerClasses =
     variant === 'workspace'
       ? workspaceHeaderClasses
-      : defaultHeaderClasses[mobileBreakpoint];
+      : `${defaultHeaderBaseClasses} ${mobilePaddingClasses[mobileBreakpoint]}`;
 
   return (
     <header className={headerClasses}>
