@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 
 type HeaderProps = {
   variant?: 'default' | 'workspace';
@@ -17,8 +17,11 @@ const defaultHeaderClasses = {
 const workspaceHeaderClasses =
   'flex min-h-[66px] items-center justify-between gap-6 border-b border-[#343434] bg-[#090909] px-6 font-mono text-[15px] tracking-[0.04em] max-[700px]:px-4 max-[480px]:flex-col max-[480px]:items-start max-[480px]:gap-3 max-[480px]:py-4';
 
-const menuLinkClasses =
-  'text-[#a3a3a3] transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none';
+const menuItemClasses =
+  'transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none';
+
+const getMenuLinkClasses = ({ isActive }: { isActive: boolean }) =>
+  `${menuItemClasses} ${isActive ? 'text-[#d6ff50]' : 'text-[#a3a3a3]'}`;
 
 export default function Header({
   variant = 'default',
@@ -44,34 +47,34 @@ export default function Header({
         className="flex items-center gap-3 whitespace-nowrap max-[480px]:w-full max-[480px]:justify-between max-[480px]:gap-2 max-[480px]:text-xs"
         aria-label="주요 메뉴"
       >
-        <Link className={menuLinkClasses} to="/problems">
+        <NavLink className={getMenuLinkClasses} to="/problems">
           PROBLEM LIST
-        </Link>
+        </NavLink>
         <span className="text-[#555]" aria-hidden="true">
           |
         </span>
         {mode === 'guest' ? (
           <>
-            <Link className={menuLinkClasses} to="/login">
+            <NavLink className={getMenuLinkClasses} to="/login">
               LOGIN
-            </Link>
+            </NavLink>
             <span className="text-[#555]" aria-hidden="true">
               |
             </span>
-            <Link className={menuLinkClasses} to="/signup">
+            <NavLink className={getMenuLinkClasses} to="/signup">
               SIGN UP
-            </Link>
+            </NavLink>
           </>
         ) : (
           <>
-            <Link className={menuLinkClasses} to="/my">
+            <NavLink className={getMenuLinkClasses} to="/my">
               PROFILE
-            </Link>
+            </NavLink>
             <span className="text-[#555]" aria-hidden="true">
               |
             </span>
             <button
-              className={`${menuLinkClasses} cursor-pointer border-0 bg-transparent p-0 font-inherit tracking-inherit`}
+              className={`${menuItemClasses} cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] text-[#a3a3a3]`}
               type="button"
               onClick={onLogout}
             >

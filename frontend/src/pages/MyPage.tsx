@@ -29,7 +29,7 @@ const recentActivity = [
 export default function MyPage() {
   return (
     <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <Header />
+      <Header mode="authenticated" />
 
       <main className="mx-auto w-[calc(100%_-_10vw)] flex-1 pt-[clamp(36px,5vw,64px)] pb-24 max-[640px]:w-[calc(100%_-_40px)]">
         <div className="mb-[54px] font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
