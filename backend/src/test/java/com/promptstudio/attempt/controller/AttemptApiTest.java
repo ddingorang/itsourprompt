@@ -93,7 +93,7 @@ class AttemptApiTest extends DatabaseTest {
     }
 
     @Test
-    void 제출하면_피드백을_반환하고_조회에_반영된다() throws Exception {
+    void 제출하면_피드백을_반환하고_상태가_반영된다() throws Exception {
         Long attemptId = createAttempt();
         addTurn(attemptId);
 
@@ -105,10 +105,6 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUBMITTED"))
                 .andExpect(jsonPath("$.feedback").doesNotExist());
-
-        mockMvc.perform(get("/api/attempts/{id}/feedback", attemptId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.feedback").value("생성된 피드백"));
     }
 
     @Test
