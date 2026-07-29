@@ -49,7 +49,7 @@ export default function ErrorPage() {
 
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button to={errorState.returnPath ?? '/'}>
-              {errorState.returnLabel ?? '이전 화면으로'}
+              {errorState.returnLabel ?? '이전 페이지로'}
             </Button>
             <Button to="/problems" variant="secondary">
               문제 목록으로
