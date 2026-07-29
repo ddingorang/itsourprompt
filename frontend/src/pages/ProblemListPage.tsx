@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { getProblems } from '../features/problem/api';
 import type { ProblemSummary } from '../features/problem/types';
 import { ApiProblemError } from '../shared/api/apiClient';
+import Footer from '../shared/components/Footer';
+import Header from '../shared/components/Header';
 
 export default function ProblemListPage() {
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
@@ -40,21 +42,10 @@ export default function ProblemListPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
-      <header className="sticky top-0 z-10 flex min-h-[66px] items-center justify-between border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[640px]:px-5">
-        <Link
-          className="text-xl leading-none font-black tracking-[-1.6px] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
-          to="/"
-          aria-label="홈으로 이동"
-        >
-          prompt<i className="not-italic text-[#d6ff50]">.</i>practice
-        </Link>
-        <div className="text-[#a3a3a3] max-[640px]:hidden">
-          ANONYMOUS SESSION / NO HISTORY
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+      <Header />
 
-      <main className="mx-auto w-[calc(100%_-_10vw)] pt-[clamp(32px,5vw,56px)] pb-20 max-[640px]:w-[min(calc(100%_-_32px),1080px)] max-[640px]:pt-10">
+      <main className="mx-auto w-[calc(100%_-_10vw)] flex-1 pt-[clamp(32px,5vw,56px)] pb-20 max-[640px]:w-[min(calc(100%_-_32px),1080px)] max-[640px]:pt-10">
         <header className="flex items-end justify-between gap-6 pb-[54px] max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-4">
           <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
             PROBLEM LIST
@@ -113,6 +104,7 @@ export default function ProblemListPage() {
           </section>
         )}
       </main>
+      <Footer />
     </div>
   );
 }
