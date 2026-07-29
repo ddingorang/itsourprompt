@@ -241,21 +241,21 @@ export default function ProblemDetailPage() {
   }
 
   return (
-    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div className="flex h-screen min-w-80 flex-col overflow-hidden bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif] max-[700px]:h-auto max-[700px]:min-h-screen max-[700px]:overflow-visible">
       <Header variant="workspace" />
 
-      <main className="grid min-h-0 flex-1 grid-cols-[230px_minmax(360px,1fr)_minmax(340px,390px)] max-[1080px]:grid-cols-[190px_minmax(0,1fr)] max-[700px]:block">
-        <aside className="min-w-0 border-r border-[#343434] px-6 py-[22px] max-[700px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:py-[18px]">
+      <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[230px_minmax(360px,1fr)_minmax(340px,390px)] max-[1080px]:grid-cols-[190px_minmax(0,1fr)] max-[700px]:block max-[700px]:overflow-visible">
+        <aside className="workspace-scrollbar min-h-0 min-w-0 overflow-auto border-r border-[#343434] px-6 py-[22px] max-[700px]:overflow-visible max-[700px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:py-[18px]">
           <div className={labelClasses}>FILE EXPLORER</div>
           <h2 className="mt-2.5 mb-[22px] text-[22px] font-bold tracking-[-0.04em]">
             problem-{problem.id}
           </h2>
 
-          <div className="mt-[18px] grid select-none gap-[3px] font-mono text-xs leading-[1.5] text-[#a3a3a3]">
+          <div className="mt-[18px] grid min-w-max select-none gap-[3px] font-mono text-xs leading-[1.5] text-[#a3a3a3]">
             {treeItems.map((item) => (
               <button
                 className={[
-                  'grid min-h-[34px] w-full cursor-pointer grid-cols-[minmax(0,1fr)_28px] items-center gap-2 border-0 bg-transparent px-[7px] text-left font-inherit text-inherit hover:text-[#f5f5ef]',
+                  'grid min-h-[34px] w-full cursor-pointer grid-cols-[max-content_28px] items-center gap-2 border-0 bg-transparent px-[7px] text-left font-inherit text-inherit hover:text-[#f5f5ef]',
                   selectedFile === item.path
                     ? 'bg-[#d6ff50] text-[#090909] hover:text-[#090909]'
                     : '',
@@ -268,7 +268,7 @@ export default function ProblemDetailPage() {
                 style={{ paddingLeft: `${7 + Math.min(item.depth, 3) * 14}px` }}
                 type="button"
               >
-                <span className="overflow-hidden text-ellipsis whitespace-nowrap">
+                <span className="whitespace-nowrap">
                   {item.path.split('/').pop()}
                 </span>
                 <span
@@ -294,7 +294,7 @@ export default function ProblemDetailPage() {
           </div>
         </aside>
 
-        <section className="min-w-0 border-r border-[#343434] px-7 pt-[22px] pb-10 max-[1080px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
+        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[#343434] px-7 pt-[22px] pb-10 max-[1080px]:border-r-0 max-[700px]:block max-[700px]:overflow-visible max-[700px]:border-b max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
           <div className="mb-5 flex items-start justify-between gap-[18px]">
             <div>
               <div className={labelClasses}>
@@ -307,8 +307,8 @@ export default function ProblemDetailPage() {
             </span>
           </div>
 
-          <div className="min-h-[360px] overflow-auto border border-[#292929] bg-[#202020]">
-            <div className="flex justify-between gap-3 border-b border-[#333] px-3.5 py-[11px] font-mono text-[10px] text-[#a3a3a3]">
+          <div className="workspace-scrollbar min-h-0 flex-1 overflow-auto border border-[#292929] bg-[#202020] max-[700px]:min-h-[360px]">
+            <div className="sticky top-0 z-[1] flex min-w-max justify-between gap-3 border-b border-[#333] bg-[#202020] px-3.5 py-[11px] font-mono text-[10px] text-[#a3a3a3]">
               <span>{selectedFile}</span>
               <span>{runResult ? 'RESULT' : 'ORIGINAL'}</span>
             </div>
@@ -318,8 +318,8 @@ export default function ProblemDetailPage() {
           </div>
         </section>
 
-        <aside className="col-span-1 flex min-w-0 flex-col px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
-          <section className="border-b border-[#343434] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0">
+        <aside className="col-span-1 flex min-h-0 min-w-0 flex-col overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
+          <section className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-b border-[#343434] pb-[22px] max-[1080px]:overflow-visible max-[1080px]:border-b-0 max-[1080px]:pb-0">
             <div
               className="grid grid-cols-2 border border-[#3f3f3f]"
               role="tablist"
@@ -351,12 +351,11 @@ export default function ProblemDetailPage() {
             <div className="min-h-[210px] pt-[18px]" role="tabpanel">
               {activeTab === 'problem' ? (
                 <>
-                  <div className={labelClasses}>CURRENT PROBLEM</div>
                   <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[#a3a3a3] [word-break:keep-all]">
                     <ReactMarkdown
                       components={{
                         h1: ({ children }) => (
-                          <h1 className="my-3 mt-2.5 text-[30px] leading-[1.05] font-bold tracking-[-0.045em] text-[#f5f5ef]">
+                          <h1 className="my-3 mt-2.5 text-[24px] leading-[1.05] font-bold tracking-[-0.045em] text-[#f5f5ef]">
                             {children}
                           </h1>
                         ),
