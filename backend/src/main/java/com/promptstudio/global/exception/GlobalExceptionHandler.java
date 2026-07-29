@@ -5,6 +5,8 @@ import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.DuplicateRequestException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
+import com.promptstudio.attempt.exception.FeedbackNotFoundException;
+import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.attempt.port.CodeGenerationException;
 import com.promptstudio.attempt.port.CodeGenerationTimeoutException;
@@ -33,10 +35,30 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(InactiveProblemException.class)
+    public ResponseEntity<ApiErrorResponse> handleInactiveProblem(InactiveProblemException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "problem-inactive",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(AttemptNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleAttemptNotFound(AttemptNotFoundException exception) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "attempt-not-found",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(FeedbackNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleFeedbackNotFound(FeedbackNotFoundException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "feedback-not-found",
                 exception.getMessage()
         );
 

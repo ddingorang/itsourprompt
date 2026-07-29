@@ -7,6 +7,8 @@ import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
+import com.promptstudio.attempt.exception.FeedbackNotFoundException;
+import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.attempt.repository.AttemptQueryRepository;
@@ -55,15 +57,25 @@ public class AttemptService {
         String key = normalizeKey(idempotencyKey);
 
         if (key == null) {
-            return attemptWriter.start(getProblem(problemId), null);
+            return attemptWriter.start(getActiveProblem(problemId), null);
         }
 
-        return withIdempotency(key, () -> attemptWriter.start(getProblem(problemId), key));
+        return withIdempotency(key, () -> attemptWriter.start(getActiveProblem(problemId), key));
     }
 
     public AttemptView getAttempt(Long attemptId) {
         return attemptQueryRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+    }
+
+    public String getFeedback(Long attemptId) {
+        AttemptView attempt = getAttempt(attemptId);
+
+        if (attempt.status() != AttemptStatus.SUBMITTED) {
+            throw new FeedbackNotFoundException(attemptId);
+        }
+
+        return attempt.feedback();
     }
 
     public AttemptView addTurn(Long attemptId, String userPrompt) {
@@ -152,5 +164,18 @@ public class AttemptService {
     private Problem getProblem(Long problemId) {
         return problemRepository.findById(problemId)
                 .orElseThrow(() -> new ProblemNotFoundException(problemId));
+    }
+
+    /**
+     * 이미 시작한 어템프트는 계속 풀 수 있지만, 비활성 문제로 새로 시작할 수는 없다.
+     */
+    private Problem getActiveProblem(Long problemId) {
+        Problem problem = getProblem(problemId);
+
+        if (!problem.active()) {
+            throw new InactiveProblemException(problemId);
+        }
+
+        return problem;
     }
 }

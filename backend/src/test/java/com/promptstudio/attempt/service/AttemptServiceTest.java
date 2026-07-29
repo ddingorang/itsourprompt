@@ -6,6 +6,8 @@ import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
+import com.promptstudio.attempt.exception.FeedbackNotFoundException;
+import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
@@ -62,6 +64,17 @@ class AttemptServiceTest extends DatabaseTest {
         assertThatThrownBy(() -> attemptService.startAttempt(999L))
                 .isInstanceOf(ProblemNotFoundException.class)
                 .hasMessage("문제 ID 999를 찾을 수 없습니다.");
+    }
+
+    @Test
+    void 비활성_문제로_시작하면_예외를_던진다() {
+        Problem problem = newProblem();
+        problem.deactivate();
+        problemRepository.save(problem);
+
+        assertThatThrownBy(() -> attemptService.startAttempt(problem.id()))
+                .isInstanceOf(InactiveProblemException.class)
+                .hasMessage("문제 ID " + problem.id() + "는 비활성 상태여서 새로 시작할 수 없습니다.");
     }
 
     @Test
@@ -123,6 +136,32 @@ class AttemptServiceTest extends DatabaseTest {
         assertThat(feedbackGenerator.receivedAttempt()).isEqualTo(withTurn);
         assertThat(attemptService.getAttempt(started.id()).status()).isEqualTo(AttemptStatus.SUBMITTED);
         assertThat(attemptService.getAttempt(started.id()).feedback()).isEqualTo("생성된 피드백");
+    }
+
+    @Test
+    void 제출된_어템프트의_피드백을_조회하면_저장된_피드백을_반환한다() {
+        AttemptView started = attemptService.startAttempt(newProblem().id());
+        attemptService.addTurn(started.id(), "Hello 출력해줘");
+        attemptService.submit(started.id());
+
+        assertThat(attemptService.getFeedback(started.id())).isEqualTo("생성된 피드백");
+    }
+
+    @Test
+    void 제출_전에_피드백을_조회하면_예외를_던진다() {
+        AttemptView started = attemptService.startAttempt(newProblem().id());
+        attemptService.addTurn(started.id(), "Hello 출력해줘");
+
+        assertThatThrownBy(() -> attemptService.getFeedback(started.id()))
+                .isInstanceOf(FeedbackNotFoundException.class)
+                .hasMessage("어템프트 ID " + started.id() + "의 피드백이 아직 없습니다. 제출 후 조회할 수 있습니다.");
+    }
+
+    @Test
+    void 없는_어템프트의_피드백을_조회하면_예외를_던진다() {
+        assertThatThrownBy(() -> attemptService.getFeedback(999L))
+                .isInstanceOf(AttemptNotFoundException.class)
+                .hasMessage("어템프트 ID 999를 찾을 수 없습니다.");
     }
 
     @Test
@@ -214,6 +253,6 @@ class AttemptServiceTest extends DatabaseTest {
     }
 
     private Problem newProblem() {
-        return problemRepository.save(new Problem("제목", "명세", List.of(SKELETON)));
+        return problemRepository.save(new Problem("hello-world", "제목", "명세", List.of(SKELETON)));
     }
 }

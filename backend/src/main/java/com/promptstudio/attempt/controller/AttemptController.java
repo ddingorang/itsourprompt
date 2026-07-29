@@ -102,6 +102,27 @@ public class AttemptController {
         return attemptWebMapper.toAttemptResponse(attemptService.getAttempt(id));
     }
 
+    @GetMapping("/{id}/feedback")
+    @Operation(
+            summary = "피드백 조회",
+            description = "제출 시 생성해 저장한 프롬프트 피드백을 반환합니다. 제출 전에는 조회할 수 없습니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "피드백 조회 성공",
+                    content = @Content(schema = @Schema(implementation = FeedbackResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "어템프트를 찾을 수 없거나, 아직 제출하지 않아 피드백이 없음",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
+            )
+    })
+    public FeedbackResponse getFeedback(@PathVariable("id") Long id) {
+        return new FeedbackResponse(attemptService.getFeedback(id));
+    }
+
     @PostMapping("/{id}/turns")
     @Operation(
             summary = "턴 추가",

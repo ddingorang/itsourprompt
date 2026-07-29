@@ -29,8 +29,8 @@ class ProblemApiTest extends DatabaseTest {
 
     @Test
     void 문제_목록을_조회한다() throws Exception {
-        problemRepository.save(newProblem("Hello World 출력"));
-        problemRepository.save(newProblem("SSAFY 출력"));
+        problemRepository.save(newProblem("hello-world", "Hello World 출력"));
+        problemRepository.save(newProblem("print-ssafy", "SSAFY 출력"));
 
         mockMvc.perform(get("/api/problems"))
                 .andExpect(status().isOk())
@@ -41,7 +41,7 @@ class ProblemApiTest extends DatabaseTest {
 
     @Test
     void 문제_상세를_조회한다() throws Exception {
-        Problem saved = problemRepository.save(newProblem("Hello World 출력"));
+        Problem saved = problemRepository.save(newProblem("hello-world", "Hello World 출력"));
 
         mockMvc.perform(get("/api/problems/{id}", saved.id()))
                 .andExpect(status().isOk())
@@ -60,8 +60,36 @@ class ProblemApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.code").value("problem-not-found"));
     }
 
-    private Problem newProblem(String title) {
-        return new Problem(null, title, "# " + title, List.of(
+    @Test
+    void 비활성_문제는_목록에서_제외한다() throws Exception {
+        problemRepository.save(newProblem("hello-world", "Hello World 출력"));
+        deactivated("print-ssafy", "SSAFY 출력");
+
+        mockMvc.perform(get("/api/problems"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.problems.length()").value(1))
+                .andExpect(jsonPath("$.problems[0].title").value("Hello World 출력"));
+    }
+
+    @Test
+    void 비활성_문제도_상세는_조회한다() throws Exception {
+        Problem inactive = deactivated("print-ssafy", "SSAFY 출력");
+
+        mockMvc.perform(get("/api/problems/{id}", inactive.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(inactive.id()))
+                .andExpect(jsonPath("$.title").value("SSAFY 출력"));
+    }
+
+    private Problem deactivated(String slug, String title) {
+        Problem problem = problemRepository.save(newProblem(slug, title));
+        problem.deactivate();
+
+        return problemRepository.save(problem);
+    }
+
+    private Problem newProblem(String slug, String title) {
+        return new Problem(slug, title, "# " + title, List.of(
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
         ));
     }

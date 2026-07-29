@@ -15,7 +15,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
-import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -84,17 +83,17 @@ class AttemptApiTest extends DatabaseTest {
     }
 
     @Test
-    void 어템프트를_조회하면_상태와_피드백이_포함된다() throws Exception {
+    void 어템프트를_조회하면_상태가_포함되고_피드백은_없다() throws Exception {
         Long attemptId = createAttempt();
 
         mockMvc.perform(get("/api/attempts/{id}", attemptId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
-                .andExpect(jsonPath("$.feedback").value(nullValue()));
+                .andExpect(jsonPath("$.feedback").doesNotExist());
     }
 
     @Test
-    void 제출하면_피드백을_반환하고_조회에_반영된다() throws Exception {
+    void 제출하면_피드백을_반환하고_상태가_반영된다() throws Exception {
         Long attemptId = createAttempt();
         addTurn(attemptId);
 
@@ -105,7 +104,36 @@ class AttemptApiTest extends DatabaseTest {
         mockMvc.perform(get("/api/attempts/{id}", attemptId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUBMITTED"))
+                .andExpect(jsonPath("$.feedback").doesNotExist());
+    }
+
+    @Test
+    void 제출된_어템프트의_피드백을_조회한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/attempts/{id}/feedback", attemptId))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.feedback").value("생성된 피드백"));
+    }
+
+    @Test
+    void 제출_전에는_피드백_조회가_404를_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+
+        mockMvc.perform(get("/api/attempts/{id}/feedback", attemptId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("feedback-not-found"));
+    }
+
+    @Test
+    void 없는_어템프트의_피드백을_조회하면_404를_반환한다() throws Exception {
+        mockMvc.perform(get("/api/attempts/{id}/feedback", 999L))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("attempt-not-found"));
     }
 
     @Test
@@ -143,6 +171,19 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.code").value("attempt-already-submitted"));
     }
 
+    @Test
+    void 비활성_문제로_어템프트를_생성하면_409를_반환한다() throws Exception {
+        Problem problem = newProblem();
+        problem.deactivate();
+        problemRepository.save(problem);
+
+        mockMvc.perform(post("/api/attempts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"problemId\":" + problem.id() + "}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("problem-inactive"));
+    }
+
     private void addTurn(Long attemptId) throws Exception {
         mockMvc.perform(post("/api/attempts/{id}/turns", attemptId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -163,7 +204,7 @@ class AttemptApiTest extends DatabaseTest {
     }
 
     private Problem newProblem() {
-        return problemRepository.save(new Problem(null, "Hello World 출력", "# Hello World 출력", List.of(
+        return problemRepository.save(new Problem("hello-world", "Hello World 출력", "# Hello World 출력", List.of(
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
         )));
     }
