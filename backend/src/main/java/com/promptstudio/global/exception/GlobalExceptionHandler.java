@@ -10,8 +10,12 @@ import com.promptstudio.attempt.port.CodeGenerationException;
 import com.promptstudio.attempt.port.CodeGenerationTimeoutException;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.attempt.port.FeedbackTimeoutException;
+import com.promptstudio.user.exception.DuplicateEmailException;
+import com.promptstudio.user.exception.DuplicateUsernameException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -76,6 +80,55 @@ public class GlobalExceptionHandler {
         ApiErrorResponse response = new ApiErrorResponse(
                 "duplicate-request",
                 exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(DuplicateUsernameException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateUsername(DuplicateUsernameException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "duplicate-username",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateEmail(DuplicateEmailException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "duplicate-email",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    /**
+     * 로그인 실패(아이디 없음/비밀번호 불일치). DaoAuthenticationProvider가
+     * UsernameNotFoundException을 BadCredentialsException으로 감싸므로 이 하나로 두 경우를 처리한다.
+     * 계정 존재 여부를 노출하지 않기 위해 어느 쪽이든 동일한 메시지를 반환한다.
+     */
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiErrorResponse> handleBadCredentials(BadCredentialsException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "bad-credentials",
+                "아이디 또는 비밀번호가 올바르지 않습니다."
+        );
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
+    /**
+     * 동시 가입 레이스 안전망: 서비스 계층 중복 검사를 동시에 통과한 두 요청 중
+     * 늦은 쪽이 users의 UNIQUE 제약에 걸리면 여기서 409로 변환한다.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "duplicate-user",
+                "이미 사용 중인 아이디 또는 이메일입니다."
         );
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
