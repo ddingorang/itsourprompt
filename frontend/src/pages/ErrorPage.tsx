@@ -10,7 +10,7 @@ export default function ErrorPage() {
   const errorState = (state ?? {}) as ErrorPageState;
 
   return (
-    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div className="flex min-h-dvh min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
       <Header mobileBreakpoint="760" />
 
       <main className="mx-auto flex w-[calc(100%_-_10vw)] flex-1 items-center justify-center py-16 max-[760px]:w-[calc(100%_-_32px)]">
