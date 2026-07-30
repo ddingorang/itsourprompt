@@ -4,6 +4,7 @@ import com.promptstudio.attempt.domain.Attempt;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
@@ -83,7 +84,8 @@ class AttemptRepositoryTest extends DatabaseTest {
                         new ProblemFile("src/Main.java", "생성된 내용"),
                         new ProblemFile("src/Util.java", "class Util {}")
                 ),
-                "둘째 요약"
+                "둘째 요약",
+                List.of()
         ));
         attemptRepository.save(attempt);
 
@@ -98,12 +100,36 @@ class AttemptRepositoryTest extends DatabaseTest {
     }
 
     @Test
+    void 턴의_툴콜_트레이스를_저장하고_순서대로_조회한다() {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+
+        attempt.applyTurn("Main을 채워줘", new GeneratedCode(
+                List.of(new ProblemFile("src/Main.java", "생성된 내용")),
+                "요약",
+                List.of(
+                        new ToolCallEntry("list_files", null),
+                        new ToolCallEntry("read_file", "src/Main.java"),
+                        new ToolCallEntry("edit_file", "src/Main.java")
+                )
+        ));
+        attemptRepository.save(attempt);
+
+        AttemptView found = attemptQueryRepository.findById(attempt.id()).orElseThrow();
+        assertThat(found.turns().getFirst().toolCalls()).containsExactly(
+                new ToolCallEntry("list_files", null),
+                new ToolCallEntry("read_file", "src/Main.java"),
+                new ToolCallEntry("edit_file", "src/Main.java")
+        );
+    }
+
+    @Test
     void 다시_저장하면_현재_파일이_교체된다() {
         Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
 
         attempt.applyTurn("Util만 남겨줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Util.java", "class Util {}")),
-                "요약"
+                "요약",
+                List.of()
         ));
         attemptRepository.save(attempt);
 
@@ -133,7 +159,7 @@ class AttemptRepositoryTest extends DatabaseTest {
     }
 
     private GeneratedCode generated(String content, String summary) {
-        return new GeneratedCode(List.of(new ProblemFile("src/Main.java", content)), summary);
+        return new GeneratedCode(List.of(new ProblemFile("src/Main.java", content)), summary, List.of());
     }
 
     private Problem newProblem() {

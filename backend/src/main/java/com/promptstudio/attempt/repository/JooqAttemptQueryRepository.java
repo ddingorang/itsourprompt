@@ -3,6 +3,7 @@ package com.promptstudio.attempt.repository;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
+import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.problem.domain.ProblemFile;
 import org.jooq.DSLContext;
 import org.jooq.Field;
@@ -28,11 +29,16 @@ import static com.promptstudio.attempt.repository.AttemptTables.FILE_PATH;
 import static com.promptstudio.attempt.repository.AttemptTables.ID;
 import static com.promptstudio.attempt.repository.AttemptTables.PROBLEM_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.STATUS;
+import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_ORDINAL;
+import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_PATH;
+import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_TOOL;
+import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_TURN_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_AI_SUMMARY;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_ATTEMPT_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_FILE_CHANGE;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_ORDINAL;
+import static com.promptstudio.attempt.repository.AttemptTables.TURN_TOOL_CALL;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_USER_PROMPT;
 import static org.jooq.impl.DSL.multiset;
 import static org.jooq.impl.DSL.select;
@@ -71,13 +77,20 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
         ).convertFrom(result -> result.map(record ->
                 new FileChange(record.value1(), FileChange.ChangeType.valueOf(record.value2()), record.value3())));
 
+        Field<List<ToolCallEntry>> toolCalls = multiset(
+                select(TOOL_CALL_TOOL, TOOL_CALL_PATH)
+                        .from(TURN_TOOL_CALL)
+                        .where(TOOL_CALL_TURN_ID.eq(TURN_ID))
+                        .orderBy(TOOL_CALL_ORDINAL)
+        ).convertFrom(result -> result.map(record -> new ToolCallEntry(record.value1(), record.value2())));
+
         return multiset(
-                select(TURN_USER_PROMPT, TURN_AI_SUMMARY, changes)
+                select(TURN_USER_PROMPT, TURN_AI_SUMMARY, changes, toolCalls)
                         .from(ATTEMPT_TURN)
                         .where(TURN_ATTEMPT_ID.eq(ID))
                         .orderBy(TURN_ORDINAL)
         ).convertFrom(result -> result.map(record ->
-                new AttemptView.TurnView(record.value1(), record.value2(), record.value3())));
+                new AttemptView.TurnView(record.value1(), record.value2(), record.value3(), record.value4())));
     }
 
     private Field<List<ProblemFile>> baseFilesField() {

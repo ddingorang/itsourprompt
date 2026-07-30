@@ -16,9 +16,9 @@ public class AiCallExecutor {
 
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-    public String call(Callable<String> aiCall, long timeoutMinutes)
+    public <T> T call(Callable<T> aiCall, long timeoutMinutes)
             throws TimeoutException, InterruptedException, ExecutionException {
-        Future<String> future = executor.submit(aiCall);
+        Future<T> future = executor.submit(aiCall);
 
         try {
             return future.get(timeoutMinutes, TimeUnit.MINUTES);

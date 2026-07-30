@@ -18,7 +18,8 @@ class AttemptTest {
 
     private final GeneratedCode generated = new GeneratedCode(
             List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
-            "요약"
+            "요약",
+            List.of()
     );
 
     @Test
@@ -38,6 +39,7 @@ class AttemptTest {
         attempt.applyTurn("두 번째 요청", new GeneratedCode(
                 List.of(new ProblemFile("src/Util.java", "class Util {}")),
                 "요약"
+        , List.of()
         ));
 
         assertThat(attempt.baseFiles()).containsExactly(new ProblemFile("src/Main.java", "class Main {}"));
@@ -52,11 +54,13 @@ class AttemptTest {
                         new ProblemFile("src/Util.java", "class Util {}")
                 ),
                 "첫 요약"
+        , List.of()
         ));
 
         attempt.applyTurn("Main은 지우고 Util만 고쳐줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Util.java", "class Util { void help() {} }")),
                 "두 번째 요약"
+        , List.of()
         ));
 
         assertThat(attempt.currentFiles())
@@ -69,6 +73,7 @@ class AttemptTest {
         attempt.applyTurn("Main을 지워줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Util.java", "class Util {}")),
                 "첫 요약"
+        , List.of()
         ));
 
         attempt.applyTurn("Main을 되살려줘", new GeneratedCode(
@@ -77,6 +82,7 @@ class AttemptTest {
                         new ProblemFile("src/Main.java", "class Main { void run() {} }")
                 ),
                 "두 번째 요약"
+        , List.of()
         ));
 
         assertThat(attempt.currentFiles()).containsExactly(
@@ -99,7 +105,8 @@ class AttemptTest {
 
         attempt.applyTurn("메서드 추가해줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
-                "메서드를 추가했습니다."
+                "메서드를 추가했습니다.",
+                List.of()
         ));
 
         assertThat(attempt.currentFiles())
@@ -146,7 +153,8 @@ class AttemptTest {
                         new ProblemFile("src/Main.java", "class Main { void run() {} }"),
                         new ProblemFile("src/Util.java", "class Util {}")
                 ),
-                "요약"
+                "요약",
+                List.of()
         ));
 
         assertThat(attempt.turns().getFirst().changes()).containsExactly(
@@ -156,16 +164,34 @@ class AttemptTest {
     }
 
     @Test
+    void 턴을_적용하면_툴콜_트레이스를_턴에_기록한다() {
+        Attempt attempt = Attempt.start(problem);
+
+        attempt.applyTurn("요청", new GeneratedCode(
+                List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
+                "요약",
+                List.of(new ToolCallEntry("list_files", null), new ToolCallEntry("edit_file", "src/Main.java"))
+        ));
+
+        assertThat(attempt.turns().getFirst().toolCalls()).containsExactly(
+                new ToolCallEntry("list_files", null),
+                new ToolCallEntry("edit_file", "src/Main.java")
+        );
+    }
+
+    @Test
     void 턴을_적용하면_직전_턴의_결과를_기준으로_변경_목록을_계산한다() {
         Attempt attempt = Attempt.start(problem);
         attempt.applyTurn("첫 요청", new GeneratedCode(
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
-                "첫 요약"
+                "첫 요약",
+                List.of()
         ));
 
         attempt.applyTurn("두 번째 요청", new GeneratedCode(
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} void stop() {} }")),
-                "두 번째 요약"
+                "두 번째 요약",
+                List.of()
         ));
 
         assertThat(attempt.turns()).hasSize(2);

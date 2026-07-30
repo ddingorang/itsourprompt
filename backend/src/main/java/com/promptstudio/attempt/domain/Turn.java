@@ -34,13 +34,19 @@ public class Turn {
     @OrderColumn(name = "ordinal")
     private List<FileChange> changes = new ArrayList<>();
 
+    @ElementCollection
+    @CollectionTable(name = "turn_tool_call", joinColumns = @JoinColumn(name = "turn_id"))
+    @OrderColumn(name = "ordinal")
+    private List<ToolCallEntry> toolCalls = new ArrayList<>();
+
     protected Turn() {
     }
 
-    public Turn(String userPrompt, String aiSummary, List<FileChange> changes) {
+    public Turn(String userPrompt, String aiSummary, List<FileChange> changes, List<ToolCallEntry> toolCalls) {
         this.userPrompt = userPrompt;
         this.aiSummary = aiSummary;
         this.changes = new ArrayList<>(changes);
+        this.toolCalls = new ArrayList<>(toolCalls);
     }
 
     public String userPrompt() {
@@ -53,6 +59,10 @@ public class Turn {
 
     public List<FileChange> changes() {
         return List.copyOf(changes);
+    }
+
+    public List<ToolCallEntry> toolCalls() {
+        return List.copyOf(toolCalls);
     }
 
     @Override

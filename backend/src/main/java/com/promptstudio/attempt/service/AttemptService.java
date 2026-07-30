@@ -103,7 +103,8 @@ public class AttemptService {
             throw new AttemptAlreadySubmittedException(attemptId);
         }
 
-        GeneratedCode generated = codeGenerator.generate(attempt, userPrompt);
+        GeneratedCode generated = codeGenerator.generate(
+                ProblemView.from(getProblem(attempt.problemId())), attempt, userPrompt);
 
         return attemptWriter.appendTurn(attemptId, userPrompt, generated, idempotencyKey);
     }
