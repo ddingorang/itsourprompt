@@ -10,33 +10,33 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FileChangesTest {
 
     @Test
-    void 새_파일은_ADDED로_분류한다() {
+    void 새_파일은_ADDED로_분류하고_변경_후_내용을_담는다() {
         List<FileChange> changes = FileChanges.diff(
                 List.of(),
                 List.of(new ProblemFile("a.java", "content"))
         );
 
-        assertThat(changes).containsExactly(new FileChange("a.java", FileChange.ChangeType.ADDED));
+        assertThat(changes).containsExactly(new FileChange("a.java", FileChange.ChangeType.ADDED, "content"));
     }
 
     @Test
-    void 사라진_파일은_DELETED로_분류한다() {
+    void 사라진_파일은_DELETED로_분류하고_내용은_비운다() {
         List<FileChange> changes = FileChanges.diff(
                 List.of(new ProblemFile("a.java", "content")),
                 List.of()
         );
 
-        assertThat(changes).containsExactly(new FileChange("a.java", FileChange.ChangeType.DELETED));
+        assertThat(changes).containsExactly(new FileChange("a.java", FileChange.ChangeType.DELETED, null));
     }
 
     @Test
-    void 내용이_바뀐_파일은_MODIFIED로_분류한다() {
+    void 내용이_바뀐_파일은_MODIFIED로_분류하고_변경_후_내용을_담는다() {
         List<FileChange> changes = FileChanges.diff(
                 List.of(new ProblemFile("a.java", "before")),
                 List.of(new ProblemFile("a.java", "after"))
         );
 
-        assertThat(changes).containsExactly(new FileChange("a.java", FileChange.ChangeType.MODIFIED));
+        assertThat(changes).containsExactly(new FileChange("a.java", FileChange.ChangeType.MODIFIED, "after"));
     }
 
     @Test

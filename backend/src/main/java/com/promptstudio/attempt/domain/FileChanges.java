@@ -27,11 +27,11 @@ public final class FileChanges {
             boolean existsNow = finalContents.containsKey(path);
 
             if (!existedBefore) {
-                changes.add(new FileChange(path, FileChange.ChangeType.ADDED));
+                changes.add(new FileChange(path, FileChange.ChangeType.ADDED, finalContents.get(path)));
             } else if (!existsNow) {
-                changes.add(new FileChange(path, FileChange.ChangeType.DELETED));
+                changes.add(new FileChange(path, FileChange.ChangeType.DELETED, null));
             } else if (!originalContents.get(path).equals(finalContents.get(path))) {
-                changes.add(new FileChange(path, FileChange.ChangeType.MODIFIED));
+                changes.add(new FileChange(path, FileChange.ChangeType.MODIFIED, finalContents.get(path)));
             }
         }
 

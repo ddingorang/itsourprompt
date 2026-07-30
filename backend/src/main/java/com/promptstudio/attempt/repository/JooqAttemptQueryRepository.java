@@ -15,6 +15,7 @@ import java.util.Optional;
 import static com.promptstudio.attempt.repository.AttemptTables.ATTEMPT;
 import static com.promptstudio.attempt.repository.AttemptTables.ATTEMPT_FILE;
 import static com.promptstudio.attempt.repository.AttemptTables.ATTEMPT_TURN;
+import static com.promptstudio.attempt.repository.AttemptTables.CHANGE_CONTENT;
 import static com.promptstudio.attempt.repository.AttemptTables.CHANGE_ORDINAL;
 import static com.promptstudio.attempt.repository.AttemptTables.CHANGE_PATH;
 import static com.promptstudio.attempt.repository.AttemptTables.CHANGE_TURN_ID;
@@ -48,10 +49,10 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
     @Override
     @Transactional(readOnly = true)
     public Optional<AttemptView> findById(Long id) {
-        return dsl.select(ID, PROBLEM_ID, filesField(), turnsField(), STATUS, FEEDBACK)
+        return dsl.select(ID, PROBLEM_ID, baseFilesField(), turnsField(), STATUS, FEEDBACK)
                 .from(ATTEMPT)
                 .where(ID.eq(id))
-                .fetchOptional(record -> new AttemptView(
+                .fetchOptional(record -> AttemptView.reconstruct(
                         record.value1(),
                         record.value2(),
                         record.value3(),
@@ -63,12 +64,12 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
 
     private Field<List<AttemptView.TurnView>> turnsField() {
         Field<List<FileChange>> changes = multiset(
-                select(CHANGE_PATH, CHANGE_TYPE)
+                select(CHANGE_PATH, CHANGE_TYPE, CHANGE_CONTENT)
                         .from(TURN_FILE_CHANGE)
                         .where(CHANGE_TURN_ID.eq(TURN_ID))
                         .orderBy(CHANGE_ORDINAL)
         ).convertFrom(result -> result.map(record ->
-                new FileChange(record.value1(), FileChange.ChangeType.valueOf(record.value2()))));
+                new FileChange(record.value1(), FileChange.ChangeType.valueOf(record.value2()), record.value3())));
 
         return multiset(
                 select(TURN_USER_PROMPT, TURN_AI_SUMMARY, changes)
@@ -79,7 +80,7 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
                 new AttemptView.TurnView(record.value1(), record.value2(), record.value3())));
     }
 
-    private Field<List<ProblemFile>> filesField() {
+    private Field<List<ProblemFile>> baseFilesField() {
         return multiset(
                 select(FILE_PATH, FILE_CONTENT)
                         .from(ATTEMPT_FILE)

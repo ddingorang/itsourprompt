@@ -58,8 +58,13 @@ CREATE TABLE IF NOT EXISTS turn_file_change (
     turn_id     BIGINT       NOT NULL REFERENCES attempt_turn (id) ON DELETE CASCADE,
     ordinal     INT          NOT NULL,
     path        VARCHAR(500) NOT NULL,
-    change_type VARCHAR(20)  NOT NULL
+    change_type VARCHAR(20)  NOT NULL,
+    content     TEXT
 );
+-- 턴별 변경 후 코드 저장 이전에 만들어진 DB를 위한 마이그레이션. DELETED는 남은 내용이 없어 NULL이다.
+-- 기존 어템프트 데이터는 attempt_file이 head였던 옛 의미라 새 의미(불변 base)와 충돌하고 턴별 코드도 복원할 수 없다.
+-- 그런 DB에서는 수동으로 한 번 TRUNCATE attempt CASCADE 한다.
+ALTER TABLE turn_file_change ADD COLUMN IF NOT EXISTS content TEXT;
 CREATE INDEX IF NOT EXISTS idx_turn_file_change_turn ON turn_file_change (turn_id, ordinal);
 
 -- 로그인 기능: 사용자 계정. 테이블명은 user가 PostgreSQL 예약어라 users를 사용한다.

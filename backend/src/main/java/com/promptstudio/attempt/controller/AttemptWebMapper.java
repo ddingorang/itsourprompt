@@ -13,12 +13,6 @@ import java.util.List;
 public class AttemptWebMapper {
 
     public AttemptResponse toAttemptResponse(AttemptView attempt) {
-        List<AttemptResponse.AttemptFileResponse> files = new ArrayList<>();
-
-        for (ProblemFile file : attempt.files()) {
-            files.add(new AttemptResponse.AttemptFileResponse(file.path(), file.content()));
-        }
-
         List<AttemptResponse.TurnResponse> turns = new ArrayList<>();
 
         for (AttemptView.TurnView turn : attempt.turns()) {
@@ -28,17 +22,28 @@ public class AttemptWebMapper {
         return new AttemptResponse(
                 attempt.id(),
                 attempt.problemId(),
-                files,
+                toFileResponses(attempt.baseFiles()),
+                toFileResponses(attempt.files()),
                 turns,
                 attempt.status()
         );
+    }
+
+    private List<AttemptResponse.AttemptFileResponse> toFileResponses(List<ProblemFile> files) {
+        List<AttemptResponse.AttemptFileResponse> responses = new ArrayList<>();
+
+        for (ProblemFile file : files) {
+            responses.add(new AttemptResponse.AttemptFileResponse(file.path(), file.content()));
+        }
+
+        return responses;
     }
 
     private AttemptResponse.TurnResponse toTurnResponse(AttemptView.TurnView turn) {
         List<AttemptResponse.ChangedFileResponse> changedFiles = new ArrayList<>();
 
         for (FileChange change : turn.changes()) {
-            changedFiles.add(new AttemptResponse.ChangedFileResponse(change.path(), change.type()));
+            changedFiles.add(new AttemptResponse.ChangedFileResponse(change.path(), change.type(), change.content()));
         }
 
         return new AttemptResponse.TurnResponse(turn.userPrompt(), turn.aiSummary(), changedFiles);

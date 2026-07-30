@@ -34,6 +34,7 @@ final class AttemptTables {
     static final Field<Integer> CHANGE_ORDINAL = field(name("turn_file_change", "ordinal"), SQLDataType.INTEGER);
     static final Field<String> CHANGE_PATH = field(name("turn_file_change", "path"), SQLDataType.VARCHAR);
     static final Field<String> CHANGE_TYPE = field(name("turn_file_change", "change_type"), SQLDataType.VARCHAR);
+    static final Field<String> CHANGE_CONTENT = field(name("turn_file_change", "content"), SQLDataType.CLOB);
 
     private AttemptTables() {
     }

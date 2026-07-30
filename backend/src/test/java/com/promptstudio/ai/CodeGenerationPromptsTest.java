@@ -36,10 +36,12 @@ class CodeGenerationPromptsTest {
         AttemptView attempt = new AttemptView(
                 1L,
                 1L,
+                List.of(new ProblemFile("src/Main.java", "class Main {}")),
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
                 List.of(
                         new AttemptView.TurnView("첫 요청", "첫 요약", List.of(
-                                new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED)
+                                new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED,
+                                        "class Main { void run() {} }")
                         )),
                         new AttemptView.TurnView("두 번째 요청", "두 번째 요약", List.of())
                 ),
@@ -62,7 +64,7 @@ class CodeGenerationPromptsTest {
 
     @Test
     void 마지막_사용자_메시지에_현재_파일과_새_요청을_포함한다() {
-        AttemptView attempt = new AttemptView(1L, 1L, List.of(
+        AttemptView attempt = new AttemptView(1L, 1L, List.of(), List.of(
                 new ProblemFile("src/Main.java", "class Main {}"),
                 new ProblemFile("src/Util.java", "class Util {}")
         ), List.of(), AttemptStatus.IN_PROGRESS, null);
@@ -91,7 +93,7 @@ class CodeGenerationPromptsTest {
     }
 
     private AttemptView attemptWithoutTurns() {
-        return new AttemptView(1L, 1L, List.of(new ProblemFile("src/Main.java", "class Main {}")), List.of(),
-                AttemptStatus.IN_PROGRESS, null);
+        return new AttemptView(1L, 1L, List.of(), List.of(new ProblemFile("src/Main.java", "class Main {}")),
+                List.of(), AttemptStatus.IN_PROGRESS, null);
     }
 }

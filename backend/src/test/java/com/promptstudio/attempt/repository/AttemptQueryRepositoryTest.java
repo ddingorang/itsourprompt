@@ -37,8 +37,28 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
 
         assertThat(view.id()).isEqualTo(saved.id());
         assertThat(view.problemId()).isEqualTo(saved.problemId());
+        assertThat(view.baseFiles()).containsExactly(SKELETON);
         assertThat(view.files()).containsExactly(SKELETON);
         assertThat(view.turns()).isEmpty();
+    }
+
+    @Test
+    void 시작_스켈레톤은_보존하고_현재_파일은_턴을_재생해_돌려준다() {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        attempt.applyTurn(
+                "Main을 채워줘",
+                new GeneratedCode(List.of(new ProblemFile("src/Main.java", "생성된 내용")), "첫 요약")
+        );
+        attempt.applyTurn(
+                "Main은 지우고 Util만 남겨줘",
+                new GeneratedCode(List.of(new ProblemFile("src/Util.java", "class Util {}")), "둘째 요약")
+        );
+        attemptRepository.save(attempt);
+
+        AttemptView view = attemptQueryRepository.findById(attempt.id()).orElseThrow();
+
+        assertThat(view.baseFiles()).containsExactly(SKELETON);
+        assertThat(view.files()).containsExactly(new ProblemFile("src/Util.java", "class Util {}"));
     }
 
     @Test
@@ -66,10 +86,27 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
         assertThat(view.turns().get(0).userPrompt()).isEqualTo("Main을 채워줘");
         assertThat(view.turns().get(0).aiSummary()).isEqualTo("첫 요약");
         assertThat(view.turns().get(0).changes())
-                .containsExactly(new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED));
+                .containsExactly(new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "생성된 내용"));
         assertThat(view.turns().get(1).userPrompt()).isEqualTo("Util도 만들어줘");
         assertThat(view.turns().get(1).changes())
-                .containsExactly(new FileChange("src/Util.java", FileChange.ChangeType.ADDED));
+                .containsExactly(new FileChange("src/Util.java", FileChange.ChangeType.ADDED, "class Util {}"));
+    }
+
+    @Test
+    void 삭제된_변경_파일은_코드가_비어_있다() {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        attempt.applyTurn(
+                "Main을 지워줘",
+                new GeneratedCode(List.of(new ProblemFile("src/Util.java", "class Util {}")), "요약")
+        );
+        attemptRepository.save(attempt);
+
+        AttemptView view = attemptQueryRepository.findById(attempt.id()).orElseThrow();
+
+        assertThat(view.turns().getFirst().changes()).containsExactly(
+                new FileChange("src/Main.java", FileChange.ChangeType.DELETED, null),
+                new FileChange("src/Util.java", FileChange.ChangeType.ADDED, "class Util {}")
+        );
     }
 
     @Test

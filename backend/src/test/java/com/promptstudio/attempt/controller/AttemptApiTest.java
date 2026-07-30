@@ -60,7 +60,21 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.turns[0].prompt").value("Hello 출력해줘"))
                 .andExpect(jsonPath("$.turns[0].aiResponse").value("생성 요약"))
                 .andExpect(jsonPath("$.turns[0].changedFiles[0].path").value("src/main/java/Main.java"))
-                .andExpect(jsonPath("$.turns[0].changedFiles[0].changeType").value("MODIFIED"));
+                .andExpect(jsonPath("$.turns[0].changedFiles[0].changeType").value("MODIFIED"))
+                .andExpect(jsonPath("$.turns[0].changedFiles[0].content").value("생성된 내용"));
+    }
+
+    @Test
+    void 턴을_추가해도_시작_스켈레톤은_그대로_반환된다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+
+        mockMvc.perform(get("/api/attempts/{id}", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.baseFiles.length()").value(1))
+                .andExpect(jsonPath("$.baseFiles[0].path").value("src/main/java/Main.java"))
+                .andExpect(jsonPath("$.baseFiles[0].content").value("class Main {}"))
+                .andExpect(jsonPath("$.files[0].content").value("생성된 내용"));
     }
 
     @Test

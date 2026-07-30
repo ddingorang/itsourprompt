@@ -91,10 +91,10 @@ class AttemptRepositoryTest extends DatabaseTest {
         assertThat(found.turns()).hasSize(2);
         assertThat(found.turns().get(0).aiSummary()).isEqualTo("첫 요약");
         assertThat(found.turns().get(0).changes())
-                .containsExactly(new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED));
+                .containsExactly(new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "생성된 내용"));
         assertThat(found.turns().get(1).aiSummary()).isEqualTo("둘째 요약");
         assertThat(found.turns().get(1).changes())
-                .containsExactly(new FileChange("src/Util.java", FileChange.ChangeType.ADDED));
+                .containsExactly(new FileChange("src/Util.java", FileChange.ChangeType.ADDED, "class Util {}"));
     }
 
     @Test

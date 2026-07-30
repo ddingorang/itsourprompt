@@ -32,6 +32,60 @@ class AttemptTest {
     }
 
     @Test
+    void 여러_턴을_적용해도_시작_스켈레톤은_그대로_남는다() {
+        Attempt attempt = Attempt.start(problem);
+        attempt.applyTurn("첫 요청", generated);
+        attempt.applyTurn("두 번째 요청", new GeneratedCode(
+                List.of(new ProblemFile("src/Util.java", "class Util {}")),
+                "요약"
+        ));
+
+        assertThat(attempt.baseFiles()).containsExactly(new ProblemFile("src/Main.java", "class Main {}"));
+    }
+
+    @Test
+    void 현재_파일은_스켈레톤에_턴별_변경을_재생한_결과다() {
+        Attempt attempt = Attempt.start(problem);
+        attempt.applyTurn("Util을 추가해줘", new GeneratedCode(
+                List.of(
+                        new ProblemFile("src/Main.java", "class Main { void run() {} }"),
+                        new ProblemFile("src/Util.java", "class Util {}")
+                ),
+                "첫 요약"
+        ));
+
+        attempt.applyTurn("Main은 지우고 Util만 고쳐줘", new GeneratedCode(
+                List.of(new ProblemFile("src/Util.java", "class Util { void help() {} }")),
+                "두 번째 요약"
+        ));
+
+        assertThat(attempt.currentFiles())
+                .containsExactly(new ProblemFile("src/Util.java", "class Util { void help() {} }"));
+    }
+
+    @Test
+    void 삭제한_파일을_다시_추가하면_현재_파일에_되살아난다() {
+        Attempt attempt = Attempt.start(problem);
+        attempt.applyTurn("Main을 지워줘", new GeneratedCode(
+                List.of(new ProblemFile("src/Util.java", "class Util {}")),
+                "첫 요약"
+        ));
+
+        attempt.applyTurn("Main을 되살려줘", new GeneratedCode(
+                List.of(
+                        new ProblemFile("src/Util.java", "class Util {}"),
+                        new ProblemFile("src/Main.java", "class Main { void run() {} }")
+                ),
+                "두 번째 요약"
+        ));
+
+        assertThat(attempt.currentFiles()).containsExactly(
+                new ProblemFile("src/Util.java", "class Util {}"),
+                new ProblemFile("src/Main.java", "class Main { void run() {} }")
+        );
+    }
+
+    @Test
     void 시작하면_상태는_IN_PROGRESS이고_피드백은_없다() {
         Attempt attempt = Attempt.start(problem);
 
@@ -96,8 +150,8 @@ class AttemptTest {
         ));
 
         assertThat(attempt.turns().getFirst().changes()).containsExactly(
-                new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED),
-                new FileChange("src/Util.java", FileChange.ChangeType.ADDED)
+                new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "class Main { void run() {} }"),
+                new FileChange("src/Util.java", FileChange.ChangeType.ADDED, "class Util {}")
         );
     }
 
@@ -115,7 +169,8 @@ class AttemptTest {
         ));
 
         assertThat(attempt.turns()).hasSize(2);
-        assertThat(attempt.turns().get(1).changes())
-                .containsExactly(new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED));
+        assertThat(attempt.turns().get(1).changes()).containsExactly(
+                new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "class Main { void run() {} void stop() {} }")
+        );
     }
 }

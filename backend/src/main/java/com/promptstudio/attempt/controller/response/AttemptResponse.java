@@ -12,6 +12,8 @@ public record AttemptResponse(
         Long id,
         @Schema(description = "풀이 중인 문제 ID", example = "1")
         Long problemId,
+        @Schema(description = "어템프트를 시작한 문제 스켈레톤 파일 전체")
+        List<AttemptFileResponse> baseFiles,
         @Schema(description = "현재 프로젝트 파일 전체")
         List<AttemptFileResponse> files,
         @Schema(description = "지금까지 진행한 턴 목록")
@@ -45,7 +47,9 @@ public record AttemptResponse(
             @Schema(description = "변경된 파일 경로", example = "src/main/java/Main.java")
             String path,
             @Schema(description = "파일 변경 유형", example = "MODIFIED")
-            FileChange.ChangeType changeType
+            FileChange.ChangeType changeType,
+            @Schema(description = "변경 후 파일 전체 내용. 삭제된 파일은 없다.")
+            String content
     ) {
     }
 }
