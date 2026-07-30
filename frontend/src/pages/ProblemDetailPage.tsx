@@ -2,21 +2,30 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { submitFeedback } from '../features/feedback/api';
-import { getProblemDetail } from '../features/problem/api';
-import type { ProblemDetail, RepositoryFile } from '../features/problem/types';
-import { runProblem } from '../features/submission/api';
 import {
-  getRunResult,
-  saveFeedbackResult,
-  saveRunResult,
-} from '../features/submission/storage';
+  addTurn,
+  createAttempt,
+  getAttempt,
+  submitAttempt,
+} from '../features/attempt/api';
+import {
+  clearAttemptId,
+  getAttemptId,
+  saveAttemptId,
+} from '../features/attempt/storage';
 import type {
+  Attempt,
   ChangedFile,
   ChangeType,
-  RunProblemResponse,
-} from '../features/submission/types';
-import { ApiProblemError } from '../shared/api/apiClient';
+  Turn,
+} from '../features/attempt/types';
+import { getProblemDetail } from '../features/problem/api';
+import type { ProblemDetail, RepositoryFile } from '../features/problem/types';
+import {
+  ApiError,
+  API_ERROR_CODES,
+  createIdempotencyKey,
+} from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Header from '../shared/components/Header';
 import type { ErrorPageState } from '../shared/types/error';
@@ -26,12 +35,6 @@ type StatusType = 'normal' | 'error';
 interface StatusMessage {
   message: string;
   type: StatusType;
-}
-
-interface PromptLog {
-  id: number;
-  prompt: string;
-  response: string;
 }
 
 type DetailTab = 'problem' | 'logs';
@@ -58,20 +61,29 @@ const changeColorClasses: Record<ChangeType, string> = {
   DELETED: 'text-[#ff786b]',
 };
 
+const toolLabels: Record<string, string> = {
+  edit_file: 'EDIT',
+  list_files: 'LIST',
+  read_file: 'READ',
+};
+
 interface ErrorInfo {
   message: string;
   status?: number;
+  code?: string;
 }
 
 function getErrorInfo(error: unknown, fallback: string): ErrorInfo {
-  if (error instanceof ApiProblemError) {
-    return {
-      message: error.problem.detail,
-      status: error.problem.status,
-    };
+  if (error instanceof ApiError) {
+    return { code: error.code, message: error.message, status: error.status };
   }
 
   return { message: fallback };
+}
+
+/** 마지막 턴의 변경 파일. 파일 탐색기에서 A/M/D 표시에 쓴다. */
+function getLatestChangedFiles(turns: Turn[]): ChangedFile[] {
+  return turns.length ? turns[turns.length - 1].changedFiles : [];
 }
 
 function findFile(files: RepositoryFile[], path: string): RepositoryFile | undefined {
@@ -161,12 +173,13 @@ export default function ProblemDetailPage() {
   const problemId = Number(problemIdParam ?? 1);
 
   const [problem, setProblem] = useState<ProblemDetail | null>(null);
-  const [files, setFiles] = useState<RepositoryFile[]>([]);
-  const [changedFiles, setChangedFiles] = useState<ChangedFile[]>([]);
+  /**
+   * 진행 중인 어템프트. 첫 프롬프트를 실행할 때 만들어지므로 그 전에는 null이고,
+   * 이때 화면에는 문제 스켈레톤 파일을 보여준다.
+   */
+  const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [prompt, setPrompt] = useState('');
   const [selectedFile, setSelectedFile] = useState('');
-  const [runResult, setRunResult] = useState<RunProblemResponse | null>(null);
-  const [promptLogs, setPromptLogs] = useState<PromptLog[]>([]);
   const [activeTab, setActiveTab] = useState<DetailTab>('problem');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<StatusMessage | null>(null);
@@ -174,60 +187,82 @@ export default function ProblemDetailPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  /**
+   * 실패한 턴 요청의 Idempotency-Key를 기억한다. 같은 프롬프트로 다시 실행하면
+   * 같은 키가 나가므로, 백엔드가 이미 AI를 호출해 둔 경우 재호출 없이 그 결과를
+   * 돌려준다(AI 호출이 수 분 걸리므로 중복 호출 비용이 크다).
+   */
+  const pendingRunRef = useRef<{ prompt: string; key: string } | null>(null);
+
+  const files = attempt?.files ?? problem?.files ?? [];
+  const turns = attempt?.turns ?? [];
+  const isSubmitted = attempt?.status === 'SUBMITTED';
+  const canSubmit = turns.length > 0 && !isSubmitted;
 
   useEffect(() => {
     let isMounted = true;
 
-    getProblemDetail(problemId)
-      .then((response) => {
+    const load = async () => {
+      try {
+        const detail = await getProblemDetail(problemId);
         if (!isMounted) return;
-        const storedRunResult = getRunResult();
 
-        setProblem(response);
+        setProblem(detail);
 
-        if (storedRunResult?.problemId === response.id) {
-          setRunResult(storedRunResult);
-          setFiles(storedRunResult.files);
-          setChangedFiles(storedRunResult.changedFiles);
-          setPromptLogs([
-            {
-              id: 1,
-              prompt: storedRunResult.prompt,
-              response: storedRunResult.aiResponse,
-            },
-          ]);
-          setSelectedFile(storedRunResult.files[0]?.path ?? '');
-          setExpandedFolders(
-            new Set(
-              getFolderPaths(
-                createFileTree(
-                  storedRunResult.files,
-                  storedRunResult.changedFiles,
-                ),
-              ),
-            ),
-          );
-          setActiveTab('logs');
-          return;
+        // 이전에 시작해 둔 어템프트가 있으면 서버 상태를 복원한다.
+        const savedAttemptId = getAttemptId(problemId);
+        let restored: Attempt | null = null;
+
+        if (savedAttemptId !== null) {
+          try {
+            restored = await getAttempt(savedAttemptId);
+          } catch (error: unknown) {
+            // 어템프트가 사라졌으면(404) 저장된 ID를 버리고 새로 시작한다.
+            if (
+              error instanceof ApiError &&
+              error.code === API_ERROR_CODES.attemptNotFound
+            ) {
+              clearAttemptId(problemId);
+            } else {
+              throw error;
+            }
+          }
         }
 
-        setFiles(response.files);
-        setSelectedFile(response.files[0]?.path ?? '');
+        if (!isMounted) return;
+
+        const visibleFiles = restored?.files ?? detail.files;
+        const changedFiles = restored ? getLatestChangedFiles(restored.turns) : [];
+
+        setAttempt(restored);
+        setSelectedFile(visibleFiles[0]?.path ?? '');
         setExpandedFolders(
-          new Set(getFolderPaths(createFileTree(response.files, []))),
+          new Set(getFolderPaths(createFileTree(visibleFiles, changedFiles))),
         );
-      })
-      .catch((error: unknown) => {
+
+        if (restored?.turns.length) {
+          setActiveTab('logs');
+        }
+
+        if (restored?.status === 'SUBMITTED') {
+          setStatus({
+            message: '이미 제출된 어템프트입니다. 피드백만 확인할 수 있습니다.',
+            type: 'normal',
+          });
+        }
+      } catch (error: unknown) {
         if (isMounted) {
           setStatus({
             type: 'error',
             message: getErrorInfo(error, '문제 상세를 불러오지 못했습니다.').message,
           });
         }
-      })
-      .finally(() => {
+      } finally {
         if (isMounted) setIsLoading(false);
-      });
+      }
+    };
+
+    void load();
 
     return () => {
       isMounted = false;
@@ -244,21 +279,37 @@ export default function ProblemDetailPage() {
   }, [prompt, status]);
 
   const fileTree = useMemo(
-    () => createFileTree(files, changedFiles),
-    [files, changedFiles],
+    () => createFileTree(files, getLatestChangedFiles(turns)),
+    [files, turns],
   );
 
   const selectedCode = useMemo(() => {
     if (!selectedFile) return '// 파일을 선택해주세요.';
-    return findFile(files, selectedFile)?.content ?? '// 실행 결과에서 삭제된 파일입니다.';
+    return findFile(files, selectedFile)?.content ?? '// 이 턴에서 삭제된 파일입니다.';
   }, [files, selectedFile]);
 
   const showStatus = (message: string, type: StatusType = 'normal') => {
     setStatus({ message, type });
   };
 
+  /** 갱신된 어템프트 상태를 화면에 반영한다. */
+  const applyAttempt = (next: Attempt) => {
+    setAttempt(next);
+    saveAttemptId(problemId, next.id);
+    setExpandedFolders((folders) => {
+      const nextFolders = new Set(folders);
+      getFolderPaths(
+        createFileTree(next.files, getLatestChangedFiles(next.turns)),
+      ).forEach((path) => nextFolders.add(path));
+      return nextFolders;
+    });
+    setSelectedFile((current) =>
+      findFile(next.files, current) ? current : (next.files[0]?.path ?? ''),
+    );
+  };
+
   const handleRun = async () => {
-    if (!problem) return;
+    if (!problem || isSubmitted) return;
 
     const trimmedPrompt = prompt.trim();
     if (!trimmedPrompt) {
@@ -271,79 +322,82 @@ export default function ProblemDetailPage() {
       return;
     }
 
+    // 같은 프롬프트를 재시도하면 이전 키를 재사용해 AI 중복 호출을 막는다.
+    const idempotencyKey =
+      pendingRunRef.current?.prompt === trimmedPrompt
+        ? pendingRunRef.current.key
+        : createIdempotencyKey();
+    pendingRunRef.current = { key: idempotencyKey, prompt: trimmedPrompt };
+
     setIsRunning(true);
     showStatus('프롬프트를 실행하고 있습니다. 완료될 때까지 잠시 기다려주세요.');
 
     try {
-      const response = await runProblem(problem.id, { prompt: trimmedPrompt });
-      setFiles(response.files);
-      setChangedFiles(response.changedFiles);
-      setRunResult(response);
-      setExpandedFolders((folders) => {
-        const nextFolders = new Set(folders);
-        getFolderPaths(createFileTree(response.files, response.changedFiles)).forEach(
-          (path) => nextFolders.add(path),
-        );
-        return nextFolders;
-      });
-      setPromptLogs((logs) => [
-        ...logs,
-        {
-          id: logs.length + 1,
-          prompt: trimmedPrompt,
-          response: response.aiResponse,
-        },
-      ]);
+      // 첫 실행이면 어템프트를 먼저 만든다(AI 호출 없음).
+      let current = attempt;
+      if (!current) {
+        current = await createAttempt(problem.id);
+        setAttempt(current);
+        saveAttemptId(problemId, current.id);
+      }
+
+      const updated = await addTurn(current.id, trimmedPrompt, idempotencyKey);
+
+      applyAttempt(updated);
       setActiveTab('logs');
       setPrompt('');
-      setSelectedFile(response.files[0]?.path ?? '');
-      saveRunResult({
-        ...response,
-        problemId: problem.id,
-        problemTitle: problem.title,
-        prompt: trimmedPrompt,
-      });
+      pendingRunRef.current = null;
       showStatus('실행이 완료되었습니다. 변경 파일과 AI 응답을 확인해주세요.');
     } catch (error: unknown) {
-      showStatus(
-        getErrorInfo(error, '실행에 실패했습니다. 다시 시도해주세요.').message,
-        'error',
+      const errorInfo = getErrorInfo(
+        error,
+        '실행에 실패했습니다. 다시 시도해주세요.',
       );
+
+      // 이미 제출된 어템프트에는 턴을 더할 수 없다 — 상태를 서버와 맞춘다.
+      if (errorInfo.code === API_ERROR_CODES.attemptAlreadySubmitted) {
+        setAttempt((current) =>
+          current ? { ...current, status: 'SUBMITTED' } : current,
+        );
+      }
+
+      showStatus(errorInfo.message, 'error');
     } finally {
       setIsRunning(false);
     }
   };
 
   const handleSubmit = async () => {
-    if (!problem || !runResult) return;
+    if (!problem || !attempt) return;
 
-    const submittedPrompt = promptLogs
-      .map((log, index) => `[${index + 1}차 프롬프트]\n${log.prompt}`)
-      .join('\n\n');
+    // 이미 제출된 어템프트는 저장된 피드백을 그대로 보여준다.
+    if (isSubmitted) {
+      navigate(`/feedback/${attempt.id}`);
+      return;
+    }
 
     setIsSubmitting(true);
     showStatus('프롬프트 피드백을 생성하고 있습니다.');
 
     try {
-      const response = await submitFeedback(problem.id, {
-        prompt: submittedPrompt,
-        aiResponse: runResult.aiResponse,
-        changedFiles: runResult.changedFiles,
-      });
+      await submitAttempt(attempt.id);
 
-      saveFeedbackResult({
-        problemId: problem.id,
-        problemTitle: problem.title,
-        prompt: submittedPrompt,
-        feedback: response.feedback,
-      });
-
-      navigate(`/feedback/${problem.id}`);
+      setAttempt((current) =>
+        current ? { ...current, status: 'SUBMITTED' } : current,
+      );
+      navigate(`/feedback/${attempt.id}`);
     } catch (error: unknown) {
       const errorInfo = getErrorInfo(
         error,
         '피드백 생성에 실패했습니다. 잠시 후 다시 제출해주세요.',
       );
+
+      // 이미 제출됐다면 오류가 아니라 피드백 화면으로 보내는 편이 자연스럽다.
+      if (errorInfo.code === API_ERROR_CODES.attemptAlreadySubmitted) {
+        navigate(`/feedback/${attempt.id}`);
+        return;
+      }
+
       const errorState: ErrorPageState = {
         title: '피드백 생성에 실패했습니다.',
         message: errorInfo.message,
@@ -538,7 +592,7 @@ export default function ProblemDetailPage() {
             >
               {([
                 ['problem', 'PROBLEM'],
-                ['logs', `PROMPT LOG ${promptLogs.length ? `(${promptLogs.length})` : ''}`],
+                ['logs', `PROMPT LOG ${turns.length ? `(${turns.length})` : ''}`],
               ] as const).map(([tab, label]) => (
                 <button
                   aria-selected={activeTab === tab}
@@ -581,19 +635,52 @@ export default function ProblemDetailPage() {
                     </ReactMarkdown>
                   </div>
                 </>
-              ) : promptLogs.length ? (
+              ) : turns.length ? (
                 <div className="grid gap-4">
-                  {promptLogs.map((log) => (
-                    <article className="border-l-2 border-[#d6ff50] pl-3" key={log.id}>
+                  {turns.map((turn, index) => (
+                    <article
+                      className="border-l-2 border-[#d6ff50] pl-3"
+                      key={`turn-${index + 1}`}
+                    >
                       <div className="font-mono text-[9px] font-bold text-[#d6ff50]">
-                        RUN {String(log.id).padStart(2, '0')}
+                        TURN {String(index + 1).padStart(2, '0')}
                       </div>
                       <p className="my-2 whitespace-pre-wrap text-[12px] leading-[1.6] text-[#f5f5ef]">
-                        {log.prompt}
+                        {turn.prompt}
                       </p>
                       <p className="m-0 whitespace-pre-wrap text-[11px] leading-[1.6] text-[#8f8f8f]">
-                        {log.response}
+                        {turn.aiResponse}
                       </p>
+
+                      {turn.toolCalls.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[9px] text-[#767676]">
+                          {turn.toolCalls.map((toolCall, toolIndex) => (
+                            <span
+                              className="border border-[#3f3f3f] px-1.5 py-0.5"
+                              key={`tool-${index}-${toolIndex}`}
+                              title={toolCall.path ?? toolCall.tool}
+                            >
+                              {toolLabels[toolCall.tool] ?? toolCall.tool}
+                              {toolCall.path
+                                ? ` ${toolCall.path.split('/').pop()}`
+                                : ''}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {turn.changedFiles.length > 0 && (
+                        <div className="mt-1.5 grid gap-0.5 font-mono text-[9px]">
+                          {turn.changedFiles.map((changedFile) => (
+                            <span
+                              className={changeColorClasses[changedFile.changeType]}
+                              key={`changed-${index}-${changedFile.path}`}
+                            >
+                              {changedFile.changeType[0]} {changedFile.path}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </article>
                   ))}
                 </div>
@@ -611,10 +698,14 @@ export default function ProblemDetailPage() {
               <textarea
                 ref={promptTextareaRef}
                 className="workspace-scrollbar min-h-12 w-full resize-none overflow-y-auto border-0 bg-transparent px-3.5 py-3 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isRunning || isSubmitting}
+                disabled={isRunning || isSubmitting || isSubmitted}
                 maxLength={4000}
                 onChange={(event) => setPrompt(event.target.value)}
-                placeholder="문제를 해결할 프롬프트를 입력하세요."
+                placeholder={
+                  isSubmitted
+                    ? '제출이 완료된 어템프트입니다.'
+                    : '문제를 해결할 프롬프트를 입력하세요.'
+                }
                 rows={1}
                 style={{ maxHeight: status ? '82px' : '112px' }}
                 value={prompt}
@@ -623,7 +714,7 @@ export default function ProblemDetailPage() {
                 <button
                   aria-label="프롬프트 실행"
                   className="grid size-7 cursor-pointer place-items-center rounded-full border border-[#d6ff50] bg-[#d6ff50] text-[#090909] transition-colors hover:bg-transparent hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-45"
-                  disabled={isRunning || isSubmitting || !prompt.trim()}
+                  disabled={isRunning || isSubmitting || isSubmitted || !prompt.trim()}
                   onClick={handleRun}
                   title="프롬프트 실행"
                   type="button"
@@ -671,7 +762,7 @@ export default function ProblemDetailPage() {
               )}
 
               <Button
-                disabled={isRunning || isSubmitting || !runResult}
+                disabled={isRunning || isSubmitting || !(canSubmit || isSubmitted)}
                 fullWidth
                 onClick={handleSubmit}
               >

@@ -24,7 +24,7 @@ export const router = createBrowserRouter([
     element: <ProblemDetailPage />,
   },
   {
-    path: '/feedback/:problemId',
+    path: '/feedback/:attemptId',
     element: <FeedbackPage />,
   },
   {

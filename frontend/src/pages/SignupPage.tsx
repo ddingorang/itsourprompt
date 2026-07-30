@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { signup } from '../features/auth/api';
 import { useAuth } from '../features/auth/AuthContext';
-import { ApiProblemError } from '../shared/api/apiClient';
+import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
@@ -14,9 +14,8 @@ import Header from '../shared/components/Header';
  * 가입 성공(201) 후에는 서버가 세션을 만들지 않으므로, 이어서 login()을 호출해
  * 자동 로그인시킨 뒤 마이페이지로 보낸다.
  *
- * 에러 문구는 HTTP 상태코드로 분기한다(LoginPage와 같은 이유 — apiClient가
- * 백엔드 {code,message}의 message를 살리지 못함). 그래서 409는 아이디/이메일
- * 중복을 구분하지 못하고 통합 문구로 안내한다.
+ * 에러 문구는 백엔드 오류 코드로 분기하고, 코드가 없는 예외 상황만 상태코드로
+ * 처리한다. 아이디/이메일 중복은 코드가 나뉘어 있어 어느 값이 문제인지 알려준다.
  */
 
 const labelClasses =
@@ -25,13 +24,23 @@ const labelClasses =
 const inputClasses =
   'mt-2.5 w-full border border-[#555] bg-[#131313] p-3.5 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 focus:border-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-60';
 
-/** 가입 실패 응답을 사용자에게 보여줄 한국어 문구로 바꾼다. */
+/**
+ * 가입 실패 응답을 사용자에게 보여줄 한국어 문구로 바꾼다.
+ * 백엔드가 중복 항목을 코드로 구분해 주므로(duplicate-username / duplicate-email)
+ * 어느 값을 고쳐야 하는지까지 알려준다.
+ */
 function toSignupErrorMessage(error: unknown): string {
-  if (error instanceof ApiProblemError) {
-    if (error.problem.status === 409) {
+  if (error instanceof ApiError) {
+    if (error.code === API_ERROR_CODES.duplicateUsername) {
+      return '이미 사용 중인 아이디입니다.';
+    }
+    if (error.code === API_ERROR_CODES.duplicateEmail) {
+      return '이미 사용 중인 이메일입니다.';
+    }
+    if (error.status === 409) {
       return '이미 사용 중인 아이디 또는 이메일입니다.';
     }
-    if (error.problem.status === 400) {
+    if (error.status === 400) {
       return '입력 값을 확인해주세요. (아이디 3~30자 / 비밀번호 8자 이상 / 닉네임 2~30자 / 올바른 이메일)';
     }
   }
