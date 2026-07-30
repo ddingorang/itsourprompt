@@ -1,8 +1,10 @@
 package com.promptstudio.attempt.controller;
 
 import com.promptstudio.attempt.controller.response.AttemptResponse;
+import com.promptstudio.attempt.controller.response.CodeRunResponse;
 import com.promptstudio.attempt.controller.response.FeedbackResponse;
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.CodeRunView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.problem.domain.ProblemFile;
@@ -47,6 +49,17 @@ public class AttemptWebMapper {
         }
 
         return new FeedbackResponse(turns, attempt.feedback());
+    }
+
+    public CodeRunResponse toCodeRunResponse(CodeRunView run) {
+        return new CodeRunResponse(
+                run.id(),
+                run.status(),
+                run.exitCode(),
+                run.stdout(),
+                run.stderr(),
+                run.durationMs()
+        );
     }
 
     private List<AttemptResponse.AttemptFileResponse> toFileResponses(List<ProblemFile> files) {
