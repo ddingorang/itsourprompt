@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { getProblems } from '../features/problem/api';
@@ -14,7 +14,6 @@ const PAGES_PER_GROUP = 5;
 
 export default function ProblemListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const problemListRef = useRef<HTMLElement>(null);
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -41,9 +40,9 @@ export default function ProblemListPage() {
 
     nextParams.set('page', String(page));
     setSearchParams(nextParams);
-    problemListRef.current?.scrollIntoView({
+    window.scrollTo({
       behavior: 'smooth',
-      block: 'start',
+      top: 0,
     });
   };
 
@@ -145,7 +144,6 @@ export default function ProblemListPage() {
         {!isLoading && !errorMessage && problems.length > 0 && (
           <>
             <section
-              ref={problemListRef}
               className="border-b border-[#343434]"
               aria-label="문제 목록"
             >
