@@ -49,7 +49,7 @@ const labelClasses =
   'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
 
 const pageStateClasses =
-  'grid min-h-[calc(100vh_-_66px)] place-items-center bg-[#090909] p-10 ' +
+  'grid min-h-dvh place-items-center bg-[#090909] p-10 ' +
   'font-mono text-xs leading-[1.7] text-[#a3a3a3]';
 
 const changeColorClasses: Record<ChangeType, string> = {

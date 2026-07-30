@@ -23,7 +23,7 @@ export default function Button({
 }: ButtonProps) {
 const baseClasses =
   'inline-flex min-h-11 cursor-pointer items-center justify-center gap-2.5 ' +
-  'border px-[18px] text-xs leading-none font-extrabold tracking-[-0.01em] ' +
+  "border px-[18px] text-xs leading-none font-extrabold tracking-[-0.01em] [font-family:Arial,'Noto_Sans_KR',sans-serif] " +
   'no-underline transition-[background,border-color,color,opacity] duration-200 ' +
   'disabled:cursor-not-allowed disabled:opacity-45'
 
