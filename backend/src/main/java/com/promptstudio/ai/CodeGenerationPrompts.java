@@ -53,13 +53,7 @@ final class CodeGenerationPrompts {
         StringBuilder message = new StringBuilder();
         message.append("\n\n[현재 프로젝트 파일]\n");
 
-        for (ProblemFile file : files) {
-            message.append("--- ")
-                    .append(file.path())
-                    .append(" ---\n")
-                    .append(file.content())
-                    .append("\n");
-        }
+        PromptFormats.appendFiles(message, files);
 
         message.append("\n[사용자 요청]\n")
                 .append(userPrompt);

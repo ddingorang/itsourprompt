@@ -33,10 +33,13 @@ public class Attempt {
     @Column(name = "problem_id", nullable = false)
     private Long problemId;
 
+    /**
+     * 시작 스켈레톤. 한 번 정해지면 바뀌지 않고, 현재 상태는 여기에 턴을 재생해 얻는다.
+     */
     @ElementCollection
     @CollectionTable(name = "attempt_file", joinColumns = @JoinColumn(name = "attempt_id"))
     @OrderColumn(name = "ordinal")
-    private List<ProblemFile> currentFiles = new ArrayList<>();
+    private List<ProblemFile> baseFiles = new ArrayList<>();
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "attempt_id", nullable = false)
@@ -53,9 +56,9 @@ public class Attempt {
     protected Attempt() {
     }
 
-    private Attempt(Long problemId, List<ProblemFile> currentFiles) {
+    private Attempt(Long problemId, List<ProblemFile> baseFiles) {
         this.problemId = problemId;
-        this.currentFiles = new ArrayList<>(currentFiles);
+        this.baseFiles = new ArrayList<>(baseFiles);
     }
 
     public static Attempt start(Problem problem) {
@@ -67,9 +70,7 @@ public class Attempt {
             throw new AttemptAlreadySubmittedException(id);
         }
 
-        turns.add(new Turn(userPrompt, generated.summary(), FileChanges.diff(currentFiles, generated.files())));
-        currentFiles.clear();
-        currentFiles.addAll(generated.files());
+        turns.add(new Turn(userPrompt, generated.summary(), FileChanges.diff(currentFiles(), generated.files())));
     }
 
     public void submit(String feedback) {
@@ -89,8 +90,12 @@ public class Attempt {
         return problemId;
     }
 
+    public List<ProblemFile> baseFiles() {
+        return List.copyOf(baseFiles);
+    }
+
     public List<ProblemFile> currentFiles() {
-        return List.copyOf(currentFiles);
+        return FileReplay.head(baseFiles, turns, Turn::changes);
     }
 
     public List<Turn> turns() {
