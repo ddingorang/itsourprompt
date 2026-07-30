@@ -20,6 +20,16 @@ spring:
       mode: always
   jooq:
     sql-dialect: POSTGRES
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASSWORD}
+    listener:
+      simple:
+        prefetch: 1
+        # 워커가 run.result를 발행하기 전에 백엔드가 떠도 죽지 않고 재시도한다.
+        missing-queues-fatal: false
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
