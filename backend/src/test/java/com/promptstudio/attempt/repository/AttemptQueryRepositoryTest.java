@@ -5,6 +5,7 @@ import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
@@ -47,11 +48,11 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
         Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
         attempt.applyTurn(
                 "Main을 채워줘",
-                new GeneratedCode(List.of(new ProblemFile("src/Main.java", "생성된 내용")), "첫 요약")
+                new GeneratedCode(List.of(new ProblemFile("src/Main.java", "생성된 내용")), "첫 요약", List.of())
         );
         attempt.applyTurn(
                 "Main은 지우고 Util만 남겨줘",
-                new GeneratedCode(List.of(new ProblemFile("src/Util.java", "class Util {}")), "둘째 요약")
+                new GeneratedCode(List.of(new ProblemFile("src/Util.java", "class Util {}")), "둘째 요약", List.of())
         );
         attemptRepository.save(attempt);
 
@@ -66,7 +67,11 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
         Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
         attempt.applyTurn(
                 "Main을 채워줘",
-                new GeneratedCode(List.of(new ProblemFile("src/Main.java", "생성된 내용")), "첫 요약")
+                new GeneratedCode(
+                        List.of(new ProblemFile("src/Main.java", "생성된 내용")),
+                        "첫 요약",
+                        List.of(new ToolCallEntry("list_files", null), new ToolCallEntry("edit_file", "src/Main.java"))
+                )
         );
         attempt.applyTurn(
                 "Util도 만들어줘",
@@ -75,7 +80,8 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
                                 new ProblemFile("src/Main.java", "생성된 내용"),
                                 new ProblemFile("src/Util.java", "class Util {}")
                         ),
-                        "둘째 요약"
+                        "둘째 요약",
+                        List.of(new ToolCallEntry("edit_file", "src/Util.java"))
                 )
         );
         attemptRepository.save(attempt);
@@ -87,9 +93,15 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
         assertThat(view.turns().get(0).aiSummary()).isEqualTo("첫 요약");
         assertThat(view.turns().get(0).changes())
                 .containsExactly(new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "생성된 내용"));
+        assertThat(view.turns().get(0).toolCalls()).containsExactly(
+                new ToolCallEntry("list_files", null),
+                new ToolCallEntry("edit_file", "src/Main.java")
+        );
         assertThat(view.turns().get(1).userPrompt()).isEqualTo("Util도 만들어줘");
         assertThat(view.turns().get(1).changes())
                 .containsExactly(new FileChange("src/Util.java", FileChange.ChangeType.ADDED, "class Util {}"));
+        assertThat(view.turns().get(1).toolCalls())
+                .containsExactly(new ToolCallEntry("edit_file", "src/Util.java"));
     }
 
     @Test
@@ -97,7 +109,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
         Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
         attempt.applyTurn(
                 "Main을 지워줘",
-                new GeneratedCode(List.of(new ProblemFile("src/Util.java", "class Util {}")), "요약")
+                new GeneratedCode(List.of(new ProblemFile("src/Util.java", "class Util {}")), "요약", List.of())
         );
         attemptRepository.save(attempt);
 

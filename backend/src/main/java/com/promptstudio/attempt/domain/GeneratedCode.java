@@ -6,6 +6,7 @@ import java.util.List;
 
 public record GeneratedCode(
         List<ProblemFile> files,
-        String summary
+        String summary,
+        List<ToolCallEntry> toolCalls
 ) {
 }

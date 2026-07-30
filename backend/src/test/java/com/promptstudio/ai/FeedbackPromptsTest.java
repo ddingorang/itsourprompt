@@ -20,7 +20,7 @@ class FeedbackPromptsTest {
         AttemptView attempt = new AttemptView(1L, 1L, List.of(
                 new ProblemFile("src/Main.java", "class Main {}")
         ), List.of(), List.of(
-                new AttemptView.TurnView("프롬프트", "요약", List.of())
+                new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of())
         ), AttemptStatus.IN_PROGRESS, null);
 
         String prompt = FeedbackPrompts.userPrompt(problem, attempt);
@@ -34,7 +34,7 @@ class FeedbackPromptsTest {
                 new AttemptView.TurnView("프롬프트", "요약", List.of(
                         new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "class Main { void run() {} }"),
                         new FileChange("src/Old.java", FileChange.ChangeType.DELETED, null)
-                ))
+                ), List.of())
         ), AttemptStatus.IN_PROGRESS, null);
 
         String prompt = FeedbackPrompts.userPrompt(problem, attempt);
@@ -49,10 +49,10 @@ class FeedbackPromptsTest {
         AttemptView attempt = new AttemptView(1L, 1L, List.of(), List.of(), List.of(
                 new AttemptView.TurnView("첫 프롬프트", "첫 요약", List.of(
                         new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "class Main {}")
-                )),
+                ), List.of()),
                 new AttemptView.TurnView("두 번째 프롬프트", "두 번째 요약", List.of(
                         new FileChange("src/Util.java", FileChange.ChangeType.ADDED, "class Util {}")
-                ))
+                ), List.of())
         ), AttemptStatus.IN_PROGRESS, null);
 
         String prompt = FeedbackPrompts.userPrompt(problem, attempt);
@@ -71,7 +71,7 @@ class FeedbackPromptsTest {
     @Test
     void 턴에_변경_파일이_없으면_표시_문구를_넣는다() {
         AttemptView attempt = new AttemptView(1L, 1L, List.of(), List.of(), List.of(
-                new AttemptView.TurnView("프롬프트", "요약", List.of())
+                new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of())
         ), AttemptStatus.IN_PROGRESS, null);
 
         String prompt = FeedbackPrompts.userPrompt(problem, attempt);

@@ -2,6 +2,7 @@ package com.promptstudio.support;
 
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.problem.domain.ProblemFile;
@@ -33,18 +34,21 @@ public class FakeAiConfiguration {
 
         private final GeneratedCode result = new GeneratedCode(
                 List.of(new ProblemFile("src/main/java/Main.java", "생성된 내용")),
-                "생성 요약"
+                "생성 요약",
+                List.of(new ToolCallEntry("edit_file", "src/main/java/Main.java"))
         );
 
         private final AtomicInteger invocationCount = new AtomicInteger();
 
+        private ProblemView receivedProblem;
         private AttemptView receivedAttempt;
         private String receivedPrompt;
         private RuntimeException nextFailure;
 
         @Override
-        public GeneratedCode generate(AttemptView attempt, String userPrompt) {
+        public GeneratedCode generate(ProblemView problem, AttemptView attempt, String userPrompt) {
             invocationCount.incrementAndGet();
+            this.receivedProblem = problem;
             this.receivedAttempt = attempt;
             this.receivedPrompt = userPrompt;
 
@@ -65,6 +69,10 @@ public class FakeAiConfiguration {
             this.nextFailure = failure;
         }
 
+        public ProblemView receivedProblem() {
+            return receivedProblem;
+        }
+
         public AttemptView receivedAttempt() {
             return receivedAttempt;
         }
@@ -82,6 +90,7 @@ public class FakeAiConfiguration {
          */
         public void reset() {
             invocationCount.set(0);
+            receivedProblem = null;
             receivedAttempt = null;
             receivedPrompt = null;
             nextFailure = null;

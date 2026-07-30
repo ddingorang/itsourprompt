@@ -23,7 +23,7 @@ public record AttemptView(
         List<TurnView> turns = new ArrayList<>();
 
         for (Turn turn : attempt.turns()) {
-            turns.add(new TurnView(turn.userPrompt(), turn.aiSummary(), turn.changes()));
+            turns.add(new TurnView(turn.userPrompt(), turn.aiSummary(), turn.changes(), turn.toolCalls()));
         }
 
         return reconstruct(
@@ -61,7 +61,8 @@ public record AttemptView(
     public record TurnView(
             String userPrompt,
             String aiSummary,
-            List<FileChange> changes
+            List<FileChange> changes,
+            List<ToolCallEntry> toolCalls
     ) {
     }
 }

@@ -36,6 +36,12 @@ final class AttemptTables {
     static final Field<String> CHANGE_TYPE = field(name("turn_file_change", "change_type"), SQLDataType.VARCHAR);
     static final Field<String> CHANGE_CONTENT = field(name("turn_file_change", "content"), SQLDataType.CLOB);
 
+    static final Table<?> TURN_TOOL_CALL = table(name("turn_tool_call"));
+    static final Field<Long> TOOL_CALL_TURN_ID = field(name("turn_tool_call", "turn_id"), SQLDataType.BIGINT);
+    static final Field<Integer> TOOL_CALL_ORDINAL = field(name("turn_tool_call", "ordinal"), SQLDataType.INTEGER);
+    static final Field<String> TOOL_CALL_TOOL = field(name("turn_tool_call", "tool"), SQLDataType.VARCHAR);
+    static final Field<String> TOOL_CALL_PATH = field(name("turn_tool_call", "path"), SQLDataType.VARCHAR);
+
     private AttemptTables() {
     }
 }

@@ -2,6 +2,7 @@ package com.promptstudio.attempt.controller.response;
 
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.FileChange;
+import com.promptstudio.attempt.domain.ToolCallEntry;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
@@ -38,7 +39,18 @@ public record AttemptResponse(
             @Schema(description = "AI의 작업 요약")
             String aiResponse,
             @Schema(description = "직전 상태 대비 변경 파일 목록")
-            List<ChangedFileResponse> changedFiles
+            List<ChangedFileResponse> changedFiles,
+            @Schema(description = "AI가 호출한 툴 기록")
+            List<ToolCallResponse> toolCalls
+    ) {
+    }
+
+    @Schema(description = "턴에서 AI가 호출한 툴")
+    public record ToolCallResponse(
+            @Schema(description = "툴 이름", example = ToolCallEntry.EDIT_FILE)
+            String tool,
+            @Schema(description = "대상 파일 경로. 대상이 없는 툴은 null", example = "src/main/java/Main.java")
+            String path
     ) {
     }
 

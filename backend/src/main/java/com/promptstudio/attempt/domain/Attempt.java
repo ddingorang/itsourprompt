@@ -70,7 +70,12 @@ public class Attempt {
             throw new AttemptAlreadySubmittedException(id);
         }
 
-        turns.add(new Turn(userPrompt, generated.summary(), FileChanges.diff(currentFiles(), generated.files())));
+        turns.add(new Turn(
+                userPrompt,
+                generated.summary(),
+                FileChanges.diff(currentFiles(), generated.files()),
+                generated.toolCalls()
+        ));
     }
 
     public void submit(String feedback) {

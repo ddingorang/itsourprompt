@@ -2,6 +2,7 @@ package com.promptstudio.attempt.service;
 
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
@@ -103,15 +104,20 @@ class AttemptServiceTest extends DatabaseTest {
         assertThat(updated.turns()).hasSize(1);
         assertThat(updated.turns().getFirst().userPrompt()).isEqualTo("Hello 출력해줘");
         assertThat(updated.turns().getFirst().aiSummary()).isEqualTo("생성 요약");
+        assertThat(updated.turns().getFirst().toolCalls())
+                .containsExactly(new ToolCallEntry("edit_file", "src/main/java/Main.java"));
         assertThat(attemptService.getAttempt(started.id())).isEqualTo(updated);
     }
 
     @Test
-    void 턴을_추가할_때_현재_어템프트와_새_프롬프트를_코드_생성기에_전달한다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
+    void 턴을_추가할_때_문제와_현재_어템프트와_새_프롬프트를_코드_생성기에_전달한다() {
+        Problem problem = newProblem();
+        AttemptView started = attemptService.startAttempt(problem.id());
 
         attemptService.addTurn(started.id(), "Hello 출력해줘");
 
+        assertThat(codeGenerator.receivedProblem().id()).isEqualTo(problem.id());
+        assertThat(codeGenerator.receivedProblem().specMd()).isEqualTo("명세");
         assertThat(codeGenerator.receivedAttempt()).isEqualTo(started);
         assertThat(codeGenerator.receivedPrompt()).isEqualTo("Hello 출력해줘");
     }

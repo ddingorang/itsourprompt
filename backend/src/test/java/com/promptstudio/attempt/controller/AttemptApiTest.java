@@ -61,7 +61,10 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.turns[0].aiResponse").value("생성 요약"))
                 .andExpect(jsonPath("$.turns[0].changedFiles[0].path").value("src/main/java/Main.java"))
                 .andExpect(jsonPath("$.turns[0].changedFiles[0].changeType").value("MODIFIED"))
-                .andExpect(jsonPath("$.turns[0].changedFiles[0].content").value("생성된 내용"));
+                .andExpect(jsonPath("$.turns[0].changedFiles[0].content").value("생성된 내용"))
+                .andExpect(jsonPath("$.turns[0].toolCalls.length()").value(1))
+                .andExpect(jsonPath("$.turns[0].toolCalls[0].tool").value("edit_file"))
+                .andExpect(jsonPath("$.turns[0].toolCalls[0].path").value("src/main/java/Main.java"));
     }
 
     @Test
@@ -93,7 +96,10 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.turns.length()").value(1))
                 .andExpect(jsonPath("$.turns[0].prompt").value("Hello 출력해줘"))
                 .andExpect(jsonPath("$.turns[0].aiResponse").value("생성 요약"))
-                .andExpect(jsonPath("$.turns[0].changedFiles[0].changeType").value("MODIFIED"));
+                .andExpect(jsonPath("$.turns[0].changedFiles[0].changeType").value("MODIFIED"))
+                .andExpect(jsonPath("$.turns[0].toolCalls.length()").value(1))
+                .andExpect(jsonPath("$.turns[0].toolCalls[0].tool").value("edit_file"))
+                .andExpect(jsonPath("$.turns[0].toolCalls[0].path").value("src/main/java/Main.java"));
     }
 
     @Test

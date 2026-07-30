@@ -3,6 +3,7 @@ package com.promptstudio.attempt.controller;
 import com.promptstudio.attempt.controller.response.AttemptResponse;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
+import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.problem.domain.ProblemFile;
 import org.springframework.stereotype.Component;
 
@@ -46,6 +47,12 @@ public class AttemptWebMapper {
             changedFiles.add(new AttemptResponse.ChangedFileResponse(change.path(), change.type(), change.content()));
         }
 
-        return new AttemptResponse.TurnResponse(turn.userPrompt(), turn.aiSummary(), changedFiles);
+        List<AttemptResponse.ToolCallResponse> toolCalls = new ArrayList<>();
+
+        for (ToolCallEntry toolCall : turn.toolCalls()) {
+            toolCalls.add(new AttemptResponse.ToolCallResponse(toolCall.tool(), toolCall.path()));
+        }
+
+        return new AttemptResponse.TurnResponse(turn.userPrompt(), turn.aiSummary(), changedFiles, toolCalls);
     }
 }
