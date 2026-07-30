@@ -1,24 +1,65 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { getProblems } from '../features/problem/api';
+import Pagination from '../features/problem/Pagination';
 import type { ProblemSummary } from '../features/problem/types';
+import { usePagination } from '../features/problem/usePagination';
 import { ApiProblemError } from '../shared/api/apiClient';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
+const PROBLEMS_PER_PAGE = 10;
+const PAGES_PER_GROUP = 5;
+
 export default function ProblemListPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const problemListRef = useRef<HTMLElement>(null);
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const requestedPage = Number(searchParams.get('page'));
+  const {
+    currentPage,
+    pageGroupEnd,
+    pageGroupStart,
+    pageStart,
+    totalPages,
+  } = usePagination({
+    itemCount: problems.length,
+    itemsPerPage: PROBLEMS_PER_PAGE,
+    pagesPerGroup: PAGES_PER_GROUP,
+    requestedPage,
+  });
+  const visibleProblems = problems.slice(
+    pageStart,
+    pageStart + PROBLEMS_PER_PAGE,
+  );
+
+  const moveToPage = (page: number) => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    nextParams.set('page', String(page));
+    setSearchParams(nextParams);
+    problemListRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
 
   useEffect(() => {
     let isMounted = true;
 
     getProblems()
-      .then((response) => {
+      .then((_response) => {
         if (isMounted) {
-          setProblems(response.problems);
+          // TODO: 테스트 후 매개변수를 response로 바꾸고 setProblems(response.problems)로 원복
+          setProblems(
+            Array.from({ length: 243 }, (_, index) => ({
+              id: index + 1,
+              title: `페이지네이션 테스트 문제 ${index + 1}`,
+            })),
+          );
         }
       })
       .catch((error: unknown) => {
@@ -40,6 +81,28 @@ export default function ProblemListPage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      isLoading ||
+      problems.length === 0 ||
+      !Number.isInteger(requestedPage) ||
+      requestedPage <= totalPages
+    ) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('page', String(totalPages));
+    setSearchParams(nextParams, { replace: true });
+  }, [
+    isLoading,
+    problems.length,
+    requestedPage,
+    searchParams,
+    setSearchParams,
+    totalPages,
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
@@ -80,8 +143,13 @@ export default function ProblemListPage() {
         )}
 
         {!isLoading && !errorMessage && problems.length > 0 && (
-          <section className="border-b border-[#343434]" aria-label="문제 목록">
-            {problems.map((problem) => (
+          <>
+            <section
+              ref={problemListRef}
+              className="border-b border-[#343434]"
+              aria-label="문제 목록"
+            >
+            {visibleProblems.map((problem) => (
               <Link
                 className="group grid min-h-24 grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-5 border-t border-[#343434] py-5 text-inherit no-underline transition-[padding,background,color] duration-200 first:border-t-0 hover:bg-[#d6ff50] hover:px-3.5 hover:text-[#090909] focus-visible:bg-[#d6ff50] focus-visible:px-3.5 focus-visible:text-[#090909] focus-visible:outline-none max-[640px]:min-h-22 max-[640px]:grid-cols-[42px_minmax(0,1fr)_auto] max-[640px]:gap-3"
                 key={problem.id}
@@ -101,7 +169,22 @@ export default function ProblemListPage() {
                 </span>
               </Link>
             ))}
-          </section>
+
+            </section>
+
+            {totalPages > 1 && (
+              <>
+                <div className="h-[45px]" aria-hidden="true" />
+                <Pagination
+                  currentPage={currentPage}
+                  pageGroupEnd={pageGroupEnd}
+                  pageGroupStart={pageGroupStart}
+                  totalPages={totalPages}
+                  onPageChange={moveToPage}
+                />
+              </>
+            )}
+          </>
         )}
       </main>
       <Footer />
