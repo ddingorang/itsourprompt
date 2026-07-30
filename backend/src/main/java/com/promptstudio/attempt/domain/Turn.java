@@ -39,6 +39,12 @@ public class Turn {
     @OrderColumn(name = "ordinal")
     private List<ToolCallEntry> toolCalls = new ArrayList<>();
 
+    /**
+     * 제출 시점에만 배정되므로 생성자 인자가 아니다.
+     */
+    @Column(name = "feedback", columnDefinition = "text")
+    private String feedback;
+
     protected Turn() {
     }
 
@@ -63,6 +69,14 @@ public class Turn {
 
     public List<ToolCallEntry> toolCalls() {
         return List.copyOf(toolCalls);
+    }
+
+    public String feedback() {
+        return feedback;
+    }
+
+    void applyFeedback(String feedback) {
+        this.feedback = feedback;
     }
 
     @Override

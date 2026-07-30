@@ -105,7 +105,8 @@ public class AttemptController {
     @GetMapping("/{id}/feedback")
     @Operation(
             summary = "피드백 조회",
-            description = "제출 시 생성해 저장한 프롬프트 피드백을 반환합니다. 제출 전에는 조회할 수 없습니다."
+            description = "제출 시 생성해 저장한 프롬프트 피드백을 턴별 피드백과 전체 피드백으로 반환합니다. "
+                    + "제출 전에는 조회할 수 없습니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -120,7 +121,7 @@ public class AttemptController {
             )
     })
     public FeedbackResponse getFeedback(@PathVariable("id") Long id) {
-        return new FeedbackResponse(attemptService.getFeedback(id));
+        return attemptWebMapper.toFeedbackResponse(attemptService.getFeedback(id));
     }
 
     @PostMapping("/{id}/turns")
@@ -176,8 +177,9 @@ public class AttemptController {
     @PostMapping("/{id}/submit")
     @Operation(
             summary = "어템프트 제출",
-            description = "문제 명세와 어템프트의 전체 턴 기록을 바탕으로 프롬프트 피드백을 생성해 저장하고 어템프트를 종료합니다. "
-                    + "코드 내용은 전달하지 않습니다. 이미 제출된 어템프트를 다시 제출하면 AI를 재호출하지 않고 저장된 피드백을 반환합니다."
+            description = "문제 명세와 어템프트의 전체 턴 기록을 바탕으로 턴별 프롬프트 피드백과 세션 전체 피드백을 생성해 "
+                    + "저장하고 어템프트를 종료합니다. 이미 제출된 어템프트를 다시 제출하면 AI를 재호출하지 않고 "
+                    + "저장된 피드백을 반환합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -212,6 +214,6 @@ public class AttemptController {
             )
     })
     public FeedbackResponse submit(@PathVariable("id") Long id) {
-        return new FeedbackResponse(attemptService.submit(id));
+        return attemptWebMapper.toFeedbackResponse(attemptService.submit(id));
     }
 }

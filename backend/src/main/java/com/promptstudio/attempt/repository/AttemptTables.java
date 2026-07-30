@@ -28,6 +28,7 @@ final class AttemptTables {
     static final Field<Integer> TURN_ORDINAL = field(name("attempt_turn", "ordinal"), SQLDataType.INTEGER);
     static final Field<String> TURN_USER_PROMPT = field(name("attempt_turn", "user_prompt"), SQLDataType.CLOB);
     static final Field<String> TURN_AI_SUMMARY = field(name("attempt_turn", "ai_summary"), SQLDataType.CLOB);
+    static final Field<String> TURN_FEEDBACK = field(name("attempt_turn", "feedback"), SQLDataType.CLOB);
 
     static final Table<?> TURN_FILE_CHANGE = table(name("turn_file_change"));
     static final Field<Long> CHANGE_TURN_ID = field(name("turn_file_change", "turn_id"), SQLDataType.BIGINT);

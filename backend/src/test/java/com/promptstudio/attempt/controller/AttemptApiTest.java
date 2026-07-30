@@ -119,7 +119,10 @@ class AttemptApiTest extends DatabaseTest {
 
         mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.feedback").value("생성된 피드백"));
+                .andExpect(jsonPath("$.overallMd").value("생성된 피드백"))
+                .andExpect(jsonPath("$.turns.length()").value(1))
+                .andExpect(jsonPath("$.turns[0].turn").value(1))
+                .andExpect(jsonPath("$.turns[0].feedbackMd").value("턴 1 피드백"));
 
         mockMvc.perform(get("/api/attempts/{id}", attemptId))
                 .andExpect(status().isOk())
@@ -136,7 +139,9 @@ class AttemptApiTest extends DatabaseTest {
 
         mockMvc.perform(get("/api/attempts/{id}/feedback", attemptId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.feedback").value("생성된 피드백"));
+                .andExpect(jsonPath("$.overallMd").value("생성된 피드백"))
+                .andExpect(jsonPath("$.turns[0].turn").value(1))
+                .andExpect(jsonPath("$.turns[0].feedbackMd").value("턴 1 피드백"));
     }
 
     @Test
@@ -165,7 +170,8 @@ class AttemptApiTest extends DatabaseTest {
 
         mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.feedback").value("생성된 피드백"));
+                .andExpect(jsonPath("$.overallMd").value("생성된 피드백"))
+                .andExpect(jsonPath("$.turns[0].feedbackMd").value("턴 1 피드백"));
     }
 
     @Test

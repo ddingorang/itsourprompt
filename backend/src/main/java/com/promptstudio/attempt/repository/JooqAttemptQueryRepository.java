@@ -35,6 +35,7 @@ import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_TOOL;
 import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_TURN_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_AI_SUMMARY;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_ATTEMPT_ID;
+import static com.promptstudio.attempt.repository.AttemptTables.TURN_FEEDBACK;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_FILE_CHANGE;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_ORDINAL;
@@ -85,12 +86,12 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
         ).convertFrom(result -> result.map(record -> new ToolCallEntry(record.value1(), record.value2())));
 
         return multiset(
-                select(TURN_USER_PROMPT, TURN_AI_SUMMARY, changes, toolCalls)
+                select(TURN_USER_PROMPT, TURN_AI_SUMMARY, changes, toolCalls, TURN_FEEDBACK)
                         .from(ATTEMPT_TURN)
                         .where(TURN_ATTEMPT_ID.eq(ID))
                         .orderBy(TURN_ORDINAL)
-        ).convertFrom(result -> result.map(record ->
-                new AttemptView.TurnView(record.value1(), record.value2(), record.value3(), record.value4())));
+        ).convertFrom(result -> result.map(record -> new AttemptView.TurnView(
+                record.value1(), record.value2(), record.value3(), record.value4(), record.value5())));
     }
 
     private Field<List<ProblemFile>> baseFilesField() {

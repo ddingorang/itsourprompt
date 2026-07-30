@@ -1,5 +1,6 @@
 package com.promptstudio.attempt.service;
 
+import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
@@ -68,14 +69,14 @@ public class AttemptService {
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
     }
 
-    public String getFeedback(Long attemptId) {
+    public AttemptView getFeedback(Long attemptId) {
         AttemptView attempt = getAttempt(attemptId);
 
         if (attempt.status() != AttemptStatus.SUBMITTED) {
             throw new FeedbackNotFoundException(attemptId);
         }
 
-        return attempt.feedback();
+        return attempt;
     }
 
     public AttemptView addTurn(Long attemptId, String userPrompt) {
@@ -138,7 +139,7 @@ public class AttemptService {
         return idempotencyKey;
     }
 
-    public String submit(Long attemptId) {
+    public AttemptView submit(Long attemptId) {
         if (!feedbackGenerationGuard.tryAcquire(attemptId)) {
             throw new FeedbackGenerationInProgressException(attemptId);
         }
@@ -151,10 +152,11 @@ public class AttemptService {
             }
 
             if (attempt.status() == AttemptStatus.SUBMITTED) {
-                return attempt.feedback();
+                return attempt;
             }
 
-            String feedback = feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
+            AttemptFeedback feedback =
+                    feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
 
             return attemptWriter.submit(attemptId, feedback);
         } finally {

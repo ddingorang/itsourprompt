@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.domain;
 
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
+import com.promptstudio.attempt.exception.FeedbackTurnCountMismatchException;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import org.junit.jupiter.api.Test;
@@ -120,16 +121,41 @@ class AttemptTest {
     void 제출하면_상태가_SUBMITTED로_바뀌고_피드백이_저장된다() {
         Attempt attempt = Attempt.start(problem);
 
-        attempt.submit("피드백 내용");
+        attempt.submit(new AttemptFeedback(List.of(), "피드백 내용"));
 
         assertThat(attempt.status()).isEqualTo(AttemptStatus.SUBMITTED);
         assertThat(attempt.feedback()).isEqualTo("피드백 내용");
     }
 
     @Test
+    void 제출하면_턴별_피드백을_순서대로_배정한다() {
+        Attempt attempt = Attempt.start(problem);
+        attempt.applyTurn("첫 요청", generated);
+        attempt.applyTurn("두 번째 요청", generated);
+
+        attempt.submit(new AttemptFeedback(List.of("첫 턴 피드백", "두 번째 턴 피드백"), "전체 피드백"));
+
+        assertThat(attempt.turns().get(0).feedback()).isEqualTo("첫 턴 피드백");
+        assertThat(attempt.turns().get(1).feedback()).isEqualTo("두 번째 턴 피드백");
+        assertThat(attempt.feedback()).isEqualTo("전체 피드백");
+    }
+
+    @Test
+    void 턴_피드백_개수가_턴_수와_다르면_제출하지_않는다() {
+        Attempt attempt = Attempt.start(problem);
+        attempt.applyTurn("첫 요청", generated);
+
+        assertThatThrownBy(() -> attempt.submit(new AttemptFeedback(List.of("첫 턴", "둘째 턴"), "전체 피드백")))
+                .isInstanceOf(FeedbackTurnCountMismatchException.class)
+                .hasMessage("어템프트의 턴 수(1)와 턴 피드백 개수(2)가 다릅니다.");
+        assertThat(attempt.status()).isEqualTo(AttemptStatus.IN_PROGRESS);
+        assertThat(attempt.turns().getFirst().feedback()).isNull();
+    }
+
+    @Test
     void 제출된_어템프트에_턴을_적용하면_예외를_던진다() {
         Attempt attempt = Attempt.start(problem);
-        attempt.submit("피드백 내용");
+        attempt.submit(new AttemptFeedback(List.of(), "피드백 내용"));
 
         assertThatThrownBy(() -> attempt.applyTurn("추가 요청", generated))
                 .isInstanceOf(AttemptAlreadySubmittedException.class);
@@ -138,9 +164,9 @@ class AttemptTest {
     @Test
     void 이미_제출된_어템프트를_다시_제출하면_예외를_던진다() {
         Attempt attempt = Attempt.start(problem);
-        attempt.submit("피드백 내용");
+        attempt.submit(new AttemptFeedback(List.of(), "피드백 내용"));
 
-        assertThatThrownBy(() -> attempt.submit("다른 피드백"))
+        assertThatThrownBy(() -> attempt.submit(new AttemptFeedback(List.of(), "다른 피드백")))
                 .isInstanceOf(AttemptAlreadySubmittedException.class);
     }
 

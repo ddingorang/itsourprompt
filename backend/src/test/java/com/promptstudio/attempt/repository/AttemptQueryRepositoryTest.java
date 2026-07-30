@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.repository;
 
 import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
@@ -130,7 +131,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
         assertThat(started.status()).isEqualTo(AttemptStatus.IN_PROGRESS);
         assertThat(started.feedback()).isNull();
 
-        attempt.submit("저장된 피드백");
+        attempt.submit(new AttemptFeedback(List.of(), "저장된 피드백"));
         attemptRepository.save(attempt);
 
         AttemptView submitted = attemptQueryRepository.findById(attempt.id()).orElseThrow();

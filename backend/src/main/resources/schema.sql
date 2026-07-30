@@ -47,8 +47,11 @@ CREATE TABLE IF NOT EXISTS attempt_turn (
     attempt_id  BIGINT NOT NULL REFERENCES attempt (id) ON DELETE CASCADE,
     ordinal     INT    NOT NULL,
     user_prompt TEXT   NOT NULL,
-    ai_summary  TEXT   NOT NULL
+    ai_summary  TEXT   NOT NULL,
+    feedback    TEXT
 );
+-- 턴별 피드백 이전에 만들어진 DB를 위한 마이그레이션. 그때 제출된 어템프트는 attempt.feedback만 갖는다.
+ALTER TABLE attempt_turn ADD COLUMN IF NOT EXISTS feedback TEXT;
 -- 중복 요청이 같은 턴을 두 번 쌓는 것을 막는 안전망.
 -- 기존 DB에는 옛 인덱스 idx_attempt_turn_attempt가 남아 있을 수 있다(무해). 필요하면 수동으로 DROP INDEX 한다.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_attempt_turn_attempt_ordinal ON attempt_turn (attempt_id, ordinal);

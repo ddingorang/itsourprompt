@@ -40,7 +40,6 @@ public class OpenAiCodeGenerator implements CodeGenerator {
 
     private static final int MAX_TOOL_ROUNDS = 10;
     private static final long AI_REQUEST_TIMEOUT_MINUTES = 5;
-    private static final int MAX_LOGGED_RESPONSE_BODY_LENGTH = 4_000;
     private static final String FALLBACK_SUMMARY = "작업을 완료했지만 AI가 요약을 제공하지 않았습니다.";
     private static final String FORCED_FINALIZE_PROMPT =
             "툴 사용 한도에 도달했습니다. 지금까지 수행한 작업을 한국어로 요약해 주세요.";
@@ -201,7 +200,7 @@ public class OpenAiCodeGenerator implements CodeGenerator {
                     openAiException.type().orElse("none"),
                     openAiException.param().orElse("none"),
                     openAiException.headers().values("x-request-id"),
-                    abbreviate(String.valueOf(openAiException.body())),
+                    LogFormats.abbreviate(String.valueOf(openAiException.body())),
                     cause
             );
             return;
@@ -213,7 +212,7 @@ public class OpenAiCodeGenerator implements CodeGenerator {
             log.error(
                     "OpenAI API 호출 실패: status={}, responseBody={}",
                     responseException.getStatusCode().value(),
-                    abbreviate(responseException.getResponseBodyAsString()),
+                    LogFormats.abbreviate(responseException.getResponseBodyAsString()),
                     cause
             );
             return;
@@ -234,13 +233,5 @@ public class OpenAiCodeGenerator implements CodeGenerator {
         }
 
         return null;
-    }
-
-    private static String abbreviate(String value) {
-        if (value == null || value.length() <= MAX_LOGGED_RESPONSE_BODY_LENGTH) {
-            return value;
-        }
-
-        return value.substring(0, MAX_LOGGED_RESPONSE_BODY_LENGTH) + "... (truncated)";
     }
 }

@@ -24,10 +24,24 @@ class OpenAiChatOptionsFactoryTest {
 
     @Test
     void 피드백_옵션은_maxTokens_대신_maxCompletionTokens를_쓴다() {
-        OpenAiChatOptions options = factory.forFeedback();
+        OpenAiChatOptions options = factory.forFeedback(1);
 
         assertThat(options.getMaxTokens()).isNull();
         assertThat(options.getMaxCompletionTokens()).isPositive();
+    }
+
+    /**
+     * 턴별 피드백이라 출력 길이가 턴 수에 따라 늘어난다.
+     */
+    @Test
+    void 피드백_옵션의_완성_토큰은_턴_수에_비례한다() {
+        assertThat(factory.forFeedback(1).getMaxCompletionTokens()).isEqualTo(6_144);
+        assertThat(factory.forFeedback(3).getMaxCompletionTokens()).isEqualTo(10_240);
+    }
+
+    @Test
+    void 피드백_옵션의_완성_토큰에는_상한이_있다() {
+        assertThat(factory.forFeedback(100).getMaxCompletionTokens()).isEqualTo(32_768);
     }
 
     @Test
@@ -80,13 +94,19 @@ class OpenAiChatOptionsFactoryTest {
                 .isLessThan(factory.forCodeGeneration("attempt-7", toolCallbacks).getMaxCompletionTokens());
     }
 
+    /**
+     * 개수 제약은 스키마가 아니라 파서와 도메인이 지키므로 스키마에 minItems가 없어야 한다.
+     */
     @Test
-    void 피드백_옵션은_구조화_출력과_프롬프트_캐시_키를_싣지_않는다() {
-        OpenAiChatOptions options = factory.forFeedback();
+    void 피드백_옵션은_턴_수에_맞는_구조화_출력을_싣고_프롬프트_캐시_키는_싣지_않는다() {
+        OpenAiChatOptions options = factory.forFeedback(1);
 
         assertThat(options.getModel()).isEqualTo("feedback-model");
         assertThat(options.getReasoningEffort()).isEqualTo("medium");
-        assertThat(options.getResponseFormat()).isNull();
+        assertThat(options.getResponseFormat()).isNotNull();
+        assertThat(options.getResponseFormat().getJsonSchema())
+                .contains("정확히 1개")
+                .doesNotContain("minItems");
         assertThat(options.getPromptCacheKey()).isNull();
     }
 }
