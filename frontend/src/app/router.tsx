@@ -1,12 +1,14 @@
 import { createBrowserRouter } from 'react-router-dom'
 
+import ProtectedRoute from '../features/auth/ProtectedRoute'
 import HomePage from '../pages/HomePage'
 import ProblemListPage from '../pages/ProblemListPage'
 import ProblemDetailPage from '../pages/ProblemDetailPage'
 import FeedbackPage from '../pages/FeedbackPage'
 import ErrorPage from '../pages/ErrorPage'
 import MyPage from '../pages/MyPage'
-import AuthPlaceholderPage from '../pages/AuthPlaceholderPage'
+import LoginPage from '../pages/LoginPage'
+import SignupPage from '../pages/SignupPage'
 
 export const router = createBrowserRouter([
   {
@@ -30,15 +32,20 @@ export const router = createBrowserRouter([
     element: <ErrorPage />,
   },
   {
+
     path: '/my',
-    element: <MyPage />,
+    element: (
+      <ProtectedRoute>
+        <MyPage />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/login',
-    element: <AuthPlaceholderPage title="LOGIN" />,
+    element: <LoginPage />,
   },
   {
     path: '/signup',
-    element: <AuthPlaceholderPage title="SIGN UP" />,
+    element: <SignupPage />,
   },
 ])
