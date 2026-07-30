@@ -1,5 +1,6 @@
 package com.promptstudio.support;
 
+import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.domain.ToolCallEntry;
@@ -11,6 +12,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -108,7 +110,7 @@ public class FakeAiConfiguration {
         private CountDownLatch nextGate;
 
         @Override
-        public String generate(ProblemView problem, AttemptView attempt) {
+        public AttemptFeedback generate(ProblemView problem, AttemptView attempt) {
             invocationCount.incrementAndGet();
             this.receivedProblem = problem;
             this.receivedAttempt = attempt;
@@ -122,7 +124,13 @@ public class FakeAiConfiguration {
                 throw failure;
             }
 
-            return "생성된 피드백";
+            List<String> turnFeedbacks = new ArrayList<>();
+
+            for (int index = 0; index < attempt.turns().size(); index++) {
+                turnFeedbacks.add("턴 " + (index + 1) + " 피드백");
+            }
+
+            return new AttemptFeedback(turnFeedbacks, "생성된 피드백");
         }
 
         /**

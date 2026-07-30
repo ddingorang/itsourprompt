@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
-import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -19,9 +18,7 @@ import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.openai.OpenAiChatOptions;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -164,40 +161,5 @@ class OpenAiCodeGeneratorTest {
                 .build();
 
         return new ChatResponse(List.of(new Generation(message)));
-    }
-
-    private static final class StubChatModel implements ChatModel {
-
-        private final Deque<ChatResponse> queued = new ArrayDeque<>();
-        private final List<Prompt> receivedPrompts = new ArrayList<>();
-
-        private RuntimeException failure;
-
-        @Override
-        public ChatResponse call(Prompt prompt) {
-            receivedPrompts.add(prompt);
-
-            if (!queued.isEmpty()) {
-                return queued.removeFirst();
-            }
-
-            if (failure != null) {
-                throw failure;
-            }
-
-            throw new IllegalStateException("예상하지 못한 모델 호출입니다.");
-        }
-
-        void queue(ChatResponse response) {
-            queued.addLast(response);
-        }
-
-        void failWith(RuntimeException failure) {
-            this.failure = failure;
-        }
-
-        List<Prompt> receivedPrompts() {
-            return List.copyOf(receivedPrompts);
-        }
     }
 }

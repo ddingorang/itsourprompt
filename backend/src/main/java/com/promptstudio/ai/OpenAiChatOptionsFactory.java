@@ -1,5 +1,6 @@
 package com.promptstudio.ai;
 
+import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +25,9 @@ public class OpenAiChatOptionsFactory {
     private static final String FEEDBACK_REASONING_EFFORT = "medium";
     private static final int CODE_GENERATION_MAX_COMPLETION_TOKENS = 32_768;
     private static final int FINALIZE_MAX_COMPLETION_TOKENS = 8_192;
-    private static final int FEEDBACK_MAX_COMPLETION_TOKENS = 8_192;
+    private static final int FEEDBACK_BASE_MAX_COMPLETION_TOKENS = 4_096;
+    private static final int FEEDBACK_MAX_COMPLETION_TOKENS_PER_TURN = 2_048;
+    private static final int FEEDBACK_MAX_COMPLETION_TOKENS_CAP = 32_768;
 
     private final String codeModel;
     private final String feedbackModel;
@@ -66,11 +69,26 @@ public class OpenAiChatOptionsFactory {
                 .promptCacheKey(promptCacheKey);
     }
 
-    public OpenAiChatOptions forFeedback() {
+    /**
+     * 턴마다 변환·대조·처방 세 절이 나오므로 완성 토큰을 턴 수에 비례해 잡고 상한을 둔다.
+     *
+     * <p>구조화 출력 스키마도 턴 수를 알아야 만들 수 있어 여기서 함께 조립한다.
+     */
+    public OpenAiChatOptions forFeedback(int turnCount) {
         return OpenAiChatOptions.builder()
                 .model(feedbackModel)
                 .reasoningEffort(FEEDBACK_REASONING_EFFORT)
-                .maxCompletionTokens(FEEDBACK_MAX_COMPLETION_TOKENS)
+                .maxCompletionTokens(feedbackMaxCompletionTokens(turnCount))
+                .responseFormat(OpenAiChatModel.ResponseFormat.builder()
+                        .jsonSchema(FeedbackSchema.jsonSchema(turnCount))
+                        .build())
                 .build();
+    }
+
+    private int feedbackMaxCompletionTokens(int turnCount) {
+        return Math.min(
+                FEEDBACK_BASE_MAX_COMPLETION_TOKENS + FEEDBACK_MAX_COMPLETION_TOKENS_PER_TURN * turnCount,
+                FEEDBACK_MAX_COMPLETION_TOKENS_CAP
+        );
     }
 }

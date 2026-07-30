@@ -1,5 +1,8 @@
 package com.promptstudio.ai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.problem.domain.ProblemView;
@@ -11,6 +14,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -20,6 +24,7 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
 
     private static final long FEEDBACK_TIMEOUT_MINUTES = 5;
     private static final Logger log = LoggerFactory.getLogger(OpenAiFeedbackGenerator.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final ChatClient chatClient;
     private final AiCallExecutor aiCallExecutor;
@@ -35,11 +40,15 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
         this.chatOptionsFactory = chatOptionsFactory;
     }
 
+    private record FeedbackPayload(List<String> turnFeedbacks, String overall) {
+    }
+
     @Override
-    public String generate(ProblemView problem, AttemptView attempt) {
+    public AttemptFeedback generate(ProblemView problem, AttemptView attempt) {
         String systemPrompt = FeedbackPrompts.systemPrompt();
         String userPrompt = FeedbackPrompts.userPrompt(problem, attempt);
-        OpenAiChatOptions chatOptions = chatOptionsFactory.forFeedback();
+        int turnCount = attempt.turns().size();
+        OpenAiChatOptions chatOptions = chatOptionsFactory.forFeedback(turnCount);
         long startedAt = System.nanoTime();
 
         log.info(
@@ -48,27 +57,25 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
                 problem.id(),
                 attempt.id(),
                 systemPrompt.length() + userPrompt.length(),
-                attempt.turns().size()
+                turnCount
         );
 
         try {
-            String feedback = aiCallExecutor.call(() -> chatClient.prompt()
+            String response = aiCallExecutor.call(() -> chatClient.prompt()
                     .system(systemPrompt)
                     .user(userPrompt)
                     .options(chatOptions.mutate())
                     .call()
                     .content(), FEEDBACK_TIMEOUT_MINUTES);
 
-            if (feedback == null || feedback.isBlank()) {
-                throw new FeedbackGenerationException("AI returned an empty feedback response.");
-            }
+            AttemptFeedback feedback = parse(response, turnCount);
 
             log.info(
                     "[OPENAI FEEDBACK] response received | duration={} ms | feedbackChars={}",
                     elapsedMillis(startedAt),
-                    feedback.length()
+                    response.length()
             );
-            return feedback.trim();
+            return feedback;
         } catch (TimeoutException exception) {
             log.error(
                     "[OPENAI FEEDBACK] timed out | duration={} ms | timeout={} min",
@@ -83,6 +90,37 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
             log.error("[OPENAI FEEDBACK] request failed", exception.getCause());
             throw new FeedbackGenerationException("AI feedback request failed.", exception.getCause());
         }
+    }
+
+    /**
+     * 턴과 피드백의 1:1 대응이 응답의 유일한 계약이므로 개수가 어긋나면 저장하지 않는다.
+     */
+    private AttemptFeedback parse(String response, int turnCount) {
+        if (response == null || response.isBlank()) {
+            throw new FeedbackGenerationException("AI returned an empty feedback response.");
+        }
+
+        FeedbackPayload payload;
+
+        try {
+            payload = objectMapper.readValue(response, FeedbackPayload.class);
+        } catch (JsonProcessingException exception) {
+            log.warn(
+                    "[OPENAI FEEDBACK] response was not valid JSON | responseBody={}",
+                    LogFormats.abbreviate(response)
+            );
+            throw new FeedbackGenerationException("AI feedback response was not valid JSON.", exception);
+        }
+
+        if (payload.turnFeedbacks() == null || payload.turnFeedbacks().size() != turnCount) {
+            throw new FeedbackGenerationException("AI feedback response did not cover every turn.");
+        }
+
+        if (payload.overall() == null || payload.overall().isBlank()) {
+            throw new FeedbackGenerationException("AI returned an empty feedback response.");
+        }
+
+        return new AttemptFeedback(payload.turnFeedbacks(), payload.overall().trim());
     }
 
     private long elapsedMillis(long startedAt) {

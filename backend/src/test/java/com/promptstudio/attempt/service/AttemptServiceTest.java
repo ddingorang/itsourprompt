@@ -135,9 +135,10 @@ class AttemptServiceTest extends DatabaseTest {
         AttemptView started = attemptService.startAttempt(problem.id());
         AttemptView withTurn = attemptService.addTurn(started.id(), "Hello 출력해줘");
 
-        String feedback = attemptService.submit(started.id());
+        AttemptView submitted = attemptService.submit(started.id());
 
-        assertThat(feedback).isEqualTo("생성된 피드백");
+        assertThat(submitted.feedback()).isEqualTo("생성된 피드백");
+        assertThat(submitted.turns()).extracting(AttemptView.TurnView::feedback).containsExactly("턴 1 피드백");
         assertThat(feedbackGenerator.receivedProblem().id()).isEqualTo(problem.id());
         assertThat(feedbackGenerator.receivedAttempt()).isEqualTo(withTurn);
         assertThat(attemptService.getAttempt(started.id()).status()).isEqualTo(AttemptStatus.SUBMITTED);
@@ -150,7 +151,10 @@ class AttemptServiceTest extends DatabaseTest {
         attemptService.addTurn(started.id(), "Hello 출력해줘");
         attemptService.submit(started.id());
 
-        assertThat(attemptService.getFeedback(started.id())).isEqualTo("생성된 피드백");
+        AttemptView feedback = attemptService.getFeedback(started.id());
+
+        assertThat(feedback.feedback()).isEqualTo("생성된 피드백");
+        assertThat(feedback.turns()).extracting(AttemptView.TurnView::feedback).containsExactly("턴 1 피드백");
     }
 
     @Test
@@ -189,11 +193,12 @@ class AttemptServiceTest extends DatabaseTest {
         attemptService.addTurn(started.id(), "Hello 출력해줘");
         feedbackGenerator.reset();
 
-        String first = attemptService.submit(started.id());
-        String second = attemptService.submit(started.id());
+        AttemptView first = attemptService.submit(started.id());
+        AttemptView second = attemptService.submit(started.id());
 
-        assertThat(first).isEqualTo("생성된 피드백");
-        assertThat(second).isEqualTo("생성된 피드백");
+        assertThat(first.feedback()).isEqualTo("생성된 피드백");
+        assertThat(second.feedback()).isEqualTo("생성된 피드백");
+        assertThat(second.turns()).extracting(AttemptView.TurnView::feedback).containsExactly("턴 1 피드백");
         assertThat(feedbackGenerator.invocationCount()).isEqualTo(1);
     }
 
@@ -209,7 +214,7 @@ class AttemptServiceTest extends DatabaseTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
 
         try {
-            Future<String> inFlight = executor.submit(() -> attemptService.submit(started.id()));
+            Future<AttemptView> inFlight = executor.submit(() -> attemptService.submit(started.id()));
             assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
 
             assertThatThrownBy(() -> attemptService.submit(started.id()))
@@ -222,8 +227,8 @@ class AttemptServiceTest extends DatabaseTest {
 
             gate.countDown();
 
-            assertThat(inFlight.get(5, TimeUnit.SECONDS)).isEqualTo("생성된 피드백");
-            assertThat(attemptService.submit(started.id())).isEqualTo("생성된 피드백");
+            assertThat(inFlight.get(5, TimeUnit.SECONDS).feedback()).isEqualTo("생성된 피드백");
+            assertThat(attemptService.submit(started.id()).feedback()).isEqualTo("생성된 피드백");
         } finally {
             executor.shutdown();
         }
@@ -239,7 +244,7 @@ class AttemptServiceTest extends DatabaseTest {
                 .isInstanceOf(FeedbackGenerationException.class);
         assertThat(attemptService.getAttempt(started.id()).status()).isEqualTo(AttemptStatus.IN_PROGRESS);
         assertThat(attemptService.getAttempt(started.id()).feedback()).isNull();
-        assertThat(attemptService.submit(started.id())).isEqualTo("생성된 피드백");
+        assertThat(attemptService.submit(started.id()).feedback()).isEqualTo("생성된 피드백");
     }
 
     @Test

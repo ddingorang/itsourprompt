@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.repository;
 
 import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.attempt.domain.GeneratedCode;
@@ -120,6 +121,33 @@ class AttemptRepositoryTest extends DatabaseTest {
                 new ToolCallEntry("read_file", "src/Main.java"),
                 new ToolCallEntry("edit_file", "src/Main.java")
         );
+    }
+
+    @Test
+    void 제출한_어템프트의_턴별_피드백을_저장하고_순서대로_조회한다() {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+
+        attempt.applyTurn("Main을 채워줘", generated("생성된 내용", "첫 요약"));
+        attempt.applyTurn("Main을 다시 고쳐줘", generated("다시 생성된 내용", "둘째 요약"));
+        attempt.submit(new AttemptFeedback(List.of("첫 턴 피드백", "둘째 턴 피드백"), "전체 피드백"));
+        attemptRepository.save(attempt);
+
+        AttemptView found = attemptQueryRepository.findById(attempt.id()).orElseThrow();
+        assertThat(found.turns())
+                .extracting(AttemptView.TurnView::feedback)
+                .containsExactly("첫 턴 피드백", "둘째 턴 피드백");
+        assertThat(found.feedback()).isEqualTo("전체 피드백");
+    }
+
+    @Test
+    void 제출하기_전_턴은_피드백이_비어_있다() {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+
+        attempt.applyTurn("Main을 채워줘", generated("생성된 내용", "첫 요약"));
+        attemptRepository.save(attempt);
+
+        AttemptView found = attemptQueryRepository.findById(attempt.id()).orElseThrow();
+        assertThat(found.turns().getFirst().feedback()).isNull();
     }
 
     @Test

@@ -23,7 +23,8 @@ public record AttemptView(
         List<TurnView> turns = new ArrayList<>();
 
         for (Turn turn : attempt.turns()) {
-            turns.add(new TurnView(turn.userPrompt(), turn.aiSummary(), turn.changes(), turn.toolCalls()));
+            turns.add(new TurnView(
+                    turn.userPrompt(), turn.aiSummary(), turn.changes(), turn.toolCalls(), turn.feedback()));
         }
 
         return reconstruct(
@@ -58,11 +59,15 @@ public record AttemptView(
         );
     }
 
+    /**
+     * @param feedback 제출 전이거나 턴별 피드백 이전에 제출된 어템프트면 null
+     */
     public record TurnView(
             String userPrompt,
             String aiSummary,
             List<FileChange> changes,
-            List<ToolCallEntry> toolCalls
+            List<ToolCallEntry> toolCalls,
+            String feedback
     ) {
     }
 }

@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.domain;
 
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
+import com.promptstudio.attempt.exception.FeedbackTurnCountMismatchException;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import jakarta.persistence.CascadeType;
@@ -78,13 +79,23 @@ public class Attempt {
         ));
     }
 
-    public void submit(String feedback) {
+    public void submit(AttemptFeedback feedback) {
         if (status == AttemptStatus.SUBMITTED) {
             throw new AttemptAlreadySubmittedException(id);
         }
 
+        List<String> turnFeedbacks = feedback.turnFeedbacks();
+
+        if (turnFeedbacks.size() != turns.size()) {
+            throw new FeedbackTurnCountMismatchException(turns.size(), turnFeedbacks.size());
+        }
+
+        for (int index = 0; index < turns.size(); index++) {
+            turns.get(index).applyFeedback(turnFeedbacks.get(index));
+        }
+
         this.status = AttemptStatus.SUBMITTED;
-        this.feedback = feedback;
+        this.feedback = feedback.overall();
     }
 
     public Long id() {
