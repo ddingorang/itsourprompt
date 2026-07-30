@@ -58,7 +58,7 @@ export default function Pagination({
 
   return (
     <nav
-      className="flex items-center justify-center gap-2 pt-[54px] pb-8 font-mono text-[14px]"
+      className="flex items-center justify-center gap-2 pt-6 pb-8 font-mono text-[14px]"
       aria-label="페이지 이동"
     >
       <PageButton
