@@ -107,8 +107,8 @@ export default function ProblemListPage() {
     <div className="flex min-h-screen flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
       <Header />
 
-      <main className="mx-auto w-[calc(100%_-_10vw)] flex-1 pt-[clamp(32px,5vw,56px)] pb-20 max-[640px]:w-[min(calc(100%_-_32px),1080px)] max-[640px]:pt-10">
-        <header className="flex items-end justify-between gap-6 pb-[54px] max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-4">
+      <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-16 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
+        <header className="flex items-end justify-between gap-6 pb-10 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-4 max-[640px]:pb-8">
           <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
             PROBLEM LIST
           </h1>
@@ -149,14 +149,14 @@ export default function ProblemListPage() {
             >
             {visibleProblems.map((problem) => (
               <Link
-                className="group grid min-h-24 grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-5 border-t border-[#343434] py-5 text-inherit no-underline transition-[padding,background,color] duration-200 first:border-t-0 hover:bg-[#d6ff50] hover:px-3.5 hover:text-[#090909] focus-visible:bg-[#d6ff50] focus-visible:px-3.5 focus-visible:text-[#090909] focus-visible:outline-none max-[640px]:min-h-22 max-[640px]:grid-cols-[42px_minmax(0,1fr)_auto] max-[640px]:gap-3"
+                className="group grid min-h-18 grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 border-t border-[#343434] py-3 text-inherit no-underline transition-[padding,background,color] duration-200 first:border-t-0 hover:bg-[#d6ff50] hover:px-3.5 hover:text-[#090909] focus-visible:bg-[#d6ff50] focus-visible:px-3.5 focus-visible:text-[#090909] focus-visible:outline-none max-[640px]:grid-cols-[42px_minmax(0,1fr)_auto] max-[640px]:gap-3"
                 key={problem.id}
                 to={`/problems/${problem.id}`}
               >
                 <span className="font-mono text-[17px] text-[#a3a3a3] transition-colors duration-200 group-hover:text-[#090909] group-focus-visible:text-[#090909]">
                   {String(problem.id).padStart(2, '0')}
                 </span>
-                <span className="min-w-0 text-[clamp(17px,2vw,23px)] font-bold tracking-[-0.03em] [word-break:keep-all]">
+                <span className="min-w-0 text-[clamp(16px,1.5vw,20px)] font-bold tracking-[-0.03em] [word-break:keep-all]">
                   {problem.title}
                 </span>
                 <span
@@ -172,7 +172,7 @@ export default function ProblemListPage() {
 
             {totalPages > 1 && (
               <>
-                <div className="h-[45px]" aria-hidden="true" />
+                <div className="h-6" aria-hidden="true" />
                 <Pagination
                   currentPage={currentPage}
                   pageGroupEnd={pageGroupEnd}
