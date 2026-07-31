@@ -162,7 +162,13 @@ export default function FeedbackPage() {
                   </div>
                   <button
                     aria-label="다음 턴 보기"
-                    className="absolute top-0 right-0 bottom-0 z-10 w-10 cursor-pointer border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px]"
+                    className={[
+                      'absolute top-0 right-0 bottom-0 z-10 w-10 border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px]',
+                      turnSections.length >= 8
+                        ? 'cursor-pointer text-[#d6ff50] hover:bg-[#202020]'
+                        : 'cursor-not-allowed text-[#666]',
+                    ].join(' ')}
+                    disabled={turnSections.length < 8}
                     onClick={() => scrollTurnNav(1)}
                     type="button"
                   >
