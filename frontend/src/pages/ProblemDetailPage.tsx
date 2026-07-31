@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -187,6 +193,7 @@ export default function ProblemDetailPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const isRunPendingRef = useRef(false);
   /**
    * 실패한 턴 요청의 Idempotency-Key를 기억한다. 같은 프롬프트로 다시 실행하면
    * 같은 키가 나가므로, 백엔드가 이미 AI를 호출해 둔 경우 재호출 없이 그 결과를
@@ -309,7 +316,15 @@ export default function ProblemDetailPage() {
   };
 
   const handleRun = async () => {
-    if (!problem || isSubmitted) return;
+    if (
+      !problem ||
+      isSubmitted ||
+      isRunning ||
+      isSubmitting ||
+      isRunPendingRef.current
+    ) {
+      return;
+    }
 
     const trimmedPrompt = prompt.trim();
     if (!trimmedPrompt) {
@@ -321,6 +336,8 @@ export default function ProblemDetailPage() {
       showStatus('프롬프트는 4,000자 이하로 입력해주세요.', 'error');
       return;
     }
+
+    isRunPendingRef.current = true;
 
     // 같은 프롬프트를 재시도하면 이전 키를 재사용해 AI 중복 호출을 막는다.
     const idempotencyKey =
@@ -363,8 +380,36 @@ export default function ProblemDetailPage() {
 
       showStatus(errorInfo.message, 'error');
     } finally {
+      isRunPendingRef.current = false;
       setIsRunning(false);
     }
+  };
+
+  const handlePromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    const isSubmitShortcut =
+      event.key === 'Enter' && (event.ctrlKey || event.metaKey);
+
+    if (
+      !isSubmitShortcut ||
+      event.nativeEvent.isComposing ||
+      event.keyCode === 229
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (
+      isRunning ||
+      isSubmitting ||
+      isSubmitted ||
+      !prompt.trim() ||
+      isRunPendingRef.current
+    ) {
+      return;
+    }
+
+    void handleRun();
   };
 
   const handleSubmit = async () => {
@@ -697,10 +742,12 @@ export default function ProblemDetailPage() {
             <div className="mt-2 flex shrink-0 flex-col border border-[#555] bg-[#131313] focus-within:border-[#d6ff50]">
               <textarea
                 ref={promptTextareaRef}
+                aria-keyshortcuts="Control+Enter Meta+Enter"
                 className="workspace-scrollbar min-h-12 w-full resize-none overflow-y-auto border-0 bg-transparent px-3.5 py-3 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isRunning || isSubmitting || isSubmitted}
                 maxLength={4000}
                 onChange={(event) => setPrompt(event.target.value)}
+                onKeyDown={handlePromptKeyDown}
                 placeholder={
                   isSubmitted
                     ? '제출이 완료된 어템프트입니다.'
@@ -740,7 +787,8 @@ export default function ProblemDetailPage() {
                 </button>
               </div>
             </div>
-            <div className="mt-1 flex justify-end font-mono text-[9px] text-[#777]">
+            <div className="mt-1 flex items-center justify-between gap-3 px-3.5 font-mono text-[9px] text-[#777]">
+              <span>Ctrl/Cmd + Enter 전송 · Enter 줄바꿈</span>
               <span>
                 <b>{prompt.length.toLocaleString('ko-KR')}</b> / 4,000
               </span>
