@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: backend
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+  sql:
+    init:
+      mode: always
+  jooq:
+    sql-dialect: POSTGRES
+  ai:
+    openai:
+      api-key: test-api-key
+      base-url: https://integrate.api.nvidia.com/v1
+      chat:
+        model: test-model
+        max-tokens: 4096
+    model:
+      embedding: none
+
+# GitLab adapter 빈 생성에만 필요한 스텁. 테스트는 모두 fake 포트를 쓴다.
+PROBLEM_REPO_TOKEN: test-token
+# 통합테스트 컨텍스트가 부트 직후 실제 GitLab을 호출하지 않도록 스케줄러를 끈다.
+PROBLEM_SYNC_ENABLED: false

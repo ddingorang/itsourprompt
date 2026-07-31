@@ -1,20 +1,34 @@
 spring:
+  config:
+    import: optional:file:../.env[.properties]
   application:
     name: backend
   datasource:
-    url: jdbc:postgresql://localhost:5432/hello
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
+  sql:
+    init:
+      mode: always
   jooq:
     sql-dialect: POSTGRES
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        model: ${OPENAI_CODE_MODEL:gpt-5.6-luna}
+        timeout: 6m
+        max-retries: 2
+    model:
+      embedding: none
 
 server:
-  port: 8080
+  port: 9090
