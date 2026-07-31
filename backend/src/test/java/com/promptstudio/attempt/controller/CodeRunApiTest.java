@@ -108,6 +108,56 @@ class CodeRunApiTest extends DatabaseTest {
     }
 
     @Test
+    void 턴이_없는_어템프트를_실행하면_turnOrdinal이_null이다() throws Exception {
+        Long attemptId = createAttempt();
+
+        mockMvc.perform(post("/api/attempts/{id}/runs", attemptId))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.turnOrdinal").doesNotExist());
+    }
+
+    @Test
+    void 턴을_지정해_실행하면_202와_그_턴_번호를_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        addTurn(attemptId);
+
+        mockMvc.perform(post("/api/attempts/{id}/turns/{ordinal}/runs", attemptId, 0))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.runId").isString())
+                .andExpect(jsonPath("$.turnOrdinal").value(0))
+                .andExpect(jsonPath("$.status").value("QUEUED"));
+    }
+
+    @Test
+    void 턴을_지정하지_않으면_마지막_턴_번호를_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        addTurn(attemptId);
+
+        mockMvc.perform(post("/api/attempts/{id}/runs", attemptId))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.turnOrdinal").value(1));
+    }
+
+    @Test
+    void 없는_턴을_지정하면_404다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+
+        mockMvc.perform(post("/api/attempts/{id}/turns/{ordinal}/runs", attemptId, 5))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("turn-not-found"));
+    }
+
+    @Test
+    void 없는_어템프트에_턴_지정_실행을_요청하면_404다() throws Exception {
+        mockMvc.perform(post("/api/attempts/{id}/turns/{ordinal}/runs", 999, 0))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("attempt-not-found"));
+    }
+
+    @Test
     void 없는_실행_ID를_조회하면_404다() throws Exception {
         Long attemptId = createAttempt();
 
@@ -124,6 +174,13 @@ class CodeRunApiTest extends DatabaseTest {
                 .getContentAsString();
 
         return UUID.fromString(JsonPath.read(body, "$.runId"));
+    }
+
+    private void addTurn(Long attemptId) throws Exception {
+        mockMvc.perform(post("/api/attempts/{id}/turns", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\":\"코드를 완성해줘\"}"))
+                .andExpect(status().isOk());
     }
 
     private Long createAttempt() throws Exception {

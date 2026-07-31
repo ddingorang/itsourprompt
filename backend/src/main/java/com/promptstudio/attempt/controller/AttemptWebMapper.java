@@ -57,6 +57,7 @@ public class AttemptWebMapper {
     public CodeRunResponse toCodeRunResponse(CodeRunView run) {
         return new CodeRunResponse(
                 run.id(),
+                run.turnOrdinal(),
                 run.status(),
                 run.exitCode(),
                 run.stdout(),

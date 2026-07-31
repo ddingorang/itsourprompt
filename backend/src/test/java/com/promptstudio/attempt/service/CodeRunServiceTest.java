@@ -6,6 +6,7 @@ import com.promptstudio.attempt.domain.CodeRunView;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.CodeRunInProgressException;
 import com.promptstudio.attempt.exception.CodeRunNotFoundException;
+import com.promptstudio.attempt.exception.TurnNotFoundException;
 import com.promptstudio.attempt.repository.CodeRunRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
@@ -47,9 +48,13 @@ class CodeRunServiceTest extends DatabaseTest {
     @Autowired
     private FakeCodeRunConfiguration.FakeCodeRunPublisher publisher;
 
+    @Autowired
+    private FakeAiConfiguration.FakeCodeGenerator codeGenerator;
+
     @BeforeEach
     void 발행_기록을_비운다() {
         publisher.reset();
+        codeGenerator.reset();
     }
 
     @Test
@@ -87,6 +92,72 @@ class CodeRunServiceTest extends DatabaseTest {
         codeRunService.requestRun(attemptId);
 
         assertThat(publisher.receivedTestFiles()).isEmpty();
+    }
+
+    @Test
+    void 턴이_없으면_스켈레톤을_실행하고_turnOrdinal은_null이다() {
+        Long attemptId = newAttempt();
+
+        CodeRunView run = codeRunService.requestRun(attemptId);
+
+        assertThat(run.turnOrdinal()).isNull();
+        assertThat(publisher.receivedFiles())
+                .containsExactly(new ProblemFile("src/main/java/Main.java", "class Main {}"));
+    }
+
+    @Test
+    void 턴을_지정하지_않으면_마지막_턴을_실행하고_그_번호를_기록한다() {
+        Long attemptId = newAttemptWithTurns("버전 1", "버전 2");
+
+        CodeRunView run = codeRunService.requestRun(attemptId);
+
+        assertThat(run.turnOrdinal()).isEqualTo(1);
+        assertThat(publisher.receivedFiles())
+                .containsExactly(new ProblemFile("src/main/java/Main.java", "버전 2"));
+    }
+
+    /**
+     * 턴은 불변이라 과거 턴을 다시 실행하면 그때의 코드가 그대로 나가야 한다.
+     * 이게 "몇 번째 프롬프트까지 통과했는지"를 확인할 수 있게 하는 핵심이다.
+     */
+    @Test
+    void 지정한_턴_시점의_코드를_발행한다() {
+        Long attemptId = newAttemptWithTurns("버전 1", "버전 2");
+
+        CodeRunView run = codeRunService.requestRun(attemptId, 0);
+
+        assertThat(run.turnOrdinal()).isZero();
+        assertThat(publisher.receivedFiles())
+                .containsExactly(new ProblemFile("src/main/java/Main.java", "버전 1"));
+    }
+
+    @Test
+    void 없는_턴을_지정하면_실패하고_발행하지_않는다() {
+        Long attemptId = newAttemptWithTurns("버전 1");
+
+        assertThatThrownBy(() -> codeRunService.requestRun(attemptId, 1))
+                .isInstanceOf(TurnNotFoundException.class);
+
+        assertThat(publisher.invocationCount()).isZero();
+    }
+
+    @Test
+    void 음수_턴을_지정하면_실패한다() {
+        Long attemptId = newAttemptWithTurns("버전 1");
+
+        assertThatThrownBy(() -> codeRunService.requestRun(attemptId, -1))
+                .isInstanceOf(TurnNotFoundException.class);
+    }
+
+    @Test
+    void turnOrdinal은_결과_조회에서도_보인다() {
+        Long attemptId = newAttemptWithTurns("버전 1", "버전 2");
+        UUID runId = codeRunService.requestRun(attemptId, 0).id();
+
+        codeRunService.applyResult(new CodeRunResult(
+                runId, CodeRunStatus.TEST_FAILED, 1, "1 tests failed", "", 900L));
+
+        assertThat(codeRunService.getRun(attemptId, runId).turnOrdinal()).isZero();
     }
 
     @Test
@@ -193,6 +264,20 @@ class CodeRunServiceTest extends DatabaseTest {
 
     private Long newAttempt() {
         return newAttempt(List.of(TEST_FILE));
+    }
+
+    /**
+     * 턴마다 다른 코드가 쌓인 어템프트를 만든다. 인자 순서가 턴 순서다.
+     */
+    private Long newAttemptWithTurns(String... contentsPerTurn) {
+        Long attemptId = newAttempt();
+
+        for (int index = 0; index < contentsPerTurn.length; index++) {
+            codeGenerator.respondWith(FakeAiConfiguration.FakeCodeGenerator.generating(contentsPerTurn[index]));
+            attemptService.addTurn(attemptId, index + "번째 프롬프트");
+        }
+
+        return attemptId;
     }
 
     private Long newAttempt(List<ProblemFile> testFiles) {

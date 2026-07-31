@@ -9,6 +9,12 @@ import java.util.UUID;
 public record CodeRunResponse(
         @Schema(description = "실행 ID", example = "3f2a1b4c-5d6e-7f80-9a1b-2c3d4e5f6071")
         UUID runId,
+        @Schema(
+                description = "실행한 코드가 몇 번째 턴의 것인지(0-based). 턴을 적용하지 않은 시작 스켈레톤을 "
+                        + "실행했거나 턴 단위 기록 이전의 실행이면 null",
+                example = "2"
+        )
+        Integer turnOrdinal,
         @Schema(description = "실행 상태", example = "QUEUED")
         CodeRunStatus status,
         @Schema(description = "java 프로세스 종료 코드. 종료 전에는 null", example = "0")

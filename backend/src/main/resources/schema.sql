@@ -163,6 +163,9 @@ ALTER TABLE attempt ADD CONSTRAINT chk_attempt_exactly_one_owner
 CREATE TABLE IF NOT EXISTS code_run (
     id          UUID PRIMARY KEY,
     attempt_id  BIGINT      NOT NULL REFERENCES attempt (id) ON DELETE CASCADE,
+    -- 어느 턴의 코드를 실행했는지. attempt_turn.ordinal과 같은 0-based 값이고,
+    -- 턴을 하나도 적용하지 않은 스켈레톤 원본을 실행했으면 NULL이다.
+    turn_ordinal INT,
     status      VARCHAR(20) NOT NULL,
     exit_code   INT,
     stdout      TEXT,
@@ -171,6 +174,9 @@ CREATE TABLE IF NOT EXISTS code_run (
     created_at  TIMESTAMP WITH TIME ZONE NOT NULL,
     finished_at TIMESTAMP WITH TIME ZONE
 );
+-- 턴 단위 실행 이전에 만들어진 DB를 위한 마이그레이션.
+-- 그때 실행된 행은 어느 턴이었는지 복원할 수 없어 NULL로 남는다.
+ALTER TABLE code_run ADD COLUMN IF NOT EXISTS turn_ordinal INT;
 CREATE INDEX IF NOT EXISTS idx_code_run_attempt ON code_run (attempt_id, created_at DESC);
 -- 어템프트당 미완료 run은 하나만 허용한다. 동시 요청 레이스를 DB가 막아주는 안전망.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_code_run_active ON code_run (attempt_id) WHERE status = 'QUEUED';

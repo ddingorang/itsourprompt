@@ -14,7 +14,7 @@ public interface CodeRunRepository {
      * 예외 대신 boolean으로 돌려주는 이유는 {@code GlobalExceptionHandler}가 DataIntegrityViolationException을
      * 이미 다른 의미로 매핑하고 있기 때문이다.
      */
-    boolean tryInsertQueued(UUID runId, Long attemptId, Instant now);
+    boolean tryInsertQueued(UUID runId, Long attemptId, Integer turnOrdinal, Instant now);
 
     Optional<CodeRunView> findByIdAndAttemptId(UUID runId, Long attemptId);
 
