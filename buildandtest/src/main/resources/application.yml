@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: buildandtest
+  # 로컬에서 백엔드처럼 루트 .env를 읽는다. 컨테이너에서는 파일이 없고 compose 환경변수가 대신 들어온다.
+  config:
+    import: optional:file:../.env[.properties]
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASSWORD}
+    listener:
+      simple:
+        # 한 번에 한 건만 처리한다. 실행이 서로 자원을 다투지 않게 한다.
+        prefetch: 1
+        concurrency: 1
+        # 백엔드가 큐를 선언하기 전에 떠도 죽지 않고 재시도한다. compose depends_on은
+        # RabbitMQ 기동만 보장하고 백엔드의 토폴로지 선언 시점은 보장하지 못한다.
+        missing-queues-fatal: false
+  # 진행 중인 실행을 끝내고 ack한 뒤 종료한다(컴파일 30초 + 실행 10초 + 여유).
+  lifecycle:
+    timeout-per-shutdown-phase: 60s
+
+worker:
+  compile-timeout-seconds: 30
+  run-timeout-seconds: 10
+  max-output-bytes: 65536
+  heap-limit: 256m
+
+logging:
+  level:
+    com.promptstudio.buildandtest: INFO
