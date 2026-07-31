@@ -13,6 +13,14 @@ spring:
       mode: always
   jooq:
     sql-dialect: POSTGRES
+  # 테스트는 실제 브로커를 쓰지 않는다. dynamic=false로 RabbitAdmin 자동 선언을 막는다.
+  # auto-startup=false는 단독으로는 효과가 없다(아래 result-listener-enabled 주석 참고).
+  # 발행은 FakeCodeRunPublisher가 대신한다.
+  rabbitmq:
+    dynamic: false
+    listener:
+      simple:
+        auto-startup: false
   ai:
     openai:
       api-key: test-api-key
@@ -22,6 +30,14 @@ spring:
         max-tokens: 4096
     model:
       embedding: none
+
+# run.result 리스너 빈을 만들지 않는다. RabbitListenerEndpointRegistry.startIfNecessary가
+# "contextRefreshed || container.isAutoStartup()" 조건이라, 캐시된 컨텍스트를 재사용하는 두 번째
+# 테스트 클래스부터는 auto-startup=false가 무시되고 브로커 접속을 시도해 컨텍스트 로딩이 깨진다.
+# 리스너의 매핑 로직은 CodeRunResultListenerTest가 브로커 없이 직접 검증한다.
+promptstudio:
+  rabbit:
+    result-listener-enabled: false
 
 # GitLab adapter 빈 생성에만 필요한 스텁. 테스트는 모두 fake 포트를 쓴다.
 PROBLEM_REPO_TOKEN: test-token

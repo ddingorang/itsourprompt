@@ -92,6 +92,22 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username ON users (username);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email ON users (email);
 
+-- 어템프트 코드의 빌드/실행 요청 한 건. 결과는 buildandtest 워커가 큐로 돌려준 것을 반영한다.
+CREATE TABLE IF NOT EXISTS code_run (
+    id          UUID PRIMARY KEY,
+    attempt_id  BIGINT      NOT NULL REFERENCES attempt (id) ON DELETE CASCADE,
+    status      VARCHAR(20) NOT NULL,
+    exit_code   INT,
+    stdout      TEXT,
+    stderr      TEXT,
+    duration_ms BIGINT,
+    created_at  TIMESTAMP WITH TIME ZONE NOT NULL,
+    finished_at TIMESTAMP WITH TIME ZONE
+);
+CREATE INDEX IF NOT EXISTS idx_code_run_attempt ON code_run (attempt_id, created_at DESC);
+-- 어템프트당 미완료 run은 하나만 허용한다. 동시 요청 레이스를 DB가 막아주는 안전망.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_code_run_active ON code_run (attempt_id) WHERE status = 'QUEUED';
+
 CREATE TABLE IF NOT EXISTS idempotency_record (
     idempotency_key VARCHAR(64) PRIMARY KEY,
     attempt_id      BIGINT REFERENCES attempt (id) ON DELETE CASCADE,

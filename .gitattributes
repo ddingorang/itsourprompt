@@ -1,0 +1,15 @@
+# 줄바꿈 정규화.
+#
+# Windows에서는 core.autocrlf=true가 기본이라 체크아웃 시 LF가 CRLF로 바뀐다.
+# gradlew 같은 셸 스크립트가 CRLF가 되면 Linux 컨테이너로 COPY될 때 셔뱅이
+# "/bin/sh\r"로 읽혀 인터프리터를 못 찾고 "not found"(exit 127)로 죽는다.
+# 파일은 멀쩡히 있는데 없다고 하므로 원인을 찾기 어렵다.
+#
+# 아래 규칙은 core.autocrlf 설정과 무관하게 해당 파일의 체크아웃 줄바꿈을 고정한다.
+# (저장소 blob은 이미 LF이므로 규칙 추가 즉시 워킹 트리가 교정된다.)
+
+gradlew text eol=lf
+*.sh    text eol=lf
+
+# 반대로 Windows 배치 파일은 CRLF여야 한다. *.bat 규칙이 gradlew.bat까지 덮는다.
+*.bat   text eol=crlf

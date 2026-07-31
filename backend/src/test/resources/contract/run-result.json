@@ -1,0 +1,9 @@
+{
+  "runId": "3f2a1b4c-5d6e-7f80-9a1b-2c3d4e5f6071",
+  "status": "SUCCEEDED",
+  "exitCode": 0,
+  "stdout": "Hello World\n",
+  "stderr": "",
+  "durationMs": 1840,
+  "unknownFutureField": "한쪽만 먼저 배포된 상황을 가정한 필드 — 조용히 무시되어야 한다"
+}
