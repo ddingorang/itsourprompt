@@ -48,9 +48,9 @@ class LlmCallRecordingTest extends DatabaseTest {
 
     @Test
     void 턴_성공_시_호출_행이_같은_트랜잭션에_저장된다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
 
-        attemptService.addTurn(started.id(), "Hello 출력해줘");
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
 
         List<AttemptLlmCall> calls = llmCallRepository.findByAttemptId(started.id());
         assertThat(calls).hasSize(2);
@@ -83,7 +83,7 @@ class LlmCallRecordingTest extends DatabaseTest {
 
     @Test
     void 생성_실패_시_누적분을_flush하고_FAILED_행을_남긴다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
         codeGenerator.failNextWith(new CodeGenerationException(
                 "AI 코드 생성 요청에 실패했습니다.",
                 null,
@@ -91,7 +91,7 @@ class LlmCallRecordingTest extends DatabaseTest {
                 FakeAiConfiguration.CODE_GENERATION_USAGE
         ));
 
-        assertThatThrownBy(() -> attemptService.addTurn(started.id(), "Hello 출력해줘"))
+        assertThatThrownBy(() -> attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘"))
                 .isInstanceOf(CodeGenerationException.class);
 
         List<AttemptLlmCall> calls = llmCallRepository.findByAttemptId(started.id());
@@ -114,15 +114,15 @@ class LlmCallRecordingTest extends DatabaseTest {
         assertThat(marker.model()).isNull();
         assertThat(marker.inputTokens()).isNull();
         assertThat(marker.cost()).isNull();
-        assertThat(attemptService.getAttempt(started.id()).turns()).isEmpty();
+        assertThat(attemptService.getAttempt(started.id(), ownerId).turns()).isEmpty();
     }
 
     @Test
     void 제출_시_피드백_호출_행이_저장된다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
-        attemptService.addTurn(started.id(), "Hello 출력해줘");
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
 
-        attemptService.submit(started.id());
+        attemptService.submit(started.id(), ownerId);
 
         List<AttemptLlmCall> feedbackCalls = purpose(started.id(), LlmCallPurpose.FEEDBACK);
         assertThat(feedbackCalls).hasSize(1);
@@ -139,8 +139,8 @@ class LlmCallRecordingTest extends DatabaseTest {
 
     @Test
     void 피드백_실패_시_누적분을_flush하고_FAILED_행을_남긴다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
-        attemptService.addTurn(started.id(), "Hello 출력해줘");
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
         feedbackGenerator.failNextWith(new FeedbackGenerationException(
                 "invalid-json",
                 "AI feedback response was not valid JSON.",
@@ -148,7 +148,7 @@ class LlmCallRecordingTest extends DatabaseTest {
                 FakeAiConfiguration.FEEDBACK_USAGE
         ));
 
-        assertThatThrownBy(() -> attemptService.submit(started.id()))
+        assertThatThrownBy(() -> attemptService.submit(started.id(), ownerId))
                 .isInstanceOf(FeedbackGenerationException.class);
 
         assertThat(purpose(started.id(), LlmCallPurpose.FEEDBACK))
@@ -157,7 +157,7 @@ class LlmCallRecordingTest extends DatabaseTest {
                         tuple(1, LlmCallStatus.SUCCESS, null),
                         tuple(2, LlmCallStatus.FAILED, "invalid-json")
                 );
-        assertThat(attemptService.getAttempt(started.id()).status()).isEqualTo(AttemptStatus.IN_PROGRESS);
+        assertThat(attemptService.getAttempt(started.id(), ownerId).status()).isEqualTo(AttemptStatus.IN_PROGRESS);
     }
 
     private List<AttemptLlmCall> purpose(Long attemptId, LlmCallPurpose purpose) {

@@ -2,6 +2,7 @@ package com.promptstudio.global.config;
 
 import com.promptstudio.global.security.RestAccessDeniedHandler;
 import com.promptstudio.global.security.RestAuthenticationEntryPoint;
+import com.promptstudio.guest.GuestSessionFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 
 /**
  * 세션 + HttpOnly 쿠키 기반 인증 설정.
@@ -63,7 +65,8 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(
             HttpSecurity http,
             RestAuthenticationEntryPoint authenticationEntryPoint,
-            RestAccessDeniedHandler accessDeniedHandler
+            RestAccessDeniedHandler accessDeniedHandler,
+            GuestSessionFilter guestSessionFilter
     ) throws Exception {
         http
                 // WebConfig의 전역 CORS 매핑을 인식해 preflight(OPTIONS)를 인증 앞단에서 처리한다.
@@ -71,6 +74,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/me/**").authenticated()
+                        .requestMatchers("/api/attempts/**").permitAll()
                         .anyRequest().permitAll()
                 )
                 .exceptionHandling(handling -> handling
@@ -81,6 +85,9 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
                 .logout(logout -> logout.disable());
+
+        // 인증 컨텍스트를 읽은 직후 게스트를 해석해야 로그인 요청에는 새 게스트가 만들어지지 않는다.
+        http.addFilterAfter(guestSessionFilter, SecurityContextHolderFilter.class);
 
         return http.build();
     }

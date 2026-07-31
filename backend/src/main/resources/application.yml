@@ -53,6 +53,18 @@ llm:
 server:
   port: 9090
 
+guest:
+  session:
+    # 개발 단계에서는 게스트 풀이를 한 시간만 유지한다.
+    ttl: ${GUEST_SESSION_TTL:PT1H}
+    cookie-name: GUEST_SESSION
+    # HTTPS 역프록시 배포 환경에서는 true로 설정한다.
+    secure: ${GUEST_COOKIE_SECURE:false}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p ${PID:-} --- [%thread] [req:%X{requestId:-}] %logger{39} : %msg%n"
+
 app:
   cors:
     # 브라우저가 붙이는 Origin 헤더가 이 목록에 없으면 403 "Invalid CORS request"가 난다.

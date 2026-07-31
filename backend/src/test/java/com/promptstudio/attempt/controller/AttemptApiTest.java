@@ -8,8 +8,11 @@ import com.promptstudio.attempt.repository.AttemptRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
+import com.promptstudio.global.security.AppUserDetails;
 import com.promptstudio.support.DatabaseTest;
 import com.promptstudio.support.FakeAiConfiguration;
+import com.promptstudio.user.domain.User;
+import com.promptstudio.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -21,11 +24,13 @@ import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @AutoConfigureMockMvc
-@Import(FakeAiConfiguration.class)
+@Import({FakeAiConfiguration.class, AttemptApiAuthenticationConfiguration.class})
 class AttemptApiTest extends DatabaseTest {
 
     @Autowired
@@ -35,6 +40,25 @@ class AttemptApiTest extends DatabaseTest {
     private ProblemRepository problemRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void 로그인하지_않으면_어템프트_API를_호출할_수_없다() throws Exception {
+        mockMvc.perform(get("/api/attempts/1").with(anonymous()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 다른_사용자는_어템프트를_조회할_수_없다() throws Exception {
+        Long attemptId = createAttempt();
+        User otherUser = userRepository.save(User.create(
+                "other-user", "{noop}password", "other", "other@example.com"));
+
+        mockMvc.perform(get("/api/attempts/{id}", attemptId)
+                        .with(user(new AppUserDetails(otherUser))))
+                .andExpect(status().isNotFound());
+    }
+
     private AttemptRepository attemptRepository;
 
     @Autowired
@@ -278,7 +302,7 @@ class AttemptApiTest extends DatabaseTest {
 
     @Test
     void 사용량_기록이_없는_턴은_usage가_null이다() throws Exception {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
         attempt.applyTurn("Hello 출력해줘", new GeneratedCode(
                 List.of(new ProblemFile("src/main/java/Main.java", "생성된 내용")),
                 "생성 요약",

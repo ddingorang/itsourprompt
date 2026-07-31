@@ -42,7 +42,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
 
     @Test
     void 저장한_어템프트를_조회한다() {
-        Attempt saved = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt saved = attemptRepository.save(Attempt.start(newProblem(), ownerId));
 
         AttemptView view = attemptQueryRepository.findById(saved.id()).orElseThrow();
 
@@ -55,7 +55,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
 
     @Test
     void 시작_스켈레톤은_보존하고_현재_파일은_턴을_재생해_돌려준다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
         attempt.applyTurn(
                 "Main을 채워줘",
                 new GeneratedCode(
@@ -76,7 +76,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
 
     @Test
     void 턴_순서와_변경파일_순서를_보존한다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
         attempt.applyTurn(
                 "Main을 채워줘",
                 new GeneratedCode(
@@ -120,7 +120,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
 
     @Test
     void 삭제된_변경_파일은_코드가_비어_있다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
         attempt.applyTurn(
                 "Main을 지워줘",
                 new GeneratedCode(
@@ -138,7 +138,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
 
     @Test
     void 상태와_피드백을_함께_조회한다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
 
         AttemptView started = attemptQueryRepository.findById(attempt.id()).orElseThrow();
 
@@ -161,7 +161,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
 
     @Test
     void 턴별_사용량_합계와_전체_총계를_파생한다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
         attempt.applyTurn("첫 턴", generated("첫 내용", "첫 요약"));
         attempt.applyTurn("둘째 턴", generated("둘째 내용", "둘째 요약"));
         attemptRepository.save(attempt);
@@ -205,7 +205,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
 
     @Test
     void 사용량_행이_없는_턴은_usage가_null이다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
         attempt.applyTurn("첫 턴", generated("첫 내용", "첫 요약"));
         attemptRepository.save(attempt);
 

@@ -43,7 +43,7 @@ class AttemptRepositoryTest extends DatabaseTest {
     void 저장한_어템프트를_ID로_조회한다() {
         Problem problem = newProblem();
 
-        Attempt saved = attemptRepository.save(Attempt.start(problem));
+        Attempt saved = attemptRepository.save(Attempt.start(problem, ownerId));
 
         AttemptView found = attemptQueryRepository.findById(saved.id()).orElseThrow();
         assertThat(found.problemId()).isEqualTo(problem.id());
@@ -55,8 +55,8 @@ class AttemptRepositoryTest extends DatabaseTest {
     void 저장하면_DB가_ID를_발급한다() {
         Problem problem = newProblem();
 
-        Attempt first = attemptRepository.save(Attempt.start(problem));
-        Attempt second = attemptRepository.save(Attempt.start(problem));
+        Attempt first = attemptRepository.save(Attempt.start(problem, ownerId));
+        Attempt second = attemptRepository.save(Attempt.start(problem, ownerId));
 
         assertThat(first.id()).isNotNull();
         assertThat(second.id()).isGreaterThan(first.id());
@@ -64,7 +64,7 @@ class AttemptRepositoryTest extends DatabaseTest {
 
     @Test
     void 턴을_추가해_다시_저장하면_턴이_보존된다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
 
         attempt.applyTurn("Hello 출력해줘", generated("생성된 내용", "생성 요약"));
         attemptRepository.save(attempt);
@@ -77,7 +77,7 @@ class AttemptRepositoryTest extends DatabaseTest {
 
     @Test
     void 턴_순서와_변경파일_순서를_보존한다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
 
         attempt.applyTurn("Main을 채워줘", generated("생성된 내용", "첫 요약"));
         attempt.applyTurn("Util도 만들어줘", new GeneratedCode(
@@ -103,7 +103,7 @@ class AttemptRepositoryTest extends DatabaseTest {
 
     @Test
     void 턴의_툴콜_트레이스를_저장하고_순서대로_조회한다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
 
         attempt.applyTurn("Main을 채워줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Main.java", "생성된 내용")),
@@ -127,7 +127,7 @@ class AttemptRepositoryTest extends DatabaseTest {
 
     @Test
     void 제출한_어템프트의_턴별_피드백을_저장하고_순서대로_조회한다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
 
         attempt.applyTurn("Main을 채워줘", generated("생성된 내용", "첫 요약"));
         attempt.applyTurn("Main을 다시 고쳐줘", generated("다시 생성된 내용", "둘째 요약"));
@@ -143,7 +143,7 @@ class AttemptRepositoryTest extends DatabaseTest {
 
     @Test
     void 제출하기_전_턴은_피드백이_비어_있다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
 
         attempt.applyTurn("Main을 채워줘", generated("생성된 내용", "첫 요약"));
         attemptRepository.save(attempt);
@@ -154,7 +154,7 @@ class AttemptRepositoryTest extends DatabaseTest {
 
     @Test
     void 다시_저장하면_현재_파일이_교체된다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
 
         attempt.applyTurn("Util만 남겨줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Util.java", "class Util {}")),
@@ -175,7 +175,7 @@ class AttemptRepositoryTest extends DatabaseTest {
 
     @Test
     void 같은_어템프트의_같은_ordinal에_턴을_두_번_저장하면_실패한다() {
-        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
 
         insertTurn(attempt.id());
 

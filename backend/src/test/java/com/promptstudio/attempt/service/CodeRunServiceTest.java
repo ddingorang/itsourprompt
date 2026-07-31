@@ -53,7 +53,7 @@ class CodeRunServiceTest extends DatabaseTest {
     void 실행을_요청하면_QUEUED로_저장하고_현재_파일을_발행한다() {
         Long attemptId = newAttempt();
 
-        CodeRunView run = codeRunService.requestRun(attemptId);
+        CodeRunView run = codeRunService.requestRun(attemptId, ownerId);
 
         assertThat(run.status()).isEqualTo(CodeRunStatus.QUEUED);
         assertThat(run.attemptId()).isEqualTo(attemptId);
@@ -66,7 +66,7 @@ class CodeRunServiceTest extends DatabaseTest {
 
     @Test
     void 없는_어템프트로_요청하면_실패하고_발행하지_않는다() {
-        assertThatThrownBy(() -> codeRunService.requestRun(999L))
+        assertThatThrownBy(() -> codeRunService.requestRun(999L, ownerId))
                 .isInstanceOf(AttemptNotFoundException.class);
 
         assertThat(publisher.invocationCount()).isZero();
@@ -75,9 +75,9 @@ class CodeRunServiceTest extends DatabaseTest {
     @Test
     void 미완료_실행이_있으면_두_번째_요청은_거부된다() {
         Long attemptId = newAttempt();
-        codeRunService.requestRun(attemptId);
+        codeRunService.requestRun(attemptId, ownerId);
 
-        assertThatThrownBy(() -> codeRunService.requestRun(attemptId))
+        assertThatThrownBy(() -> codeRunService.requestRun(attemptId, ownerId))
                 .isInstanceOf(CodeRunInProgressException.class);
 
         assertThat(publisher.invocationCount()).isEqualTo(1);
@@ -86,10 +86,10 @@ class CodeRunServiceTest extends DatabaseTest {
     @Test
     void 이전_실행이_끝났으면_다시_요청할_수_있다() {
         Long attemptId = newAttempt();
-        CodeRunView first = codeRunService.requestRun(attemptId);
+        CodeRunView first = codeRunService.requestRun(attemptId, ownerId);
         codeRunService.applyResult(succeeded(first.id()));
 
-        CodeRunView second = codeRunService.requestRun(attemptId);
+        CodeRunView second = codeRunService.requestRun(attemptId, ownerId);
 
         assertThat(second.id()).isNotEqualTo(first.id());
         assertThat(publisher.invocationCount()).isEqualTo(2);
@@ -98,11 +98,11 @@ class CodeRunServiceTest extends DatabaseTest {
     @Test
     void 결과가_도착하면_조회에_반영된다() {
         Long attemptId = newAttempt();
-        CodeRunView queued = codeRunService.requestRun(attemptId);
+        CodeRunView queued = codeRunService.requestRun(attemptId, ownerId);
 
         codeRunService.applyResult(succeeded(queued.id()));
 
-        CodeRunView run = codeRunService.getRun(attemptId, queued.id());
+        CodeRunView run = codeRunService.getRun(attemptId, ownerId, queued.id());
         assertThat(run.status()).isEqualTo(CodeRunStatus.SUCCEEDED);
         assertThat(run.exitCode()).isZero();
         assertThat(run.stdout()).isEqualTo("Hello World\n");
@@ -112,14 +112,14 @@ class CodeRunServiceTest extends DatabaseTest {
     @Test
     void 종료된_실행에_도착한_결과는_무시된다() {
         Long attemptId = newAttempt();
-        CodeRunView queued = codeRunService.requestRun(attemptId);
+        CodeRunView queued = codeRunService.requestRun(attemptId, ownerId);
         codeRunService.applyResult(succeeded(queued.id()));
 
         // 메시지 재전달을 가정한 두 번째 결과. 먼저 확정된 상태를 덮어쓰지 않아야 한다.
         codeRunService.applyResult(new CodeRunResult(
                 queued.id(), CodeRunStatus.RUNTIME_ERROR, 1, "", "펑", 99L));
 
-        CodeRunView run = codeRunService.getRun(attemptId, queued.id());
+        CodeRunView run = codeRunService.getRun(attemptId, ownerId, queued.id());
         assertThat(run.status()).isEqualTo(CodeRunStatus.SUCCEEDED);
         assertThat(run.stderr()).isEmpty();
     }
@@ -130,7 +130,7 @@ class CodeRunServiceTest extends DatabaseTest {
 
         codeRunService.applyResult(succeeded(UUID.randomUUID()));
 
-        assertThatThrownBy(() -> codeRunService.getRun(attemptId, UUID.randomUUID()))
+        assertThatThrownBy(() -> codeRunService.getRun(attemptId, ownerId, UUID.randomUUID()))
                 .isInstanceOf(CodeRunNotFoundException.class);
     }
 
@@ -138,28 +138,28 @@ class CodeRunServiceTest extends DatabaseTest {
     void 다른_어템프트의_실행_ID로는_조회할_수_없다() {
         Long attemptId = newAttempt();
         Long otherAttemptId = newAttempt();
-        CodeRunView run = codeRunService.requestRun(attemptId);
+        CodeRunView run = codeRunService.requestRun(attemptId, ownerId);
 
-        assertThatThrownBy(() -> codeRunService.getRun(otherAttemptId, run.id()))
+        assertThatThrownBy(() -> codeRunService.getRun(otherAttemptId, ownerId, run.id()))
                 .isInstanceOf(CodeRunNotFoundException.class);
     }
 
     @Test
     void TTL을_넘긴_QUEUED는_RUNNER_ERROR로_회수되고_재요청이_열린다() {
         Long attemptId = newAttempt();
-        CodeRunView stranded = codeRunService.requestRun(attemptId);
+        CodeRunView stranded = codeRunService.requestRun(attemptId, ownerId);
 
         // 워커가 죽어 좌초된 상황: 생성 시각을 TTL 밖으로 밀어낸다.
         Instant now = Instant.now();
         int expired = codeRunRepository.expireStale(now.plus(1, ChronoUnit.HOURS), now);
         assertThat(expired).isEqualTo(1);
 
-        CodeRunView recovered = codeRunService.getRun(attemptId, stranded.id());
+        CodeRunView recovered = codeRunService.getRun(attemptId, ownerId, stranded.id());
         assertThat(recovered.status()).isEqualTo(CodeRunStatus.RUNNER_ERROR);
         assertThat(recovered.stderr()).isNotBlank();
 
         // 부분 유니크 인덱스가 풀려 새 실행을 요청할 수 있다.
-        assertThat(codeRunService.requestRun(attemptId).status()).isEqualTo(CodeRunStatus.QUEUED);
+        assertThat(codeRunService.requestRun(attemptId, ownerId).status()).isEqualTo(CodeRunStatus.QUEUED);
     }
 
     private CodeRunResult succeeded(UUID runId) {
@@ -174,6 +174,6 @@ class CodeRunServiceTest extends DatabaseTest {
                 List.of(new ProblemFile("src/main/java/Main.java", "class Main {}"))
         ));
 
-        return attemptService.startAttempt(problem.id()).id();
+        return attemptService.startAttempt(problem.id(), ownerId, null).id();
     }
 }

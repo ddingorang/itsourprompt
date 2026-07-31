@@ -3,6 +3,8 @@ package com.promptstudio.me.controller;
 import com.promptstudio.auth.controller.response.MeResponse;
 import com.promptstudio.global.exception.ApiErrorResponse;
 import com.promptstudio.global.security.AppUserDetails;
+import com.promptstudio.me.controller.response.SubmittedAttemptResponse;
+import com.promptstudio.me.service.MyAttemptService;
 import com.promptstudio.user.domain.User;
 import com.promptstudio.user.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +17,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 현재 로그인 사용자 전용 API. SecurityConfig에서 /api/me/** 는 인증 필수로 설정되어
@@ -29,9 +33,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
 
     private final UserRepository userRepository;
+    private final MyAttemptService myAttemptService;
 
-    public MeController(UserRepository userRepository) {
+    public MeController(UserRepository userRepository, MyAttemptService myAttemptService) {
         this.userRepository = userRepository;
+        this.myAttemptService = myAttemptService;
     }
 
     @GetMapping
@@ -51,5 +57,25 @@ public class MeController {
         // (세션에 전부 담으면 세션이 비대해지고, 닉네임 변경 등 이후 기능에서 신선도 문제가 생긴다.)
         User user = userRepository.findById(principal.id()).orElseThrow();
         return MeResponse.from(user);
+    }
+
+    @GetMapping("/attempts")
+    @Operation(
+            summary = "내 제출 완료 풀이 목록 조회",
+            description = "현재 로그인 사용자가 제출 완료한 모든 풀이를 제출 시각 내림차순으로 반환합니다. "
+                    + "같은 문제를 여러 번 제출했다면 각각 별도 항목으로 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = SubmittedAttemptResponse.class))),
+            @ApiResponse(responseCode = "401", description = "로그인하지 않음",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    public List<SubmittedAttemptResponse> submittedAttempts(
+            @AuthenticationPrincipal AppUserDetails principal
+    ) {
+        return myAttemptService.getSubmittedAttempts(principal.id()).stream()
+                .map(SubmittedAttemptResponse::from)
+                .toList();
     }
 }
