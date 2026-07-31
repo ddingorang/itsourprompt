@@ -20,6 +20,7 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -29,6 +30,20 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
 
     private static final long FEEDBACK_TIMEOUT_MINUTES = 5;
     private static final String TRUNCATED_FINISH_REASON = "length";
+
+    /**
+     * 같은 요청을 다시 보내면 통과하는 경우가 많은 실패들. 이 실패만 재호출 대상으로 삼는다.
+     *
+     * <p>잘림({@link FeedbackGenerationException#TRUNCATED})은 완성 토큰 예산이 모자란 것이라 같은 옵션으로
+     * 다시 불러도 같은 자리에서 잘린다 — 호출 비용만 두 배가 되므로 뺀다.
+     */
+    private static final Set<String> RETRYABLE_REASONS = Set.of(
+            FeedbackGenerationException.EMPTY_CONTENT,
+            FeedbackGenerationException.INVALID_JSON,
+            FeedbackGenerationException.TURN_COUNT_MISMATCH,
+            FeedbackGenerationException.EMPTY_OVERALL
+    );
+
     private static final Logger log = LoggerFactory.getLogger(OpenAiFeedbackGenerator.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -71,7 +86,6 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
         String userPrompt = FeedbackPrompts.userPrompt(problem, attempt);
         int turnCount = attempt.turns().size();
         OpenAiChatOptions chatOptions = chatOptionsFactory.forFeedback(turnCount);
-        long startedAt = System.nanoTime();
 
         log.info(
                 "[OPENAI FEEDBACK] request started | model={} | problemId={} | attemptId={} | inputChars={} | turns={}",
@@ -85,6 +99,36 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
         LlmUsageTracker tracker = new LlmUsageTracker();
 
         try {
+            return callAndParse(systemPrompt, userPrompt, chatOptions, attempt.id(), turnCount, tracker);
+        } catch (FeedbackResponseException exception) {
+            log.warn(
+                    "[OPENAI FEEDBACK] response contract broken, retrying once | attemptId={} | turns={} | reason={}",
+                    attempt.id(),
+                    turnCount,
+                    exception.reason()
+            );
+
+            return callAndParse(systemPrompt, userPrompt, chatOptions, attempt.id(), turnCount, tracker);
+        }
+    }
+
+    /**
+     * 응답 형태가 어긋나는 실패는 같은 요청을 다시 보내면 통과하는 경우가 많아 {@link #generate}가 이 호출을
+     * 한 번 더 시도한다. 재시도 자체를 여기 두지 않는 이유는 상한을 한 번으로 못 박기 위해서다.
+     *
+     * <p>사용량 tracker는 호출 사이에 이어져야 한다 — 재시도로 끝난 제출도 두 호출이 쓴 토큰을 모두 싣는다.
+     */
+    private AttemptFeedback callAndParse(
+            String systemPrompt,
+            String userPrompt,
+            OpenAiChatOptions chatOptions,
+            Long attemptId,
+            int turnCount,
+            LlmUsageTracker tracker
+    ) {
+        long startedAt = System.nanoTime();
+
+        try {
             ChatResponse response = aiCallExecutor.call(() -> chatClient.prompt()
                     .system(systemPrompt)
                     .user(userPrompt)
@@ -94,7 +138,7 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
 
             tracker.record(chatOptions.getModel(), response, elapsedMillis(startedAt));
 
-            CallTrace trace = traceOf(attempt.id(), turnCount, chatOptions, response);
+            CallTrace trace = traceOf(attemptId, turnCount, chatOptions, response);
             String content = contentOf(response);
             AttemptFeedback feedback = parse(content, trace, tracker.snapshot());
 
@@ -126,7 +170,7 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
             log.error(
                     "[OPENAI FEEDBACK] generation failed | reason={} | attemptId={} | turns={} | duration={} ms",
                     FeedbackGenerationException.PROVIDER_ERROR,
-                    attempt.id(),
+                    attemptId,
                     turnCount,
                     elapsedMillis(startedAt),
                     exception.getCause()
@@ -254,6 +298,8 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
 
     /**
      * 실패를 로그로 남기고 던질 예외를 만든다. 502 응답 본문에는 원인이 실리지 않으므로 로그가 유일한 단서다.
+     *
+     * <p>다시 부르면 통과할 여지가 있는 실패는 {@link FeedbackResponseException}으로 구분해 던진다.
      */
     private FeedbackGenerationException failure(
             String reason,
@@ -263,7 +309,9 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
             List<LlmCallUsage> llmCalls,
             Throwable cause
     ) {
-        FeedbackGenerationException exception = new FeedbackGenerationException(reason, message, cause, llmCalls);
+        FeedbackGenerationException exception = RETRYABLE_REASONS.contains(reason)
+                ? new FeedbackResponseException(reason, message, cause, llmCalls)
+                : new FeedbackGenerationException(reason, message, cause, llmCalls);
 
         log.error(
                 "[OPENAI FEEDBACK] generation failed | reason={} | attemptId={} | turns={} | finishReason={}"

@@ -22,7 +22,7 @@ import java.util.List;
 public class OpenAiChatOptionsFactory {
 
     private static final String CODE_GENERATION_REASONING_EFFORT = "none";
-    private static final String FEEDBACK_REASONING_EFFORT = "medium";
+    private static final String FEEDBACK_REASONING_EFFORT = "low";
     private static final int CODE_GENERATION_MAX_COMPLETION_TOKENS = 32_768;
     private static final int FINALIZE_MAX_COMPLETION_TOKENS = 8_192;
     private static final int FEEDBACK_BASE_MAX_COMPLETION_TOKENS = 4_096;
@@ -71,6 +71,11 @@ public class OpenAiChatOptionsFactory {
 
     /**
      * 턴마다 변환·대조·처방 세 절이 나오므로 완성 토큰을 턴 수에 비례해 잡고 상한을 둔다.
+     *
+     * <p>이 계산은 출력 토큰만 센다. reasoning 토큰도 같은 완성 토큰 예산에서 나가므로 두 값은 묶여 있다.
+     * medium에서 6턴 호출이 reasoning에만 4,979~13,879 토큰을 써 3턴 예산 10,240에 여유 76토큰까지
+     * 좁혀진 적이 있다. low에서는 reasoning이 57~455라 이 계산으로 충분하다 —
+     * {@link #FEEDBACK_REASONING_EFFORT}를 올리려면 이 상한부터 다시 재야 한다.
      *
      * <p>구조화 출력 스키마도 턴 수를 알아야 만들 수 있어 여기서 함께 조립한다.
      */

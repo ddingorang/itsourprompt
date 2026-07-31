@@ -94,19 +94,25 @@ class OpenAiChatOptionsFactoryTest {
                 .isLessThan(factory.forCodeGeneration("attempt-7", toolCallbacks).getMaxCompletionTokens());
     }
 
-    /**
-     * 개수 제약은 스키마가 아니라 파서와 도메인이 지키므로 스키마에 minItems가 없어야 한다.
-     */
     @Test
     void 피드백_옵션은_턴_수에_맞는_구조화_출력을_싣고_프롬프트_캐시_키는_싣지_않는다() {
         OpenAiChatOptions options = factory.forFeedback(1);
 
         assertThat(options.getModel()).isEqualTo("feedback-model");
-        assertThat(options.getReasoningEffort()).isEqualTo("medium");
+        assertThat(options.getReasoningEffort()).isEqualTo("low");
         assertThat(options.getResponseFormat()).isNotNull();
-        assertThat(options.getResponseFormat().getJsonSchema())
-                .contains("정확히 1개")
-                .doesNotContain("minItems");
+        assertThat(options.getResponseFormat().getJsonSchema()).contains("정확히 1개");
         assertThat(options.getPromptCacheKey()).isNull();
+    }
+
+    /**
+     * description만으로 개수를 요구하면 모델이 자주 어긋난 개수를 돌려준다 — 12턴 세션은 8/8 실패했다.
+     * 개수를 스키마로 못 박아 응답 자체가 계약을 지키게 한다.
+     */
+    @Test
+    void 피드백_옵션의_구조화_출력은_턴_피드백_개수를_턴_수로_고정한다() {
+        assertThat(factory.forFeedback(3).getResponseFormat().getJsonSchema())
+                .contains("\"minItems\": 3")
+                .contains("\"maxItems\": 3");
     }
 }
