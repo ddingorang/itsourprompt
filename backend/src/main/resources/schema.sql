@@ -101,6 +101,28 @@ ALTER TABLE attempt ADD CONSTRAINT fk_attempt_user FOREIGN KEY (user_id) REFEREN
 CREATE INDEX IF NOT EXISTS idx_attempt_user ON attempt (user_id, id);
 CREATE INDEX IF NOT EXISTS idx_attempt_user_submitted ON attempt (user_id, status, submitted_at DESC, id DESC);
 
+-- 비로그인 풀이의 소유자. 쿠키 원문은 저장하지 않고 SHA-256 해시만 저장한다.
+CREATE TABLE IF NOT EXISTS guest_session (
+    id         UUID PRIMARY KEY,
+    token_hash VARCHAR(64)              NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_guest_session_token_hash ON guest_session (token_hash);
+CREATE INDEX IF NOT EXISTS idx_guest_session_expires_at ON guest_session (expires_at);
+
+ALTER TABLE attempt ADD COLUMN IF NOT EXISTS guest_session_id UUID;
+ALTER TABLE attempt DROP CONSTRAINT IF EXISTS fk_attempt_guest_session;
+ALTER TABLE attempt ADD CONSTRAINT fk_attempt_guest_session
+    FOREIGN KEY (guest_session_id) REFERENCES guest_session (id);
+CREATE INDEX IF NOT EXISTS idx_attempt_guest_session ON attempt (guest_session_id, id);
+-- 기존 배포 DB의 소유자 없는 과거 attempt 때문에 NOT VALID로 추가한다.
+-- 새로 INSERT/UPDATE되는 행에는 즉시 적용되며, 과거 행을 초기화한 뒤 VALIDATE 할 수 있다.
+ALTER TABLE attempt DROP CONSTRAINT IF EXISTS chk_attempt_exactly_one_owner;
+ALTER TABLE attempt ADD CONSTRAINT chk_attempt_exactly_one_owner
+    CHECK ((user_id IS NOT NULL AND guest_session_id IS NULL)
+        OR (user_id IS NULL AND guest_session_id IS NOT NULL)) NOT VALID;
+
 -- 어템프트 코드의 빌드/실행 요청 한 건. 결과는 buildandtest 워커가 큐로 돌려준 것을 반영한다.
 CREATE TABLE IF NOT EXISTS code_run (
     id          UUID PRIMARY KEY,
@@ -118,16 +140,27 @@ CREATE INDEX IF NOT EXISTS idx_code_run_attempt ON code_run (attempt_id, created
 CREATE UNIQUE INDEX IF NOT EXISTS uq_code_run_active ON code_run (attempt_id) WHERE status = 'QUEUED';
 
 CREATE TABLE IF NOT EXISTS idempotency_record (
-    idempotency_key VARCHAR(64) PRIMARY KEY,
+    idempotency_key VARCHAR(128) PRIMARY KEY,
     user_id         BIGINT REFERENCES users (id),
+    guest_session_id UUID REFERENCES guest_session (id),
     attempt_id      BIGINT REFERENCES attempt (id) ON DELETE CASCADE,
     status          VARCHAR(20)              NOT NULL,
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL
 );
+ALTER TABLE idempotency_record ALTER COLUMN idempotency_key TYPE VARCHAR(128);
 ALTER TABLE idempotency_record ADD COLUMN IF NOT EXISTS user_id BIGINT;
 ALTER TABLE idempotency_record DROP CONSTRAINT IF EXISTS fk_idempotency_record_user;
 ALTER TABLE idempotency_record ADD CONSTRAINT fk_idempotency_record_user FOREIGN KEY (user_id) REFERENCES users (id);
+ALTER TABLE idempotency_record ADD COLUMN IF NOT EXISTS guest_session_id UUID;
+ALTER TABLE idempotency_record DROP CONSTRAINT IF EXISTS fk_idempotency_record_guest_session;
+ALTER TABLE idempotency_record ADD CONSTRAINT fk_idempotency_record_guest_session
+    FOREIGN KEY (guest_session_id) REFERENCES guest_session (id);
+ALTER TABLE idempotency_record DROP CONSTRAINT IF EXISTS chk_idempotency_exactly_one_owner;
+ALTER TABLE idempotency_record ADD CONSTRAINT chk_idempotency_exactly_one_owner
+    CHECK ((user_id IS NOT NULL AND guest_session_id IS NULL)
+        OR (user_id IS NULL AND guest_session_id IS NOT NULL)) NOT VALID;
 CREATE INDEX IF NOT EXISTS idx_idempotency_record_user ON idempotency_record (user_id);
+CREATE INDEX IF NOT EXISTS idx_idempotency_record_guest_session ON idempotency_record (guest_session_id);
 
 -- 문제 저장소에서 마지막으로 동기화한 커밋. 한 행(id = 1)만 사용한다.
 CREATE TABLE IF NOT EXISTS sync_state (

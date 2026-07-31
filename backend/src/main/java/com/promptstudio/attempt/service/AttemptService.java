@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.service;
 
 import com.promptstudio.attempt.domain.AttemptFeedback;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
@@ -51,23 +52,35 @@ public class AttemptService {
     }
 
     public AttemptView startAttempt(Long problemId, Long userId, String idempotencyKey) {
+        return startAttempt(problemId, AttemptOwner.user(userId), idempotencyKey);
+    }
+
+    public AttemptView startAttempt(Long problemId, AttemptOwner owner, String idempotencyKey) {
         String key = normalizeKey(idempotencyKey);
 
         if (key == null) {
-            return attemptWriter.start(getActiveProblem(problemId), userId, null);
+            return attemptWriter.start(getActiveProblem(problemId), owner, null);
         }
 
-        String scopedKey = IdempotencyGuard.scopedKey(userId, key);
-        return withIdempotency(userId, scopedKey, () -> attemptWriter.start(getActiveProblem(problemId), userId, scopedKey));
+        String scopedKey = IdempotencyGuard.scopedKey(owner, key);
+        return withIdempotency(owner, scopedKey, () -> attemptWriter.start(getActiveProblem(problemId), owner, scopedKey));
     }
 
     public AttemptView getAttempt(Long attemptId, Long userId) {
-        return attemptQueryRepository.findByIdAndUserId(attemptId, userId)
+        return getAttempt(attemptId, AttemptOwner.user(userId));
+    }
+
+    public AttemptView getAttempt(Long attemptId, AttemptOwner owner) {
+        return findAttempt(attemptId, owner)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
     }
 
     public AttemptView getFeedback(Long attemptId, Long userId) {
-        AttemptView attempt = getAttempt(attemptId, userId);
+        return getFeedback(attemptId, AttemptOwner.user(userId));
+    }
+
+    public AttemptView getFeedback(Long attemptId, AttemptOwner owner) {
+        AttemptView attempt = getAttempt(attemptId, owner);
 
         if (attempt.status() != AttemptStatus.SUBMITTED) {
             throw new FeedbackNotFoundException(attemptId);
@@ -77,26 +90,30 @@ public class AttemptService {
     }
 
     public AttemptView addTurn(Long attemptId, Long userId, String userPrompt) {
-        return addTurn(attemptId, userId, userPrompt, null);
+        return addTurn(attemptId, AttemptOwner.user(userId), userPrompt, null);
     }
 
     public AttemptView addTurn(Long attemptId, Long userId, String userPrompt, String idempotencyKey) {
+        return addTurn(attemptId, AttemptOwner.user(userId), userPrompt, idempotencyKey);
+    }
+
+    public AttemptView addTurn(Long attemptId, AttemptOwner owner, String userPrompt, String idempotencyKey) {
         String key = normalizeKey(idempotencyKey);
 
         if (key == null) {
-            return generateTurn(attemptId, userId, userPrompt, null);
+            return generateTurn(attemptId, owner, userPrompt, null);
         }
 
-        String scopedKey = IdempotencyGuard.scopedKey(userId, key);
-        return withIdempotency(userId, scopedKey, () -> generateTurn(attemptId, userId, userPrompt, scopedKey));
+        String scopedKey = IdempotencyGuard.scopedKey(owner, key);
+        return withIdempotency(owner, scopedKey, () -> generateTurn(attemptId, owner, userPrompt, scopedKey));
     }
 
-    private AttemptView generateTurn(Long attemptId, Long userId, String userPrompt, String idempotencyKey) {
+    private AttemptView generateTurn(Long attemptId, AttemptOwner owner, String userPrompt, String idempotencyKey) {
         if (feedbackGenerationGuard.isGenerating(attemptId)) {
             throw new FeedbackGenerationInProgressException(attemptId);
         }
 
-        AttemptView attempt = getAttempt(attemptId, userId);
+        AttemptView attempt = getAttempt(attemptId, owner);
 
         if (attempt.status() == AttemptStatus.SUBMITTED) {
             throw new AttemptAlreadySubmittedException(attemptId);
@@ -105,12 +122,12 @@ public class AttemptService {
         GeneratedCode generated = codeGenerator.generate(
                 ProblemView.from(getProblem(attempt.problemId())), attempt, userPrompt);
 
-        return attemptWriter.appendTurn(attemptId, userId, userPrompt, generated, idempotencyKey);
+        return attemptWriter.appendTurn(attemptId, owner, userPrompt, generated, idempotencyKey);
     }
 
-    private AttemptView withIdempotency(Long userId, String key, Supplier<AttemptView> action) {
-        return switch (idempotencyGuard.reserve(key)) {
-            case IdempotencyGuard.Reservation.Replay(Long attemptId) -> getAttempt(attemptId, userId);
+    private AttemptView withIdempotency(AttemptOwner owner, String key, Supplier<AttemptView> action) {
+        return switch (idempotencyGuard.reserve(key, owner)) {
+            case IdempotencyGuard.Reservation.Replay(Long attemptId) -> getAttempt(attemptId, owner);
             case IdempotencyGuard.Reservation.Acquired ignored -> runOwning(key, action);
         };
     }
@@ -138,12 +155,16 @@ public class AttemptService {
     }
 
     public AttemptView submit(Long attemptId, Long userId) {
+        return submit(attemptId, AttemptOwner.user(userId));
+    }
+
+    public AttemptView submit(Long attemptId, AttemptOwner owner) {
         if (!feedbackGenerationGuard.tryAcquire(attemptId)) {
             throw new FeedbackGenerationInProgressException(attemptId);
         }
 
         try {
-            AttemptView attempt = getAttempt(attemptId, userId);
+            AttemptView attempt = getAttempt(attemptId, owner);
 
             if (attempt.turns().isEmpty()) {
                 throw new AttemptHasNoTurnsException(attemptId);
@@ -156,7 +177,7 @@ public class AttemptService {
             AttemptFeedback feedback =
                     feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
 
-            return attemptWriter.submit(attemptId, userId, feedback);
+            return attemptWriter.submit(attemptId, owner, feedback);
         } finally {
             feedbackGenerationGuard.release(attemptId);
         }
@@ -178,5 +199,12 @@ public class AttemptService {
         }
 
         return problem;
+    }
+
+    private java.util.Optional<AttemptView> findAttempt(Long attemptId, AttemptOwner owner) {
+        if (owner.isUser()) {
+            return attemptQueryRepository.findByIdAndUserId(attemptId, owner.userId());
+        }
+        return attemptQueryRepository.findByIdAndGuestSessionId(attemptId, owner.guestSessionId());
     }
 }

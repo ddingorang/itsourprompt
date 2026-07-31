@@ -5,6 +5,7 @@ import com.promptstudio.auth.controller.request.SignupRequest;
 import com.promptstudio.auth.controller.response.MeResponse;
 import com.promptstudio.global.exception.ApiErrorResponse;
 import com.promptstudio.global.security.AppUserDetails;
+import com.promptstudio.guest.GuestSessionService;
 import com.promptstudio.user.domain.User;
 import com.promptstudio.user.repository.UserRepository;
 import com.promptstudio.user.service.UserService;
@@ -31,6 +32,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 세션 + HttpOnly 쿠키 기반 인증 API.
@@ -44,21 +47,26 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Auth", description = "회원가입 / 로그인 / 로그아웃 API")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+
     private final UserService userService;
     private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;
+    private final GuestSessionService guestSessionService;
 
     public AuthController(
             UserService userService,
             UserRepository userRepository,
             AuthenticationManager authenticationManager,
-            SecurityContextRepository securityContextRepository
+            SecurityContextRepository securityContextRepository,
+            GuestSessionService guestSessionService
     ) {
         this.userService = userService;
         this.userRepository = userRepository;
         this.authenticationManager = authenticationManager;
         this.securityContextRepository = securityContextRepository;
+        this.guestSessionService = guestSessionService;
     }
 
     @PostMapping("/signup")
@@ -119,6 +127,11 @@ public class AuthController {
         securityContextRepository.saveContext(context, httpRequest, httpResponse);
 
         AppUserDetails principal = (AppUserDetails) authentication.getPrincipal();
+        int transferredAttempts = guestSessionService.transferToUser(httpRequest, httpResponse, principal.id());
+        if (transferredAttempts > 0) {
+            log.info("Guest attempts were attached to the logged-in user | userId={} attempts={}",
+                    principal.id(), transferredAttempts);
+        }
         // 닉네임·이메일·가입시각은 세션(principal)에 없으므로 DB에서 조회해 채운다.
         User user = userRepository.findById(principal.id()).orElseThrow();
         return MeResponse.from(user);

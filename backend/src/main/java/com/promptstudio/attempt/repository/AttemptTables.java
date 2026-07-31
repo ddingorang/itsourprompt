@@ -4,6 +4,8 @@ import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.impl.SQLDataType;
 
+import java.util.UUID;
+
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
@@ -14,6 +16,7 @@ final class AttemptTables {
     static final Field<Long> ID = field(name("attempt", "id"), SQLDataType.BIGINT);
     static final Field<Long> PROBLEM_ID = field(name("attempt", "problem_id"), SQLDataType.BIGINT);
     static final Field<Long> USER_ID = field(name("attempt", "user_id"), SQLDataType.BIGINT);
+    static final Field<UUID> GUEST_SESSION_ID = field(name("attempt", "guest_session_id"), SQLDataType.UUID);
     static final Field<String> STATUS = field(name("attempt", "status"), SQLDataType.VARCHAR);
     static final Field<String> FEEDBACK = field(name("attempt", "feedback"), SQLDataType.CLOB);
 

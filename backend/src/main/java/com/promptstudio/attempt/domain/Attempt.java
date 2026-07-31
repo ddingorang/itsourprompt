@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "attempt")
@@ -35,8 +36,11 @@ public class Attempt {
     @Column(name = "problem_id", nullable = false)
     private Long problemId;
 
-    @Column(name = "user_id", nullable = false, updatable = false)
+    @Column(name = "user_id", updatable = false)
     private Long userId;
+
+    @Column(name = "guest_session_id", updatable = false)
+    private UUID guestSessionId;
 
     /**
      * 시작 스켈레톤. 한 번 정해지면 바뀌지 않고, 현재 상태는 여기에 턴을 재생해 얻는다.
@@ -64,14 +68,19 @@ public class Attempt {
     protected Attempt() {
     }
 
-    private Attempt(Long problemId, Long userId, List<ProblemFile> baseFiles) {
+    private Attempt(Long problemId, AttemptOwner owner, List<ProblemFile> baseFiles) {
         this.problemId = problemId;
-        this.userId = userId;
+        this.userId = owner.userId();
+        this.guestSessionId = owner.guestSessionId();
         this.baseFiles = new ArrayList<>(baseFiles);
     }
 
     public static Attempt start(Problem problem, Long userId) {
-        return new Attempt(problem.id(), userId, problem.files());
+        return start(problem, AttemptOwner.user(userId));
+    }
+
+    public static Attempt start(Problem problem, AttemptOwner owner) {
+        return new Attempt(problem.id(), owner, problem.files());
     }
 
     public void applyTurn(String userPrompt, GeneratedCode generated) {
@@ -117,6 +126,10 @@ public class Attempt {
 
     public Long userId() {
         return userId;
+    }
+
+    public UUID guestSessionId() {
+        return guestSessionId;
     }
 
     public List<ProblemFile> baseFiles() {

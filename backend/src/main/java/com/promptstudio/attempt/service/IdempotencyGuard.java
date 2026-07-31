@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.service;
 
 import com.promptstudio.attempt.domain.IdempotencyRecord;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.exception.DuplicateRequestException;
 import com.promptstudio.attempt.repository.IdempotencyRepository;
 import org.springframework.stereotype.Component;
@@ -30,10 +31,10 @@ class IdempotencyGuard {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    Reservation reserve(String key) {
+    Reservation reserve(String key, AttemptOwner owner) {
         Instant now = Instant.now();
 
-        if (idempotencyRepository.tryInsertPending(key, userIdFromScopedKey(key), now)) {
+        if (idempotencyRepository.tryInsertPending(key, owner.userId(), owner.guestSessionId(), now)) {
             return new Reservation.Acquired();
         }
 
@@ -41,7 +42,7 @@ class IdempotencyGuard {
 
         // 실패한 요청이 그 사이에 행을 지웠다면 한 번만 다시 선점해 본다.
         if (existing.isEmpty()) {
-            return retryInsert(key, now);
+            return retryInsert(key, owner, now);
         }
 
         IdempotencyRecord record = existing.get();
@@ -57,8 +58,8 @@ class IdempotencyGuard {
         throw new DuplicateRequestException(key);
     }
 
-    private Reservation retryInsert(String key, Instant now) {
-        if (idempotencyRepository.tryInsertPending(key, userIdFromScopedKey(key), now)) {
+    private Reservation retryInsert(String key, AttemptOwner owner, Instant now) {
+        if (idempotencyRepository.tryInsertPending(key, owner.userId(), owner.guestSessionId(), now)) {
             return new Reservation.Acquired();
         }
 
@@ -73,21 +74,13 @@ class IdempotencyGuard {
         idempotencyRepository.delete(key);
     }
 
-    static String scopedKey(Long userId, String key) {
-        Objects.requireNonNull(userId, "userId must not be null");
-        String scopedKey = userId + ":" + key;
-        if (scopedKey.length() > 64) {
+    static String scopedKey(AttemptOwner owner, String key) {
+        Objects.requireNonNull(owner, "owner must not be null");
+        String scopedKey = owner.idempotencyScope() + ":" + key;
+        if (scopedKey.length() > 128) {
             throw new IllegalArgumentException("Idempotency-Key is too long");
         }
         return scopedKey;
-    }
-
-    private Long userIdFromScopedKey(String scopedKey) {
-        int separator = scopedKey.indexOf(':');
-        if (separator < 1) {
-            throw new IllegalArgumentException("Invalid scoped idempotency key");
-        }
-        return Long.valueOf(scopedKey.substring(0, separator));
     }
 
     sealed interface Reservation {

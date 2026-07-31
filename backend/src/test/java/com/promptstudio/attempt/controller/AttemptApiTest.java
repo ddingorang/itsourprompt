@@ -41,7 +41,7 @@ class AttemptApiTest extends DatabaseTest {
     @Test
     void 로그인하지_않으면_어템프트_API를_호출할_수_없다() throws Exception {
         mockMvc.perform(get("/api/attempts/1").with(anonymous()))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isNotFound());
     }
 
     @Test

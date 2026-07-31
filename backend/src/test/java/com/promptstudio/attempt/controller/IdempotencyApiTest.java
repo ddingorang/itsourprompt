@@ -177,7 +177,7 @@ class IdempotencyApiTest extends DatabaseTest {
     }
 
     private String scopedKey(String idempotencyKey) {
-        return ownerId + ":" + idempotencyKey;
+        return "user:" + ownerId + ":" + idempotencyKey;
     }
 
     private Long createAttempt() throws Exception {

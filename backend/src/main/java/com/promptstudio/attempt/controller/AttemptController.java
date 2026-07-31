@@ -9,6 +9,7 @@ import com.promptstudio.attempt.service.AttemptService;
 import com.promptstudio.attempt.service.CodeRunService;
 import com.promptstudio.global.exception.ApiErrorResponse;
 import com.promptstudio.global.security.AppUserDetails;
+import com.promptstudio.guest.AttemptOwnerResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -18,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -41,15 +43,18 @@ public class AttemptController {
     private final AttemptService attemptService;
     private final CodeRunService codeRunService;
     private final AttemptWebMapper attemptWebMapper;
+    private final AttemptOwnerResolver attemptOwnerResolver;
 
     public AttemptController(
             AttemptService attemptService,
             CodeRunService codeRunService,
-            AttemptWebMapper attemptWebMapper
+            AttemptWebMapper attemptWebMapper,
+            AttemptOwnerResolver attemptOwnerResolver
     ) {
         this.attemptService = attemptService;
         this.codeRunService = codeRunService;
         this.attemptWebMapper = attemptWebMapper;
+        this.attemptOwnerResolver = attemptOwnerResolver;
     }
 
     @PostMapping
@@ -82,6 +87,7 @@ public class AttemptController {
     })
     public AttemptResponse createAttempt(
             @AuthenticationPrincipal AppUserDetails principal,
+            HttpServletRequest httpRequest,
             @Parameter(
                     name = "Idempotency-Key",
                     in = ParameterIn.HEADER,
@@ -91,7 +97,7 @@ public class AttemptController {
             @Valid @RequestBody CreateAttemptRequest request
     ) {
         return attemptWebMapper.toAttemptResponse(
-                attemptService.startAttempt(request.problemId(), principal.id(), idempotencyKey));
+                attemptService.startAttempt(request.problemId(), owner(principal, httpRequest), idempotencyKey));
     }
 
     @GetMapping("/{id}")
@@ -113,9 +119,10 @@ public class AttemptController {
     })
     public AttemptResponse getAttempt(
             @AuthenticationPrincipal AppUserDetails principal,
+            HttpServletRequest httpRequest,
             @PathVariable("id") Long id
     ) {
-        return attemptWebMapper.toAttemptResponse(attemptService.getAttempt(id, principal.id()));
+        return attemptWebMapper.toAttemptResponse(attemptService.getAttempt(id, owner(principal, httpRequest)));
     }
 
     @GetMapping("/{id}/feedback")
@@ -138,9 +145,10 @@ public class AttemptController {
     })
     public FeedbackResponse getFeedback(
             @AuthenticationPrincipal AppUserDetails principal,
+            HttpServletRequest httpRequest,
             @PathVariable("id") Long id
     ) {
-        return attemptWebMapper.toFeedbackResponse(attemptService.getFeedback(id, principal.id()));
+        return attemptWebMapper.toFeedbackResponse(attemptService.getFeedback(id, owner(principal, httpRequest)));
     }
 
     @PostMapping("/{id}/turns")
@@ -182,6 +190,7 @@ public class AttemptController {
     })
     public AttemptResponse addTurn(
             @AuthenticationPrincipal AppUserDetails principal,
+            HttpServletRequest httpRequest,
             @PathVariable("id") Long id,
             @Parameter(
                     name = "Idempotency-Key",
@@ -192,7 +201,7 @@ public class AttemptController {
             @Valid @RequestBody TurnRequest request
     ) {
         return attemptWebMapper.toAttemptResponse(
-                attemptService.addTurn(id, principal.id(), request.prompt(), idempotencyKey));
+                attemptService.addTurn(id, owner(principal, httpRequest), request.prompt(), idempotencyKey));
     }
 
     @PostMapping("/{id}/submit")
@@ -236,9 +245,10 @@ public class AttemptController {
     })
     public FeedbackResponse submit(
             @AuthenticationPrincipal AppUserDetails principal,
+            HttpServletRequest httpRequest,
             @PathVariable("id") Long id
     ) {
-        return attemptWebMapper.toFeedbackResponse(attemptService.submit(id, principal.id()));
+        return attemptWebMapper.toFeedbackResponse(attemptService.submit(id, owner(principal, httpRequest)));
     }
 
     @PostMapping("/{id}/runs")
@@ -267,9 +277,10 @@ public class AttemptController {
     })
     public CodeRunResponse requestRun(
             @AuthenticationPrincipal AppUserDetails principal,
+            HttpServletRequest httpRequest,
             @PathVariable("id") Long id
     ) {
-        return attemptWebMapper.toCodeRunResponse(codeRunService.requestRun(id, principal.id()));
+        return attemptWebMapper.toCodeRunResponse(codeRunService.requestRun(id, owner(principal, httpRequest)));
     }
 
     @GetMapping("/{id}/runs/{runId}")
@@ -291,9 +302,17 @@ public class AttemptController {
     })
     public CodeRunResponse getRun(
             @AuthenticationPrincipal AppUserDetails principal,
+            HttpServletRequest httpRequest,
             @PathVariable("id") Long id,
             @PathVariable("runId") UUID runId
     ) {
-        return attemptWebMapper.toCodeRunResponse(codeRunService.getRun(id, principal.id(), runId));
+        return attemptWebMapper.toCodeRunResponse(codeRunService.getRun(id, owner(principal, httpRequest), runId));
+    }
+
+    private com.promptstudio.attempt.domain.AttemptOwner owner(
+            AppUserDetails principal,
+            HttpServletRequest request
+    ) {
+        return attemptOwnerResolver.resolve(principal, request);
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static com.promptstudio.attempt.repository.AttemptTables.ATTEMPT;
 import static com.promptstudio.attempt.repository.AttemptTables.ATTEMPT_FILE;
@@ -27,6 +28,7 @@ import static com.promptstudio.attempt.repository.AttemptTables.FILE_CONTENT;
 import static com.promptstudio.attempt.repository.AttemptTables.FILE_ORDINAL;
 import static com.promptstudio.attempt.repository.AttemptTables.FILE_PATH;
 import static com.promptstudio.attempt.repository.AttemptTables.ID;
+import static com.promptstudio.attempt.repository.AttemptTables.GUEST_SESSION_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.PROBLEM_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.STATUS;
 import static com.promptstudio.attempt.repository.AttemptTables.USER_ID;
@@ -64,6 +66,12 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
     @Transactional(readOnly = true)
     public Optional<AttemptView> findByIdAndUserId(Long id, Long userId) {
         return findByCondition(ID.eq(id).and(USER_ID.eq(userId)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AttemptView> findByIdAndGuestSessionId(Long id, UUID guestSessionId) {
+        return findByCondition(ID.eq(id).and(GUEST_SESSION_ID.eq(guestSessionId)));
     }
 
     private Optional<AttemptView> findByCondition(org.jooq.Condition condition) {

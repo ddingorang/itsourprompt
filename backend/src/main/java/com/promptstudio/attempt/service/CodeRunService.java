@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.service;
 
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.CodeRunResult;
 import com.promptstudio.attempt.domain.CodeRunView;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
@@ -49,9 +50,13 @@ public class CodeRunService {
     }
 
     public CodeRunView requestRun(Long attemptId, Long userId) {
+        return requestRun(attemptId, AttemptOwner.user(userId));
+    }
+
+    public CodeRunView requestRun(Long attemptId, AttemptOwner owner) {
         expireStaleRuns();
 
-        AttemptView attempt = attemptQueryRepository.findByIdAndUserId(attemptId, userId)
+        AttemptView attempt = findAttempt(attemptId, owner)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         UUID runId = UUID.randomUUID();
@@ -70,9 +75,13 @@ public class CodeRunService {
     }
 
     public CodeRunView getRun(Long attemptId, Long userId, UUID runId) {
+        return getRun(attemptId, AttemptOwner.user(userId), runId);
+    }
+
+    public CodeRunView getRun(Long attemptId, AttemptOwner owner, UUID runId) {
         expireStaleRuns();
 
-        attemptQueryRepository.findByIdAndUserId(attemptId, userId)
+        findAttempt(attemptId, owner)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         return codeRunRepository.findByIdAndAttemptId(runId, attemptId)
@@ -103,5 +112,12 @@ public class CodeRunService {
         if (expired > 0) {
             log.warn("[CODE RUN] 좌초된 실행 {}건을 RUNNER_ERROR로 회수했습니다.", expired);
         }
+    }
+
+    private java.util.Optional<AttemptView> findAttempt(Long attemptId, AttemptOwner owner) {
+        if (owner.isUser()) {
+            return attemptQueryRepository.findByIdAndUserId(attemptId, owner.userId());
+        }
+        return attemptQueryRepository.findByIdAndGuestSessionId(attemptId, owner.guestSessionId());
     }
 }

@@ -4,10 +4,11 @@ import com.promptstudio.attempt.domain.IdempotencyRecord;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface IdempotencyRepository {
 
-    boolean tryInsertPending(String key, Long userId, Instant now);
+    boolean tryInsertPending(String key, Long userId, UUID guestSessionId, Instant now);
 
     Optional<IdempotencyRecord> findByKey(String key);
 
@@ -22,4 +23,6 @@ public interface IdempotencyRepository {
     void markCompleted(String key, Long attemptId);
 
     void delete(String key);
+
+    void deleteByGuestSessionId(UUID guestSessionId);
 }

@@ -6,11 +6,13 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 import static com.promptstudio.attempt.repository.IdempotencyTables.IDEMPOTENCY_KEY;
 import static com.promptstudio.attempt.repository.IdempotencyTables.IDEMPOTENCY_RECORD;
 import static com.promptstudio.attempt.repository.IdempotencyTables.RECORD_ATTEMPT_ID;
 import static com.promptstudio.attempt.repository.IdempotencyTables.RECORD_CREATED_AT;
+import static com.promptstudio.attempt.repository.IdempotencyTables.RECORD_GUEST_SESSION_ID;
 import static com.promptstudio.attempt.repository.IdempotencyTables.RECORD_STATUS;
 import static com.promptstudio.attempt.repository.IdempotencyTables.RECORD_USER_ID;
 
@@ -27,25 +29,27 @@ public class JooqIdempotencyRepository implements IdempotencyRepository {
     }
 
     @Override
-    public boolean tryInsertPending(String key, Long userId, Instant now) {
+    public boolean tryInsertPending(String key, Long userId, UUID guestSessionId, Instant now) {
         return dsl.insertInto(IDEMPOTENCY_RECORD)
-                .columns(IDEMPOTENCY_KEY, RECORD_USER_ID, RECORD_STATUS, RECORD_CREATED_AT)
-                .values(key, userId, PENDING, now)
+                .columns(IDEMPOTENCY_KEY, RECORD_USER_ID, RECORD_GUEST_SESSION_ID, RECORD_STATUS, RECORD_CREATED_AT)
+                .values(key, userId, guestSessionId, PENDING, now)
                 .onConflictDoNothing()
                 .execute() == 1;
     }
 
     @Override
     public Optional<IdempotencyRecord> findByKey(String key) {
-        return dsl.select(IDEMPOTENCY_KEY, RECORD_USER_ID, RECORD_ATTEMPT_ID, RECORD_STATUS, RECORD_CREATED_AT)
+        return dsl.select(IDEMPOTENCY_KEY, RECORD_USER_ID, RECORD_GUEST_SESSION_ID,
+                        RECORD_ATTEMPT_ID, RECORD_STATUS, RECORD_CREATED_AT)
                 .from(IDEMPOTENCY_RECORD)
                 .where(IDEMPOTENCY_KEY.eq(key))
                 .fetchOptional(record -> new IdempotencyRecord(
                         record.value1(),
                         record.value2(),
                         record.value3(),
-                        IdempotencyRecord.Status.valueOf(record.value4()),
-                        record.value5()
+                        record.value4(),
+                        IdempotencyRecord.Status.valueOf(record.value5()),
+                        record.value6()
                 ));
     }
 
@@ -72,6 +76,13 @@ public class JooqIdempotencyRepository implements IdempotencyRepository {
     public void delete(String key) {
         dsl.deleteFrom(IDEMPOTENCY_RECORD)
                 .where(IDEMPOTENCY_KEY.eq(key))
+                .execute();
+    }
+
+    @Override
+    public void deleteByGuestSessionId(UUID guestSessionId) {
+        dsl.deleteFrom(IDEMPOTENCY_RECORD)
+                .where(RECORD_GUEST_SESSION_ID.eq(guestSessionId))
                 .execute();
     }
 }

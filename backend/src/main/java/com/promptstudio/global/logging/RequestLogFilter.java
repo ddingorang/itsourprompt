@@ -54,6 +54,12 @@ public class RequestLogFilter extends OncePerRequestFilter {
             if (status >= 500) {
                 log.error("Request failed | method={} path={} status={} durationMs={}",
                         request.getMethod(), request.getRequestURI(), status, durationMs);
+            } else if (status == HttpServletResponse.SC_UNAUTHORIZED
+                    && "GET".equals(request.getMethod())
+                    && "/api/me".equals(request.getRequestURI())) {
+                // SPA의 로그인 상태 확인은 비로그인일 때 401이 정상 응답이다.
+                log.info("Anonymous session check | method={} path={} status={} durationMs={}",
+                        request.getMethod(), request.getRequestURI(), status, durationMs);
             } else if (status >= 400) {
                 log.warn("Request rejected | method={} path={} status={} durationMs={}",
                         request.getMethod(), request.getRequestURI(), status, durationMs);

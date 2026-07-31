@@ -2,6 +2,7 @@ package com.promptstudio.attempt.service;
 
 import com.promptstudio.attempt.domain.Attempt;
 import com.promptstudio.attempt.domain.AttemptFeedback;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
@@ -28,8 +29,8 @@ class AttemptWriter {
     }
 
     @Transactional
-    AttemptView start(Problem problem, Long userId, String idempotencyKey) {
-        Attempt attempt = attemptRepository.save(Attempt.start(problem, userId));
+    AttemptView start(Problem problem, AttemptOwner owner, String idempotencyKey) {
+        Attempt attempt = attemptRepository.save(Attempt.start(problem, owner));
 
         markCompleted(idempotencyKey, attempt.id());
 
@@ -37,8 +38,8 @@ class AttemptWriter {
     }
 
     @Transactional
-    AttemptView appendTurn(Long attemptId, Long userId, String userPrompt, GeneratedCode generated, String idempotencyKey) {
-        Attempt attempt = attemptRepository.findByIdAndUserId(attemptId, userId)
+    AttemptView appendTurn(Long attemptId, AttemptOwner owner, String userPrompt, GeneratedCode generated, String idempotencyKey) {
+        Attempt attempt = findAttempt(attemptId, owner)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         attempt.applyTurn(userPrompt, generated);
@@ -48,8 +49,8 @@ class AttemptWriter {
     }
 
     @Transactional
-    AttemptView submit(Long attemptId, Long userId, AttemptFeedback feedback) {
-        Attempt attempt = attemptRepository.findByIdAndUserId(attemptId, userId)
+    AttemptView submit(Long attemptId, AttemptOwner owner, AttemptFeedback feedback) {
+        Attempt attempt = findAttempt(attemptId, owner)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         // AI 호출 중 다른 요청이 먼저 제출을 끝냈다면 저장된 피드백을 그대로 반환한다.
@@ -64,5 +65,12 @@ class AttemptWriter {
         if (idempotencyKey != null) {
             idempotencyRepository.markCompleted(idempotencyKey, attemptId);
         }
+    }
+
+    private java.util.Optional<Attempt> findAttempt(Long attemptId, AttemptOwner owner) {
+        if (owner.isUser()) {
+            return attemptRepository.findByIdAndUserId(attemptId, owner.userId());
+        }
+        return attemptRepository.findByIdAndGuestSessionId(attemptId, owner.guestSessionId());
     }
 }
