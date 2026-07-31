@@ -20,6 +20,7 @@ import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 
 import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
@@ -56,6 +57,9 @@ public class Attempt {
 
     @Column(name = "feedback")
     private String feedback;
+
+    @Column(name = "submitted_at")
+    private Instant submittedAt;
 
     protected Attempt() {
     }
@@ -100,6 +104,7 @@ public class Attempt {
 
         this.status = AttemptStatus.SUBMITTED;
         this.feedback = feedback.overall();
+        this.submittedAt = Instant.now();
     }
 
     public Long id() {
@@ -132,6 +137,10 @@ public class Attempt {
 
     public String feedback() {
         return feedback;
+    }
+
+    public Instant submittedAt() {
+        return submittedAt;
     }
 
     @Override
