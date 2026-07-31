@@ -6,6 +6,8 @@ import com.promptstudio.attempt.controller.response.FeedbackResponse;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.CodeRunView;
 import com.promptstudio.attempt.domain.FileChange;
+import com.promptstudio.attempt.domain.LlmUsageSummary;
+import com.promptstudio.attempt.domain.LlmUsageTotals;
 import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.problem.domain.ProblemFile;
 import org.springframework.stereotype.Component;
@@ -29,7 +31,8 @@ public class AttemptWebMapper {
                 toFileResponses(attempt.baseFiles()),
                 toFileResponses(attempt.files()),
                 turns,
-                attempt.status()
+                attempt.status(),
+                toUsageResponse(attempt.usage())
         );
     }
 
@@ -85,6 +88,37 @@ public class AttemptWebMapper {
             toolCalls.add(new AttemptResponse.ToolCallResponse(toolCall.tool(), toolCall.path()));
         }
 
-        return new AttemptResponse.TurnResponse(turn.userPrompt(), turn.aiSummary(), changedFiles, toolCalls);
+        return new AttemptResponse.TurnResponse(
+                turn.userPrompt(), turn.aiSummary(), changedFiles, toolCalls, toUsageResponse(turn.usage()));
+    }
+
+    private AttemptResponse.TurnUsageResponse toUsageResponse(LlmUsageSummary usage) {
+        if (usage == null) {
+            return null;
+        }
+
+        return new AttemptResponse.TurnUsageResponse(
+                usage.inputTokens(),
+                usage.outputTokens(),
+                usage.cachedInputTokens(),
+                usage.reasoningTokens(),
+                usage.cost(),
+                usage.model(),
+                usage.rounds()
+        );
+    }
+
+    private AttemptResponse.AttemptUsageResponse toUsageResponse(LlmUsageTotals usage) {
+        if (usage == null) {
+            return null;
+        }
+
+        return new AttemptResponse.AttemptUsageResponse(
+                usage.inputTokens(),
+                usage.outputTokens(),
+                usage.cachedInputTokens(),
+                usage.reasoningTokens(),
+                usage.cost()
+        );
     }
 }

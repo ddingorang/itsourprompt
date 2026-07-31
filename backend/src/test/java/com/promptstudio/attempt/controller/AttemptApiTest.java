@@ -1,7 +1,10 @@
 package com.promptstudio.attempt.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
+import com.promptstudio.attempt.repository.AttemptRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
@@ -30,6 +33,9 @@ class AttemptApiTest extends DatabaseTest {
 
     @Autowired
     private ProblemRepository problemRepository;
+
+    @Autowired
+    private AttemptRepository attemptRepository;
 
     @Autowired
     private FakeAiConfiguration.FakeFeedbackGenerator feedbackGenerator;
@@ -231,6 +237,61 @@ class AttemptApiTest extends DatabaseTest {
                         .content("{\"problemId\":" + problem.id() + "}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("problem-inactive"));
+    }
+
+    @Test
+    void 턴을_추가하면_사용량_요약이_봉투에_실린다() throws Exception {
+        Long attemptId = createAttempt();
+
+        mockMvc.perform(post("/api/attempts/{id}/turns", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\":\"Hello 출력해줘\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.turns[0].usage.inputTokens").value(2500))
+                .andExpect(jsonPath("$.turns[0].usage.outputTokens").value(500))
+                .andExpect(jsonPath("$.turns[0].usage.cachedInputTokens").value(1000))
+                .andExpect(jsonPath("$.turns[0].usage.reasoningTokens").value(120))
+                .andExpect(jsonPath("$.turns[0].usage.model").value("test-model"))
+                .andExpect(jsonPath("$.turns[0].usage.rounds").value(2))
+                .andExpect(jsonPath("$.turns[0].usage.cost").value(0.003))
+                .andExpect(jsonPath("$.usage.cost").value(0.003));
+    }
+
+    @Test
+    void 조회_응답에_전체_총계가_실린다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/attempts/{id}", attemptId))
+                .andExpect(status().isOk())
+                // 코드 생성 2건 + 피드백 1건
+                .andExpect(jsonPath("$.usage.inputTokens").value(4500))
+                .andExpect(jsonPath("$.usage.outputTokens").value(900))
+                .andExpect(jsonPath("$.usage.cachedInputTokens").value(1000))
+                .andExpect(jsonPath("$.usage.reasoningTokens").value(220))
+                .andExpect(jsonPath("$.usage.cost").value(0.0058))
+                // 턴 합계에는 피드백 호출이 들어가지 않는다.
+                .andExpect(jsonPath("$.turns[0].usage.inputTokens").value(2500));
+    }
+
+    @Test
+    void 사용량_기록이_없는_턴은_usage가_null이다() throws Exception {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem()));
+        attempt.applyTurn("Hello 출력해줘", new GeneratedCode(
+                List.of(new ProblemFile("src/main/java/Main.java", "생성된 내용")),
+                "생성 요약",
+                List.of(),
+                List.of()
+        ));
+        attemptRepository.save(attempt);
+
+        mockMvc.perform(get("/api/attempts/{id}", attempt.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.turns.length()").value(1))
+                .andExpect(jsonPath("$.turns[0].usage").doesNotExist())
+                .andExpect(jsonPath("$.usage").doesNotExist());
     }
 
     private void addTurn(Long attemptId) throws Exception {

@@ -4,6 +4,8 @@ import org.jooq.Field;
 import org.jooq.Table;
 import org.jooq.impl.SQLDataType;
 
+import java.math.BigDecimal;
+
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
@@ -42,6 +44,21 @@ final class AttemptTables {
     static final Field<Integer> TOOL_CALL_ORDINAL = field(name("turn_tool_call", "ordinal"), SQLDataType.INTEGER);
     static final Field<String> TOOL_CALL_TOOL = field(name("turn_tool_call", "tool"), SQLDataType.VARCHAR);
     static final Field<String> TOOL_CALL_PATH = field(name("turn_tool_call", "path"), SQLDataType.VARCHAR);
+
+    static final Table<?> ATTEMPT_LLM_CALL = table(name("attempt_llm_call"));
+    static final Field<Long> CALL_ATTEMPT_ID = field(name("attempt_llm_call", "attempt_id"), SQLDataType.BIGINT);
+    static final Field<Integer> CALL_TURN_ORDINAL =
+            field(name("attempt_llm_call", "turn_ordinal"), SQLDataType.INTEGER);
+    static final Field<String> CALL_MODEL = field(name("attempt_llm_call", "model"), SQLDataType.VARCHAR);
+    static final Field<Long> CALL_INPUT_TOKENS =
+            field(name("attempt_llm_call", "input_tokens"), SQLDataType.BIGINT);
+    static final Field<Long> CALL_OUTPUT_TOKENS =
+            field(name("attempt_llm_call", "output_tokens"), SQLDataType.BIGINT);
+    static final Field<Long> CALL_CACHED_INPUT_TOKENS =
+            field(name("attempt_llm_call", "cached_input_tokens"), SQLDataType.BIGINT);
+    static final Field<Long> CALL_REASONING_TOKENS =
+            field(name("attempt_llm_call", "reasoning_tokens"), SQLDataType.BIGINT);
+    static final Field<BigDecimal> CALL_COST = field(name("attempt_llm_call", "cost"), SQLDataType.DECIMAL);
 
     private AttemptTables() {
     }
