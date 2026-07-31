@@ -2,6 +2,12 @@
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
+### Environment files ###
+.env
+.env.*
+!.env.example
+!.env.example.*
+
 ### IntelliJ IDEA ###
 .idea/
 *.iml

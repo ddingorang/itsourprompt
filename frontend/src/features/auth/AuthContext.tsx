@@ -27,7 +27,7 @@ interface AuthContextValue {
   user: User | null;
   /** 최초 세션 확인(GET /api/me)이 끝나기 전 true. 이 동안엔 로그인 여부를 판단하지 말 것. */
   loading: boolean;
-  /** 로그인. 성공하면 user가 채워진다. 실패 시 ApiProblemError를 던진다(호출부에서 메시지 처리). */
+  /** 로그인. 성공하면 user가 채워진다. 실패 시 ApiError를 던진다(호출부에서 메시지 처리). */
   login: (request: LoginRequest) => Promise<void>;
   /** 로그아웃. 서버 세션을 무효화하고 user를 null로 만든다. */
   logout: () => Promise<void>;

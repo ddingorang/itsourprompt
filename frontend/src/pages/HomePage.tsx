@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 import { getProblems } from '../features/problem/api';
 import type { ProblemSummary } from '../features/problem/types';
-import { ApiProblemError } from '../shared/api/apiClient';
+import { ApiError } from '../shared/api/apiClient';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
@@ -22,8 +22,8 @@ export default function HomePage() {
       .catch((error: unknown) => {
         if (!isMounted) return;
         setErrorMessage(
-          error instanceof ApiProblemError
-            ? error.problem.detail
+          error instanceof ApiError
+            ? error.message
             : '문제 목록을 불러오지 못했습니다.',
         );
       })

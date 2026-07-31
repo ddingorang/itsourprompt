@@ -5,7 +5,7 @@ import { getProblems } from '../features/problem/api';
 import Pagination from '../features/problem/Pagination';
 import type { ProblemSummary } from '../features/problem/types';
 import { usePagination } from '../features/problem/usePagination';
-import { ApiProblemError } from '../shared/api/apiClient';
+import { ApiError } from '../shared/api/apiClient';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
@@ -50,23 +50,17 @@ export default function ProblemListPage() {
     let isMounted = true;
 
     getProblems()
-      .then((_response) => {
+      .then((response) => {
         if (isMounted) {
-          // TODO: 테스트 후 매개변수를 response로 바꾸고 setProblems(response.problems)로 원복
-          setProblems(
-            Array.from({ length: 243 }, (_, index) => ({
-              id: index + 1,
-              title: `페이지네이션 테스트 문제 ${index + 1}`,
-            })),
-          );
+          setProblems(response.problems);
         }
       })
       .catch((error: unknown) => {
         if (!isMounted) return;
 
         setErrorMessage(
-          error instanceof ApiProblemError
-            ? error.problem.detail
+          error instanceof ApiError
+            ? error.message
             : '문제 목록을 불러오지 못했습니다.',
         );
       })

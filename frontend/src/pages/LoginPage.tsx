@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../features/auth/AuthContext';
-import { ApiProblemError } from '../shared/api/apiClient';
+import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
@@ -15,9 +15,8 @@ import Header from '../shared/components/Header';
  * - 로그인 성공 시 원래 가려던 경로(state.from — ProtectedRoute가 넣어줌)로 복귀하고,
  *   직접 /login으로 들어온 경우에는 /my로 이동한다.
  *
- * 에러 문구는 HTTP 상태코드로 분기한다: 백엔드는 {code,message}를 반환하지만
- * 공용 apiClient가 RFC7807(detail) 형식을 기대해 message를 살리지 못하기 때문
- * (에러 포맷 통일은 팀 결정 대기 — S15P11A505-backend/docs/auth-api.md §3 참고).
+ * 에러 문구는 백엔드 오류 코드(bad-credentials 등)로 분기한다. 공용 apiClient가
+ * 백엔드의 {code,message}를 그대로 ApiError로 옮겨 주므로 코드로 판별할 수 있다.
  */
 
 const labelClasses =
@@ -28,11 +27,14 @@ const inputClasses =
 
 /** 로그인 실패 응답을 사용자에게 보여줄 한국어 문구로 바꾼다. */
 function toLoginErrorMessage(error: unknown): string {
-  if (error instanceof ApiProblemError) {
-    if (error.problem.status === 401) {
+  if (error instanceof ApiError) {
+    if (
+      error.code === API_ERROR_CODES.badCredentials ||
+      error.status === 401
+    ) {
       return '아이디 또는 비밀번호가 올바르지 않습니다.';
     }
-    if (error.problem.status === 400) {
+    if (error.status === 400) {
       return '입력 값을 확인해주세요.';
     }
   }
