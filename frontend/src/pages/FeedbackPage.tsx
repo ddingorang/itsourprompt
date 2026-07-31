@@ -105,11 +105,15 @@ export default function FeedbackPage() {
 
         {!isLoading && !errorMessage && feedback && (
           <>
-            <section className="mt-4 border border-[#d6ff50] bg-transparent px-6 pt-[22px] pb-7 max-[760px]:p-5">
-              <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
-                OVERALL.MD
-              </h2>
-              <PromptFeedback feedback={feedback.overallMd} />
+            <section className="mt-4 border border-[#d6ff50] bg-transparent">
+              <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
+                <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
+                  OVERALL.MD
+                </h2>
+              </div>
+              <div className="px-6 pb-7 [&>div>h2:first-child]:border-t-0 [&>div>h2:first-child]:pt-0 max-[760px]:px-5 max-[760px]:pb-5">
+                <PromptFeedback feedback={feedback.overallMd} />
+              </div>
             </section>
 
             {selectedSection && (
@@ -118,7 +122,7 @@ export default function FeedbackPage() {
                 aria-label="턴별 프롬프트 피드백"
               >
                 <div className="relative border-b border-[#393939]">
-                  <span className="absolute top-0 bottom-0 left-0 z-10 grid w-[220px] place-items-center bg-[#121212] font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] after:absolute after:top-1/2 after:right-0 after:h-5 after:w-px after:-translate-y-1/2 after:bg-[#393939] max-[760px]:hidden">
+                  <span className="absolute top-0 bottom-0 left-0 z-10 grid w-[220px] place-items-center border-r border-[#393939] bg-[#121212] font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] max-[760px]:hidden">
                     PROMPT HISTORY
                   </span>
                   <button
@@ -160,17 +164,17 @@ export default function FeedbackPage() {
                     aria-label="다음 턴 보기"
                     className="absolute top-0 right-0 bottom-0 z-10 w-10 cursor-pointer border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px]"
                     onClick={() => scrollTurnNav(1)}
-                    type="bautton"
+                    type="button"
                   >
                     ›
                   </button>
                 </div>
 
                 <div
-                  className="grid grid-cols-[minmax(0,1fr)_minmax(360px,1fr)] gap-4 p-4 max-[760px]:grid-cols-1"
+                  className="grid grid-cols-[minmax(0,1fr)_minmax(360px,1fr)] divide-x divide-[#393939] max-[760px]:grid-cols-1 max-[760px]:divide-x-0 max-[760px]:divide-y"
                   role="tabpanel"
                 >
-                  <article className="min-w-0 border border-[#505050] bg-[#1b1b1b] p-[22px]">
+                  <article className="min-w-0 p-[22px]">
                     <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
                       TURN {String(selectedSection.turn).padStart(2, '0')} GENERATED CODE
                     </h2>
@@ -197,8 +201,8 @@ export default function FeedbackPage() {
                     )}
                   </article>
 
-                  <div className="grid min-w-0 grid-rows-[auto_1fr] gap-4">
-                    <article className="min-w-0 border border-[#505050] bg-[#1b1b1b] p-[22px]">
+                  <div className="grid min-w-0 grid-rows-[auto_1fr] divide-y divide-[#393939]">
+                    <article className="min-w-0 p-[22px]">
                       <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
                         TURN {String(selectedSection.turn).padStart(2, '0')} USER PROMPT
                       </h2>
@@ -207,7 +211,7 @@ export default function FeedbackPage() {
                       </p>
                     </article>
 
-                    <article className="min-w-0 border border-[#505050] bg-[#090909] p-[22px]">
+                    <article className="min-w-0 p-[22px]">
                       <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
                         TURN {String(selectedSection.turn).padStart(2, '0')} FEEDBACK
                       </h2>
