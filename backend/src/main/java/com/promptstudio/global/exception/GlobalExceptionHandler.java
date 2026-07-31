@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final String AI_GENERATION_FAILED_MESSAGE = "AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.";
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ProblemNotFoundException.class)
@@ -192,11 +193,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
+    /**
+     * AI 생성 실패는 같은 요청을 다시 보내면 통과하는 경우가 많다. 실패 유형은 내부 로그에만 남기고,
+     * 응답에는 재시도 안내만 싣는다.
+     */
     @ExceptionHandler({CodeGenerationException.class, FeedbackGenerationException.class})
     public ResponseEntity<ApiErrorResponse> handleGenerationFailure(RuntimeException exception) {
+        log.warn("AI 생성 실패를 502로 변환합니다: {}", exception.getMessage());
+
         ApiErrorResponse response = new ApiErrorResponse(
                 "ai-provider-error",
-                exception.getMessage()
+                AI_GENERATION_FAILED_MESSAGE
         );
 
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);

@@ -36,7 +36,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/attempts")
-@CrossOrigin(origins = "http://localhost:5173")
 @Tag(name = "Attempts", description = "문제 풀이 어템프트 API")
 public class AttemptController {
 

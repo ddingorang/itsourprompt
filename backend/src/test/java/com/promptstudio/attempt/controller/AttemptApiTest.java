@@ -1,6 +1,10 @@
 package com.promptstudio.attempt.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.attempt.port.FeedbackGenerationException;
+import com.promptstudio.attempt.repository.AttemptRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
@@ -54,6 +58,11 @@ class AttemptApiTest extends DatabaseTest {
                         .with(user(new AppUserDetails(otherUser))))
                 .andExpect(status().isNotFound());
     }
+
+    private AttemptRepository attemptRepository;
+
+    @Autowired
+    private FakeAiConfiguration.FakeFeedbackGenerator feedbackGenerator;
 
     @Test
     void 어템프트를_생성하면_문제_스켈레톤으로_초기화된다() throws Exception {
@@ -199,6 +208,25 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.turns[0].feedbackMd").value("턴 1 피드백"));
     }
 
+    /**
+     * 502 본문은 사용자에게 그대로 보이므로 내부 진단 메시지를 싣지 않고 재시도 안내만 남긴다.
+     */
+    @Test
+    void 피드백_생성이_실패하면_502에_재시도_안내_메시지를_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        feedbackGenerator.failNextWith(new FeedbackGenerationException(
+                FeedbackGenerationException.TRUNCATED,
+                "AI feedback response was cut off at the completion token limit.",
+                null
+        ));
+
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("ai-provider-error"))
+                .andExpect(jsonPath("$.message").value("AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."));
+    }
+
     @Test
     void 턴이_없으면_제출이_거부된다() throws Exception {
         Long attemptId = createAttempt();
@@ -233,6 +261,61 @@ class AttemptApiTest extends DatabaseTest {
                         .content("{\"problemId\":" + problem.id() + "}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("problem-inactive"));
+    }
+
+    @Test
+    void 턴을_추가하면_사용량_요약이_봉투에_실린다() throws Exception {
+        Long attemptId = createAttempt();
+
+        mockMvc.perform(post("/api/attempts/{id}/turns", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\":\"Hello 출력해줘\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.turns[0].usage.inputTokens").value(2500))
+                .andExpect(jsonPath("$.turns[0].usage.outputTokens").value(500))
+                .andExpect(jsonPath("$.turns[0].usage.cachedInputTokens").value(1000))
+                .andExpect(jsonPath("$.turns[0].usage.reasoningTokens").value(120))
+                .andExpect(jsonPath("$.turns[0].usage.model").value("test-model"))
+                .andExpect(jsonPath("$.turns[0].usage.rounds").value(2))
+                .andExpect(jsonPath("$.turns[0].usage.cost").value(0.003))
+                .andExpect(jsonPath("$.usage.cost").value(0.003));
+    }
+
+    @Test
+    void 조회_응답에_전체_총계가_실린다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/attempts/{id}", attemptId))
+                .andExpect(status().isOk())
+                // 코드 생성 2건 + 피드백 1건
+                .andExpect(jsonPath("$.usage.inputTokens").value(4500))
+                .andExpect(jsonPath("$.usage.outputTokens").value(900))
+                .andExpect(jsonPath("$.usage.cachedInputTokens").value(1000))
+                .andExpect(jsonPath("$.usage.reasoningTokens").value(220))
+                .andExpect(jsonPath("$.usage.cost").value(0.0058))
+                // 턴 합계에는 피드백 호출이 들어가지 않는다.
+                .andExpect(jsonPath("$.turns[0].usage.inputTokens").value(2500));
+    }
+
+    @Test
+    void 사용량_기록이_없는_턴은_usage가_null이다() throws Exception {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
+        attempt.applyTurn("Hello 출력해줘", new GeneratedCode(
+                List.of(new ProblemFile("src/main/java/Main.java", "생성된 내용")),
+                "생성 요약",
+                List.of(),
+                List.of()
+        ));
+        attemptRepository.save(attempt);
+
+        mockMvc.perform(get("/api/attempts/{id}", attempt.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.turns.length()").value(1))
+                .andExpect(jsonPath("$.turns[0].usage").doesNotExist())
+                .andExpect(jsonPath("$.usage").doesNotExist());
     }
 
     private void addTurn(Long attemptId) throws Exception {

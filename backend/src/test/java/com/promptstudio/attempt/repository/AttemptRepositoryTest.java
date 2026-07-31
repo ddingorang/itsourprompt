@@ -86,6 +86,7 @@ class AttemptRepositoryTest extends DatabaseTest {
                         new ProblemFile("src/Util.java", "class Util {}")
                 ),
                 "둘째 요약",
+                List.of(),
                 List.of()
         ));
         attemptRepository.save(attempt);
@@ -111,7 +112,8 @@ class AttemptRepositoryTest extends DatabaseTest {
                         new ToolCallEntry("list_files", null),
                         new ToolCallEntry("read_file", "src/Main.java"),
                         new ToolCallEntry("edit_file", "src/Main.java")
-                )
+                ),
+                List.of()
         ));
         attemptRepository.save(attempt);
 
@@ -129,7 +131,7 @@ class AttemptRepositoryTest extends DatabaseTest {
 
         attempt.applyTurn("Main을 채워줘", generated("생성된 내용", "첫 요약"));
         attempt.applyTurn("Main을 다시 고쳐줘", generated("다시 생성된 내용", "둘째 요약"));
-        attempt.submit(new AttemptFeedback(List.of("첫 턴 피드백", "둘째 턴 피드백"), "전체 피드백"));
+        attempt.submit(new AttemptFeedback(List.of("첫 턴 피드백", "둘째 턴 피드백"), "전체 피드백", List.of()));
         attemptRepository.save(attempt);
 
         AttemptView found = attemptQueryRepository.findById(attempt.id()).orElseThrow();
@@ -157,6 +159,7 @@ class AttemptRepositoryTest extends DatabaseTest {
         attempt.applyTurn("Util만 남겨줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Util.java", "class Util {}")),
                 "요약",
+                List.of(),
                 List.of()
         ));
         attemptRepository.save(attempt);
@@ -187,7 +190,7 @@ class AttemptRepositoryTest extends DatabaseTest {
     }
 
     private GeneratedCode generated(String content, String summary) {
-        return new GeneratedCode(List.of(new ProblemFile("src/Main.java", content)), summary, List.of());
+        return new GeneratedCode(List.of(new ProblemFile("src/Main.java", content)), summary, List.of(), List.of());
     }
 
     private Problem newProblem() {

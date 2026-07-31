@@ -83,7 +83,7 @@ class MySubmittedAttemptsApiTest extends DatabaseTest {
 
     private Attempt submittedAttempt(Problem problem, Long userId) {
         Attempt attempt = attemptRepository.save(Attempt.start(problem, userId));
-        attempt.submit(new AttemptFeedback(List.of(), "피드백"));
+        attempt.submit(new AttemptFeedback(List.of(), "피드백", List.of()));
         return attemptRepository.save(attempt);
     }
 
