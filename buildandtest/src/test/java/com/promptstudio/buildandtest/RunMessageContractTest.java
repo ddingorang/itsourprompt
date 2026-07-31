@@ -30,6 +30,21 @@ class RunMessageContractTest {
         assertThat(message.files()).hasSize(1);
         assertThat(message.files().getFirst().path()).isEqualTo("src/main/java/Main.java");
         assertThat(message.files().getFirst().content()).contains("Hello World");
+        assertThat(message.testFiles()).hasSize(1);
+        assertThat(message.testFiles().getFirst().path()).isEqualTo("src/test/java/MainTest.java");
+        assertThat(message.testFiles().getFirst().content()).contains("org.junit.jupiter.api.Test");
+    }
+
+    /**
+     * 백엔드가 아직 testFiles를 안 보내는 시점에도 워커가 죽지 않아야 한다.
+     */
+    @Test
+    void testFiles가_없는_옛_메시지도_읽는다() throws IOException {
+        RunRequestMessage message = new ObjectMapper().readValue("""
+                {"runId":"3f2a1b4c-5d6e-7f80-9a1b-2c3d4e5f6071","attemptId":7,"files":[]}
+                """, RunRequestMessage.class);
+
+        assertThat(message.testFiles()).isNull();
     }
 
     @Test

@@ -86,12 +86,13 @@ public class ProblemSyncService {
             Problem problem = bySlug.get(source.slug());
 
             if (problem == null) {
-                problemRepository.save(new Problem(source.slug(), source.title(), source.specMd(), source.files()));
+                problemRepository.save(new Problem(
+                        source.slug(), source.title(), source.specMd(), source.files(), source.testFiles()));
                 created++;
                 continue;
             }
 
-            problem.updateFrom(source.title(), source.specMd(), source.files());
+            problem.updateFrom(source.title(), source.specMd(), source.files(), source.testFiles());
             problem.activate();
             problemRepository.save(problem);
             updated++;

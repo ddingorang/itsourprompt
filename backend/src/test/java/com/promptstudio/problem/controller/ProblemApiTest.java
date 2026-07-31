@@ -53,6 +53,20 @@ class ProblemApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.files[0].content").value("class Main {}"));
     }
 
+    /**
+     * 채점용 테스트가 응답에 섞이면 사용자가 정답 조건을 그대로 보게 되고, 프롬프트로 옮겨 적으면
+     * AI도 보게 된다. 노출 차단은 ProblemView가 testFiles를 읽지 않는 것뿐이라 여기서 못박아 둔다.
+     */
+    @Test
+    void 문제_상세에_채점용_테스트는_포함하지_않는다() throws Exception {
+        Problem saved = problemRepository.save(newProblem("hello-world", "Hello World 출력"));
+
+        mockMvc.perform(get("/api/problems/{id}", saved.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.files.length()").value(1))
+                .andExpect(jsonPath("$.files[?(@.path =~ /.*test.*/)]").isEmpty());
+    }
+
     @Test
     void 없는_문제를_조회하면_404를_반환한다() throws Exception {
         mockMvc.perform(get("/api/problems/{id}", 999L))
@@ -91,6 +105,8 @@ class ProblemApiTest extends DatabaseTest {
     private Problem newProblem(String slug, String title) {
         return new Problem(slug, title, "# " + title, List.of(
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
+        ), List.of(
+                new ProblemFile("src/test/java/MainTest.java", "class MainTest {}")
         ));
     }
 }

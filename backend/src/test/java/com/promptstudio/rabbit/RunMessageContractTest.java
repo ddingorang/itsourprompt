@@ -31,6 +31,21 @@ class RunMessageContractTest {
         assertThat(message.files()).hasSize(1);
         assertThat(message.files().getFirst().path()).isEqualTo("src/main/java/Main.java");
         assertThat(message.files().getFirst().content()).contains("Hello World");
+        assertThat(message.testFiles()).hasSize(1);
+        assertThat(message.testFiles().getFirst().path()).isEqualTo("src/test/java/MainTest.java");
+        assertThat(message.testFiles().getFirst().content()).contains("org.junit.jupiter.api.Test");
+    }
+
+    /**
+     * 워커가 먼저 배포되어 testFiles를 아직 안 보내는 백엔드의 메시지를 받는 상황.
+     */
+    @Test
+    void testFiles가_없는_옛_메시지도_읽는다() throws IOException {
+        RunRequestMessage message = objectMapper.readValue("""
+                {"runId":"3f2a1b4c-5d6e-7f80-9a1b-2c3d4e5f6071","attemptId":7,"files":[]}
+                """, RunRequestMessage.class);
+
+        assertThat(message.testFiles()).isNull();
     }
 
     @Test

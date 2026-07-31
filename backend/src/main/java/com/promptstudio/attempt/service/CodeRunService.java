@@ -10,12 +10,15 @@ import com.promptstudio.attempt.exception.CodeRunNotFoundException;
 import com.promptstudio.attempt.port.CodeRunPublisher;
 import com.promptstudio.attempt.repository.AttemptQueryRepository;
 import com.promptstudio.attempt.repository.CodeRunRepository;
+import com.promptstudio.problem.domain.ProblemFile;
+import com.promptstudio.problem.repository.ProblemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -29,7 +32,7 @@ import java.util.UUID;
 public class CodeRunService {
 
     /**
-     * 이 시간을 넘긴 QUEUED는 워커가 죽은 것으로 본다 — 컴파일 30초 + 실행 10초 + 큐 대기 여유.
+     * 이 시간을 넘긴 QUEUED는 워커가 죽은 것으로 본다 — 컴파일 30초 + 실행 30초(테스트) + 큐 대기 여유.
      */
     private static final Duration STALE_RUN_TTL = Duration.ofMinutes(2);
 
@@ -37,15 +40,18 @@ public class CodeRunService {
 
     private final AttemptQueryRepository attemptQueryRepository;
     private final CodeRunRepository codeRunRepository;
+    private final ProblemRepository problemRepository;
     private final CodeRunPublisher codeRunPublisher;
 
     public CodeRunService(
             AttemptQueryRepository attemptQueryRepository,
             CodeRunRepository codeRunRepository,
+            ProblemRepository problemRepository,
             CodeRunPublisher codeRunPublisher
     ) {
         this.attemptQueryRepository = attemptQueryRepository;
         this.codeRunRepository = codeRunRepository;
+        this.problemRepository = problemRepository;
         this.codeRunPublisher = codeRunPublisher;
     }
 
@@ -59,6 +65,8 @@ public class CodeRunService {
         AttemptView attempt = findAttempt(attemptId, owner)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
+        // 문제가 아니라 어템프트에서 problemId를 얻는다. 실행 시점의 테스트로 채점된다.
+        List<ProblemFile> testFiles = problemRepository.findTestFiles(attempt.problemId());
         UUID runId = UUID.randomUUID();
 
         // 부분 유니크 인덱스(uq_code_run_active)가 어템프트당 미완료 run을 하나로 강제한다.
@@ -67,9 +75,9 @@ public class CodeRunService {
         }
 
         // QUEUED 행이 커밋된 뒤에 발행한다.
-        codeRunPublisher.publish(runId, attemptId, attempt.files());
-        log.info("[CODE RUN] queued | runId={} | attemptId={} | files={}",
-                runId, attemptId, attempt.files().size());
+        codeRunPublisher.publish(runId, attemptId, attempt.files(), testFiles);
+        log.info("[CODE RUN] queued | runId={} | attemptId={} | files={} | testFiles={}",
+                runId, attemptId, attempt.files().size(), testFiles.size());
 
         return CodeRunView.queued(runId, attemptId);
     }

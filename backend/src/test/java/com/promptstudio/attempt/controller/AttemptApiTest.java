@@ -340,6 +340,6 @@ class AttemptApiTest extends DatabaseTest {
     private Problem newProblem() {
         return problemRepository.save(new Problem("hello-world", "Hello World 출력", "# Hello World 출력", List.of(
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
-        )));
+        ), List.of()));
     }
 }

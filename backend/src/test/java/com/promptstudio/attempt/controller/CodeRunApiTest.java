@@ -144,7 +144,8 @@ class CodeRunApiTest extends DatabaseTest {
                 "hello-world-" + UUID.randomUUID(),
                 "Hello World 출력",
                 "# 명세",
-                List.of(new ProblemFile("src/main/java/Main.java", "class Main {}"))
+                List.of(new ProblemFile("src/main/java/Main.java", "class Main {}")),
+                List.of()
         ));
     }
 }

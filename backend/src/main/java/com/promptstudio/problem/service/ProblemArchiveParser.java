@@ -21,12 +21,19 @@ import java.util.zip.ZipInputStream;
  * <p>archive의 모든 엔트리는 `&lt;repo&gt;-&lt;sha&gt;/` 루트 프리픽스를 가지므로 첫 경로 세그먼트를 떼고 읽는다.
  * 프리픽스를 뗀 뒤의 최상위 디렉토리 하나가 문제 하나이고, 그 디렉토리명이 slug가 된다.
  * 최상위 일반 파일과 `.`으로 시작하는 디렉토리는 문제가 아니므로 무시한다.
+ *
+ * <p>{@code skeleton/} 아래는 다시 둘로 갈린다. {@code src/test/} 아래는 채점용 테스트라
+ * {@link ParsedProblem#testFiles()}로, 나머지는 사용자에게 주는 스켈레톤이라
+ * {@link ParsedProblem#files()}로 간다. 갈라놓지 않으면 테스트가 어템프트의 시작 파일이 되어
+ * 사용자에게 노출되고 AI가 채점 기준을 직접 고칠 수 있다.
  */
 final class ProblemArchiveParser {
 
     private static final String PROBLEM_YML = "problem.yml";
     private static final String SPEC_MD = "spec.md";
     private static final String SKELETON_PREFIX = "skeleton/";
+    /** skeleton 기준 상대경로. 저장소가 Gradle 표준 레이아웃을 쓰므로 테스트는 항상 여기 있다. */
+    private static final String TEST_PREFIX = "src/test/";
     private static final String TITLE_KEY = "title";
 
     private ProblemArchiveParser() {
@@ -94,18 +101,28 @@ final class ProblemArchiveParser {
         }
 
         List<ProblemFile> files = new ArrayList<>();
+        List<ProblemFile> testFiles = new ArrayList<>();
 
         for (Map.Entry<String, String> entry : entries.entrySet()) {
-            if (entry.getKey().startsWith(SKELETON_PREFIX)) {
-                files.add(new ProblemFile(entry.getKey().substring(SKELETON_PREFIX.length()), entry.getValue()));
+            if (!entry.getKey().startsWith(SKELETON_PREFIX)) {
+                continue;
+            }
+
+            String path = entry.getKey().substring(SKELETON_PREFIX.length());
+
+            if (path.startsWith(TEST_PREFIX)) {
+                testFiles.add(new ProblemFile(path, entry.getValue()));
+            } else {
+                files.add(new ProblemFile(path, entry.getValue()));
             }
         }
 
+        // 테스트가 없는 문제는 실행만 하면 되므로 허용한다. 스켈레톤이 없으면 풀 수가 없어 거부한다.
         if (files.isEmpty()) {
-            throw new ProblemSyncFormatException(slug, SKELETON_PREFIX + " 아래에 파일이 없습니다.");
+            throw new ProblemSyncFormatException(slug, SKELETON_PREFIX + " 아래에 스켈레톤 파일이 없습니다.");
         }
 
-        return new ParsedProblem(slug, title, specMd, files);
+        return new ParsedProblem(slug, title, specMd, files, testFiles);
     }
 
     private static String readTitle(String slug, String problemYml) {

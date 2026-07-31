@@ -15,7 +15,7 @@ class AttemptTest {
 
     private final Problem problem = new Problem(1L, "hello-world", "제목", "명세", List.of(
             new ProblemFile("src/Main.java", "class Main {}")
-    ));
+    ), List.of());
 
     private final GeneratedCode generated = new GeneratedCode(
             List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),

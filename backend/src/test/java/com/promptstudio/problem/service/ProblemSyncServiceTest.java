@@ -157,7 +157,7 @@ class ProblemSyncServiceTest extends DatabaseTest {
     void slug가_없는_레거시_문제는_건드리지_않는다() {
         Problem legacy = problemRepository.save(new Problem(null, "레거시 문제", "# 레거시", List.of(
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
-        )));
+        ), List.of()));
         problemSource.serve("sha-1", helloWorldArchive("Hello World 출력"));
 
         problemSyncService.sync();

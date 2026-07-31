@@ -29,6 +29,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Import({FakeAiConfiguration.class, FakeCodeRunConfiguration.class})
 class CodeRunServiceTest extends DatabaseTest {
 
+    private static final ProblemFile TEST_FILE =
+            new ProblemFile("src/test/java/MainTest.java", "class MainTest {}");
+
     @Autowired
     private CodeRunService codeRunService;
 
@@ -62,6 +65,28 @@ class CodeRunServiceTest extends DatabaseTest {
         assertThat(publisher.publishedRunIds()).containsExactly(run.id());
         assertThat(publisher.receivedFiles())
                 .containsExactly(new ProblemFile("src/main/java/Main.java", "class Main {}"));
+    }
+
+    /**
+     * 채점용 테스트는 어템프트가 아니라 문제에서 온다. 발행 시점의 내용이 메시지에 박혀야
+     * 그 뒤 동기화가 문제를 갈아끼워도 요청한 코드가 요청한 기준으로 채점된다.
+     */
+    @Test
+    void 문제의_테스트_파일을_함께_발행한다() {
+        Long attemptId = newAttempt();
+
+        codeRunService.requestRun(attemptId);
+
+        assertThat(publisher.receivedTestFiles()).containsExactly(TEST_FILE);
+    }
+
+    @Test
+    void 테스트가_없는_문제는_빈_목록으로_발행한다() {
+        Long attemptId = newAttempt(List.of());
+
+        codeRunService.requestRun(attemptId);
+
+        assertThat(publisher.receivedTestFiles()).isEmpty();
     }
 
     @Test
@@ -167,11 +192,16 @@ class CodeRunServiceTest extends DatabaseTest {
     }
 
     private Long newAttempt() {
+        return newAttempt(List.of(TEST_FILE));
+    }
+
+    private Long newAttempt(List<ProblemFile> testFiles) {
         Problem problem = problemRepository.save(new Problem(
                 "hello-world-" + UUID.randomUUID(),
                 "Hello World 출력",
                 "# 명세",
-                List.of(new ProblemFile("src/main/java/Main.java", "class Main {}"))
+                List.of(new ProblemFile("src/main/java/Main.java", "class Main {}")),
+                testFiles
         ));
 
         return attemptService.startAttempt(problem.id(), ownerId, null).id();
