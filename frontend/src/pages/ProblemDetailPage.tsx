@@ -443,6 +443,13 @@ export default function ProblemDetailPage() {
         return;
       }
 
+      // 409 feedback-in-progress는 실패가 아니라 정상 동작이다 — 다른 요청이 아직
+      // 피드백을 만드는 중이므로, 에러 페이지로 보내지 않고 화면에 남겨 재시도를 안내한다.
+      if (errorInfo.code === API_ERROR_CODES.feedbackInProgress) {
+        showStatus('피드백을 생성하고 있습니다. 잠시 후 다시 눌러주세요.');
+        return;
+      }
+
       const errorState: ErrorPageState = {
         title: '피드백 생성에 실패했습니다.',
         message: errorInfo.message,
