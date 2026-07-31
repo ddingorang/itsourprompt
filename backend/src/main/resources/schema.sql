@@ -92,6 +92,12 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username ON users (username);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email ON users (email);
 
+-- 기존 어템프트는 소유자를 알 수 없으므로 NULL로 남기고, 새 코드가 생성하는 어템프트에는 user_id가 필수다.
+ALTER TABLE attempt ADD COLUMN IF NOT EXISTS user_id BIGINT;
+ALTER TABLE attempt DROP CONSTRAINT IF EXISTS fk_attempt_user;
+ALTER TABLE attempt ADD CONSTRAINT fk_attempt_user FOREIGN KEY (user_id) REFERENCES users (id);
+CREATE INDEX IF NOT EXISTS idx_attempt_user ON attempt (user_id, id);
+
 -- 어템프트 코드의 빌드/실행 요청 한 건. 결과는 buildandtest 워커가 큐로 돌려준 것을 반영한다.
 CREATE TABLE IF NOT EXISTS code_run (
     id          UUID PRIMARY KEY,
@@ -110,10 +116,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_code_run_active ON code_run (attempt_id) WH
 
 CREATE TABLE IF NOT EXISTS idempotency_record (
     idempotency_key VARCHAR(64) PRIMARY KEY,
+    user_id         BIGINT REFERENCES users (id),
     attempt_id      BIGINT REFERENCES attempt (id) ON DELETE CASCADE,
     status          VARCHAR(20)              NOT NULL,
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL
 );
+ALTER TABLE idempotency_record ADD COLUMN IF NOT EXISTS user_id BIGINT;
+ALTER TABLE idempotency_record DROP CONSTRAINT IF EXISTS fk_idempotency_record_user;
+ALTER TABLE idempotency_record ADD CONSTRAINT fk_idempotency_record_user FOREIGN KEY (user_id) REFERENCES users (id);
+CREATE INDEX IF NOT EXISTS idx_idempotency_record_user ON idempotency_record (user_id);
 
 -- 문제 저장소에서 마지막으로 동기화한 커밋. 한 행(id = 1)만 사용한다.
 CREATE TABLE IF NOT EXISTS sync_state (

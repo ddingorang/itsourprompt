@@ -17,6 +17,8 @@ final class IdempotencyTables {
             field(name("idempotency_record", "idempotency_key"), SQLDataType.VARCHAR);
     static final Field<Long> RECORD_ATTEMPT_ID =
             field(name("idempotency_record", "attempt_id"), SQLDataType.BIGINT);
+    static final Field<Long> RECORD_USER_ID =
+            field(name("idempotency_record", "user_id"), SQLDataType.BIGINT);
     static final Field<String> RECORD_STATUS =
             field(name("idempotency_record", "status"), SQLDataType.VARCHAR);
     static final Field<Instant> RECORD_CREATED_AT =

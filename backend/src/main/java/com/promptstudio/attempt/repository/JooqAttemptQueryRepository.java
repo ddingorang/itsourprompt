@@ -29,6 +29,7 @@ import static com.promptstudio.attempt.repository.AttemptTables.FILE_PATH;
 import static com.promptstudio.attempt.repository.AttemptTables.ID;
 import static com.promptstudio.attempt.repository.AttemptTables.PROBLEM_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.STATUS;
+import static com.promptstudio.attempt.repository.AttemptTables.USER_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_ORDINAL;
 import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_PATH;
 import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_TOOL;
@@ -56,9 +57,19 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
     @Override
     @Transactional(readOnly = true)
     public Optional<AttemptView> findById(Long id) {
+        return findByCondition(ID.eq(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AttemptView> findByIdAndUserId(Long id, Long userId) {
+        return findByCondition(ID.eq(id).and(USER_ID.eq(userId)));
+    }
+
+    private Optional<AttemptView> findByCondition(org.jooq.Condition condition) {
         return dsl.select(ID, PROBLEM_ID, baseFilesField(), turnsField(), STATUS, FEEDBACK)
                 .from(ATTEMPT)
-                .where(ID.eq(id))
+                .where(condition)
                 .fetchOptional(record -> AttemptView.reconstruct(
                         record.value1(),
                         record.value2(),

@@ -5,7 +5,7 @@ import java.time.Instant;
 /**
  * 처리 중이거나(PENDING) 이미 끝난(COMPLETED) 요청의 선점 기록.
  */
-public record IdempotencyRecord(String key, Long attemptId, Status status, Instant createdAt) {
+public record IdempotencyRecord(String key, Long userId, Long attemptId, Status status, Instant createdAt) {
 
     public enum Status {
         PENDING, COMPLETED

@@ -28,8 +28,8 @@ class AttemptWriter {
     }
 
     @Transactional
-    AttemptView start(Problem problem, String idempotencyKey) {
-        Attempt attempt = attemptRepository.save(Attempt.start(problem));
+    AttemptView start(Problem problem, Long userId, String idempotencyKey) {
+        Attempt attempt = attemptRepository.save(Attempt.start(problem, userId));
 
         markCompleted(idempotencyKey, attempt.id());
 
@@ -37,8 +37,8 @@ class AttemptWriter {
     }
 
     @Transactional
-    AttemptView appendTurn(Long attemptId, String userPrompt, GeneratedCode generated, String idempotencyKey) {
-        Attempt attempt = attemptRepository.findById(attemptId)
+    AttemptView appendTurn(Long attemptId, Long userId, String userPrompt, GeneratedCode generated, String idempotencyKey) {
+        Attempt attempt = attemptRepository.findByIdAndUserId(attemptId, userId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         attempt.applyTurn(userPrompt, generated);
@@ -48,8 +48,8 @@ class AttemptWriter {
     }
 
     @Transactional
-    AttemptView submit(Long attemptId, AttemptFeedback feedback) {
-        Attempt attempt = attemptRepository.findById(attemptId)
+    AttemptView submit(Long attemptId, Long userId, AttemptFeedback feedback) {
+        Attempt attempt = attemptRepository.findByIdAndUserId(attemptId, userId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         // AI 호출 중 다른 요청이 먼저 제출을 끝냈다면 저장된 피드백을 그대로 반환한다.

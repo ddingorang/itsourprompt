@@ -23,9 +23,13 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ProblemNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleProblemNotFound(ProblemNotFoundException exception) {
@@ -216,5 +220,17 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(response);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleUnexpectedException(Exception exception) {
+        log.error("Unexpected API exception", exception);
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                "internal-server-error",
+                "서버 내부 오류가 발생했습니다. X-Request-Id를 포함해 관리자에게 문의해주세요."
+        );
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }

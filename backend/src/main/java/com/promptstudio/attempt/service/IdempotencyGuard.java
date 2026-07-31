@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Objects;
 
 /**
  * Idempotency-Key 선점을 담당한다. 선점은 AI 호출 전에 커밋되어야 다른 요청에 보이므로 별도 트랜잭션에서 처리한다.
@@ -32,7 +33,7 @@ class IdempotencyGuard {
     Reservation reserve(String key) {
         Instant now = Instant.now();
 
-        if (idempotencyRepository.tryInsertPending(key, now)) {
+        if (idempotencyRepository.tryInsertPending(key, userIdFromScopedKey(key), now)) {
             return new Reservation.Acquired();
         }
 
@@ -57,7 +58,7 @@ class IdempotencyGuard {
     }
 
     private Reservation retryInsert(String key, Instant now) {
-        if (idempotencyRepository.tryInsertPending(key, now)) {
+        if (idempotencyRepository.tryInsertPending(key, userIdFromScopedKey(key), now)) {
             return new Reservation.Acquired();
         }
 
@@ -70,6 +71,23 @@ class IdempotencyGuard {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     void release(String key) {
         idempotencyRepository.delete(key);
+    }
+
+    static String scopedKey(Long userId, String key) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        String scopedKey = userId + ":" + key;
+        if (scopedKey.length() > 64) {
+            throw new IllegalArgumentException("Idempotency-Key is too long");
+        }
+        return scopedKey;
+    }
+
+    private Long userIdFromScopedKey(String scopedKey) {
+        int separator = scopedKey.indexOf(':');
+        if (separator < 1) {
+            throw new IllegalArgumentException("Invalid scoped idempotency key");
+        }
+        return Long.valueOf(scopedKey.substring(0, separator));
     }
 
     sealed interface Reservation {

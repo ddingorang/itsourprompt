@@ -7,6 +7,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import com.promptstudio.user.domain.User;
+import com.promptstudio.user.repository.UserRepository;
 
 @SpringBootTest
 public abstract class DatabaseTest {
@@ -27,8 +29,15 @@ public abstract class DatabaseTest {
     @Autowired
     private DSLContext dsl;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    protected Long ownerId;
+
     @BeforeEach
     void 테이블을_비운다() {
         dsl.execute("TRUNCATE code_run, idempotency_record, turn_tool_call, turn_file_change, attempt_turn, attempt_file, attempt, problem_file, problem, sync_state, users RESTART IDENTITY CASCADE");
+        ownerId = userRepository.save(User.create(
+                "_test_owner", "{noop}password", "test owner", "test-owner@example.com")).id();
     }
 }

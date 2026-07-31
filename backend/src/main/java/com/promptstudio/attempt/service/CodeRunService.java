@@ -48,10 +48,10 @@ public class CodeRunService {
         this.codeRunPublisher = codeRunPublisher;
     }
 
-    public CodeRunView requestRun(Long attemptId) {
+    public CodeRunView requestRun(Long attemptId, Long userId) {
         expireStaleRuns();
 
-        AttemptView attempt = attemptQueryRepository.findById(attemptId)
+        AttemptView attempt = attemptQueryRepository.findByIdAndUserId(attemptId, userId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         UUID runId = UUID.randomUUID();
@@ -69,8 +69,11 @@ public class CodeRunService {
         return CodeRunView.queued(runId, attemptId);
     }
 
-    public CodeRunView getRun(Long attemptId, UUID runId) {
+    public CodeRunView getRun(Long attemptId, Long userId, UUID runId) {
         expireStaleRuns();
+
+        attemptQueryRepository.findByIdAndUserId(attemptId, userId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         return codeRunRepository.findByIdAndAttemptId(runId, attemptId)
                 .orElseThrow(() -> new CodeRunNotFoundException(attemptId, runId));

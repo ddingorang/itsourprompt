@@ -50,27 +50,24 @@ public class AttemptService {
         this.feedbackGenerator = feedbackGenerator;
     }
 
-    public AttemptView startAttempt(Long problemId) {
-        return startAttempt(problemId, null);
-    }
-
-    public AttemptView startAttempt(Long problemId, String idempotencyKey) {
+    public AttemptView startAttempt(Long problemId, Long userId, String idempotencyKey) {
         String key = normalizeKey(idempotencyKey);
 
         if (key == null) {
-            return attemptWriter.start(getActiveProblem(problemId), null);
+            return attemptWriter.start(getActiveProblem(problemId), userId, null);
         }
 
-        return withIdempotency(key, () -> attemptWriter.start(getActiveProblem(problemId), key));
+        String scopedKey = IdempotencyGuard.scopedKey(userId, key);
+        return withIdempotency(userId, scopedKey, () -> attemptWriter.start(getActiveProblem(problemId), userId, scopedKey));
     }
 
-    public AttemptView getAttempt(Long attemptId) {
-        return attemptQueryRepository.findById(attemptId)
+    public AttemptView getAttempt(Long attemptId, Long userId) {
+        return attemptQueryRepository.findByIdAndUserId(attemptId, userId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
     }
 
-    public AttemptView getFeedback(Long attemptId) {
-        AttemptView attempt = getAttempt(attemptId);
+    public AttemptView getFeedback(Long attemptId, Long userId) {
+        AttemptView attempt = getAttempt(attemptId, userId);
 
         if (attempt.status() != AttemptStatus.SUBMITTED) {
             throw new FeedbackNotFoundException(attemptId);
@@ -79,26 +76,27 @@ public class AttemptService {
         return attempt;
     }
 
-    public AttemptView addTurn(Long attemptId, String userPrompt) {
-        return addTurn(attemptId, userPrompt, null);
+    public AttemptView addTurn(Long attemptId, Long userId, String userPrompt) {
+        return addTurn(attemptId, userId, userPrompt, null);
     }
 
-    public AttemptView addTurn(Long attemptId, String userPrompt, String idempotencyKey) {
+    public AttemptView addTurn(Long attemptId, Long userId, String userPrompt, String idempotencyKey) {
         String key = normalizeKey(idempotencyKey);
 
         if (key == null) {
-            return generateTurn(attemptId, userPrompt, null);
+            return generateTurn(attemptId, userId, userPrompt, null);
         }
 
-        return withIdempotency(key, () -> generateTurn(attemptId, userPrompt, key));
+        String scopedKey = IdempotencyGuard.scopedKey(userId, key);
+        return withIdempotency(userId, scopedKey, () -> generateTurn(attemptId, userId, userPrompt, scopedKey));
     }
 
-    private AttemptView generateTurn(Long attemptId, String userPrompt, String idempotencyKey) {
+    private AttemptView generateTurn(Long attemptId, Long userId, String userPrompt, String idempotencyKey) {
         if (feedbackGenerationGuard.isGenerating(attemptId)) {
             throw new FeedbackGenerationInProgressException(attemptId);
         }
 
-        AttemptView attempt = getAttempt(attemptId);
+        AttemptView attempt = getAttempt(attemptId, userId);
 
         if (attempt.status() == AttemptStatus.SUBMITTED) {
             throw new AttemptAlreadySubmittedException(attemptId);
@@ -107,12 +105,12 @@ public class AttemptService {
         GeneratedCode generated = codeGenerator.generate(
                 ProblemView.from(getProblem(attempt.problemId())), attempt, userPrompt);
 
-        return attemptWriter.appendTurn(attemptId, userPrompt, generated, idempotencyKey);
+        return attemptWriter.appendTurn(attemptId, userId, userPrompt, generated, idempotencyKey);
     }
 
-    private AttemptView withIdempotency(String key, Supplier<AttemptView> action) {
+    private AttemptView withIdempotency(Long userId, String key, Supplier<AttemptView> action) {
         return switch (idempotencyGuard.reserve(key)) {
-            case IdempotencyGuard.Reservation.Replay(Long attemptId) -> getAttempt(attemptId);
+            case IdempotencyGuard.Reservation.Replay(Long attemptId) -> getAttempt(attemptId, userId);
             case IdempotencyGuard.Reservation.Acquired ignored -> runOwning(key, action);
         };
     }
@@ -139,13 +137,13 @@ public class AttemptService {
         return idempotencyKey;
     }
 
-    public AttemptView submit(Long attemptId) {
+    public AttemptView submit(Long attemptId, Long userId) {
         if (!feedbackGenerationGuard.tryAcquire(attemptId)) {
             throw new FeedbackGenerationInProgressException(attemptId);
         }
 
         try {
-            AttemptView attempt = getAttempt(attemptId);
+            AttemptView attempt = getAttempt(attemptId, userId);
 
             if (attempt.turns().isEmpty()) {
                 throw new AttemptHasNoTurnsException(attemptId);
@@ -158,7 +156,7 @@ public class AttemptService {
             AttemptFeedback feedback =
                     feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
 
-            return attemptWriter.submit(attemptId, feedback);
+            return attemptWriter.submit(attemptId, userId, feedback);
         } finally {
             feedbackGenerationGuard.release(attemptId);
         }

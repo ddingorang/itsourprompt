@@ -42,3 +42,7 @@ spring:
 
 server:
   port: 9090
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p ${PID:-} --- [%thread] [req:%X{requestId:-}] %logger{39} : %msg%n"

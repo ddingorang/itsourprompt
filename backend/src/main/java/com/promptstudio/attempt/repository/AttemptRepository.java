@@ -9,4 +9,6 @@ public interface AttemptRepository {
     Attempt save(Attempt attempt);
 
     Optional<Attempt> findById(Long id);
+
+    Optional<Attempt> findByIdAndUserId(Long id, Long userId);
 }

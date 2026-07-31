@@ -7,4 +7,6 @@ import java.util.Optional;
 public interface AttemptQueryRepository {
 
     Optional<AttemptView> findById(Long id);
+
+    Optional<AttemptView> findByIdAndUserId(Long id, Long userId);
 }

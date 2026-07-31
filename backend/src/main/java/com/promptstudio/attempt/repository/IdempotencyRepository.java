@@ -7,7 +7,7 @@ import java.util.Optional;
 
 public interface IdempotencyRepository {
 
-    boolean tryInsertPending(String key, Instant now);
+    boolean tryInsertPending(String key, Long userId, Instant now);
 
     Optional<IdempotencyRecord> findByKey(String key);
 
