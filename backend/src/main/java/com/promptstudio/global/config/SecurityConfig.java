@@ -66,7 +66,7 @@ public class SecurityConfig {
             RestAccessDeniedHandler accessDeniedHandler
     ) throws Exception {
         http
-                // 기존 컨트롤러의 @CrossOrigin 설정을 인식해 preflight(OPTIONS)를 인증 앞단에서 처리한다.
+                // WebConfig의 전역 CORS 매핑을 인식해 preflight(OPTIONS)를 인증 앞단에서 처리한다.
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth

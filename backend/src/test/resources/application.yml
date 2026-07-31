@@ -39,6 +39,13 @@ promptstudio:
   rabbit:
     result-listener-enabled: false
 
+# 이 파일이 main의 application.yml을 가리므로 CORS 허용 오리진도 여기서 준다.
+# WebConfig는 기본값 없이 이 값을 요구한다 — 배포에서 설정을 빠뜨리면 런타임 403이 아니라
+# 부팅 실패로 드러나게 하려는 의도다. 오리진 자체를 검증하는 CorsApiTest는 @TestPropertySource로 덮어쓴다.
+app:
+  cors:
+    allowed-origins: http://localhost:5173
+
 # GitLab adapter 빈 생성에만 필요한 스텁. 테스트는 모두 fake 포트를 쓴다.
 PROBLEM_REPO_TOKEN: test-token
 # 통합테스트 컨텍스트가 부트 직후 실제 GitLab을 호출하지 않도록 스케줄러를 끈다.
