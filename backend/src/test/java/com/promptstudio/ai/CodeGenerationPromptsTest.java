@@ -57,8 +57,8 @@ class CodeGenerationPromptsTest {
         AttemptView attempt = new AttemptView(1L, 1L, List.of(), List.of(), List.of(
                 new AttemptView.TurnView("첫 요청", "첫 요약", List.of(
                         new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "class Main { void run() {} }")
-                ), List.of(), null)
-        ), AttemptStatus.IN_PROGRESS, null);
+                ), List.of(), null, null)
+        ), AttemptStatus.IN_PROGRESS, null, null);
 
         List<Message> messages = CodeGenerationPrompts.messages(problem, attempt, "두 번째 요청");
 
@@ -72,8 +72,8 @@ class CodeGenerationPromptsTest {
     @Test
     void 변경이_없는_턴은_수정한_파일_목록_줄을_생략한다() {
         AttemptView attempt = new AttemptView(1L, 1L, List.of(), List.of(), List.of(
-                new AttemptView.TurnView("첫 요청", "첫 요약", List.of(), List.of(), null)
-        ), AttemptStatus.IN_PROGRESS, null);
+                new AttemptView.TurnView("첫 요청", "첫 요약", List.of(), List.of(), null, null)
+        ), AttemptStatus.IN_PROGRESS, null, null);
 
         List<Message> messages = CodeGenerationPrompts.messages(problem, attempt, "두 번째 요청");
 
@@ -91,6 +91,6 @@ class CodeGenerationPromptsTest {
 
     private AttemptView attemptWithoutTurns() {
         return new AttemptView(1L, 1L, List.of(), List.of(new ProblemFile("src/Main.java", "class Main {}")),
-                List.of(), AttemptStatus.IN_PROGRESS, null);
+                List.of(), AttemptStatus.IN_PROGRESS, null, null);
     }
 }

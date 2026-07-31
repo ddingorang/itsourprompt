@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.LlmCallUsage;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.problem.domain.ProblemView;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
@@ -81,6 +82,8 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
                 turnCount
         );
 
+        LlmUsageTracker tracker = new LlmUsageTracker();
+
         try {
             ChatResponse response = aiCallExecutor.call(() -> chatClient.prompt()
                     .system(systemPrompt)
@@ -89,9 +92,11 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
                     .call()
                     .chatResponse(), FEEDBACK_TIMEOUT_MINUTES);
 
+            tracker.record(chatOptions.getModel(), response, elapsedMillis(startedAt));
+
             CallTrace trace = traceOf(attempt.id(), turnCount, chatOptions, response);
             String content = contentOf(response);
-            AttemptFeedback feedback = parse(content, trace);
+            AttemptFeedback feedback = parse(content, trace, tracker.snapshot());
 
             log.info(
                     "[OPENAI FEEDBACK] response received | duration={} ms | finishReason={} | completionTokens={}"
@@ -108,13 +113,14 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
                     elapsedMillis(startedAt),
                     FEEDBACK_TIMEOUT_MINUTES
             );
-            throw new FeedbackTimeoutException();
+            throw new FeedbackTimeoutException(tracker.snapshot());
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new FeedbackGenerationException(
                     FeedbackGenerationException.INTERRUPTED,
                     "AI feedback request was interrupted.",
-                    exception
+                    exception,
+                    tracker.snapshot()
             );
         } catch (ExecutionException exception) {
             log.error(
@@ -128,7 +134,8 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
             throw new FeedbackGenerationException(
                     FeedbackGenerationException.PROVIDER_ERROR,
                     "AI feedback request failed.",
-                    exception.getCause()
+                    exception.getCause(),
+                    tracker.snapshot()
             );
         }
     }
@@ -137,14 +144,17 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
      * 턴과 피드백의 1:1 대응이 응답의 유일한 계약이므로 개수가 어긋나면 저장하지 않는다.
      *
      * <p>잘린 응답은 본문만 보면 정상 JSON일 수 있어 먼저 걸러낸다.
+     *
+     * <p>여기까지 왔다면 호출은 이미 성공해 토큰을 썼다 — 실패로 끝나도 그 사용량을 예외에 실어 보낸다.
      */
-    private AttemptFeedback parse(String content, CallTrace trace) {
+    private AttemptFeedback parse(String content, CallTrace trace, List<LlmCallUsage> llmCalls) {
         if (trace.truncated()) {
             throw failure(
                     FeedbackGenerationException.TRUNCATED,
                     "AI feedback response was cut off at the completion token limit.",
                     content,
-                    trace
+                    trace,
+                    llmCalls
             );
         }
 
@@ -153,7 +163,8 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
                     FeedbackGenerationException.EMPTY_CONTENT,
                     "AI returned an empty feedback response.",
                     content,
-                    trace
+                    trace,
+                    llmCalls
             );
         }
 
@@ -167,6 +178,7 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
                     "AI feedback response was not valid JSON.",
                     content,
                     trace,
+                    llmCalls,
                     exception
             );
         }
@@ -179,7 +191,8 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
                     "AI feedback response covered %s of %d turns."
                             .formatted(turnFeedbacks == null ? "none" : turnFeedbacks.size(), trace.turnCount()),
                     content,
-                    trace
+                    trace,
+                    llmCalls
             );
         }
 
@@ -188,11 +201,12 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
                     FeedbackGenerationException.EMPTY_OVERALL,
                     "AI returned no overall feedback.",
                     content,
-                    trace
+                    trace,
+                    llmCalls
             );
         }
 
-        return new AttemptFeedback(turnFeedbacks, payload.overall().trim());
+        return new AttemptFeedback(turnFeedbacks, payload.overall().trim(), llmCalls);
     }
 
     private CallTrace traceOf(Long attemptId, int turnCount, OpenAiChatOptions chatOptions, ChatResponse response) {
@@ -228,8 +242,14 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
         return usage == null ? null : usage.getCompletionTokens();
     }
 
-    private FeedbackGenerationException failure(String reason, String message, String content, CallTrace trace) {
-        return failure(reason, message, content, trace, null);
+    private FeedbackGenerationException failure(
+            String reason,
+            String message,
+            String content,
+            CallTrace trace,
+            List<LlmCallUsage> llmCalls
+    ) {
+        return failure(reason, message, content, trace, llmCalls, null);
     }
 
     /**
@@ -240,9 +260,10 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
             String message,
             String content,
             CallTrace trace,
+            List<LlmCallUsage> llmCalls,
             Throwable cause
     ) {
-        FeedbackGenerationException exception = new FeedbackGenerationException(reason, message, cause);
+        FeedbackGenerationException exception = new FeedbackGenerationException(reason, message, cause, llmCalls);
 
         log.error(
                 "[OPENAI FEEDBACK] generation failed | reason={} | attemptId={} | turns={} | finishReason={}"

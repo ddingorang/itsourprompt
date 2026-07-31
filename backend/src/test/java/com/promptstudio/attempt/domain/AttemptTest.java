@@ -20,6 +20,7 @@ class AttemptTest {
     private final GeneratedCode generated = new GeneratedCode(
             List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
             "요약",
+            List.of(),
             List.of()
     );
 
@@ -39,8 +40,9 @@ class AttemptTest {
         attempt.applyTurn("첫 요청", generated);
         attempt.applyTurn("두 번째 요청", new GeneratedCode(
                 List.of(new ProblemFile("src/Util.java", "class Util {}")),
-                "요약"
-        , List.of()
+                "요약",
+                List.of(),
+                List.of()
         ));
 
         assertThat(attempt.baseFiles()).containsExactly(new ProblemFile("src/Main.java", "class Main {}"));
@@ -54,14 +56,16 @@ class AttemptTest {
                         new ProblemFile("src/Main.java", "class Main { void run() {} }"),
                         new ProblemFile("src/Util.java", "class Util {}")
                 ),
-                "첫 요약"
-        , List.of()
+                "첫 요약",
+                List.of(),
+                List.of()
         ));
 
         attempt.applyTurn("Main은 지우고 Util만 고쳐줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Util.java", "class Util { void help() {} }")),
-                "두 번째 요약"
-        , List.of()
+                "두 번째 요약",
+                List.of(),
+                List.of()
         ));
 
         assertThat(attempt.currentFiles())
@@ -73,8 +77,9 @@ class AttemptTest {
         Attempt attempt = Attempt.start(problem);
         attempt.applyTurn("Main을 지워줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Util.java", "class Util {}")),
-                "첫 요약"
-        , List.of()
+                "첫 요약",
+                List.of(),
+                List.of()
         ));
 
         attempt.applyTurn("Main을 되살려줘", new GeneratedCode(
@@ -82,8 +87,9 @@ class AttemptTest {
                         new ProblemFile("src/Util.java", "class Util {}"),
                         new ProblemFile("src/Main.java", "class Main { void run() {} }")
                 ),
-                "두 번째 요약"
-        , List.of()
+                "두 번째 요약",
+                List.of(),
+                List.of()
         ));
 
         assertThat(attempt.currentFiles()).containsExactly(
@@ -107,6 +113,7 @@ class AttemptTest {
         attempt.applyTurn("메서드 추가해줘", new GeneratedCode(
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
                 "메서드를 추가했습니다.",
+                List.of(),
                 List.of()
         ));
 
@@ -121,7 +128,7 @@ class AttemptTest {
     void 제출하면_상태가_SUBMITTED로_바뀌고_피드백이_저장된다() {
         Attempt attempt = Attempt.start(problem);
 
-        attempt.submit(new AttemptFeedback(List.of(), "피드백 내용"));
+        attempt.submit(new AttemptFeedback(List.of(), "피드백 내용", List.of()));
 
         assertThat(attempt.status()).isEqualTo(AttemptStatus.SUBMITTED);
         assertThat(attempt.feedback()).isEqualTo("피드백 내용");
@@ -133,7 +140,7 @@ class AttemptTest {
         attempt.applyTurn("첫 요청", generated);
         attempt.applyTurn("두 번째 요청", generated);
 
-        attempt.submit(new AttemptFeedback(List.of("첫 턴 피드백", "두 번째 턴 피드백"), "전체 피드백"));
+        attempt.submit(new AttemptFeedback(List.of("첫 턴 피드백", "두 번째 턴 피드백"), "전체 피드백", List.of()));
 
         assertThat(attempt.turns().get(0).feedback()).isEqualTo("첫 턴 피드백");
         assertThat(attempt.turns().get(1).feedback()).isEqualTo("두 번째 턴 피드백");
@@ -145,7 +152,7 @@ class AttemptTest {
         Attempt attempt = Attempt.start(problem);
         attempt.applyTurn("첫 요청", generated);
 
-        assertThatThrownBy(() -> attempt.submit(new AttemptFeedback(List.of("첫 턴", "둘째 턴"), "전체 피드백")))
+        assertThatThrownBy(() -> attempt.submit(new AttemptFeedback(List.of("첫 턴", "둘째 턴"), "전체 피드백", List.of())))
                 .isInstanceOf(FeedbackTurnCountMismatchException.class)
                 .hasMessage("어템프트의 턴 수(1)와 턴 피드백 개수(2)가 다릅니다.");
         assertThat(attempt.status()).isEqualTo(AttemptStatus.IN_PROGRESS);
@@ -155,7 +162,7 @@ class AttemptTest {
     @Test
     void 제출된_어템프트에_턴을_적용하면_예외를_던진다() {
         Attempt attempt = Attempt.start(problem);
-        attempt.submit(new AttemptFeedback(List.of(), "피드백 내용"));
+        attempt.submit(new AttemptFeedback(List.of(), "피드백 내용", List.of()));
 
         assertThatThrownBy(() -> attempt.applyTurn("추가 요청", generated))
                 .isInstanceOf(AttemptAlreadySubmittedException.class);
@@ -164,9 +171,9 @@ class AttemptTest {
     @Test
     void 이미_제출된_어템프트를_다시_제출하면_예외를_던진다() {
         Attempt attempt = Attempt.start(problem);
-        attempt.submit(new AttemptFeedback(List.of(), "피드백 내용"));
+        attempt.submit(new AttemptFeedback(List.of(), "피드백 내용", List.of()));
 
-        assertThatThrownBy(() -> attempt.submit(new AttemptFeedback(List.of(), "다른 피드백")))
+        assertThatThrownBy(() -> attempt.submit(new AttemptFeedback(List.of(), "다른 피드백", List.of())))
                 .isInstanceOf(AttemptAlreadySubmittedException.class);
     }
 
@@ -180,6 +187,7 @@ class AttemptTest {
                         new ProblemFile("src/Util.java", "class Util {}")
                 ),
                 "요약",
+                List.of(),
                 List.of()
         ));
 
@@ -196,7 +204,8 @@ class AttemptTest {
         attempt.applyTurn("요청", new GeneratedCode(
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
                 "요약",
-                List.of(new ToolCallEntry("list_files", null), new ToolCallEntry("edit_file", "src/Main.java"))
+                List.of(new ToolCallEntry("list_files", null), new ToolCallEntry("edit_file", "src/Main.java")),
+                List.of()
         ));
 
         assertThat(attempt.turns().getFirst().toolCalls()).containsExactly(
@@ -211,12 +220,14 @@ class AttemptTest {
         attempt.applyTurn("첫 요청", new GeneratedCode(
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} }")),
                 "첫 요약",
+                List.of(),
                 List.of()
         ));
 
         attempt.applyTurn("두 번째 요청", new GeneratedCode(
                 List.of(new ProblemFile("src/Main.java", "class Main { void run() {} void stop() {} }")),
                 "두 번째 요약",
+                List.of(),
                 List.of()
         ));
 

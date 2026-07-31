@@ -4,6 +4,7 @@ import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.attempt.domain.LlmCallPurpose;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
@@ -12,6 +13,7 @@ import com.promptstudio.attempt.exception.FeedbackNotFoundException;
 import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
+import com.promptstudio.attempt.port.LlmUsageCarrier;
 import com.promptstudio.attempt.repository.AttemptQueryRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemView;
@@ -104,10 +106,37 @@ public class AttemptService {
             throw new AttemptAlreadySubmittedException(attemptId);
         }
 
-        GeneratedCode generated = codeGenerator.generate(
-                ProblemView.from(getProblem(attempt.problemId())), attempt, userPrompt);
+        GeneratedCode generated;
 
-        return attemptWriter.appendTurn(attemptId, userPrompt, generated, idempotencyKey);
+        try {
+            generated = codeGenerator.generate(
+                    ProblemView.from(getProblem(attempt.problemId())), attempt, userPrompt);
+        } catch (RuntimeException exception) {
+            recordFailedCalls(attemptId, LlmCallPurpose.CODE, exception);
+
+            throw exception;
+        }
+
+        attemptWriter.appendTurn(attemptId, userPrompt, generated, idempotencyKey);
+
+        // 사용량은 호출 행에서 파생하므로 커밋 후 조회 seam으로 다시 읽는다 — 멱등 replay 경로와 같은 조립이다.
+        return getAttempt(attemptId);
+    }
+
+    /**
+     * 실패한 호출이 실어 온 사용량을 기록한다. 기록에 실패해도 원 예외를 가리지 않는다 —
+     * 클라이언트가 받는 502/504는 그대로 두고 기록 실패만 덧붙인다.
+     */
+    private void recordFailedCalls(Long attemptId, LlmCallPurpose purpose, RuntimeException exception) {
+        if (!(exception instanceof LlmUsageCarrier carrier)) {
+            return;
+        }
+
+        try {
+            attemptWriter.recordFailure(attemptId, purpose, carrier.llmCalls(), carrier.errorType());
+        } catch (RuntimeException flushFailure) {
+            exception.addSuppressed(flushFailure);
+        }
     }
 
     private AttemptView withIdempotency(String key, Supplier<AttemptView> action) {
@@ -155,8 +184,15 @@ public class AttemptService {
                 return attempt;
             }
 
-            AttemptFeedback feedback =
-                    feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
+            AttemptFeedback feedback;
+
+            try {
+                feedback = feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
+            } catch (RuntimeException exception) {
+                recordFailedCalls(attemptId, LlmCallPurpose.FEEDBACK, exception);
+
+                throw exception;
+            }
 
             return attemptWriter.submit(attemptId, feedback);
         } finally {

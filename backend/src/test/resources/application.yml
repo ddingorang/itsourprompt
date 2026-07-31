@@ -31,6 +31,12 @@ spring:
     model:
       embedding: none
 
+# 검산 가능한 단가(100만 토큰당 USD). 테스트 픽스처의 기대 비용이 이 값에서 나온다.
+llm:
+  pricing:
+    models:
+      "[test-model]": { input: 1.0, cached-input: 0.5, output: 2.0 }
+
 # run.result 리스너 빈을 만들지 않는다. RabbitListenerEndpointRegistry.startIfNecessary가
 # "contextRefreshed || container.isAutoStartup()" 조건이라, 캐시된 컨텍스트를 재사용하는 두 번째
 # 테스트 클래스부터는 auto-startup=false가 무시되고 브로커 접속을 시도해 컨텍스트 로딩이 깨진다.

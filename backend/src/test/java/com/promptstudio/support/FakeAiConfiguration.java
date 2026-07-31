@@ -3,6 +3,7 @@ package com.promptstudio.support;
 import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.attempt.domain.LlmCallUsage;
 import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
@@ -19,6 +20,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @TestConfiguration
 public class FakeAiConfiguration {
+
+    /**
+     * 단가표(test-model: input 1.0 / cached-input 0.5 / output 2.0 per 1M)로 손계산이 되는 값이다.
+     * 라운드별 비용은 0.00120000과 0.00180000, 턴 합계는 0.00300000이다.
+     */
+    public static final List<LlmCallUsage> CODE_GENERATION_USAGE = List.of(
+            new LlmCallUsage(1, "test-model", 1_000L, 200L, 400L, 50L, 120L),
+            new LlmCallUsage(2, "test-model", 1_500L, 300L, 600L, 70L, 140L)
+    );
+
+    /**
+     * 비용 0.00280000. 피드백 호출은 턴에 속하지 않아 전체 총계에만 잡힌다.
+     */
+    public static final List<LlmCallUsage> FEEDBACK_USAGE = List.of(
+            new LlmCallUsage(1, "test-model", 2_000L, 400L, 0L, 100L, 200L)
+    );
 
     @Bean
     @Primary
@@ -37,7 +54,8 @@ public class FakeAiConfiguration {
         private final GeneratedCode result = new GeneratedCode(
                 List.of(new ProblemFile("src/main/java/Main.java", "생성된 내용")),
                 "생성 요약",
-                List.of(new ToolCallEntry("edit_file", "src/main/java/Main.java"))
+                List.of(new ToolCallEntry("edit_file", "src/main/java/Main.java")),
+                CODE_GENERATION_USAGE
         );
 
         private final AtomicInteger invocationCount = new AtomicInteger();
@@ -130,7 +148,7 @@ public class FakeAiConfiguration {
                 turnFeedbacks.add("턴 " + (index + 1) + " 피드백");
             }
 
-            return new AttemptFeedback(turnFeedbacks, "생성된 피드백");
+            return new AttemptFeedback(turnFeedbacks, "생성된 피드백", FEEDBACK_USAGE);
         }
 
         /**

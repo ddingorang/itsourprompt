@@ -211,9 +211,30 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 | `turns[].toolCalls` | array | 해당 턴에서 AI가 호출한 툴 기록 |
 | `turns[].toolCalls[].tool` | string | `list_files` \| `read_file` \| `edit_file` |
 | `turns[].toolCalls[].path` | string \| null | 대상 파일 경로. 대상이 없는 툴(`list_files`)은 null |
+| `turns[].usage` | object \| null | 그 턴의 LLM 사용량 합계. 사용량 기록 도입 이전 턴은 null |
+| `turns[].usage.inputTokens` | number \| null | 입력 토큰 합계 |
+| `turns[].usage.outputTokens` | number \| null | 출력 토큰 합계 |
+| `turns[].usage.cachedInputTokens` | number \| null | 캐시 적중 입력 토큰 합계 |
+| `turns[].usage.reasoningTokens` | number \| null | 추론 토큰 합계 |
+| `turns[].usage.cost` | number \| null | USD 비용. 단가가 등록되지 않은 모델은 null |
+| `turns[].usage.model` | string \| null | 그 턴의 호출에 쓴 모델 |
+| `turns[].usage.rounds` | number | 그 턴의 LLM 호출 횟수 |
 | `status` | string | `IN_PROGRESS` \| `SUBMITTED` |
+| `usage` | object \| null | 어템프트 전체의 LLM 사용량 총계. 기록이 없으면 null |
+| `usage.inputTokens` | number \| null | 입력 토큰 총계 |
+| `usage.outputTokens` | number \| null | 출력 토큰 총계 |
+| `usage.cachedInputTokens` | number \| null | 캐시 적중 입력 토큰 총계 |
+| `usage.reasoningTokens` | number \| null | 추론 토큰 총계 |
+| `usage.cost` | number \| null | USD 비용 총계. 단가가 등록되지 않은 모델의 호출은 빠진다 |
 
 이 응답에 피드백은 포함되지 않는다. 피드백은 `GET /api/attempts/{id}/feedback` 또는 제출 응답으로만 받는다.
+
+사용량 계약:
+
+- **`turns[].usage`의 합은 `usage`와 다르다.** 최상위 `usage`는 턴에 속하지 않는 호출(제출 시 피드백 생성, 실패로 턴이 저장되지 않은 호출)까지 포함한 총계다.
+- **사용량 기록 도입 이전 데이터는 `usage`가 null이다.** 기존 데이터를 마이그레이션하지 않으므로 클라이언트는 null을 정상 케이스로 처리해야 한다.
+- `cost`는 호출 시점 단가로 계산해 저장한 USD 값이다. 단가가 등록되지 않은 모델은 0이 아니라 null이며, 그런 호출은 합계에서 빠진다.
+- 이 봉투는 필드 추가 방식으로만 확장한다. **클라이언트는 모르는 JSON 키를 무시해야 한다.**
 
 턴이 있는 어템프트의 전체 예시:
 
@@ -248,10 +269,26 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
         { "tool": "list_files", "path": null },
         { "tool": "read_file", "path": "src/main/java/Main.java" },
         { "tool": "edit_file", "path": "src/main/java/Main.java" }
-      ]
+      ],
+      "usage": {
+        "inputTokens": 2500,
+        "outputTokens": 500,
+        "cachedInputTokens": 1000,
+        "reasoningTokens": 120,
+        "cost": 0.00300000,
+        "model": "gpt-5.6-luna",
+        "rounds": 2
+      }
     }
   ],
-  "status": "IN_PROGRESS"
+  "status": "IN_PROGRESS",
+  "usage": {
+    "inputTokens": 2500,
+    "outputTokens": 500,
+    "cachedInputTokens": 1000,
+    "reasoningTokens": 120,
+    "cost": 0.00300000
+  }
 }
 ```
 
@@ -299,7 +336,8 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
     }
   ],
   "turns": [],
-  "status": "IN_PROGRESS"
+  "status": "IN_PROGRESS",
+  "usage": null
 }
 ```
 
@@ -357,7 +395,7 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 { "prompt": "Hello, World!를 출력하도록 코드를 완성해줘" }
 ```
 
-**성공 응답 — 200**: [AttemptResponse](#attemptresponse-공통-스키마). `turns` 배열 끝에 이번 턴이 추가되고 `files`가 갱신된다.
+**성공 응답 — 200**: [AttemptResponse](#attemptresponse-공통-스키마). `turns` 배열 끝에 이번 턴이 추가되고 `files`와 `usage`가 갱신된다.
 
 **에러**
 
