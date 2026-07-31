@@ -61,11 +61,13 @@ class OpenAiFeedbackGeneratorTest {
         assertThat(options.getResponseFormat().getJsonSchema())
                 .contains("turnFeedbacks")
                 .contains("정확히 1개")
-                .doesNotContain("minItems", "maxItems");
+                .contains("\"minItems\": 1")
+                .contains("\"maxItems\": 1");
     }
 
     @Test
     void JSON이_아닌_응답이면_invalid_json으로_실패한다() {
+        chatModel.queue(textResponse("피드백을 드릴 수 없습니다."));
         chatModel.queue(textResponse("피드백을 드릴 수 없습니다."));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
@@ -77,6 +79,7 @@ class OpenAiFeedbackGeneratorTest {
     @Test
     void 빈_응답이면_empty_content로_실패한다() {
         chatModel.queue(textResponse(""));
+        chatModel.queue(textResponse(""));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
                 .isInstanceOf(FeedbackGenerationException.class)
@@ -86,6 +89,7 @@ class OpenAiFeedbackGeneratorTest {
 
     @Test
     void 턴_피드백_개수가_턴_수와_다르면_turn_count_mismatch로_실패한다() {
+        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
         chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2)))
@@ -97,6 +101,7 @@ class OpenAiFeedbackGeneratorTest {
     @Test
     void 전체_피드백이_비어_있으면_empty_overall로_실패한다() {
         chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"  \"}"));
+        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"  \"}"));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
                 .isInstanceOf(FeedbackGenerationException.class)
@@ -106,25 +111,60 @@ class OpenAiFeedbackGeneratorTest {
 
     /**
      * 본문만 보면 정상 JSON이라 finish_reason 없이는 잘림을 알 수 없다.
+     *
+     * <p>잘림은 완성 토큰 예산이 모자란 것이라 같은 옵션으로 다시 불러도 같은 자리에서 잘린다 — 재호출하지 않는다.
      */
     @Test
-    void 완성_토큰_상한에서_잘린_응답이면_truncated로_실패한다() {
+    void 완성_토큰_상한에서_잘린_응답이면_다시_부르지_않고_truncated로_실패한다() {
         chatModel.queue(truncatedResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("truncated");
+        assertThat(chatModel.receivedPrompts()).hasSize(1);
     }
 
+    /**
+     * 응답 형태가 어긋나는 실패는 같은 요청을 다시 보내면 통과하는 경우가 많다. 사용자가 손으로 하던
+     * 재제출을 어댑터가 대신한다.
+     */
     @Test
-    void 모델_호출이_실패하면_provider_error로_변환한다() {
+    void 응답_형태가_어긋나면_한_번_다시_호출한다() {
+        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
+        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴\",\"둘째 턴\"],\"overall\":\"전체 피드백\"}"));
+
+        AttemptFeedback feedback = feedbackGenerator.generate(problem, attempt(2));
+
+        assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴", "둘째 턴");
+        assertThat(chatModel.receivedPrompts()).hasSize(2);
+    }
+
+    /**
+     * 재시도는 한 번뿐이다. 제출 하나가 AI 호출을 무한정 늘리지 않게 상한을 못 박는다.
+     */
+    @Test
+    void 다시_호출한_응답도_어긋나면_두_번째에서_멈춘다() {
+        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
+        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
+
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2)))
+                .isInstanceOf(FeedbackGenerationException.class);
+        assertThat(chatModel.receivedPrompts()).hasSize(2);
+    }
+
+    /**
+     * 프로바이더 실패는 이미 spring.ai의 HTTP 재시도를 거쳤고 400처럼 확정된 실패도 섞여 있어 다시 부르지 않는다.
+     */
+    @Test
+    void 모델_호출이_실패하면_다시_부르지_않고_provider_error로_변환한다() {
         chatModel.failWith(new IllegalStateException("provider 오류"));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("provider-error");
+        assertThat(chatModel.receivedPrompts()).hasSize(1);
     }
 
     @Test
@@ -146,14 +186,18 @@ class OpenAiFeedbackGeneratorTest {
         assertThat(usage.latencyMs()).isNotNegative();
     }
 
+    /**
+     * 재호출까지 실패해도 두 호출이 쓴 토큰은 모두 예외에 실린다.
+     */
     @Test
     void 파싱_실패_예외에도_호출_사용량이_실린다() {
+        chatModel.queue(withUsage(textResponse("피드백을 드릴 수 없습니다."), 500, 120, null, null));
         chatModel.queue(withUsage(textResponse("피드백을 드릴 수 없습니다."), 500, 120, null, null));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
                 .isInstanceOfSatisfying(FeedbackGenerationException.class, exception -> {
                     assertThat(exception.errorType()).isEqualTo("invalid-json");
-                    assertThat(exception.llmCalls()).hasSize(1);
+                    assertThat(exception.llmCalls()).hasSize(2);
                     assertThat(exception.llmCalls().getFirst().inputTokens()).isEqualTo(500L);
                 });
     }
