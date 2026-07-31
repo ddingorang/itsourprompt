@@ -117,30 +117,30 @@ export default function FeedbackPage() {
                 className="mt-4 border border-[#d6ff50] bg-[#121212]"
                 aria-label="턴별 프롬프트 피드백"
               >
-                <div className="relative border-b border-[#d6ff50]">
+                <div className="relative border-b border-[#393939]">
+                  <span className="absolute top-0 bottom-0 left-0 z-10 grid w-[220px] place-items-center bg-[#121212] font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] after:absolute after:top-1/2 after:right-0 after:h-5 after:w-px after:-translate-y-1/2 after:bg-[#393939] max-[760px]:hidden">
+                    PROMPT HISTORY
+                  </span>
                   <button
                     aria-label="이전 턴 보기"
-                    className="absolute top-0 bottom-2.5 left-0 z-10 w-10 cursor-pointer border-0 border-r border-[#333] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px]"
+                    className="absolute top-0 bottom-0 left-[220px] z-10 w-10 cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
                     onClick={() => scrollTurnNav(-1)}
                     type="button"
                   >
                     ‹
                   </button>
                   <div
-                    className="turn-tab-scrollbar flex items-stretch overflow-x-auto px-12 pb-2.5 scroll-smooth max-[760px]:px-[42px]"
+                    className="turn-tab-scrollbar flex items-stretch overflow-x-auto pr-12 pl-[260px] scroll-smooth max-[760px]:px-[42px]"
                     ref={turnNavRef}
                     role="tablist"
                   >
-                    <span className="grid min-h-[58px] shrink-0 place-items-center px-5 pl-2 font-mono text-xs font-bold tracking-[0.08em] text-[#777] max-[760px]:hidden">
-                      PROMPT HISTORY
-                    </span>
                     {turnSections.map((section) => {
                       const isSelected = section.turn === selectedSection.turn;
 
                       return (
                         <button
                           aria-selected={isSelected}
-                          className={`relative min-h-[58px] min-w-[130px] shrink-0 cursor-pointer border-0 bg-transparent px-[22px] font-mono text-sm font-bold tracking-[0.06em] hover:text-[#f5f5ef] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-4px] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:h-[3px] ${
+                          className={`relative min-h-[58px] min-w-[130px] shrink-0 cursor-pointer border-0 bg-transparent px-[22px] font-mono text-sm font-bold tracking-[0.06em] hover:text-[#f5f5ef] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-4px] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:z-10 after:h-[3px] ${
                             isSelected
                               ? 'text-[#d6ff50] after:bg-[#d6ff50]'
                               : 'text-[#8f8f8f] after:bg-transparent'
@@ -158,9 +158,9 @@ export default function FeedbackPage() {
                   </div>
                   <button
                     aria-label="다음 턴 보기"
-                    className="absolute top-0 right-0 bottom-2.5 z-10 w-10 cursor-pointer border-0 border-l border-[#333] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px]"
+                    className="absolute top-0 right-0 bottom-0 z-10 w-10 cursor-pointer border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px]"
                     onClick={() => scrollTurnNav(1)}
-                    type="button"
+                    type="bautton"
                   >
                     ›
                   </button>
@@ -224,12 +224,9 @@ export default function FeedbackPage() {
                   className="max-[760px]:w-full"
                   to={`/problems/${attempt.problemId}`}
                 >
-                  BACK TO PROBLEM →
+                  BACK TO PROBLEM ↗
                 </Button>
               )}
-              <Button className="max-[760px]:w-full" to="/problems">
-                BACK TO PROBLEMS →
-              </Button>
             </div>
           </>
         )}
