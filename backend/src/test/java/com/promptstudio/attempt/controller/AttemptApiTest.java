@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
@@ -29,6 +30,9 @@ class AttemptApiTest extends DatabaseTest {
 
     @Autowired
     private ProblemRepository problemRepository;
+
+    @Autowired
+    private FakeAiConfiguration.FakeFeedbackGenerator feedbackGenerator;
 
     @Test
     void 어템프트를_생성하면_문제_스켈레톤으로_초기화된다() throws Exception {
@@ -172,6 +176,25 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.overallMd").value("생성된 피드백"))
                 .andExpect(jsonPath("$.turns[0].feedbackMd").value("턴 1 피드백"));
+    }
+
+    /**
+     * 502 본문은 사용자에게 그대로 보이므로 내부 진단 메시지를 싣지 않고 재시도 안내만 남긴다.
+     */
+    @Test
+    void 피드백_생성이_실패하면_502에_재시도_안내_메시지를_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        feedbackGenerator.failNextWith(new FeedbackGenerationException(
+                FeedbackGenerationException.TRUNCATED,
+                "AI feedback response was cut off at the completion token limit.",
+                null
+        ));
+
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("ai-provider-error"))
+                .andExpect(jsonPath("$.message").value("AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."));
     }
 
     @Test

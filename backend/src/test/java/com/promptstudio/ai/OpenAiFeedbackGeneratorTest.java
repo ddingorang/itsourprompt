@@ -9,6 +9,7 @@ import com.promptstudio.problem.domain.ProblemView;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -59,43 +60,66 @@ class OpenAiFeedbackGeneratorTest {
     }
 
     @Test
-    void JSON이_아닌_응답이면_예외를_던진다() {
+    void JSON이_아닌_응답이면_invalid_json으로_실패한다() {
         chatModel.queue(textResponse("피드백을 드릴 수 없습니다."));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
-                .isInstanceOf(FeedbackGenerationException.class);
+                .isInstanceOf(FeedbackGenerationException.class)
+                .extracting("reason")
+                .isEqualTo("invalid-json");
     }
 
     @Test
-    void 빈_응답이면_예외를_던진다() {
+    void 빈_응답이면_empty_content로_실패한다() {
         chatModel.queue(textResponse(""));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
-                .isInstanceOf(FeedbackGenerationException.class);
+                .isInstanceOf(FeedbackGenerationException.class)
+                .extracting("reason")
+                .isEqualTo("empty-content");
     }
 
     @Test
-    void 턴_피드백_개수가_턴_수와_다르면_예외를_던진다() {
+    void 턴_피드백_개수가_턴_수와_다르면_turn_count_mismatch로_실패한다() {
         chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2)))
-                .isInstanceOf(FeedbackGenerationException.class);
+                .isInstanceOf(FeedbackGenerationException.class)
+                .extracting("reason")
+                .isEqualTo("turn-count-mismatch");
     }
 
     @Test
-    void 전체_피드백이_비어_있으면_예외를_던진다() {
+    void 전체_피드백이_비어_있으면_empty_overall로_실패한다() {
         chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"  \"}"));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
-                .isInstanceOf(FeedbackGenerationException.class);
+                .isInstanceOf(FeedbackGenerationException.class)
+                .extracting("reason")
+                .isEqualTo("empty-overall");
+    }
+
+    /**
+     * 본문만 보면 정상 JSON이라 finish_reason 없이는 잘림을 알 수 없다.
+     */
+    @Test
+    void 완성_토큰_상한에서_잘린_응답이면_truncated로_실패한다() {
+        chatModel.queue(truncatedResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
+
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+                .isInstanceOf(FeedbackGenerationException.class)
+                .extracting("reason")
+                .isEqualTo("truncated");
     }
 
     @Test
-    void 모델_호출이_실패하면_FeedbackGenerationException으로_변환한다() {
+    void 모델_호출이_실패하면_provider_error로_변환한다() {
         chatModel.failWith(new IllegalStateException("provider 오류"));
 
         assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
-                .isInstanceOf(FeedbackGenerationException.class);
+                .isInstanceOf(FeedbackGenerationException.class)
+                .extracting("reason")
+                .isEqualTo("provider-error");
     }
 
     private AttemptView attempt(int turnCount) {
@@ -111,5 +135,12 @@ class OpenAiFeedbackGeneratorTest {
 
     private ChatResponse textResponse(String text) {
         return new ChatResponse(List.of(new Generation(AssistantMessage.builder().content(text).build())));
+    }
+
+    private ChatResponse truncatedResponse(String text) {
+        return new ChatResponse(List.of(new Generation(
+                AssistantMessage.builder().content(text).build(),
+                ChatGenerationMetadata.builder().finishReason("length").build()
+        )));
     }
 }
