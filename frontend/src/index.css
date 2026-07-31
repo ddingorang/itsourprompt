@@ -37,3 +37,11 @@ body {
 .workspace-scrollbar::-webkit-scrollbar-corner {
   background: #171717;
 }
+
+.turn-tab-scrollbar {
+  scrollbar-width: none;
+}
+
+.turn-tab-scrollbar::-webkit-scrollbar {
+  display: none;
+}
