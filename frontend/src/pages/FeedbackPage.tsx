@@ -4,11 +4,30 @@ import { useParams } from 'react-router-dom';
 import { getAttempt, getAttemptFeedback } from '../features/attempt/api';
 import type { Attempt, AttemptFeedback } from '../features/attempt/types';
 import PromptFeedback from '../features/feedback/PromptFeedback';
-import { ApiError } from '../shared/api/apiClient';
+import { ApiError, API_ERROR_CODES, isAbortError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
+/**
+ * 피드백을 열지 못했을 때 화면에 남길 안내. 아직 제출하지 않은 어템프트처럼
+ * 오류가 아닌 경우도 있어, 색과 돌아갈 곳을 함께 담는다.
+ */
+interface LoadNotice {
+  message: string;
+  actionLabel: string;
+  actionTo: string;
+  isError: boolean;
+}
+
+/**
+ * 제출된 어템프트의 프롬프트 피드백 화면.
+ *
+ * 주소(/attempts/{id}/feedback)에 담긴 ID만 보고 서버에서
+ * 피드백(GET /api/attempts/{id}/feedback)을 가져온다 — 브라우저 저장소에 기대지
+ * 않으므로 새로고침해도 남고, 링크를 그대로 열어도 동작한다.
+ * 프롬프트 원문은 피드백 응답에 없으므로 어템프트도 함께 조회해 짝지어 보여준다.
+ */
 export default function FeedbackPage() {
   const { attemptId: attemptIdParam } = useParams();
   const attemptId = Number(attemptIdParam);
@@ -16,44 +35,69 @@ export default function FeedbackPage() {
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [feedback, setFeedback] = useState<AttemptFeedback | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<LoadNotice | null>(null);
   const [selectedTurn, setSelectedTurn] = useState(1);
   const turnNavRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!Number.isInteger(attemptId) || attemptId <= 0) {
-      setErrorMessage('잘못된 어템프트 주소입니다.');
+      setNotice({
+        message: '잘못된 어템프트 주소입니다.',
+        actionLabel: 'BACK TO PROBLEMS ↗',
+        actionTo: '/problems',
+        isError: true,
+      });
       setIsLoading(false);
       return;
     }
 
-    let isMounted = true;
+    const controller = new AbortController();
+    const { signal } = controller;
 
     void (async () => {
       try {
         const [loadedAttempt, loadedFeedback] = await Promise.all([
-          getAttempt(attemptId),
-          getAttemptFeedback(attemptId),
+          getAttempt(attemptId, signal),
+          getAttemptFeedback(attemptId, signal),
         ]);
 
-        if (!isMounted) return;
         setAttempt(loadedAttempt);
         setFeedback(loadedFeedback);
         setSelectedTurn(loadedFeedback.turns[0]?.turn ?? 1);
       } catch (error: unknown) {
-        if (!isMounted) return;
-        setErrorMessage(
-          error instanceof ApiError
-            ? error.message
-            : '피드백을 불러오지 못했습니다.',
-        );
+        if (isAbortError(error)) return;
+
+        // 제출 전이면 피드백이 아직 없다 — 오류가 아니라 작업장으로 돌아가라는 안내다.
+        if (
+          error instanceof ApiError &&
+          error.code === API_ERROR_CODES.feedbackNotFound
+        ) {
+          setNotice({
+            message: '아직 제출되지 않은 어템프트입니다.',
+            actionLabel: 'BACK TO WORKSPACE ↗',
+            actionTo: `/attempts/${attemptId}`,
+            isError: false,
+          });
+          return;
+        }
+
+        setNotice({
+          message:
+            error instanceof ApiError
+              ? error.message
+              : '피드백을 불러오지 못했습니다.',
+          actionLabel: 'BACK TO PROBLEMS ↗',
+          actionTo: '/problems',
+          isError: true,
+        });
       } finally {
-        if (isMounted) setIsLoading(false);
+        // 뒤늦게 끊긴 요청이 새 로드의 로딩 표시를 끄지 않도록 한다.
+        if (!signal.aborted) setIsLoading(false);
       }
     })();
 
     return () => {
-      isMounted = false;
+      controller.abort();
     };
   }, [attemptId]);
 
@@ -94,16 +138,23 @@ export default function FeedbackPage() {
           </section>
         )}
 
-        {!isLoading && errorMessage && (
-          <section className="mt-4 border border-[#ff786b] p-8 text-sm leading-[1.7] text-[#ff786b]">
-            <div>{errorMessage}</div>
-            <Button className="mt-5" to="/problems">
-              BACK TO PROBLEMS →
+        {!isLoading && notice && (
+          <section
+            className={[
+              'mt-4 border p-8 text-sm leading-[1.7]',
+              notice.isError
+                ? 'border-[#ff786b] text-[#ff786b]'
+                : 'border-[#343434] text-[#a3a3a3]',
+            ].join(' ')}
+          >
+            <div>{notice.message}</div>
+            <Button className="mt-5" to={notice.actionTo}>
+              {notice.actionLabel}
             </Button>
           </section>
         )}
 
-        {!isLoading && !errorMessage && feedback && (
+        {!isLoading && !notice && feedback && (
           <>
             <section className="mt-4 border border-[#d6ff50] bg-transparent">
               <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
