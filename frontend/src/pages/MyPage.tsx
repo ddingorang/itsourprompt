@@ -51,13 +51,13 @@ export default function MyPage() {
     <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
       <Header />
 
-      <main className="mx-auto w-[calc(100%_-_10vw)] flex-1 pt-[clamp(36px,5vw,64px)] pb-24 max-[640px]:w-[calc(100%_-_40px)]">
+      <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-24 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
         <div className="mb-[54px] font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
           USER PROFILE
         </div>
 
-        <section className="grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[#f5f5ef] max-[820px]:grid-cols-1">
-          <div className="flex min-h-[220px] flex-col justify-between border-r border-[#343434] p-[clamp(24px,4vw,48px)] max-[820px]:min-h-[200px] max-[820px]:border-r-0 max-[820px]:border-b">
+        <section className="grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[#f5f5ef] max-[1200px]:grid-cols-1">
+          <div className="flex min-h-[220px] flex-col justify-between border-r border-[#343434] p-[clamp(24px,4vw,48px)] max-[1200px]:min-h-[200px] max-[1200px]:border-r-0 max-[1200px]:border-b">
             <div className="flex items-center gap-5">
               <div
                 className="grid size-16 shrink-0 place-items-center rounded-full bg-[#d6ff50] text-2xl font-black text-[#090909]"
