@@ -4,12 +4,11 @@ import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
 // [임시 데이터] 통계 3종은 아직 백엔드 API가 없어 더미 값이다.
-// 실데이터 연동에는 예: GET /api/me/stats { solved, submissions, streakDays } 같은
+// 실데이터 연동에는 예: GET /api/me/stats { solved, totalTurns } 같은
 // 신규 API가 필요하다 (S15P11A505-backend/docs/auth-api.md §6 후속 과제 참고).
 const stats = [
   { label: 'SOLVED', value: '12' },
-  { label: 'SUBMISSIONS', value: '28' },
-  { label: 'STREAK', value: '04', unit: 'DAYS' },
+  { label: 'TOTAL TURNS', value: '28' },
 ];
 
 // [임시 데이터] 활동 내역도 더미다. 실데이터 연동에는 어템프트에 소유자(userId)를
@@ -84,7 +83,7 @@ export default function MyPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 max-[520px]:grid-cols-1">
+          <div className="grid grid-cols-2 max-[520px]:grid-cols-1">
             {stats.map((stat, index) => (
               <div
                 className="flex min-h-[150px] flex-col justify-between border-r border-[#343434] p-[clamp(18px,3vw,32px)] last:border-r-0 max-[520px]:min-h-[120px] max-[520px]:border-r-0 max-[520px]:border-b max-[520px]:last:border-b-0"
@@ -97,11 +96,6 @@ export default function MyPage() {
                   <strong className="font-mono text-[clamp(32px,5vw,60px)] leading-none tracking-[-0.08em]">
                     {stat.value}
                   </strong>
-                  {stat.unit && (
-                    <span className="font-mono text-[12px] text-[#d6ff50]">
-                      {stat.unit}
-                    </span>
-                  )}
                 </div>
               </div>
             ))}
