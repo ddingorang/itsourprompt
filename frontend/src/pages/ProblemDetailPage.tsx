@@ -907,7 +907,9 @@ export default function ProblemDetailPage() {
                 fullWidth
                 onClick={handleSubmit}
               >
-                {isSubmitting ? 'LOADING…' : 'GO TO FEEDBACK ↗'}
+                <span className="text-[14px]">
+                  {isSubmitting ? 'LOADING…' : '최종 제출 & 피드백 확인하기 ↗'}
+                </span>
               </Button>
             </div>
 
