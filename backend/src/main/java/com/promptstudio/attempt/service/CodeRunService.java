@@ -7,15 +7,19 @@ import com.promptstudio.attempt.domain.CodeRunView;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.CodeRunInProgressException;
 import com.promptstudio.attempt.exception.CodeRunNotFoundException;
+import com.promptstudio.attempt.exception.TurnNotFoundException;
 import com.promptstudio.attempt.port.CodeRunPublisher;
 import com.promptstudio.attempt.repository.AttemptQueryRepository;
 import com.promptstudio.attempt.repository.CodeRunRepository;
+import com.promptstudio.problem.domain.ProblemFile;
+import com.promptstudio.problem.repository.ProblemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -29,7 +33,7 @@ import java.util.UUID;
 public class CodeRunService {
 
     /**
-     * 이 시간을 넘긴 QUEUED는 워커가 죽은 것으로 본다 — 컴파일 30초 + 실행 10초 + 큐 대기 여유.
+     * 이 시간을 넘긴 QUEUED는 워커가 죽은 것으로 본다 — 컴파일 30초 + 실행 30초(테스트) + 큐 대기 여유.
      */
     private static final Duration STALE_RUN_TTL = Duration.ofMinutes(2);
 
@@ -37,16 +41,28 @@ public class CodeRunService {
 
     private final AttemptQueryRepository attemptQueryRepository;
     private final CodeRunRepository codeRunRepository;
+    private final ProblemRepository problemRepository;
     private final CodeRunPublisher codeRunPublisher;
 
     public CodeRunService(
             AttemptQueryRepository attemptQueryRepository,
             CodeRunRepository codeRunRepository,
+            ProblemRepository problemRepository,
             CodeRunPublisher codeRunPublisher
     ) {
         this.attemptQueryRepository = attemptQueryRepository;
         this.codeRunRepository = codeRunRepository;
+        this.problemRepository = problemRepository;
         this.codeRunPublisher = codeRunPublisher;
+    }
+
+    /**
+     * 마지막 턴의 코드를 실행한다. 턴이 없으면 시작 스켈레톤을 실행한다.
+     */
+    public CodeRunView requestRun(Long attemptId) {
+        AttemptView attempt = getAttempt(attemptId);
+
+        return run(attempt, attempt.headTurnOrdinal());
     }
 
     public CodeRunView requestRun(Long attemptId, Long userId) {
@@ -59,19 +75,54 @@ public class CodeRunService {
         AttemptView attempt = findAttempt(attemptId, owner)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
+        return run(attempt, attempt.headTurnOrdinal());
+    }
+
+    /**
+     * 지정한 턴의 코드를 실행한다. 턴은 불변이라 과거 턴을 다시 돌려도 그때의 코드가 실행된다 —
+     * "몇 번째 프롬프트까지 통과했는지"를 확인하는 용도다.
+     */
+    public CodeRunView requestRun(Long attemptId, int turnOrdinal) {
+        AttemptView attempt = getAttempt(attemptId);
+
+        if (turnOrdinal < 0 || turnOrdinal >= attempt.turns().size()) {
+            throw new TurnNotFoundException(attemptId, turnOrdinal, attempt.turns().size());
+        }
+
+        return run(attempt, turnOrdinal);
+    }
+
+    /**
+     * 실행 기록에 turnOrdinal을 박아 두는 것이 핵심이다. 이게 없으면 결과가 도착하는 사이에 다음 턴이
+     * 쌓였을 때 그 결과가 어느 코드에 대한 것인지 알 수 없다 — 턴 추가를 락으로 막는 대신
+     * 결과를 올바른 턴에 귀속시켜 해결한다.
+     */
+    private CodeRunView run(AttemptView attempt, Integer turnOrdinal) {
+        Long attemptId = attempt.id();
+
+        // 문제가 아니라 어템프트에서 problemId를 얻는다. 실행 시점의 테스트로 채점된다.
+        List<ProblemFile> testFiles = problemRepository.findTestFiles(attempt.problemId());
+        List<ProblemFile> files = attempt.filesAsOf(turnOrdinal);
         UUID runId = UUID.randomUUID();
 
         // 부분 유니크 인덱스(uq_code_run_active)가 어템프트당 미완료 run을 하나로 강제한다.
-        if (!codeRunRepository.tryInsertQueued(runId, attemptId, Instant.now())) {
+        if (!codeRunRepository.tryInsertQueued(runId, attemptId, turnOrdinal, Instant.now())) {
             throw new CodeRunInProgressException(attemptId);
         }
 
         // QUEUED 행이 커밋된 뒤에 발행한다.
-        codeRunPublisher.publish(runId, attemptId, attempt.files());
-        log.info("[CODE RUN] queued | runId={} | attemptId={} | files={}",
-                runId, attemptId, attempt.files().size());
+        codeRunPublisher.publish(runId, attemptId, files, testFiles);
+        log.info("[CODE RUN] queued | runId={} | attemptId={} | turnOrdinal={} | files={} | testFiles={}",
+                runId, attemptId, turnOrdinal, files.size(), testFiles.size());
 
-        return CodeRunView.queued(runId, attemptId);
+        return CodeRunView.queued(runId, attemptId, turnOrdinal);
+    }
+
+    private AttemptView getAttempt(Long attemptId) {
+        expireStaleRuns();
+
+        return attemptQueryRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
     }
 
     public CodeRunView getRun(Long attemptId, Long userId, UUID runId) {

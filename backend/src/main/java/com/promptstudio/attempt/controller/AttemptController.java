@@ -253,9 +253,9 @@ public class AttemptController {
     @PostMapping("/{id}/runs")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @Operation(
-            summary = "코드 빌드/실행 요청",
-            description = "어템프트의 현재 파일 전체를 빌드/실행 워커에 큐로 넘기고 즉시 실행 ID를 반환합니다. "
-                    + "결과는 조회 API로 폴링해서 확인합니다."
+            summary = "코드 빌드/실행 요청 (마지막 턴)",
+            description = "마지막 턴의 파일 전체를 빌드/실행 워커에 큐로 넘기고 즉시 실행 ID를 반환합니다. "
+                    + "턴이 없으면 시작 스켈레톤을 실행합니다. 결과는 조회 API로 폴링해서 확인합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -280,6 +280,38 @@ public class AttemptController {
             @PathVariable("id") Long id
     ) {
         return attemptWebMapper.toCodeRunResponse(codeRunService.requestRun(id, owner(principal, httpRequest)));
+    }
+
+    @PostMapping("/{id}/turns/{ordinal}/runs")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(
+            summary = "코드 빌드/실행 요청 (턴 지정)",
+            description = "지정한 턴 시점의 파일로 빌드/실행합니다. 턴은 불변이므로 과거 턴을 다시 실행하면 "
+                    + "그때의 코드가 그대로 실행됩니다. 어느 프롬프트까지 테스트를 통과했는지 확인할 때 씁니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "202",
+                    description = "실행 요청 접수",
+                    content = @Content(schema = @Schema(implementation = CodeRunResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "어템프트 또는 턴을 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "해당 어템프트의 코드 실행이 이미 진행 중",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
+            )
+    })
+    public CodeRunResponse requestTurnRun(
+            @PathVariable("id") Long id,
+            @Parameter(description = "실행할 턴 번호(0-based)", example = "0")
+            @PathVariable("ordinal") int ordinal
+    ) {
+        return attemptWebMapper.toCodeRunResponse(codeRunService.requestRun(id, ordinal));
     }
 
     @GetMapping("/{id}/runs/{runId}")

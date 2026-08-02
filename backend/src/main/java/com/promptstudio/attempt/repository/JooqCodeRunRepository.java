@@ -20,6 +20,7 @@ import static com.promptstudio.attempt.repository.CodeRunTables.ID;
 import static com.promptstudio.attempt.repository.CodeRunTables.STATUS;
 import static com.promptstudio.attempt.repository.CodeRunTables.STDERR;
 import static com.promptstudio.attempt.repository.CodeRunTables.STDOUT;
+import static com.promptstudio.attempt.repository.CodeRunTables.TURN_ORDINAL;
 
 @Repository
 public class JooqCodeRunRepository implements CodeRunRepository {
@@ -31,28 +32,29 @@ public class JooqCodeRunRepository implements CodeRunRepository {
     }
 
     @Override
-    public boolean tryInsertQueued(UUID runId, Long attemptId, Instant now) {
+    public boolean tryInsertQueued(UUID runId, Long attemptId, Integer turnOrdinal, Instant now) {
         return dsl.insertInto(CODE_RUN)
-                .columns(ID, ATTEMPT_ID, STATUS, CREATED_AT)
-                .values(runId, attemptId, CodeRunStatus.QUEUED.name(), now)
+                .columns(ID, ATTEMPT_ID, TURN_ORDINAL, STATUS, CREATED_AT)
+                .values(runId, attemptId, turnOrdinal, CodeRunStatus.QUEUED.name(), now)
                 .onConflictDoNothing()
                 .execute() == 1;
     }
 
     @Override
     public Optional<CodeRunView> findByIdAndAttemptId(UUID runId, Long attemptId) {
-        return dsl.select(ID, ATTEMPT_ID, STATUS, EXIT_CODE, STDOUT, STDERR, DURATION_MS)
+        return dsl.select(ID, ATTEMPT_ID, TURN_ORDINAL, STATUS, EXIT_CODE, STDOUT, STDERR, DURATION_MS)
                 .from(CODE_RUN)
                 .where(ID.eq(runId))
                 .and(ATTEMPT_ID.eq(attemptId))
                 .fetchOptional(record -> new CodeRunView(
                         record.value1(),
                         record.value2(),
-                        CodeRunStatus.valueOf(record.value3()),
-                        record.value4(),
+                        record.value3(),
+                        CodeRunStatus.valueOf(record.value4()),
                         record.value5(),
                         record.value6(),
-                        record.value7()
+                        record.value7(),
+                        record.value8()
                 ));
     }
 

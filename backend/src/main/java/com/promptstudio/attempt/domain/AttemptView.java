@@ -69,6 +69,27 @@ public record AttemptView(
     }
 
     /**
+     * turnOrdinal번째 턴까지 재생한 코드. 턴은 불변이라 같은 ordinal은 언제 물어도 같은 코드를 낸다.
+     *
+     * @param turnOrdinal 0-based 턴 번호. null이면 턴을 적용하지 않은 시작 스켈레톤
+     * @throws IndexOutOfBoundsException 없는 턴 번호. 호출자가 미리 검증한다
+     */
+    public List<ProblemFile> filesAsOf(Integer turnOrdinal) {
+        if (turnOrdinal == null) {
+            return baseFiles;
+        }
+
+        return FileReplay.head(baseFiles, turns.subList(0, turnOrdinal + 1), TurnView::changes);
+    }
+
+    /**
+     * 마지막 턴의 번호. 턴이 없으면 null이고, 그때 {@link #filesAsOf}는 스켈레톤을 낸다.
+     */
+    public Integer headTurnOrdinal() {
+        return turns.isEmpty() ? null : turns.size() - 1;
+    }
+
+    /**
      * @param feedback 제출 전이거나 턴별 피드백 이전에 제출된 어템프트면 null
      * @param usage    이 턴의 LLM 사용량 합계. 사용량 기록 도입 전 턴이면 null
      */

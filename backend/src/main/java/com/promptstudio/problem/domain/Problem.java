@@ -40,32 +40,51 @@ public class Problem {
     @OrderColumn(name = "ordinal")
     private List<ProblemFile> files = new ArrayList<>();
 
+    /**
+     * 채점용 테스트. 사용자와 AI에게 노출하면 안 되므로 스켈레톤과 별도 컬렉션으로 둔다.
+     * 노출 경로({@link ProblemView})가 이 필드를 읽지 않는 것이 격리의 전부다.
+     */
+    @ElementCollection
+    @CollectionTable(name = "problem_test_file", joinColumns = @JoinColumn(name = "problem_id"))
+    @OrderColumn(name = "ordinal")
+    private List<ProblemFile> testFiles = new ArrayList<>();
+
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
     protected Problem() {
     }
 
-    public Problem(String slug, String title, String specMd, List<ProblemFile> files) {
-        this(null, slug, title, specMd, files);
+    public Problem(String slug, String title, String specMd, List<ProblemFile> files, List<ProblemFile> testFiles) {
+        this(null, slug, title, specMd, files, testFiles);
     }
 
-    public Problem(Long id, String slug, String title, String specMd, List<ProblemFile> files) {
+    public Problem(
+            Long id,
+            String slug,
+            String title,
+            String specMd,
+            List<ProblemFile> files,
+            List<ProblemFile> testFiles
+    ) {
         this.id = id;
         this.slug = slug;
         this.title = title;
         this.specMd = specMd;
         this.files = new ArrayList<>(files);
+        this.testFiles = new ArrayList<>(testFiles);
     }
 
     /**
      * 저장소에서 다시 읽어온 내용으로 갈아끼운다. slug는 문제의 식별자라 바뀌지 않는다.
      */
-    public void updateFrom(String title, String specMd, List<ProblemFile> files) {
+    public void updateFrom(String title, String specMd, List<ProblemFile> files, List<ProblemFile> testFiles) {
         this.title = title;
         this.specMd = specMd;
         this.files.clear();
         this.files.addAll(files);
+        this.testFiles.clear();
+        this.testFiles.addAll(testFiles);
     }
 
     public void activate() {
@@ -94,6 +113,10 @@ public class Problem {
 
     public List<ProblemFile> files() {
         return List.copyOf(files);
+    }
+
+    public List<ProblemFile> testFiles() {
+        return List.copyOf(testFiles);
     }
 
     public boolean active() {

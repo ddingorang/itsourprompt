@@ -228,6 +228,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
     }
 
     private Problem newProblem() {
-        return problemRepository.save(new Problem(null, "Hello World 출력", "# Hello World 출력", List.of(SKELETON)));
+        return problemRepository.save(
+                new Problem(null, "Hello World 출력", "# Hello World 출력", List.of(SKELETON), List.of()));
     }
 }

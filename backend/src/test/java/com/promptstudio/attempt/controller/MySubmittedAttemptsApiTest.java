@@ -93,6 +93,6 @@ class MySubmittedAttemptsApiTest extends DatabaseTest {
 
     private Problem newProblem(String title) {
         return problemRepository.save(new Problem(
-                null, title, "명세", List.of(new ProblemFile("src/Main.java", "class Main {}"))));
+                null, title, "명세", List.of(new ProblemFile("src/Main.java", "class Main {}")), List.of()));
     }
 }

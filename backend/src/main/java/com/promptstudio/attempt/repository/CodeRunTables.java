@@ -16,6 +16,7 @@ final class CodeRunTables {
     static final Table<?> CODE_RUN = table(name("code_run"));
     static final Field<UUID> ID = field(name("code_run", "id"), SQLDataType.UUID);
     static final Field<Long> ATTEMPT_ID = field(name("code_run", "attempt_id"), SQLDataType.BIGINT);
+    static final Field<Integer> TURN_ORDINAL = field(name("code_run", "turn_ordinal"), SQLDataType.INTEGER);
     static final Field<String> STATUS = field(name("code_run", "status"), SQLDataType.VARCHAR);
     static final Field<Integer> EXIT_CODE = field(name("code_run", "exit_code"), SQLDataType.INTEGER);
     static final Field<String> STDOUT = field(name("code_run", "stdout"), SQLDataType.CLOB);

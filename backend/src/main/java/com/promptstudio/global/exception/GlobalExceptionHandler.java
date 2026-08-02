@@ -8,6 +8,7 @@ import com.promptstudio.attempt.exception.CodeRunNotFoundException;
 import com.promptstudio.attempt.exception.DuplicateRequestException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
+import com.promptstudio.attempt.exception.TurnNotFoundException;
 import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.attempt.port.CodeGenerationException;
@@ -56,6 +57,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleAttemptNotFound(AttemptNotFoundException exception) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "attempt-not-found",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(TurnNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleTurnNotFound(TurnNotFoundException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "turn-not-found",
                 exception.getMessage()
         );
 
