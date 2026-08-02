@@ -59,6 +59,7 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Autowired
     private AttemptRepository attemptRepository;
 
     @Autowired

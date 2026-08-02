@@ -102,7 +102,8 @@ class GuestAttemptApiTest extends DatabaseTest {
                 "guest-problem-" + System.nanoTime(),
                 "Guest problem",
                 "# Guest problem",
-                List.of(new ProblemFile("Main.java", "class Main {}"))
+                List.of(new ProblemFile("Main.java", "class Main {}")),
+                List.of()
         ));
         String response = mockMvc.perform(post("/api/attempts")
                         .cookie(guestCookie)

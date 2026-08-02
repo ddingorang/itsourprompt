@@ -51,7 +51,7 @@ public class FakeAiConfiguration {
 
     public static class FakeCodeGenerator implements CodeGenerator {
 
-        private final GeneratedCode result = new GeneratedCode(
+        private static final GeneratedCode DEFAULT_RESULT = new GeneratedCode(
                 List.of(new ProblemFile("src/main/java/Main.java", "생성된 내용")),
                 "생성 요약",
                 List.of(new ToolCallEntry("edit_file", "src/main/java/Main.java")),
@@ -64,6 +64,7 @@ public class FakeAiConfiguration {
         private AttemptView receivedAttempt;
         private String receivedPrompt;
         private RuntimeException nextFailure;
+        private GeneratedCode nextResult = DEFAULT_RESULT;
 
         @Override
         public GeneratedCode generate(ProblemView problem, AttemptView attempt, String userPrompt) {
@@ -79,7 +80,7 @@ public class FakeAiConfiguration {
                 throw failure;
             }
 
-            return result;
+            return nextResult;
         }
 
         /**
@@ -87,6 +88,25 @@ public class FakeAiConfiguration {
          */
         public void failNextWith(RuntimeException failure) {
             this.nextFailure = failure;
+        }
+
+        /**
+         * 다음 호출부터 이 결과를 반환한다. reset() 전까지 유지된다.
+         */
+        public void respondWith(GeneratedCode result) {
+            this.nextResult = result;
+        }
+
+        /**
+         * src/main/java/Main.java의 내용을 given content로 갈아끼운 생성 결과를 만든다.
+         */
+        public static GeneratedCode generating(String mainJavaContent) {
+            return new GeneratedCode(
+                    List.of(new ProblemFile("src/main/java/Main.java", mainJavaContent)),
+                    "생성 요약",
+                    List.of(new ToolCallEntry("edit_file", "src/main/java/Main.java")),
+                    CODE_GENERATION_USAGE
+            );
         }
 
         public ProblemView receivedProblem() {
@@ -114,6 +134,7 @@ public class FakeAiConfiguration {
             receivedAttempt = null;
             receivedPrompt = null;
             nextFailure = null;
+            nextResult = DEFAULT_RESULT;
         }
     }
 

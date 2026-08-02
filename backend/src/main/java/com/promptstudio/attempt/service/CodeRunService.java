@@ -65,6 +65,19 @@ public class CodeRunService {
         return run(attempt, attempt.headTurnOrdinal());
     }
 
+    public CodeRunView requestRun(Long attemptId, Long userId) {
+        return requestRun(attemptId, AttemptOwner.user(userId));
+    }
+
+    public CodeRunView requestRun(Long attemptId, AttemptOwner owner) {
+        expireStaleRuns();
+
+        AttemptView attempt = findAttempt(attemptId, owner)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        return run(attempt, attempt.headTurnOrdinal());
+    }
+
     /**
      * 지정한 턴의 코드를 실행한다. 턴은 불변이라 과거 턴을 다시 돌려도 그때의 코드가 실행된다 —
      * "몇 번째 프롬프트까지 통과했는지"를 확인하는 용도다.

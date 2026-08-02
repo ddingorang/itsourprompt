@@ -157,7 +157,7 @@ class CodeRunServiceTest extends DatabaseTest {
         codeRunService.applyResult(new CodeRunResult(
                 runId, CodeRunStatus.TEST_FAILED, 1, "1 tests failed", "", 900L));
 
-        assertThat(codeRunService.getRun(attemptId, runId).turnOrdinal()).isZero();
+        assertThat(codeRunService.getRun(attemptId, ownerId, runId).turnOrdinal()).isZero();
     }
 
     @Test
@@ -274,7 +274,7 @@ class CodeRunServiceTest extends DatabaseTest {
 
         for (int index = 0; index < contentsPerTurn.length; index++) {
             codeGenerator.respondWith(FakeAiConfiguration.FakeCodeGenerator.generating(contentsPerTurn[index]));
-            attemptService.addTurn(attemptId, index + "번째 프롬프트");
+            attemptService.addTurn(attemptId, ownerId, index + "번째 프롬프트");
         }
 
         return attemptId;
