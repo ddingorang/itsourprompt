@@ -285,7 +285,7 @@ export default function FeedbackPage() {
                   className="max-[760px]:w-full"
                   to={`/problems/${attempt.problemId}`}
                 >
-                  BACK TO PROBLEM ↗
+                  <span className="text-[14px]">이전 문제로 돌아가기 ↗</span>
                 </Button>
               )}
             </div>
