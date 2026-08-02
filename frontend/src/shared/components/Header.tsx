@@ -6,7 +6,7 @@ import { useAuth } from '../../features/auth/AuthContext';
  * 공통 헤더. 로그인 상태(useAuth)를 스스로 읽어 메뉴를 전환한다.
  *
  * - 비로그인: LOGIN / SIGN UP
- * - 로그인:   PROFILE / LOGOUT
+ * - 로그인:   MY PAGE / LOGOUT
  * - 세션 확인 중(loading): 어느 쪽도 그리지 않는다 —
  *   새로고침 직후 게스트 메뉴가 잠깐 보였다가 바뀌는 깜빡임을 막기 위함.
  *
@@ -79,7 +79,7 @@ export default function Header({
             {user ? (
               <>
                 <NavLink className={getMenuLinkClasses} to="/my">
-                  PROFILE
+                  MY PAGE
                 </NavLink>
                 <span className="text-[#555]" aria-hidden="true">
                   |
