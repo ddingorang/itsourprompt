@@ -1,16 +1,14 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { getProblems } from '../features/problem/api';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
-// [임시 데이터] 통계 3종은 아직 백엔드 API가 없어 더미 값이다.
-// 실데이터 연동에는 예: GET /api/me/stats { solved, totalTurns } 같은
+// [임시 데이터] 풀이 수와 전체 턴 수는 아직 백엔드 API가 없어 더미 값이다.
+// 전체 문제 수는 기존 문제 목록 API에서 조회하고, 사용자 통계 연동에는
+// 예: GET /api/me/stats { solved, totalTurns } 같은
 // 신규 API가 필요하다 (S15P11A505-backend/docs/auth-api.md §6 후속 과제 참고).
-const stats = [
-  { label: 'SOLVED', value: '12' },
-  { label: 'TOTAL TURNS', value: '28' },
-];
-
 // [임시 데이터] 활동 내역도 더미다. 실데이터 연동에는 어템프트에 소유자(userId)를
 // 붙인 뒤 GET /api/me/attempts 로 조회하는 후속 작업이 필요하다.
 // 주의: 아래 Link가 activity.id를 problemId로 그대로 쓰고 있으므로,
@@ -42,9 +40,38 @@ function formatMemberSince(createdAt: string): string {
 export default function MyPage() {
   // 이 페이지는 ProtectedRoute로 감싸져 있어 user가 항상 존재한다(비로그인은 /login으로 이동됨).
   const { user } = useAuth();
+  const [totalProblemCount, setTotalProblemCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getProblems()
+      .then((response) => {
+        if (isMounted) {
+          setTotalProblemCount(response.problems.length);
+        }
+      })
+      .catch(() => {
+        // 문제 목록을 불러오지 못하면 대체값을 유지한다.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   if (!user) {
     return null;
   }
+
+  const stats = [
+    {
+      label: 'SOLVED',
+      value: '3',
+      suffix: `/${totalProblemCount ?? '--'}`,
+    },
+    { label: 'TOTAL TURNS', value: '28', suffix: null },
+  ];
 
   return (
     <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
@@ -96,6 +123,11 @@ export default function MyPage() {
                   <strong className="font-mono text-[clamp(32px,5vw,60px)] leading-none tracking-[-0.08em]">
                     {stat.value}
                   </strong>
+                  {stat.suffix && (
+                    <span className="font-mono text-[clamp(15px,2vw,22px)] leading-none tracking-[-0.04em] text-[#777]">
+                      {stat.suffix}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
