@@ -104,11 +104,13 @@ export default function MyPage() {
       <Header />
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-24 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
-        <div className="mb-5 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-          USER PROFILE
-        </div>
+        <section className="flex items-center bg-[#d6ff50] px-[22px] py-5 text-[#090909]">
+          <h1 className="m-0 font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em]">
+            USER PROFILE
+          </h1>
+        </section>
 
-        <section className="grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[#f5f5ef] max-[1200px]:grid-cols-1">
+        <section className="mt-4 grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[#f5f5ef] max-[1200px]:grid-cols-1">
           <div className="flex min-h-[180px] flex-col justify-between border-r border-[#343434] p-[clamp(20px,3vw,32px)] max-[1200px]:min-h-[170px] max-[1200px]:border-r-0 max-[1200px]:border-b">
             <div className="flex items-center gap-5">
               <div
