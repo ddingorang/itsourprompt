@@ -19,21 +19,33 @@ const PAGES_PER_GROUP = 5;
 // 붙인 뒤 GET /api/me/attempts 로 조회하는 후속 작업이 필요하다.
 // 주의: 아래 Link가 activity.id를 problemId로 그대로 쓰고 있으므로,
 // 실데이터 연결 시 problemId를 별도 필드로 분리해야 한다.
-// [페이지네이션 확인용 임시 데이터] 실제 API 연동 전에 제거한다.
-const recentActivity = Array.from({ length: 133 }, (_, index) => ({
-  id: index + 1,
-  date: `2026.07.${String(31 - (index % 31)).padStart(2, '0')}`,
-  title: `연습 문제 ${String(index + 1).padStart(3, '0')}`,
-}));
+const recentActivity = [
+  {
+    id: 1,
+    date: '2026.07.27',
+    title: 'Hello World 출력',
+  },
+  {
+    id: 2,
+    date: '2026.07.25',
+    title: 'SSAFY 출력',
+  },
+  {
+    id: 3,
+    date: '2026.07.22',
+    title: '환영 메시지 출력',
+  },
+];
 
 // [임시 데이터] 사용자별 제출 내역 API가 연결되면 가장 최근 피드백으로 교체한다.
-// [페이지네이션 확인용 임시 데이터] 실제 API 연동 전에 제거한다.
-const recentFeedback = Array.from({ length: 133 }, (_, index) => ({
-  attemptId: index + 1,
-  date: `2026.07.${String(31 - (index % 31)).padStart(2, '0')}`,
-  title: `연습 문제 ${String(index + 1).padStart(3, '0')} 피드백`,
-  summary: `${index + 1}번째 풀이의 최근 피드백 요약입니다. 요구사항과 출력 형식을 구체적으로 작성해보세요.`,
-}));
+const recentFeedback = [
+  {
+    attemptId: 1,
+    date: '2026.07.27',
+    title: 'Hello World 출력',
+    summary: '요구사항과 출력 형식을 더 구체적으로 작성하면 원하는 결과를 빠르게 얻을 수 있습니다.',
+  },
+];
 
 /** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (MEMBER SINCE 표기용) */
 function formatMemberSince(createdAt: string): string {
