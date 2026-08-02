@@ -31,6 +31,14 @@ const recentActivity = [
   },
 ];
 
+// [임시 데이터] 사용자별 제출 내역 API가 연결되면 가장 최근 피드백으로 교체한다.
+const recentFeedback = {
+  attemptId: 1,
+  date: '2026.07.27',
+  title: 'Hello World 출력',
+  summary: '요구사항과 출력 형식을 더 구체적으로 작성하면 원하는 결과를 빠르게 얻을 수 있습니다.',
+};
+
 /** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (MEMBER SINCE 표기용) */
 function formatMemberSince(createdAt: string): string {
   const date = new Date(createdAt);
@@ -166,6 +174,39 @@ export default function MyPage() {
               </Link>
             ))}
           </div>
+        </section>
+
+        <section className="mt-[clamp(52px,8vw,96px)]">
+          <div className="flex items-end justify-between gap-6 pb-5">
+            <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+              RECENT FEEDBACK
+            </div>
+          </div>
+
+          <Link
+            className="group grid grid-cols-[120px_minmax(0,1fr)_42px] items-center gap-6 border-y border-t-[#f5f5ef] border-b-[#343434] px-2 py-7 text-inherit no-underline transition-[background,padding] hover:bg-[#171717] hover:px-4 focus-visible:bg-[#171717] focus-visible:px-4 focus-visible:outline-none max-[680px]:grid-cols-[minmax(0,1fr)_28px] max-[680px]:gap-3"
+            to={`/feedback/${recentFeedback.attemptId}`}
+          >
+            <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
+              {recentFeedback.date}
+            </span>
+
+            <span className="min-w-0">
+              <strong className="block truncate text-[clamp(17px,2vw,22px)] tracking-[-0.02em]">
+                {recentFeedback.title}
+              </strong>
+              <span className="mt-2 block line-clamp-2 text-[13px] leading-[1.7] text-[#777] [word-break:keep-all]">
+                {recentFeedback.summary}
+              </span>
+            </span>
+
+            <span
+              className="justify-self-end text-2xl text-[#d6ff50] transition-transform duration-200 group-hover:translate-x-[3px] group-hover:-translate-y-[3px] group-focus-visible:translate-x-[3px] group-focus-visible:-translate-y-[3px]"
+              aria-hidden="true"
+            >
+              ↗
+            </span>
+          </Link>
         </section>
 
         <p className="mt-5 font-mono text-[10px] leading-5 tracking-[0.04em] text-[#555]">
