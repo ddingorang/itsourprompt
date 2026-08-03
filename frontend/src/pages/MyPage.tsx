@@ -19,6 +19,20 @@ function formatMemberSince(createdAt: string): string {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/** 제출 시각(ISO 문자열)을 "YYYY.MM.DD" 형태로 바꾼다. */
+function formatSubmittedAt(submittedAt: string | null): string {
+  if (!submittedAt) return '--';
+
+  const date = new Date(submittedAt);
+  if (Number.isNaN(date.getTime())) return '--';
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('.');
+}
+
 function normalizePageParam(
   pageParam: string | null,
   totalPages: number,
@@ -50,10 +64,15 @@ export default function MyPage() {
     requestedPage: requestedSolvedPage,
   });
   const sortedSubmittedAttempts = [...submittedAttempts].sort(
-    (attemptA, attemptB) =>
-      sortOrder === 'latest'
-        ? (attemptB.submittedAt ?? '').localeCompare(attemptA.submittedAt ?? '')
-        : (attemptA.submittedAt ?? '').localeCompare(attemptB.submittedAt ?? ''),
+    (attemptA, attemptB) => {
+      if (attemptA.submittedAt === null && attemptB.submittedAt === null) return 0;
+      if (attemptA.submittedAt === null) return 1;
+      if (attemptB.submittedAt === null) return -1;
+
+      return sortOrder === 'latest'
+        ? attemptB.submittedAt.localeCompare(attemptA.submittedAt)
+        : attemptA.submittedAt.localeCompare(attemptB.submittedAt);
+    },
   );
   const visibleSubmittedAttempts = sortedSubmittedAttempts.slice(
     solvedPagination.pageStart,
@@ -281,7 +300,7 @@ export default function MyPage() {
                   {String(solvedPagination.pageStart + index + 1).padStart(2, '0')}
                 </span>
                 <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
-                  {submittedAttempt.submittedAt ?? '--'}
+                  {formatSubmittedAt(submittedAttempt.submittedAt)}
                 </span>
                 <strong className="truncate text-[clamp(15px,2vw,20px)] tracking-[-0.02em]">
                   {submittedAttempt.problemTitle}
