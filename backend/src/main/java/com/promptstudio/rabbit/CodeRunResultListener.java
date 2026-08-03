@@ -5,6 +5,7 @@ import com.promptstudio.attempt.domain.CodeRunStatus;
 import com.promptstudio.attempt.service.CodeRunService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -26,6 +27,8 @@ import org.springframework.stereotype.Component;
 )
 public class CodeRunResultListener {
 
+    static final String MDC_RUN_ID = "runId";
+
     private static final Logger log = LoggerFactory.getLogger(CodeRunResultListener.class);
 
     private final CodeRunService codeRunService;
@@ -42,14 +45,22 @@ public class CodeRunResultListener {
             return;
         }
 
-        codeRunService.applyResult(new CodeRunResult(
-                message.runId(),
-                toStatus(message),
-                message.exitCode(),
-                message.stdout(),
-                message.stderr(),
-                message.durationMs()
-        ));
+        // 요청 스레드가 아니라 requestId가 없다. runId로 code_run 행을 거쳐 어템프트까지 이어진다.
+        // 리스너 컨테이너 스레드는 풀에서 재사용되므로 반드시 지운다 — 안 지우면 다음 메시지에 이전 runId가 붙는다.
+        MDC.put(MDC_RUN_ID, message.runId().toString());
+
+        try {
+            codeRunService.applyResult(new CodeRunResult(
+                    message.runId(),
+                    toStatus(message),
+                    message.exitCode(),
+                    message.stdout(),
+                    message.stderr(),
+                    message.durationMs()
+            ));
+        } finally {
+            MDC.remove(MDC_RUN_ID);
+        }
     }
 
     /**

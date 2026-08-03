@@ -157,7 +157,7 @@ public class AttemptService {
             generated = codeGenerator.generate(
                     ProblemView.from(getProblem(attempt.problemId())), attempt, userPrompt);
         } catch (RuntimeException exception) {
-            recordFailedCalls(attemptId, LlmCallPurpose.CODE, exception);
+            recordFailedCalls(attemptId, LlmCallPurpose.CODE, exception, userPrompt);
 
             throw exception;
         }
@@ -169,16 +169,21 @@ public class AttemptService {
     }
 
     /**
-     * 실패한 호출이 실어 온 사용량을 기록한다. 기록에 실패해도 원 예외를 가리지 않는다 —
+     * 실패한 호출이 실어 온 사용량과 입력을 기록한다. 기록에 실패해도 원 예외를 가리지 않는다 —
      * 클라이언트가 받는 502/504는 그대로 두고 기록 실패만 덧붙인다.
      */
-    private void recordFailedCalls(Long attemptId, LlmCallPurpose purpose, RuntimeException exception) {
+    private void recordFailedCalls(
+            Long attemptId,
+            LlmCallPurpose purpose,
+            RuntimeException exception,
+            String userPrompt
+    ) {
         if (!(exception instanceof LlmUsageCarrier carrier)) {
             return;
         }
 
         try {
-            attemptWriter.recordFailure(attemptId, purpose, carrier.llmCalls(), carrier.errorType());
+            attemptWriter.recordFailure(attemptId, purpose, carrier.llmCalls(), carrier.errorType(), userPrompt);
         } catch (RuntimeException flushFailure) {
             exception.addSuppressed(flushFailure);
         }
@@ -243,7 +248,9 @@ public class AttemptService {
             try {
                 feedback = feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
             } catch (RuntimeException exception) {
-                recordFailedCalls(attemptId, LlmCallPurpose.FEEDBACK, exception);
+                // 피드백 프롬프트는 사용자 입력이 아니라 어댑터 산출물이고, 제출이 되지 않아
+                // 그 입력(problem·turns·baseFiles)은 어템프트에 그대로 남는다.
+                recordFailedCalls(attemptId, LlmCallPurpose.FEEDBACK, exception, null);
 
                 throw exception;
             }

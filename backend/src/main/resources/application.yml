@@ -66,9 +66,29 @@ guest:
     # HTTPS 역프록시 배포 환경에서는 true로 설정한다.
     secure: ${GUEST_COOKIE_SECURE:false}
 
+# 콘솔은 사람이 docker logs로 읽고, 파일은 기계가 jq로 읽는다.
 logging:
+  file:
+    # 이 값이 없으면 file appender 자체가 생기지 않아 아래 structured.format.file이 조용히 무동작한다.
+    name: ${LOG_FILE:/var/log/app/backend.log}
+  structured:
+    format:
+      # console은 지정하지 않아 평문을 유지한다.
+      file: ecs
+    json:
+      context:
+        # MDC·KVP 키가 ECS 예약어(message·log·error·tags 등)와 충돌하면 예외가 나고
+        # 같은 스레드의 다음 로그 한 줄까지 깨진 JSON이 된다. app.* 아래로 내려 원천 차단한다.
+        prefix: app
   pattern:
-    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p ${PID:-} --- [%thread] [req:%X{requestId:-}] %logger{39} : %msg%n"
+    # %msg는 KeyValuePair를 받지 않는다. %kvp를 빼면 콘솔에서 필드가 통째로 사라진다.
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p ${PID:-} --- [%thread] [req:%X{requestId:-}] %logger{39} : %msg %kvp%n"
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 14
+      # 기본값 0B는 무제한이다. 디스크를 묶으려면 반드시 지정해야 한다.
+      total-size-cap: 2GB
 
 app:
   cors:
