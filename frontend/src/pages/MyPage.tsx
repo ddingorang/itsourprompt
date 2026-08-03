@@ -8,7 +8,7 @@ import Header from '../shared/components/Header';
 import Pagination from '../shared/components/Pagination';
 import { usePagination } from '../shared/hooks/usePagination';
 
-const ACTIVITY_ITEMS_PER_PAGE = 5;
+const SOLVED_PROBLEMS_PER_PAGE = 5;
 const PAGES_PER_GROUP = 5;
 
 // [임시 데이터] 풀이 수와 전체 턴 수는 아직 백엔드 API가 없어 더미 값이다.
@@ -17,10 +17,8 @@ const PAGES_PER_GROUP = 5;
 // 신규 API가 필요하다 (S15P11A505-backend/docs/auth-api.md §6 후속 과제 참고).
 // [임시 데이터] 활동 내역도 더미다. 실데이터 연동에는 어템프트에 소유자(userId)를
 // 붙인 뒤 GET /api/me/attempts 로 조회하는 후속 작업이 필요하다.
-// 주의: 아래 Link가 activity.id를 problemId로 그대로 쓰고 있으므로,
-// 실데이터 연결 시 problemId를 별도 필드로 분리해야 한다.
 // [정렬·페이지네이션 확인용 임시 데이터] 실제 API 연동 전에 제거한다.
-const recentActivity = Array.from({ length: 15 }, (_, index) => {
+const solvedProblems = Array.from({ length: 15 }, (_, index) => {
   const day = 13 + index;
 
   return {
@@ -53,32 +51,33 @@ export default function MyPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [totalProblemCount, setTotalProblemCount] = useState<number | null>(null);
-  const activitySectionRef = useRef<HTMLElement>(null);
-  const activityPageParam = searchParams.get('solvedPage');
+  const solvedProblemsSectionRef = useRef<HTMLElement>(null);
+  const solvedPageParam = searchParams.get('solvedPage');
   const sortParam = searchParams.get('sort');
   const sortOrder = sortParam === 'oldest' ? 'oldest' : 'latest';
-  const requestedActivityPage = Number(activityPageParam);
-  const activityPagination = usePagination({
-    itemCount: recentActivity.length,
-    itemsPerPage: ACTIVITY_ITEMS_PER_PAGE,
+  const requestedSolvedPage = Number(solvedPageParam);
+  const solvedPagination = usePagination({
+    itemCount: solvedProblems.length,
+    itemsPerPage: SOLVED_PROBLEMS_PER_PAGE,
     pagesPerGroup: PAGES_PER_GROUP,
-    requestedPage: requestedActivityPage,
+    requestedPage: requestedSolvedPage,
   });
-  const sortedActivities = [...recentActivity].sort((activityA, activityB) =>
+  const sortedSolvedProblems = [...solvedProblems].sort(
+    (solvedProblemA, solvedProblemB) =>
     sortOrder === 'latest'
-      ? activityB.date.localeCompare(activityA.date)
-      : activityA.date.localeCompare(activityB.date),
+      ? solvedProblemB.date.localeCompare(solvedProblemA.date)
+      : solvedProblemA.date.localeCompare(solvedProblemB.date),
   );
-  const visibleActivities = sortedActivities.slice(
-    activityPagination.pageStart,
-    activityPagination.pageStart + ACTIVITY_ITEMS_PER_PAGE,
+  const visibleSolvedProblems = sortedSolvedProblems.slice(
+    solvedPagination.pageStart,
+    solvedPagination.pageStart + SOLVED_PROBLEMS_PER_PAGE,
   );
 
   const moveToPage = (page: number) => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('solvedPage', String(page));
     setSearchParams(nextParams);
-    activitySectionRef.current?.scrollIntoView({
+    solvedProblemsSectionRef.current?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
     });
@@ -110,18 +109,18 @@ export default function MyPage() {
   }, []);
 
   useEffect(() => {
-    const normalizedActivityPage = normalizePageParam(
-      activityPageParam,
-      activityPagination.totalPages,
+    const normalizedSolvedPage = normalizePageParam(
+      solvedPageParam,
+      solvedPagination.totalPages,
     );
     const nextParams = new URLSearchParams(searchParams);
     let shouldReplace = false;
 
     if (
-      normalizedActivityPage !== null &&
-      activityPageParam !== String(normalizedActivityPage)
+      normalizedSolvedPage !== null &&
+      solvedPageParam !== String(normalizedSolvedPage)
     ) {
-      nextParams.set('solvedPage', String(normalizedActivityPage));
+      nextParams.set('solvedPage', String(normalizedSolvedPage));
       shouldReplace = true;
     }
 
@@ -143,8 +142,8 @@ export default function MyPage() {
       setSearchParams(nextParams, { replace: true });
     }
   }, [
-    activityPageParam,
-    activityPagination.totalPages,
+    solvedPageParam,
+    solvedPagination.totalPages,
     searchParams,
     setSearchParams,
     sortParam,
@@ -228,7 +227,7 @@ export default function MyPage() {
 
         <section
           className="mt-[clamp(52px,8vw,96px)]"
-          ref={activitySectionRef}
+          ref={solvedProblemsSectionRef}
         >
           <div className="flex items-end justify-between gap-6 pb-5 max-[640px]:flex-col max-[640px]:items-start">
             <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
@@ -269,24 +268,24 @@ export default function MyPage() {
           </div>
 
           <div className="border-y border-[#f5f5ef]">
-            {visibleActivities.map((activity, index) => (
+            {visibleSolvedProblems.map((solvedProblem, index) => (
               <div
                 className="grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[#343434] px-2 py-3 last:border-b-0 max-[680px]:grid-cols-[38px_minmax(0,1fr)] max-[680px]:gap-3"
-                key={activity.attemptId}
+                key={solvedProblem.attemptId}
               >
                 <span className="font-mono text-[17px] text-[#777]">
-                  {String(activityPagination.pageStart + index + 1).padStart(2, '0')}
+                  {String(solvedPagination.pageStart + index + 1).padStart(2, '0')}
                 </span>
                 <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
-                  {activity.date}
+                  {solvedProblem.date}
                 </span>
                 <strong className="truncate text-[clamp(15px,2vw,20px)] tracking-[-0.02em]">
-                  {activity.title}
+                  {solvedProblem.title}
                 </strong>
                 <div className="flex justify-self-end gap-2 max-[680px]:col-span-2 max-[680px]:justify-self-stretch">
                   <Button
                     className="group hover:!border-[#d6ff50] hover:!bg-[#090909] hover:!text-[#d6ff50] focus-visible:!border-[#d6ff50] focus-visible:!bg-[#090909] focus-visible:!text-[#d6ff50] max-[680px]:flex-1"
-                    to={`/problems/${activity.problemId}`}
+                    to={`/problems/${solvedProblem.problemId}`}
                     variant="secondary"
                   >
                     <span className="text-[14px]">문제 풀기</span>
@@ -299,7 +298,7 @@ export default function MyPage() {
                   </Button>
                   <Button
                     className="group max-[680px]:flex-1"
-                    to={`/attempts/${activity.attemptId}/feedback`}
+                    to={`/attempts/${solvedProblem.attemptId}/feedback`}
                   >
                     <span className="text-[14px]">피드백 보기</span>
                     <span
@@ -314,12 +313,12 @@ export default function MyPage() {
             ))}
           </div>
 
-          {activityPagination.totalPages > 1 && (
+          {solvedPagination.totalPages > 1 && (
             <Pagination
-              currentPage={activityPagination.currentPage}
-              pageGroupEnd={activityPagination.pageGroupEnd}
-              pageGroupStart={activityPagination.pageGroupStart}
-              totalPages={activityPagination.totalPages}
+              currentPage={solvedPagination.currentPage}
+              pageGroupEnd={solvedPagination.pageGroupEnd}
+              pageGroupStart={solvedPagination.pageGroupStart}
+              totalPages={solvedPagination.totalPages}
               onPageChange={moveToPage}
             />
           )}
