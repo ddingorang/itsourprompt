@@ -285,19 +285,29 @@ export default function MyPage() {
                 </strong>
                 <div className="flex justify-self-end gap-2 max-[680px]:col-span-2 max-[680px]:justify-self-stretch">
                   <Button
-                    className="max-[680px]:flex-1"
+                    className="group hover:!border-[#d6ff50] hover:!bg-[#090909] hover:!text-[#d6ff50] focus-visible:!border-[#d6ff50] focus-visible:!bg-[#090909] focus-visible:!text-[#d6ff50] max-[680px]:flex-1"
                     to={`/problems/${activity.problemId}`}
                     variant="secondary"
                   >
                     <span className="text-[14px]">문제 풀기</span>
-                    <span className="text-[14px]" aria-hidden="true">↗</span>
+                    <span
+                      className="text-[14px] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
+                      aria-hidden="true"
+                    >
+                      ↗
+                    </span>
                   </Button>
                   <Button
-                    className="max-[680px]:flex-1"
+                    className="group max-[680px]:flex-1"
                     to={`/attempts/${activity.attemptId}/feedback`}
                   >
                     <span className="text-[14px]">피드백 보기</span>
-                    <span className="text-[14px]" aria-hidden="true">↗</span>
+                    <span
+                      className="text-[14px] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
+                      aria-hidden="true"
+                    >
+                      ↗
+                    </span>
                   </Button>
                 </div>
               </div>
