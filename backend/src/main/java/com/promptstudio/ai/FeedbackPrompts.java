@@ -114,7 +114,7 @@ final class FeedbackPrompts {
                 - `AI에 맡기고 다음 턴에서 확인하셨어요`: the prompt did not, but the next turn shows the choice was reviewed.
                 - `AI에 맡기고 확인하지 않으셨어요`: neither the prompt nor the next turn mentions it.
                 - `이 턴에는 판단할 만한 결정 지점이 없었어요`: the turn settled nothing the specification left open.
-                The turn with the highest turn number is the last turn. The last turn takes `이 턴이 마지막이라, AI가 정한 것을 확인하셨는지는 알 수 없어요` instead of the four above — its evidence would be a next turn that does not exist.
+                The turn with the highest turn number is the last turn, and only that one turn. The last turn takes `이 턴이 마지막이라, AI가 정한 것을 확인하셨는지는 알 수 없어요` instead of the four above — its evidence would be a next turn that does not exist. When the session has one turn, that turn is the last turn and takes this sentence; when it has five, only turn 5 does.
                 Never state the user's intent as fact in the second judgement. Say what the prompt and the next turn actually carried, then say what to write next time.
 
                 ## 다음 프롬프트 쓰기
