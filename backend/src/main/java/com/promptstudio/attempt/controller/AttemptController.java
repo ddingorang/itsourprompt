@@ -173,7 +173,7 @@ public class AttemptController {
             ),
             @ApiResponse(
                     responseCode = "409",
-                    description = "같은 Idempotency-Key의 요청이 처리 중이거나, 이미 제출된 어템프트이거나, 피드백 생성이 진행 중",
+                    description = "같은 Idempotency-Key의 요청 처리 중, 이미 제출된 어템프트, 피드백 생성 진행 중 또는 다른 창의 AI 코드 생성 진행 중",
                     content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
             ),
             @ApiResponse(
