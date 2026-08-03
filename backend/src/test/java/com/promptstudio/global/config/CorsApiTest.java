@@ -45,7 +45,9 @@ class CorsApiTest extends DatabaseTest {
                         .header("Access-Control-Request-Headers", "content-type,idempotency-key"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", ALLOWED_ORIGIN))
-                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
+                // 노출하지 않으면 브라우저 JS가 추적 id를 읽지 못한다.
+                .andExpect(header().string("Access-Control-Expose-Headers", "X-Request-Id"));
     }
 
     @Test

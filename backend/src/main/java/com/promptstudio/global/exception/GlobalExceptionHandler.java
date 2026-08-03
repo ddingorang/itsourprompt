@@ -20,8 +20,11 @@ import com.promptstudio.user.exception.DuplicateEmailException;
 import com.promptstudio.user.exception.DuplicateUsernameException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -32,6 +35,8 @@ import org.slf4j.LoggerFactory;
 public class GlobalExceptionHandler {
 
     private static final String AI_GENERATION_FAILED_MESSAGE = "AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+    private static final String CODE_GENERATION_TIMEOUT_MESSAGE = "AI 코드 생성 요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.";
+    private static final String FEEDBACK_TIMEOUT_MESSAGE = "AI 피드백 생성 요청 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.";
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ProblemNotFoundException.class)
@@ -218,6 +223,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 본문을 읽지 못한 요청(깨진 JSON 등). 다른 표준 웹 예외와 달리 이 예외는 ErrorResponse를 구현하지 않아
+     * catch-all의 가드에 걸리지 않으므로 전용 핸들러가 필요하다.
+     *
+     * <p>예외 메시지는 문제가 된 입력 조각을 그대로 인용하므로 응답에도 로그에도 싣지 않는다.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnreadableBody(HttpMessageNotReadableException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "invalid-request",
+                "요청 값이 올바르지 않습니다."
+        );
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    /**
      * AI 생성 실패는 같은 요청을 다시 보내면 통과하는 경우가 많다. 실패 유형은 내부 로그에만 남기고,
      * 응답에는 재시도 안내만 싣는다.
      */
@@ -233,11 +254,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
     }
 
+    /**
+     * 타임아웃 문구는 예외 메시지가 아니라 고정 상수를 쓴다 — FeedbackTimeoutException의 메시지가
+     * 영문이라 그대로 내보내면 사용자에게 영문이 나간다. code는 프런트의 재시도 분기가 걸려 있어 그대로 둔다.
+     */
     @ExceptionHandler(CodeGenerationTimeoutException.class)
     public ResponseEntity<ApiErrorResponse> handleCodeGenerationTimeout(CodeGenerationTimeoutException exception) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "run-timeout",
-                exception.getMessage()
+                CODE_GENERATION_TIMEOUT_MESSAGE
         );
 
         return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(response);
@@ -247,7 +272,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleFeedbackTimeout(FeedbackTimeoutException exception) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "feedback-timeout",
-                exception.getMessage()
+                FEEDBACK_TIMEOUT_MESSAGE
         );
 
         return ResponseEntity.status(HttpStatus.GATEWAY_TIMEOUT).body(response);
@@ -255,6 +280,26 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpectedException(Exception exception) {
+        // Spring이 이미 상태 코드를 아는 표준 웹 예외(404·405·415 등)는 그 상태 코드를 그대로 쓰고
+        // 스택트레이스를 남기지 않는다 — 클라이언트 잘못이지 버그가 아니다. 가드가 없으면 이 요청들이
+        // 전부 500 + ERROR로 쌓여 정작 진짜 에러를 찾을 수 없게 된다.
+        //
+        // 5xx를 내는 ErrorResponse 구현체(AsyncRequestTimeoutException 503 등)는 여기서 걸러
+        // 아래 ERROR 경로로 보낸다. 예외를 다시 던지지 않는 이유는 /error 재디스패치로 응답 본문이
+        // ApiErrorResponse에서 스프링 기본 오류 본문으로 바뀌기 때문이다.
+        if (exception instanceof ErrorResponse errorResponse
+                && errorResponse.getStatusCode().is4xxClientError()) {
+            HttpStatusCode status = errorResponse.getStatusCode();
+
+            // 예외 메시지에는 사용자가 보낸 입력 조각이 인용될 수 있어 클래스 이름만 남긴다.
+            log.atWarn()
+                    .addKeyValue("status", status.value())
+                    .addKeyValue("exceptionType", exception.getClass().getSimpleName())
+                    .log("표준 웹 예외를 상태 코드로 변환합니다");
+
+            return ResponseEntity.status(status).body(new ApiErrorResponse(codeFor(status), messageFor(status)));
+        }
+
         log.error("Unexpected API exception", exception);
 
         ApiErrorResponse response = new ApiErrorResponse(
@@ -263,5 +308,29 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    private String codeFor(HttpStatusCode status) {
+        return switch (status.value()) {
+            case 404 -> "not-found";
+            case 405 -> "method-not-allowed";
+            case 406 -> "not-acceptable";
+            case 415 -> "unsupported-media-type";
+            default -> "invalid-request";
+        };
+    }
+
+    /**
+     * 예외 메시지 대신 상태별 고정 문구를 쓴다. 프런트는 모르는 code를 unknown-error로 받고
+     * message를 그대로 보여주므로 이 표가 늘어도 프런트 변경이 없다.
+     */
+    private String messageFor(HttpStatusCode status) {
+        return switch (status.value()) {
+            case 404 -> "요청하신 경로를 찾을 수 없습니다.";
+            case 405 -> "지원하지 않는 요청 메서드입니다.";
+            case 406 -> "지원하지 않는 응답 형식입니다.";
+            case 415 -> "지원하지 않는 요청 형식입니다.";
+            default -> "요청 값이 올바르지 않습니다.";
+        };
     }
 }

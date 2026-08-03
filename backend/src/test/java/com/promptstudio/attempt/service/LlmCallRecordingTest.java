@@ -114,6 +114,8 @@ class LlmCallRecordingTest extends DatabaseTest {
         assertThat(marker.model()).isNull();
         assertThat(marker.inputTokens()).isNull();
         assertThat(marker.cost()).isNull();
+        // 턴이 저장되지 않아 사용자 입력이 남을 곳이 여기뿐이다.
+        assertThat(marker.userPrompt()).isEqualTo("Hello 출력해줘");
         assertThat(attemptService.getAttempt(started.id(), ownerId).turns()).isEmpty();
     }
 
@@ -157,6 +159,10 @@ class LlmCallRecordingTest extends DatabaseTest {
                         tuple(1, LlmCallStatus.SUCCESS, null),
                         tuple(2, LlmCallStatus.FAILED, "invalid-json")
                 );
+        // 피드백 프롬프트는 사용자 입력이 아니고 그 입력이 어템프트에 그대로 남아 있어 기록하지 않는다.
+        assertThat(purpose(started.id(), LlmCallPurpose.FEEDBACK))
+                .extracting(AttemptLlmCall::userPrompt)
+                .containsOnlyNulls();
         assertThat(attemptService.getAttempt(started.id(), ownerId).status()).isEqualTo(AttemptStatus.IN_PROGRESS);
     }
 

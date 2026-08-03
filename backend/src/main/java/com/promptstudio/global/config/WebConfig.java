@@ -1,5 +1,6 @@
 package com.promptstudio.global.config;
 
+import com.promptstudio.global.logging.RequestLogFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
@@ -38,6 +39,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins(allowedOrigins.toArray(String[]::new))
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
+                // 이 줄이 없으면 브라우저 JS가 X-Request-Id를 읽지 못해 사용자가 문의할 때 추적 id를 말할 수 없다.
+                .exposedHeaders(RequestLogFilter.REQUEST_ID_HEADER)
                 // 세션 쿠키(JSESSIONID)를 주고받아야 하므로 필요하다.
                 // 이 값이 true면 와일드카드 오리진을 쓸 수 없어 오리진을 정확히 열거한다.
                 .allowCredentials(true);

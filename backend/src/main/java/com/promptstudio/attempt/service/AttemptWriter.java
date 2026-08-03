@@ -89,12 +89,19 @@ class AttemptWriter {
     /**
      * 실패로 턴이 저장되지 않아도 이미 끝난 호출의 토큰은 과금된다 — turn_ordinal 없이 남기고
      * 실패 자체는 마커 1행으로 표시한다. 호출자의 실패와 별개 트랜잭션이라 원 예외가 롤백해도 남는다.
+     * 마커 행에는 턴이 저장되지 않아 어디에도 남지 않는 사용자 입력도 함께 싣는다.
      */
     @Transactional
-    void recordFailure(Long attemptId, LlmCallPurpose purpose, List<LlmCallUsage> calls, String errorType) {
+    void recordFailure(
+            Long attemptId,
+            LlmCallPurpose purpose,
+            List<LlmCallUsage> calls,
+            String errorType,
+            String userPrompt
+    ) {
         List<AttemptLlmCall> rows = new ArrayList<>(successCalls(attemptId, null, purpose, calls));
 
-        rows.add(AttemptLlmCall.failed(attemptId, purpose, calls.size() + 1, errorType));
+        rows.add(AttemptLlmCall.failed(attemptId, purpose, calls.size() + 1, errorType, userPrompt));
 
         llmCallRepository.saveAll(rows);
     }

@@ -74,6 +74,16 @@ public class AttemptLlmCall {
     @Column(name = "error_type")
     private String errorType;
 
+    /**
+     * 실패한 CODE 호출의 사용자 프롬프트. 성공 행은 턴에 입력이 남으므로 null이다.
+     *
+     * <p>FEEDBACK 실패 행이 null인 것은 기록 누락이 아니다 — 피드백 프롬프트는 사용자가 타이핑한 값이 아니라
+     * 어댑터가 problem과 attempt로 만들어내는 산출물이고, 실패하면 제출이 되지 않아 그 입력이
+     * 어템프트에 그대로 남아 있다.
+     */
+    @Column(name = "user_prompt", columnDefinition = "text")
+    private String userPrompt;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -110,13 +120,20 @@ public class AttemptLlmCall {
     }
 
     /**
-     * 응답을 받지 못한 호출은 토큰을 알 수 없다 — 실패 사실과 분류만 남긴다.
+     * 응답을 받지 못한 호출은 토큰을 알 수 없다 — 실패 사실과 분류, 그리고 어디에도 남지 않는 입력만 남긴다.
      */
-    public static AttemptLlmCall failed(Long attemptId, LlmCallPurpose purpose, int seq, String errorType) {
+    public static AttemptLlmCall failed(
+            Long attemptId,
+            LlmCallPurpose purpose,
+            int seq,
+            String errorType,
+            String userPrompt
+    ) {
         AttemptLlmCall call = new AttemptLlmCall(attemptId, null, purpose, seq);
 
         call.status = LlmCallStatus.FAILED;
         call.errorType = errorType;
+        call.userPrompt = userPrompt;
 
         return call;
     }
@@ -175,6 +192,10 @@ public class AttemptLlmCall {
 
     public String errorType() {
         return errorType;
+    }
+
+    public String userPrompt() {
+        return userPrompt;
     }
 
     public Instant createdAt() {
