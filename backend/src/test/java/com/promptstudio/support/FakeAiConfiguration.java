@@ -65,6 +65,8 @@ public class FakeAiConfiguration {
         private String receivedPrompt;
         private RuntimeException nextFailure;
         private GeneratedCode nextResult = DEFAULT_RESULT;
+        private CountDownLatch nextEntered;
+        private CountDownLatch nextGate;
 
         @Override
         public GeneratedCode generate(ProblemView problem, AttemptView attempt, String userPrompt) {
@@ -72,6 +74,8 @@ public class FakeAiConfiguration {
             this.receivedProblem = problem;
             this.receivedAttempt = attempt;
             this.receivedPrompt = userPrompt;
+
+            block();
 
             if (nextFailure != null) {
                 RuntimeException failure = nextFailure;
@@ -88,6 +92,31 @@ public class FakeAiConfiguration {
          */
         public void failNextWith(RuntimeException failure) {
             this.nextFailure = failure;
+        }
+
+        /** 다음 코드 생성 한 번을 gate가 열릴 때까지 멈춘다. */
+        public void blockNextWith(CountDownLatch entered, CountDownLatch gate) {
+            this.nextEntered = entered;
+            this.nextGate = gate;
+        }
+
+        private void block() {
+            CountDownLatch entered = nextEntered;
+            CountDownLatch gate = nextGate;
+            nextEntered = null;
+            nextGate = null;
+
+            if (entered == null || gate == null) {
+                return;
+            }
+
+            entered.countDown();
+            try {
+                gate.await();
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Fake code generation was interrupted", exception);
+            }
         }
 
         /**
@@ -135,6 +164,8 @@ public class FakeAiConfiguration {
             receivedPrompt = null;
             nextFailure = null;
             nextResult = DEFAULT_RESULT;
+            nextEntered = null;
+            nextGate = null;
         }
     }
 

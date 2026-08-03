@@ -9,6 +9,7 @@ import com.promptstudio.attempt.domain.LlmCallPurpose;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
+import com.promptstudio.attempt.exception.CodeGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
 import com.promptstudio.problem.exception.InactiveProblemException;
@@ -21,17 +22,22 @@ import com.promptstudio.problem.domain.ProblemView;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.problem.repository.ProblemRepository;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.function.Supplier;
 
 @Service
 public class AttemptService {
 
+    private static final Logger log = LoggerFactory.getLogger(AttemptService.class);
+
     private final ProblemRepository problemRepository;
     private final AttemptQueryRepository attemptQueryRepository;
     private final AttemptWriter attemptWriter;
     private final IdempotencyGuard idempotencyGuard;
     private final FeedbackGenerationGuard feedbackGenerationGuard;
+    private final CodeGenerationGuard codeGenerationGuard;
     private final CodeGenerator codeGenerator;
     private final FeedbackGenerator feedbackGenerator;
 
@@ -41,6 +47,7 @@ public class AttemptService {
             AttemptWriter attemptWriter,
             IdempotencyGuard idempotencyGuard,
             FeedbackGenerationGuard feedbackGenerationGuard,
+            CodeGenerationGuard codeGenerationGuard,
             CodeGenerator codeGenerator,
             FeedbackGenerator feedbackGenerator
     ) {
@@ -49,6 +56,7 @@ public class AttemptService {
         this.attemptWriter = attemptWriter;
         this.idempotencyGuard = idempotencyGuard;
         this.feedbackGenerationGuard = feedbackGenerationGuard;
+        this.codeGenerationGuard = codeGenerationGuard;
         this.codeGenerator = codeGenerator;
         this.feedbackGenerator = feedbackGenerator;
     }
@@ -111,6 +119,28 @@ public class AttemptService {
     }
 
     private AttemptView generateTurn(Long attemptId, AttemptOwner owner, String userPrompt, String idempotencyKey) {
+        if (!codeGenerationGuard.tryAcquire(attemptId)) {
+            log.warn("AI code generation rejected because another request is in progress | attemptId={}", attemptId);
+            throw new CodeGenerationInProgressException(attemptId);
+        }
+
+        long startedAt = System.nanoTime();
+        log.info("AI code generation started | attemptId={}", attemptId);
+
+        try {
+            AttemptView result = generateTurnWhileGuarded(attemptId, owner, userPrompt, idempotencyKey);
+            log.info("AI code generation completed | attemptId={} elapsedMs={}", attemptId, elapsedMillis(startedAt));
+            return result;
+        } catch (RuntimeException exception) {
+            log.warn("AI code generation failed | attemptId={} elapsedMs={} exceptionType={}",
+                    attemptId, elapsedMillis(startedAt), exception.getClass().getSimpleName(), exception);
+            throw exception;
+        } finally {
+            codeGenerationGuard.release(attemptId);
+        }
+    }
+
+    private AttemptView generateTurnWhileGuarded(Long attemptId, AttemptOwner owner, String userPrompt, String idempotencyKey) {
         if (feedbackGenerationGuard.isGenerating(attemptId)) {
             throw new FeedbackGenerationInProgressException(attemptId);
         }
@@ -188,6 +218,11 @@ public class AttemptService {
     }
 
     public AttemptView submit(Long attemptId, AttemptOwner owner) {
+        if (codeGenerationGuard.isGenerating(attemptId)) {
+            log.warn("Feedback generation rejected because AI code generation is in progress | attemptId={}", attemptId);
+            throw new CodeGenerationInProgressException(attemptId);
+        }
+
         if (!feedbackGenerationGuard.tryAcquire(attemptId)) {
             throw new FeedbackGenerationInProgressException(attemptId);
         }
@@ -242,5 +277,9 @@ public class AttemptService {
             return attemptQueryRepository.findByIdAndUserId(attemptId, owner.userId());
         }
         return attemptQueryRepository.findByIdAndGuestSessionId(attemptId, owner.guestSessionId());
+    }
+
+    private long elapsedMillis(long startedAt) {
+        return java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
     }
 }

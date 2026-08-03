@@ -6,6 +6,7 @@ import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
+import com.promptstudio.attempt.exception.CodeGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
 import com.promptstudio.problem.exception.InactiveProblemException;
@@ -261,6 +262,33 @@ class AttemptServiceTest extends DatabaseTest {
         assertThatThrownBy(() -> attemptService.submit(999L, ownerId))
                 .isInstanceOf(AttemptNotFoundException.class)
                 .hasMessage("어템프트 ID 999를 찾을 수 없습니다.");
+    }
+
+    @Test
+    void blocks_a_second_code_generation_for_the_same_attempt_until_the_first_finishes() throws Exception {
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch gate = new CountDownLatch(1);
+        codeGenerator.blockNextWith(entered, gate);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        try {
+            Future<AttemptView> first = executor.submit(
+                    () -> attemptService.addTurn(started.id(), ownerId, "first request"));
+            assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+
+            assertThatThrownBy(() -> attemptService.addTurn(started.id(), ownerId, "second request"))
+                    .isInstanceOf(CodeGenerationInProgressException.class)
+                    .hasMessage("다른 창에서 이 문제의 AI 요청을 처리하고 있습니다. 잠시 후 새로고침 후 다시 시도해 주시기 바랍니다.");
+            assertThat(codeGenerator.invocationCount()).isEqualTo(1);
+
+            gate.countDown();
+
+            assertThat(first.get(5, TimeUnit.SECONDS).turns()).hasSize(1);
+            assertThat(attemptService.addTurn(started.id(), ownerId, "second request").turns()).hasSize(2);
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     private Problem newProblem() {

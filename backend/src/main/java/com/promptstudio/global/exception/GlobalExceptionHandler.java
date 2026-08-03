@@ -3,6 +3,7 @@ package com.promptstudio.global.exception;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
+import com.promptstudio.attempt.exception.CodeGenerationInProgressException;
 import com.promptstudio.attempt.exception.CodeRunInProgressException;
 import com.promptstudio.attempt.exception.CodeRunNotFoundException;
 import com.promptstudio.attempt.exception.DuplicateRequestException;
@@ -109,6 +110,18 @@ public class GlobalExceptionHandler {
     ) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "feedback-in-progress",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(CodeGenerationInProgressException.class)
+    public ResponseEntity<ApiErrorResponse> handleCodeGenerationInProgress(
+            CodeGenerationInProgressException exception
+    ) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "code-generation-in-progress",
                 exception.getMessage()
         );
 
