@@ -51,19 +51,6 @@ interface FileTreeNode {
   deleted?: boolean;
 }
 
-interface TestCaseResult {
-  id: number;
-  passed: boolean;
-}
-
-const mockTestResults: TestCaseResult[] = [
-  { id: 1, passed: true },
-  { id: 2, passed: true },
-  { id: 3, passed: false },
-  { id: 4, passed: true },
-  { id: 5, passed: true },
-];
-
 const labelClasses =
   'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
 
@@ -246,9 +233,6 @@ export default function ProblemDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGrading, setIsGrading] = useState(false);
-  const [testResults, setTestResults] = useState<TestCaseResult[] | null>(null);
-  const [gradedVersion, setGradedVersion] = useState<string | null>(null);
   const isRunPendingRef = useRef(false);
   /**
    * 실패한 턴 요청의 Idempotency-Key를 기억한다. 같은 프롬프트로 다시 실행하면
@@ -256,7 +240,6 @@ export default function ProblemDetailPage() {
    * 돌려준다(AI 호출이 수 분 걸리므로 중복 호출 비용이 크다).
    */
   const pendingRunRef = useRef<{ prompt: string; key: string } | null>(null);
-  const gradingTimeoutRef = useRef<number | null>(null);
   /** 진행 중인 로드. 새 로드가 시작되면 이전 것을 끊어 마지막 응답만 화면에 남긴다. */
   const loadControllerRef = useRef<AbortController | null>(null);
   /**
@@ -274,10 +257,6 @@ export default function ProblemDetailPage() {
   const totalTokenUsage =
     attemptTokenUsage ??
     turnTokenUsages.reduce<number>((total, usage) => total + (usage ?? 0), 0);
-  const passedTestCount = testResults?.filter((result) => result.passed).length ?? 0;
-  const testPassRate = testResults?.length
-    ? (passedTestCount / testResults.length) * 100
-    : 0;
   const isSubmitted = attempt?.status === 'SUBMITTED';
   const canSubmit = turns.length > 0 && !isSubmitted;
 
@@ -298,13 +277,6 @@ export default function ProblemDetailPage() {
     const { signal } = controller;
 
     setIsLoading(true);
-    if (gradingTimeoutRef.current !== null) {
-      window.clearTimeout(gradingTimeoutRef.current);
-      gradingTimeoutRef.current = null;
-    }
-    setTestResults(null);
-    setGradedVersion(null);
-    setIsGrading(false);
 
     try {
       const loadedAttempt =
@@ -410,9 +382,6 @@ export default function ProblemDetailPage() {
 
     return () => {
       loadControllerRef.current?.abort();
-      if (gradingTimeoutRef.current !== null) {
-        window.clearTimeout(gradingTimeoutRef.current);
-      }
     };
   }, [isAttemptRoute, routeAttemptId, routeProblemId]);
 
@@ -532,25 +501,6 @@ export default function ProblemDetailPage() {
     }
 
     void handleRun();
-  };
-
-  const handleDetailTabClick = (tab: DetailTab) => {
-    setActiveTab(tab);
-
-    if (tab !== 'test' || turns.length === 0 || isGrading) return;
-
-    const currentVersion = `${attempt?.id ?? 'new'}:${turns.length}`;
-    if (gradedVersion === currentVersion && testResults) return;
-
-    setIsGrading(true);
-
-    // TODO: 채점 API가 추가되면 임시 지연과 mockTestResults를 API 호출로 교체한다.
-    gradingTimeoutRef.current = window.setTimeout(() => {
-      setTestResults(mockTestResults);
-      setGradedVersion(currentVersion);
-      setIsGrading(false);
-      gradingTimeoutRef.current = null;
-    }, 700);
   };
 
   const handleSubmit = async () => {
@@ -802,7 +752,7 @@ export default function ProblemDetailPage() {
                       : 'text-[#8b8b8b] hover:text-[#b8b8b8]',
                   ].join(' ')}
                   key={tab}
-                  onClick={() => handleDetailTabClick(tab)}
+                  onClick={() => setActiveTab(tab)}
                   role="tab"
                   type="button"
                 >
@@ -898,71 +848,6 @@ export default function ProblemDetailPage() {
               ) : activeTab === 'logs' ? (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
                   실행한 프롬프트가 없습니다.
-                </div>
-              ) : isGrading ? (
-                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#a3a3a3]">
-                  테스트 케이스를 채점하고 있습니다…
-                </div>
-              ) : turns.length === 0 ? (
-                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
-                  프롬프트 실행 후 테스트할 수 있습니다.
-                </div>
-              ) : testResults ? (
-                <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif]">
-                  <div className="border border-[#3f3f3f] bg-[#111] px-4 py-3">
-                    <div className="flex items-end justify-between gap-4">
-                      <div>
-                        <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[#777]">
-                          TEST RESULT
-                        </p>
-                        <h2 className="mt-1 mb-0 text-[12px] text-[#f5f5ef]">
-                          테스트 케이스 채점 결과
-                        </h2>
-                      </div>
-                      <div className="flex shrink-0 items-baseline gap-1 text-right leading-none">
-                        <strong className="font-mono text-xl text-[#d6ff50]">
-                          {passedTestCount}/{testResults.length}
-                        </strong>
-                        <span className="text-[10px] leading-none text-[#8b8b8b]">
-                          개 통과
-                        </span>
-                      </div>
-                    </div>
-
-                    <div
-                      aria-label={`테스트 케이스 ${testResults.length}개 중 ${passedTestCount}개 통과`}
-                      className="mt-4 h-1.5 overflow-hidden bg-[#303030]"
-                      role="progressbar"
-                      aria-valuemax={testResults.length}
-                      aria-valuemin={0}
-                      aria-valuenow={passedTestCount}
-                    >
-                      <div
-                        className="h-full bg-[#d6ff50]"
-                        style={{ width: `${testPassRate}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-3 grid border-x border-t border-[#343434]">
-                    {testResults.map((result) => (
-                      <div
-                        className="flex min-h-10 items-center justify-between border-b border-[#343434] px-3"
-                        key={result.id}
-                      >
-                        <span className="text-[11px] text-[#aaa]">
-                          TEST CASE {String(result.id).padStart(2, '0')}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold tracking-[0.08em] ${
-                            result.passed ? 'text-[#d6ff50]' : 'text-[#ff786b]'
-                          }`}
-                        >
-                          {result.passed ? 'PASSED' : 'FAILED'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               ) : (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
