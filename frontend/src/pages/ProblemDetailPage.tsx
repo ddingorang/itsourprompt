@@ -77,12 +77,6 @@ const changeColorClasses: Record<ChangeType, string> = {
   DELETED: 'text-[#ff786b]',
 };
 
-const toolLabels: Record<string, string> = {
-  edit_file: 'EDIT',
-  list_files: 'LIST',
-  read_file: 'READ',
-};
-
 interface ErrorInfo {
   message: string;
   status?: number;
@@ -860,7 +854,7 @@ export default function ProblemDetailPage() {
                       className="border-l-2 border-[#d6ff50] pl-3"
                       key={`turn-${index + 1}`}
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 font-mono text-[9px] font-bold">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 font-mono text-[11px] font-bold">
                         <span className="text-[#d6ff50]">
                           TURN {String(index + 1).padStart(2, '0')}
                         </span>
@@ -885,23 +879,6 @@ export default function ProblemDetailPage() {
                       <p className="m-0 whitespace-pre-wrap text-[11px] leading-[1.6] text-[#8f8f8f]">
                         {turn.aiResponse}
                       </p>
-
-                      {turn.toolCalls.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[9px] text-[#767676]">
-                          {turn.toolCalls.map((toolCall, toolIndex) => (
-                            <span
-                              className="border border-[#3f3f3f] px-1.5 py-0.5"
-                              key={`tool-${index}-${toolIndex}`}
-                              title={toolCall.path ?? toolCall.tool}
-                            >
-                              {toolLabels[toolCall.tool] ?? toolCall.tool}
-                              {toolCall.path
-                                ? ` ${toolCall.path.split('/').pop()}`
-                                : ''}
-                            </span>
-                          ))}
-                        </div>
-                      )}
 
                       {turn.changedFiles.length > 0 && (
                         <div className="mt-1.5 grid gap-0.5 font-mono text-[9px]">
