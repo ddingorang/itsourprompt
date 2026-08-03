@@ -121,6 +121,15 @@ export async function addMockTurn(attemptId: number, prompt: string): Promise<At
   }
 
   const turnNumber = attempt.turns.length + 1;
+  const turnUsage = {
+    inputTokens: 2500 + (turnNumber - 1) * 320,
+    uncachedInputTokens: 1500 + (turnNumber - 1) * 200,
+    cachedInputTokens: 1000 + (turnNumber - 1) * 120,
+    outputTokens: 500 + (turnNumber - 1) * 80,
+    reasoningTokens: 120 + (turnNumber - 1) * 20,
+    latencyMs: 260 + (turnNumber - 1) * 35,
+    cost: 0.003 + (turnNumber - 1) * 0.0004,
+  };
   const addedFile = {
     path: `src/main/java/Post${turnNumber}.java`,
     content: `package com.example.board;
@@ -144,15 +153,7 @@ public record Post${turnNumber}(Long id, String title, String content) {}`,
       { tool: 'read_file', path: 'src/main/java/App.java' },
       { tool: 'edit_file', path: addedFile.path },
     ],
-    usage: {
-      inputTokens: 2500 + (turnNumber - 1) * 320,
-      uncachedInputTokens: 1500 + (turnNumber - 1) * 200,
-      cachedInputTokens: 1000 + (turnNumber - 1) * 120,
-      outputTokens: 500 + (turnNumber - 1) * 80,
-      reasoningTokens: 120 + (turnNumber - 1) * 20,
-      latencyMs: 260 + (turnNumber - 1) * 35,
-      cost: 0.003 + (turnNumber - 1) * 0.0004,
-    },
+    usage: turnUsage,
   };
 
   const updated: Attempt = {
@@ -160,16 +161,16 @@ public record Post${turnNumber}(Long id, String title, String content) {}`,
     files: [...attempt.files, addedFile],
     turns: [...attempt.turns, turn],
     usage: {
-      inputTokens: (attempt.usage?.inputTokens ?? 0) + turn.usage!.inputTokens,
+      inputTokens: (attempt.usage?.inputTokens ?? 0) + turnUsage.inputTokens,
       uncachedInputTokens:
-        (attempt.usage?.uncachedInputTokens ?? 0) + turn.usage!.uncachedInputTokens,
+        (attempt.usage?.uncachedInputTokens ?? 0) + turnUsage.uncachedInputTokens,
       cachedInputTokens:
-        (attempt.usage?.cachedInputTokens ?? 0) + turn.usage!.cachedInputTokens,
-      outputTokens: (attempt.usage?.outputTokens ?? 0) + turn.usage!.outputTokens,
+        (attempt.usage?.cachedInputTokens ?? 0) + turnUsage.cachedInputTokens,
+      outputTokens: (attempt.usage?.outputTokens ?? 0) + turnUsage.outputTokens,
       reasoningTokens:
-        (attempt.usage?.reasoningTokens ?? 0) + turn.usage!.reasoningTokens,
-      latencyMs: (attempt.usage?.latencyMs ?? 0) + turn.usage!.latencyMs,
-      cost: (attempt.usage?.cost ?? 0) + turn.usage!.cost,
+        (attempt.usage?.reasoningTokens ?? 0) + turnUsage.reasoningTokens,
+      latencyMs: (attempt.usage?.latencyMs ?? 0) + turnUsage.latencyMs,
+      cost: (attempt.usage?.cost ?? 0) + turnUsage.cost,
       rounds: (attempt.usage?.rounds ?? 0) + 1,
     },
   };

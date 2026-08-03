@@ -32,18 +32,18 @@ export interface ChangedFile {
 
 /** 한 번의 프롬프트 실행에서 발생한 LLM 사용량. */
 export interface TokenUsage {
-  inputTokens: number;
-  uncachedInputTokens: number;
-  cachedInputTokens: number;
-  outputTokens: number;
-  reasoningTokens: number;
-  latencyMs: number;
-  cost: number;
+  inputTokens: number | null;
+  uncachedInputTokens?: number | null;
+  cachedInputTokens: number | null;
+  outputTokens: number | null;
+  reasoningTokens: number | null;
+  latencyMs?: number | null;
+  cost: number | null;
 }
 
 /** 어템프트 전체 사용량. rounds는 전체 LLM 호출 횟수다. */
 export interface AttemptTokenUsage extends TokenUsage {
-  rounds: number;
+  rounds?: number;
 }
 
 /** 어템프트의 한 턴 기록. */
@@ -52,7 +52,7 @@ export interface Turn {
   aiResponse: string;
   changedFiles: ChangedFile[];
   toolCalls: ToolCall[];
-  usage?: TokenUsage;
+  usage?: TokenUsage | null;
 }
 
 /** 어템프트 전체 상태. 생성/조회/턴 추가가 모두 이 형태를 반환한다. */
@@ -65,7 +65,7 @@ export interface Attempt {
   files: RepositoryFile[];
   turns: Turn[];
   status: AttemptStatus;
-  usage?: AttemptTokenUsage;
+  usage?: AttemptTokenUsage | null;
 }
 
 export interface CreateAttemptRequest {
