@@ -221,7 +221,6 @@ export default function ProblemDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
   const isRunPendingRef = useRef(false);
   /**
    * 실패한 턴 요청의 Idempotency-Key를 기억한다. 같은 프롬프트로 다시 실행하면
@@ -366,15 +365,6 @@ export default function ProblemDetailPage() {
       loadControllerRef.current?.abort();
     };
   }, [isAttemptRoute, routeAttemptId, routeProblemId]);
-
-  useEffect(() => {
-    const textarea = promptTextareaRef.current;
-    if (!textarea) return;
-
-    const maxHeight = status ? 82 : 112;
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
-  }, [prompt, status]);
 
   const fileTree = useMemo(
     () => createFileTree(files, getLatestChangedFiles(turns)),
@@ -721,10 +711,10 @@ export default function ProblemDetailPage() {
           </div>
         </section>
 
-        <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-[11fr_9fr] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
-          <section className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-b border-[#343434] pb-[22px] max-[1080px]:overflow-visible max-[1080px]:border-b-0 max-[1080px]:pb-0">
+        <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[#343434] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
             <div
-              className="grid grid-cols-2 border border-[#3f3f3f]"
+              className="grid shrink-0 grid-cols-2 border border-[#3f3f3f]"
               role="tablist"
               aria-label="문제 상세 정보"
             >
@@ -751,7 +741,7 @@ export default function ProblemDetailPage() {
               ))}
             </div>
 
-            <div className="min-h-[210px] pt-[18px]" role="tabpanel">
+            <div className="workspace-scrollbar mt-[18px] min-h-[210px] flex-1 overflow-y-auto overflow-x-hidden max-[700px]:overflow-visible" role="tabpanel">
               {activeTab === 'problem' ? (
                 <>
                   <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[#a3a3a3] [word-break:keep-all]">
@@ -832,11 +822,10 @@ export default function ProblemDetailPage() {
 
           <section className="flex min-h-0 flex-col overflow-hidden pt-2 max-[1080px]:overflow-visible max-[1080px]:pt-0 max-[700px]:pt-[22px]">
             <div className={labelClasses}>PROMPT / MAX 4,000</div>
-            <div className="mt-2 flex shrink-0 flex-col border border-[#555] bg-[#131313] focus-within:border-[#d6ff50]">
+            <div className="relative mt-2 shrink-0 border border-[#555] bg-[#131313] focus-within:border-[#d6ff50]">
               <textarea
-                ref={promptTextareaRef}
                 aria-keyshortcuts="Control+Enter Meta+Enter"
-                className="workspace-scrollbar min-h-12 w-full resize-none overflow-y-auto border-0 bg-transparent px-3.5 py-3 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
+                className="workspace-scrollbar block h-[108px] w-full resize-none overflow-y-auto border-0 bg-transparent py-3 pr-16 pl-3.5 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isRunning || isSubmitting || isSubmitted}
                 maxLength={4000}
                 onChange={(event) => setPrompt(event.target.value)}
@@ -847,38 +836,35 @@ export default function ProblemDetailPage() {
                     : '문제를 해결할 프롬프트를 입력하세요.'
                 }
                 rows={1}
-                style={{ maxHeight: status ? '82px' : '112px' }}
                 value={prompt}
               />
-              <div className="flex min-h-9 shrink-0 items-center justify-end px-2 pb-2">
-                <button
-                  aria-label="프롬프트 실행"
-                  className="grid size-7 cursor-pointer place-items-center rounded-full border border-[#d6ff50] bg-[#d6ff50] text-[#090909] transition-colors hover:bg-transparent hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-45"
-                  disabled={isRunning || isSubmitting || isSubmitted || !prompt.trim()}
-                  onClick={handleRun}
-                  title="프롬프트 실행"
-                  type="button"
-                >
-                  {isRunning ? (
-                    '…'
-                  ) : (
-                    <svg
-                      aria-hidden="true"
-                      className="size-[17px]"
-                      fill="none"
-                      viewBox="0 0 18 18"
-                    >
-                      <path
-                        d="M9 15V3M4.5 7.5 9 3l4.5 4.5"
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2.8"
-                      />
-                    </svg>
-                  )}
-                </button>
-              </div>
+              <button
+                aria-label="프롬프트 실행"
+                className="absolute right-4 bottom-2 grid size-7 cursor-pointer place-items-center rounded-full border border-[#d6ff50] bg-[#d6ff50] text-[#090909] transition-colors hover:bg-transparent hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-45"
+                disabled={isRunning || isSubmitting || isSubmitted || !prompt.trim()}
+                onClick={handleRun}
+                title="프롬프트 실행"
+                type="button"
+              >
+                {isRunning ? (
+                  '…'
+                ) : (
+                  <svg
+                    aria-hidden="true"
+                    className="size-[17px]"
+                    fill="none"
+                    viewBox="0 0 18 18"
+                  >
+                    <path
+                      d="M9 15V3M4.5 7.5 9 3l4.5 4.5"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2.8"
+                    />
+                  </svg>
+                )}
+              </button>
             </div>
             <div className="mt-1 flex items-center justify-between gap-3 px-3.5 font-mono text-[9px] text-[#777]">
               <span>Ctrl/Cmd + Enter 전송 · Enter 줄바꿈</span>

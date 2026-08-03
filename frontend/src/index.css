@@ -27,11 +27,8 @@ html { scroll-behavior: smooth; }
 .landing-pass-center > span:last-child { font: 700 13px/1 monospace; letter-spacing: .35em; color: var(--acid); }
 .landing-pass-check { display: grid; width: 72px; height: 72px; place-items: center; border-radius: 50%; background: var(--acid); color: #090909; font-size: 36px; font-weight: 900; }
 .landing-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #343434; border: 1px solid #343434; }
-.landing-step { min-height: 380px; padding: clamp(20px, 2.2vw, 30px); background: #111; transition: background-color 220ms ease, color 220ms ease; }
-.landing-step:hover { background: var(--acid); color: #090909; }
-.landing-step:hover p, .landing-step:hover > div:first-child { color: #222; }
-.landing-step-visual { display: flex; height: 150px; align-items: center; justify-content: center; margin: 18px 0 14px; border: 1px solid #343434; font: 900 clamp(25px, 2.6vw, 38px)/1 Arial, sans-serif; letter-spacing: -.06em; color: var(--acid); transition: border-color 220ms ease, color 220ms ease, transform 220ms ease; }
-.landing-step:hover .landing-step-visual { transform: translateY(-5px); border-color: #090909; color: #090909; }
+.landing-step { min-height: 380px; padding: clamp(20px, 2.2vw, 30px); background: #111; }
+.landing-step-visual { display: flex; height: 150px; align-items: center; justify-content: center; margin: 18px 0 14px; border: 1px solid #343434; font: 900 clamp(25px, 2.6vw, 38px)/1 Arial, sans-serif; letter-spacing: -.06em; color: var(--acid); }
 .landing-problem { transition: background-color 180ms ease, padding 180ms ease; }
 .landing-problem span:last-child { transition: transform 180ms ease; }
 .landing-problem:hover, .landing-problem:focus-visible { padding-right: 14px; padding-left: 14px; background: #171717; outline: none; }
