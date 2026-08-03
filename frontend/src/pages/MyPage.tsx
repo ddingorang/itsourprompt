@@ -14,7 +14,7 @@ import Header from '../shared/components/Header';
 import Pagination from '../shared/components/Pagination';
 import { usePagination } from '../shared/hooks/usePagination';
 
-const SOLVED_PROBLEMS_PER_PAGE = 5;
+const SUBMISSIONS_PER_PAGE = 5;
 const PAGES_PER_GROUP = 5;
 
 /** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (MEMBER SINCE 표기용) */
@@ -59,16 +59,16 @@ export default function MyPage() {
   );
   const [isLoadingAttempts, setIsLoadingAttempts] = useState(true);
   const [attemptsError, setAttemptsError] = useState<string | null>(null);
-  const solvedProblemsSectionRef = useRef<HTMLElement>(null);
-  const solvedPageParam = searchParams.get('solvedPage');
+  const submissionHistorySectionRef = useRef<HTMLElement>(null);
+  const submissionPageParam = searchParams.get('submissionPage');
   const sortParam = searchParams.get('sort');
   const sortOrder = sortParam === 'oldest' ? 'oldest' : 'latest';
-  const requestedSolvedPage = Number(solvedPageParam);
-  const solvedPagination = usePagination({
+  const requestedSubmissionPage = Number(submissionPageParam);
+  const submissionPagination = usePagination({
     itemCount: submittedAttempts.length,
-    itemsPerPage: SOLVED_PROBLEMS_PER_PAGE,
+    itemsPerPage: SUBMISSIONS_PER_PAGE,
     pagesPerGroup: PAGES_PER_GROUP,
-    requestedPage: requestedSolvedPage,
+    requestedPage: requestedSubmissionPage,
   });
   const sortedSubmittedAttempts = [...submittedAttempts].sort(
     (attemptA, attemptB) => {
@@ -82,15 +82,15 @@ export default function MyPage() {
     },
   );
   const visibleSubmittedAttempts = sortedSubmittedAttempts.slice(
-    solvedPagination.pageStart,
-    solvedPagination.pageStart + SOLVED_PROBLEMS_PER_PAGE,
+    submissionPagination.pageStart,
+    submissionPagination.pageStart + SUBMISSIONS_PER_PAGE,
   );
 
   const moveToPage = (page: number) => {
     const nextParams = new URLSearchParams(searchParams);
-    nextParams.set('solvedPage', String(page));
+    nextParams.set('submissionPage', String(page));
     setSearchParams(nextParams);
-    solvedProblemsSectionRef.current?.scrollIntoView({
+    submissionHistorySectionRef.current?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
     });
@@ -99,7 +99,7 @@ export default function MyPage() {
   const changeSortOrder = (nextSortOrder: 'latest' | 'oldest') => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('sort', nextSortOrder);
-    nextParams.set('solvedPage', '1');
+    nextParams.set('submissionPage', '1');
     setSearchParams(nextParams);
   };
 
@@ -141,22 +141,23 @@ export default function MyPage() {
   }, [location.pathname, navigate]);
 
   useEffect(() => {
-    const normalizedSolvedPage = normalizePageParam(
-      solvedPageParam,
-      solvedPagination.totalPages,
+    const normalizedSubmissionPage = normalizePageParam(
+      submissionPageParam,
+      submissionPagination.totalPages,
     );
     const nextParams = new URLSearchParams(searchParams);
     let shouldReplace = false;
 
     if (
-      normalizedSolvedPage !== null &&
-      solvedPageParam !== String(normalizedSolvedPage)
+      normalizedSubmissionPage !== null &&
+      submissionPageParam !== String(normalizedSubmissionPage)
     ) {
-      nextParams.set('solvedPage', String(normalizedSolvedPage));
+      nextParams.set('submissionPage', String(normalizedSubmissionPage));
       shouldReplace = true;
     }
 
-    if (nextParams.has('feedbackPage')) {
+    if (nextParams.has('solvedPage') || nextParams.has('feedbackPage')) {
+      nextParams.delete('solvedPage');
       nextParams.delete('feedbackPage');
       shouldReplace = true;
     }
@@ -174,8 +175,8 @@ export default function MyPage() {
       setSearchParams(nextParams, { replace: true });
     }
   }, [
-    solvedPageParam,
-    solvedPagination.totalPages,
+    submissionPageParam,
+    submissionPagination.totalPages,
     searchParams,
     setSearchParams,
     sortParam,
@@ -266,7 +267,7 @@ export default function MyPage() {
 
         <section
           className="mt-[clamp(52px,8vw,96px)]"
-          ref={solvedProblemsSectionRef}
+          ref={submissionHistorySectionRef}
         >
           <div className="flex items-end justify-between gap-6 pb-5 max-[640px]:flex-col max-[640px]:items-start">
             <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
@@ -341,7 +342,10 @@ export default function MyPage() {
                 key={submittedAttempt.attemptId}
               >
                 <span className="font-mono text-[17px] text-[#777]">
-                  {String(solvedPagination.pageStart + index + 1).padStart(2, '0')}
+                  {String(submissionPagination.pageStart + index + 1).padStart(
+                    2,
+                    '0',
+                  )}
                 </span>
                 <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
                   {formatSubmittedAt(submittedAttempt.submittedAt)}
@@ -382,12 +386,12 @@ export default function MyPage() {
 
           {!isLoadingAttempts &&
             !attemptsError &&
-            solvedPagination.totalPages > 1 && (
+            submissionPagination.totalPages > 1 && (
             <Pagination
-              currentPage={solvedPagination.currentPage}
-              pageGroupEnd={solvedPagination.pageGroupEnd}
-              pageGroupStart={solvedPagination.pageGroupStart}
-              totalPages={solvedPagination.totalPages}
+              currentPage={submissionPagination.currentPage}
+              pageGroupEnd={submissionPagination.pageGroupEnd}
+              pageGroupStart={submissionPagination.pageGroupStart}
+              totalPages={submissionPagination.totalPages}
               onPageChange={moveToPage}
             />
             )}
