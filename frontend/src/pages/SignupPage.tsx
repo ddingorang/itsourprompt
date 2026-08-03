@@ -24,6 +24,8 @@ const labelClasses =
 const inputClasses =
   'mt-2.5 w-full border border-[#555] bg-[#131313] p-3.5 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 focus:border-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-60';
 
+const fieldErrorClasses = 'mt-2 text-[11px] leading-[1.6] text-[#ff786b]';
+
 /**
  * 가입 실패 응답을 사용자에게 보여줄 한국어 문구로 바꾼다.
  * 백엔드가 중복 항목을 코드로 구분해 주므로(duplicate-username / duplicate-email)
@@ -59,20 +61,32 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const isPasswordMismatch = Boolean(passwordConfirm) && password !== passwordConfirm;
+  const usernameError = username && username.length < 3 ? '아이디는 3~30자로 입력해주세요.' : '';
+  const passwordError = password && password.length < 8 ? '비밀번호는 8자 이상 입력해주세요.' : '';
+  const passwordConfirmError =
+    passwordConfirm && password !== passwordConfirm ? '비밀번호가 일치하지 않습니다.' : '';
+  const nicknameError = nickname && nickname.length < 2 ? '닉네임은 2~30자로 입력해주세요.' : '';
+  const emailError =
+    email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      ? '올바른 이메일 형식으로 입력해주세요.'
+      : '';
   const canSubmit = Boolean(
     username &&
       password &&
       passwordConfirm &&
-      password === passwordConfirm &&
       nickname &&
       email &&
+      !usernameError &&
+      !passwordError &&
+      !passwordConfirmError &&
+      !nicknameError &&
+      !emailError &&
       !submitting,
   );
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (password !== passwordConfirm) return;
+    if (!canSubmit) return;
 
     setError('');
     setSubmitting(true);
@@ -110,6 +124,8 @@ export default function SignupPage() {
                 ID
               </label>
               <input
+                aria-describedby={usernameError ? 'signup-username-error' : undefined}
+                aria-invalid={Boolean(usernameError)}
                 autoComplete="username"
                 className={inputClasses}
                 disabled={submitting}
@@ -119,6 +135,11 @@ export default function SignupPage() {
                 placeholder="아이디 (3~30자)"
                 value={username}
               />
+              {usernameError && (
+                <p className={fieldErrorClasses} id="signup-username-error" role="alert">
+                  {usernameError}
+                </p>
+              )}
             </div>
 
             <div className="mt-5">
@@ -126,6 +147,8 @@ export default function SignupPage() {
                 PASSWORD
               </label>
               <input
+                aria-describedby={passwordError ? 'signup-password-error' : undefined}
+                aria-invalid={Boolean(passwordError)}
                 autoComplete="new-password"
                 className={inputClasses}
                 disabled={submitting}
@@ -135,6 +158,11 @@ export default function SignupPage() {
                 type="password"
                 value={password}
               />
+              {passwordError && (
+                <p className={fieldErrorClasses} id="signup-password-error" role="alert">
+                  {passwordError}
+                </p>
+              )}
             </div>
 
             <div className="mt-5">
@@ -142,8 +170,8 @@ export default function SignupPage() {
                 PASSWORD CONFIRM
               </label>
               <input
-                aria-describedby={isPasswordMismatch ? 'signup-password-confirm-error' : undefined}
-                aria-invalid={isPasswordMismatch}
+                aria-describedby={passwordConfirmError ? 'signup-password-confirm-error' : undefined}
+                aria-invalid={Boolean(passwordConfirmError)}
                 autoComplete="new-password"
                 className={inputClasses}
                 disabled={submitting}
@@ -153,13 +181,13 @@ export default function SignupPage() {
                 type="password"
                 value={passwordConfirm}
               />
-              {isPasswordMismatch && (
+              {passwordConfirmError && (
                 <p
-                  className="mt-2 text-[11px] leading-[1.6] text-[#ff786b]"
+                  className={fieldErrorClasses}
                   id="signup-password-confirm-error"
                   role="alert"
                 >
-                  비밀번호가 일치하지 않습니다.
+                  {passwordConfirmError}
                 </p>
               )}
             </div>
@@ -169,6 +197,8 @@ export default function SignupPage() {
                 NICKNAME
               </label>
               <input
+                aria-describedby={nicknameError ? 'signup-nickname-error' : undefined}
+                aria-invalid={Boolean(nicknameError)}
                 className={inputClasses}
                 disabled={submitting}
                 id="signup-nickname"
@@ -177,6 +207,11 @@ export default function SignupPage() {
                 placeholder="닉네임 (2~30자) — 마이페이지에 표시됩니다."
                 value={nickname}
               />
+              {nicknameError && (
+                <p className={fieldErrorClasses} id="signup-nickname-error" role="alert">
+                  {nicknameError}
+                </p>
+              )}
             </div>
 
             <div className="mt-5">
@@ -184,6 +219,8 @@ export default function SignupPage() {
                 EMAIL
               </label>
               <input
+                aria-describedby={emailError ? 'signup-email-error' : undefined}
+                aria-invalid={Boolean(emailError)}
                 autoComplete="email"
                 className={inputClasses}
                 disabled={submitting}
@@ -193,6 +230,11 @@ export default function SignupPage() {
                 type="email"
                 value={email}
               />
+              {emailError && (
+                <p className={fieldErrorClasses} id="signup-email-error" role="alert">
+                  {emailError}
+                </p>
+              )}
             </div>
 
             {error && (
