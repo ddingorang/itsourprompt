@@ -169,7 +169,7 @@ export default function HomePage() {
         </section>
 
         <section className="mx-auto flex h-[calc(100svh-66px)] min-h-[620px] w-[80%] flex-col pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:w-[calc(100%_-_32px)] max-[760px]:pb-20">
-          <div className="mb-8 flex items-end justify-between gap-8 border-b border-[#343434] pb-6" data-reveal>
+          <div className="relative mb-8 flex items-end justify-between gap-8 pb-6" data-reveal>
             <div>
               <div className="mb-5 font-mono text-sm font-bold tracking-[0.16em] text-[#d6ff50]">PRACTICE NOW</div>
               <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-none font-black tracking-[-0.06em]">어떤 문제부터 풀어볼까요?</h2>
@@ -181,6 +181,10 @@ export default function HomePage() {
   <span>전체 문제 보기</span>
   <span aria-hidden="true">↗</span>
 </Link>
+            <div
+              className="absolute inset-x-0 bottom-0 h-px bg-[#d6ff50]"
+              aria-hidden="true"
+            />
           </div>
 
           {isLoading && <div className="border-b border-[#343434] py-11 font-mono text-xs leading-[1.7] text-[#a3a3a3]">문제 목록을 불러오는 중입니다.</div>}
