@@ -42,6 +42,12 @@ interface StatusMessage {
 
 type DetailTab = 'problem' | 'logs' | 'test';
 
+const detailTabs: ReadonlyArray<readonly [DetailTab, string]> = [
+  ['problem', 'PROBLEM'],
+  ['logs', 'PROMPT LOG'],
+  ['test', 'TEST'],
+];
+
 interface FileTreeNode {
   name: string;
   path: string;
@@ -233,6 +239,9 @@ export default function ProblemDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const detailTabRefs = useRef<
+    Partial<Record<DetailTab, HTMLButtonElement | null>>
+  >({});
   const isRunPendingRef = useRef(false);
   /**
    * 실패한 턴 요청의 Idempotency-Key를 기억한다. 같은 프롬프트로 다시 실행하면
@@ -516,6 +525,31 @@ export default function ProblemDetailPage() {
     void handleRun();
   };
 
+  const handleDetailTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentTab: DetailTab,
+  ) => {
+    const currentIndex = detailTabs.findIndex(([tab]) => tab === currentTab);
+    let nextIndex: number | null = null;
+
+    if (event.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % detailTabs.length;
+    } else if (event.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + detailTabs.length) % detailTabs.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = detailTabs.length - 1;
+    }
+
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextTab = detailTabs[nextIndex][0];
+    setActiveTab(nextTab);
+    detailTabRefs.current[nextTab]?.focus();
+  };
+
   const handleSubmit = async () => {
     if (!problem || !attempt) return;
 
@@ -750,12 +784,9 @@ export default function ProblemDetailPage() {
               role="tablist"
               aria-label="문제 상세 정보"
             >
-              {([
-                ['problem', 'PROBLEM'],
-                ['logs', 'PROMPT LOG'],
-                ['test', 'TEST'],
-              ] as const).map(([tab, label]) => (
+              {detailTabs.map(([tab, label]) => (
                 <button
+                  aria-controls="problem-detail-tabpanel"
                   aria-selected={activeTab === tab}
                   className={[
                     'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm leading-[1.5] font-bold tracking-[0.08em]',
@@ -764,9 +795,15 @@ export default function ProblemDetailPage() {
                       ? 'border-b-2 border-b-[#d6ff50] text-[#d6ff50]'
                       : 'text-[#8b8b8b] hover:text-[#b8b8b8]',
                   ].join(' ')}
+                  id={`problem-detail-tab-${tab}`}
                   key={tab}
                   onClick={() => setActiveTab(tab)}
+                  onKeyDown={(event) => handleDetailTabKeyDown(event, tab)}
+                  ref={(element) => {
+                    detailTabRefs.current[tab] = element;
+                  }}
                   role="tab"
+                  tabIndex={activeTab === tab ? 0 : -1}
                   type="button"
                 >
                   {label}
@@ -774,7 +811,13 @@ export default function ProblemDetailPage() {
               ))}
             </div>
 
-            <div className="workspace-scrollbar mt-[18px] min-h-[210px] flex-1 overflow-y-auto overflow-x-hidden max-[700px]:overflow-visible" role="tabpanel">
+            <div
+              aria-labelledby={`problem-detail-tab-${activeTab}`}
+              className="workspace-scrollbar mt-[18px] min-h-[210px] flex-1 overflow-y-auto overflow-x-hidden max-[700px]:overflow-visible"
+              id="problem-detail-tabpanel"
+              role="tabpanel"
+              tabIndex={0}
+            >
               {activeTab === 'problem' ? (
                 <>
                   <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[#a3a3a3] [word-break:keep-all]">
