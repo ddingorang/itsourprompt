@@ -95,7 +95,7 @@ export default function SignupPage() {
           >
             <div>
               <label className={labelClasses} htmlFor="signup-username">
-                USERNAME
+                ID
               </label>
               <input
                 autoComplete="username"
