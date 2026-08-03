@@ -720,7 +720,7 @@ export default function ProblemDetailPage() {
             >
               {([
                 ['problem', 'PROBLEM'],
-                ['logs', `PROMPT LOG ${turns.length ? `(${turns.length})` : ''}`],
+                ['logs', 'PROMPT LOG'],
                 ['test', 'TEST'],
               ] as const).map(([tab, label]) => (
                 <button
