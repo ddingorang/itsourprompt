@@ -84,7 +84,7 @@ export default function HomePage() {
 
       <main className="flex-1 overflow-clip">
         <section className="landing-hero mx-auto flex min-h-[calc(100svh-66px)] w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
-          <div>
+          <div className="flex flex-1 flex-col justify-center">
             <div className="flex items-center justify-between gap-4 font-mono text-[17px] font-bold tracking-[0.14em] text-[#d6ff50]">
               <span>PROMPT ENGINEERING PRACTICE</span>
             </div>
