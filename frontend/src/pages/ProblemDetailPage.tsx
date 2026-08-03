@@ -909,21 +909,21 @@ export default function ProblemDetailPage() {
                 </div>
               ) : testResults ? (
                 <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif]">
-                  <div className="border border-[#3f3f3f] bg-[#111] p-4">
-                    <div className="flex items-start justify-between gap-4">
+                  <div className="border border-[#3f3f3f] bg-[#111] px-4 py-3">
+                    <div className="flex items-end justify-between gap-4">
                       <div>
-                        <p className="m-0 text-[10px] font-bold tracking-[0.12em] text-[#777]">
+                        <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[#777]">
                           TEST RESULT
                         </p>
-                        <h2 className="mt-1.5 mb-0 text-[14px] font-bold text-[#f5f5ef]">
+                        <h2 className="mt-1 mb-0 text-[12px] text-[#f5f5ef]">
                           테스트 케이스 채점 결과
                         </h2>
                       </div>
-                      <div className="flex shrink-0 items-baseline gap-1 text-right">
-                        <strong className="text-xl text-[#d6ff50]">
+                      <div className="flex shrink-0 items-baseline gap-1 text-right leading-none">
+                        <strong className="font-mono text-xl text-[#d6ff50]">
                           {passedTestCount}/{testResults.length}
                         </strong>
-                        <span className="text-[10px] text-[#8b8b8b]">
+                        <span className="text-[10px] leading-none text-[#8b8b8b]">
                           개 통과
                         </span>
                       </div>
