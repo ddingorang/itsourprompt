@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { getProblems } from '../features/problem/api';
-import Pagination from '../features/problem/Pagination';
 import type { ProblemSummary } from '../features/problem/types';
-import { usePagination } from '../features/problem/usePagination';
 import { ApiError } from '../shared/api/apiClient';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
+import Pagination from '../shared/components/Pagination';
+import { usePagination } from '../shared/hooks/usePagination';
 
 const PROBLEMS_PER_PAGE = 10;
 const PAGES_PER_GROUP = 5;
