@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { getMySubmittedAttempts } from '../features/me/api';
 import type { SubmittedAttempt } from '../features/me/types';
-import { getProblems } from '../features/problem/api';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
@@ -51,7 +50,6 @@ export default function MyPage() {
   const [submittedAttempts, setSubmittedAttempts] = useState<SubmittedAttempt[]>(
     [],
   );
-  const [totalProblemCount, setTotalProblemCount] = useState<number | null>(null);
   const solvedProblemsSectionRef = useRef<HTMLElement>(null);
   const solvedPageParam = searchParams.get('solvedPage');
   const sortParam = searchParams.get('sort');
@@ -111,24 +109,6 @@ export default function MyPage() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-
-    getProblems()
-      .then((response) => {
-        if (isMounted) {
-          setTotalProblemCount(response.problems.length);
-        }
-      })
-      .catch(() => {
-        // 문제 목록을 불러오지 못하면 대체값을 유지한다.
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
     const normalizedSolvedPage = normalizePageParam(
       solvedPageParam,
       solvedPagination.totalPages,
@@ -173,16 +153,20 @@ export default function MyPage() {
     return null;
   }
 
-  // [임시 데이터] 풀이 수와 전체 턴 수는 아직 사용자 통계 API가 없어 더미 값이다.
-  // 전체 문제 수만 기존 문제 목록 API에서 조회한다. 추후에는 예:
-  // GET /api/me/stats { solved, totalTurns } 형태의 사용자별 API 연동이 필요하다.
+  const solvedCount = new Set(
+    submittedAttempts.map((attempt) => attempt.problemId),
+  ).size;
   const stats = [
     {
       label: 'SOLVED',
-      value: '3',
-      suffix: `/${totalProblemCount ?? '--'}`,
+      value: String(solvedCount),
+      suffix: null,
     },
-    { label: 'TOTAL TURNS', value: '28', suffix: null },
+    {
+      label: 'SUBMISSIONS',
+      value: String(submittedAttempts.length),
+      suffix: null,
+    },
   ];
 
   return (
@@ -346,10 +330,6 @@ export default function MyPage() {
             />
           )}
         </section>
-
-        <p className="mt-5 font-mono text-[10px] leading-5 tracking-[0.04em] text-[#555]">
-          * 풀이 수·전체 턴 수·해결 문제 내역은 추후 사용자별 API 연동 예정입니다.
-        </p>
       </main>
       <Footer />
     </div>
