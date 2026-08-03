@@ -50,7 +50,7 @@ function normalizePageParam(
 
 export default function MyPage() {
   // 이 페이지는 ProtectedRoute로 감싸져 있어 user가 항상 존재한다(비로그인은 /login으로 이동됨).
-  const { user } = useAuth();
+  const { refresh, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -118,6 +118,9 @@ export default function MyPage() {
           error instanceof ApiError &&
           error.code === API_ERROR_CODES.unauthenticated
         ) {
+          await refresh();
+          if (controller.signal.aborted) return;
+
           navigate('/login', {
             replace: true,
             state: { from: location.pathname },
@@ -138,7 +141,7 @@ export default function MyPage() {
     return () => {
       controller.abort();
     };
-  }, [location.pathname, navigate]);
+  }, [location.pathname, navigate, refresh]);
 
   useEffect(() => {
     const normalizedSubmissionPage =
