@@ -141,10 +141,13 @@ export default function MyPage() {
   }, [location.pathname, navigate]);
 
   useEffect(() => {
-    const normalizedSubmissionPage = normalizePageParam(
-      submissionPageParam,
-      submissionPagination.totalPages,
-    );
+    const normalizedSubmissionPage =
+      !isLoadingAttempts && !attemptsError
+        ? normalizePageParam(
+            submissionPageParam,
+            submissionPagination.totalPages,
+          )
+        : null;
     const nextParams = new URLSearchParams(searchParams);
     let shouldReplace = false;
 
@@ -175,6 +178,8 @@ export default function MyPage() {
       setSearchParams(nextParams, { replace: true });
     }
   }, [
+    attemptsError,
+    isLoadingAttempts,
     submissionPageParam,
     submissionPagination.totalPages,
     searchParams,
