@@ -67,7 +67,7 @@ export default function Header({
         className="flex items-center gap-3 whitespace-nowrap max-[480px]:w-full max-[480px]:justify-between max-[480px]:gap-2 max-[480px]:text-xs"
         aria-label="주요 메뉴"
       >
-        <NavLink className={getMenuLinkClasses} to="/problems">
+        <NavLink className={getMenuLinkClasses} end to="/problems">
           PROBLEM LIST
         </NavLink>
         {/* 세션 확인이 끝나기 전에는 로그인/게스트 메뉴를 그리지 않는다(깜빡임 방지). */}
