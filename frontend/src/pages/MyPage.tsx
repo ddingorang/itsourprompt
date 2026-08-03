@@ -235,7 +235,7 @@ export default function MyPage() {
               SOLVED PROBLEMS
             </div>
             <div
-              className="flex items-center gap-3 whitespace-nowrap text-[14px] font-normal tracking-[-0.01em] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
+              className="flex items-center gap-3 pr-2 whitespace-nowrap text-[14px] font-normal tracking-[-0.01em] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
               aria-label="문제 정렬 기준"
             >
               <button
@@ -268,7 +268,7 @@ export default function MyPage() {
             </div>
           </div>
 
-          <div className="border-y border-t-[#f5f5ef] border-b-[#343434]">
+          <div className="border-y border-[#f5f5ef]">
             {visibleActivities.map((activity, index) => (
               <div
                 className="grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[#343434] px-2 py-3 last:border-b-0 max-[680px]:grid-cols-[38px_minmax(0,1fr)] max-[680px]:gap-3"
