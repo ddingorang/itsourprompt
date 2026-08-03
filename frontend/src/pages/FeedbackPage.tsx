@@ -173,12 +173,12 @@ export default function FeedbackPage() {
                 aria-label="턴별 프롬프트 피드백"
               >
                 <div className="relative border-b border-[#393939]">
-                  <span className="absolute top-0 bottom-0 left-0 z-10 grid w-[220px] place-items-center border-r border-[#393939] bg-[#121212] font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] max-[760px]:hidden">
+                  <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[220px] place-items-center border-r border-[#393939] bg-[#121212] font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] max-[760px]:hidden">
                     PROMPT HISTORY
                   </span>
                   <button
                     aria-label="이전 턴 보기"
-                    className="absolute top-0 bottom-0 left-[220px] z-10 w-10 cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
+                    className="absolute top-0 bottom-0 left-[220px] z-20 w-10 cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
                     onClick={() => scrollTurnNav(-1)}
                     type="button"
                   >
@@ -214,7 +214,7 @@ export default function FeedbackPage() {
                   <button
                     aria-label="다음 턴 보기"
                     className={[
-                      'absolute top-0 right-0 bottom-0 z-10 w-10 border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px]',
+                      'absolute top-0 right-0 bottom-0 z-20 w-10 border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px]',
                       turnSections.length >= 8
                         ? 'cursor-pointer text-[#d6ff50] hover:bg-[#202020]'
                         : 'cursor-not-allowed text-[#666]',
