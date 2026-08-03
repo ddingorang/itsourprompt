@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { getMySubmittedAttempts } from '../features/me/api';
+import type { SubmittedAttempt } from '../features/me/types';
 import { getProblems } from '../features/problem/api';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
@@ -10,28 +12,6 @@ import { usePagination } from '../shared/hooks/usePagination';
 
 const SOLVED_PROBLEMS_PER_PAGE = 5;
 const PAGES_PER_GROUP = 5;
-
-// [임시 데이터] 사용자별 해결 문제 조회 API가 연결되면 실제 내역으로 교체한다.
-const solvedProblems = [
-  {
-    attemptId: 1,
-    date: '2026.07.27',
-    problemId: 1,
-    title: 'Hello World 출력',
-  },
-  {
-    attemptId: 2,
-    date: '2026.07.25',
-    problemId: 2,
-    title: 'SSAFY 출력',
-  },
-  {
-    attemptId: 3,
-    date: '2026.07.22',
-    problemId: 3,
-    title: '환영 메시지 출력',
-  },
-];
 
 /** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (MEMBER SINCE 표기용) */
 function formatMemberSince(createdAt: string): string {
@@ -54,6 +34,9 @@ export default function MyPage() {
   // 이 페이지는 ProtectedRoute로 감싸져 있어 user가 항상 존재한다(비로그인은 /login으로 이동됨).
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [submittedAttempts, setSubmittedAttempts] = useState<SubmittedAttempt[]>(
+    [],
+  );
   const [totalProblemCount, setTotalProblemCount] = useState<number | null>(null);
   const solvedProblemsSectionRef = useRef<HTMLElement>(null);
   const solvedPageParam = searchParams.get('solvedPage');
@@ -61,18 +44,18 @@ export default function MyPage() {
   const sortOrder = sortParam === 'oldest' ? 'oldest' : 'latest';
   const requestedSolvedPage = Number(solvedPageParam);
   const solvedPagination = usePagination({
-    itemCount: solvedProblems.length,
+    itemCount: submittedAttempts.length,
     itemsPerPage: SOLVED_PROBLEMS_PER_PAGE,
     pagesPerGroup: PAGES_PER_GROUP,
     requestedPage: requestedSolvedPage,
   });
-  const sortedSolvedProblems = [...solvedProblems].sort(
-    (solvedProblemA, solvedProblemB) =>
-    sortOrder === 'latest'
-      ? solvedProblemB.date.localeCompare(solvedProblemA.date)
-      : solvedProblemA.date.localeCompare(solvedProblemB.date),
+  const sortedSubmittedAttempts = [...submittedAttempts].sort(
+    (attemptA, attemptB) =>
+      sortOrder === 'latest'
+        ? (attemptB.submittedAt ?? '').localeCompare(attemptA.submittedAt ?? '')
+        : (attemptA.submittedAt ?? '').localeCompare(attemptB.submittedAt ?? ''),
   );
-  const visibleSolvedProblems = sortedSolvedProblems.slice(
+  const visibleSubmittedAttempts = sortedSubmittedAttempts.slice(
     solvedPagination.pageStart,
     solvedPagination.pageStart + SOLVED_PROBLEMS_PER_PAGE,
   );
@@ -93,6 +76,20 @@ export default function MyPage() {
     nextParams.set('solvedPage', '1');
     setSearchParams(nextParams);
   };
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    getMySubmittedAttempts(controller.signal)
+      .then(setSubmittedAttempts)
+      .catch(() => {
+        // 로딩 및 오류 상태 UI는 후속 작업에서 연결한다.
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -238,7 +235,7 @@ export default function MyPage() {
         >
           <div className="flex items-end justify-between gap-6 pb-5 max-[640px]:flex-col max-[640px]:items-start">
             <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-              SOLVED PROBLEMS
+              SUBMISSION HISTORY
             </div>
             <div
               className="flex items-center gap-3 pr-2 whitespace-nowrap text-[14px] font-normal tracking-[-0.01em] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
@@ -275,24 +272,24 @@ export default function MyPage() {
           </div>
 
           <div className="border-y border-[#f5f5ef]">
-            {visibleSolvedProblems.map((solvedProblem, index) => (
+            {visibleSubmittedAttempts.map((submittedAttempt, index) => (
               <div
                 className="grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[#343434] px-2 py-3 last:border-b-0 max-[680px]:grid-cols-[38px_minmax(0,1fr)] max-[680px]:gap-3"
-                key={solvedProblem.attemptId}
+                key={submittedAttempt.attemptId}
               >
                 <span className="font-mono text-[17px] text-[#777]">
                   {String(solvedPagination.pageStart + index + 1).padStart(2, '0')}
                 </span>
                 <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
-                  {solvedProblem.date}
+                  {submittedAttempt.submittedAt ?? '--'}
                 </span>
                 <strong className="truncate text-[clamp(15px,2vw,20px)] tracking-[-0.02em]">
-                  {solvedProblem.title}
+                  {submittedAttempt.problemTitle}
                 </strong>
                 <div className="flex justify-self-end gap-2 max-[680px]:col-span-2 max-[680px]:justify-self-stretch">
                   <Button
                     className="group hover:!border-[#d6ff50] hover:!bg-[#090909] hover:!text-[#d6ff50] focus-visible:!border-[#d6ff50] focus-visible:!bg-[#090909] focus-visible:!text-[#d6ff50] max-[680px]:flex-1"
-                    to={`/problems/${solvedProblem.problemId}`}
+                    to={`/problems/${submittedAttempt.problemId}`}
                     variant="secondary"
                   >
                     <span className="text-[14px]">문제 풀기</span>
@@ -305,7 +302,7 @@ export default function MyPage() {
                   </Button>
                   <Button
                     className="group max-[680px]:flex-1"
-                    to={`/attempts/${solvedProblem.attemptId}/feedback`}
+                    to={`/attempts/${submittedAttempt.attemptId}/feedback`}
                   >
                     <span className="text-[14px]">피드백 보기</span>
                     <span
