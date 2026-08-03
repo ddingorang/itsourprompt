@@ -722,9 +722,9 @@ export default function ProblemDetailPage() {
         </section>
 
         <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-[11fr_9fr] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
-          <section className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden border-b border-[#343434] pb-[22px] max-[1080px]:overflow-visible max-[1080px]:border-b-0 max-[1080px]:pb-0">
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[#343434] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
             <div
-              className="grid grid-cols-2 border border-[#3f3f3f]"
+              className="grid shrink-0 grid-cols-2 border border-[#3f3f3f]"
               role="tablist"
               aria-label="문제 상세 정보"
             >
@@ -751,7 +751,7 @@ export default function ProblemDetailPage() {
               ))}
             </div>
 
-            <div className="min-h-[210px] pt-[18px]" role="tabpanel">
+            <div className="workspace-scrollbar mt-[18px] min-h-[210px] flex-1 overflow-y-auto overflow-x-hidden max-[700px]:overflow-visible" role="tabpanel">
               {activeTab === 'problem' ? (
                 <>
                   <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[#a3a3a3] [word-break:keep-all]">
