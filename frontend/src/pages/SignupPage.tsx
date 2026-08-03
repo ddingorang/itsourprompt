@@ -53,15 +53,27 @@ export default function SignupPage() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const canSubmit = username && password && nickname && email && !submitting;
+  const isPasswordMismatch = Boolean(passwordConfirm) && password !== passwordConfirm;
+  const canSubmit = Boolean(
+    username &&
+      password &&
+      passwordConfirm &&
+      password === passwordConfirm &&
+      nickname &&
+      email &&
+      !submitting,
+  );
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (password !== passwordConfirm) return;
+
     setError('');
     setSubmitting(true);
     try {
@@ -122,6 +134,33 @@ export default function SignupPage() {
                 type="password"
                 value={password}
               />
+            </div>
+
+            <div className="mt-5">
+              <label className={labelClasses} htmlFor="signup-password-confirm">
+                PASSWORD CONFIRM
+              </label>
+              <input
+                aria-describedby={isPasswordMismatch ? 'signup-password-confirm-error' : undefined}
+                aria-invalid={isPasswordMismatch}
+                autoComplete="new-password"
+                className={inputClasses}
+                disabled={submitting}
+                id="signup-password-confirm"
+                onChange={(event) => setPasswordConfirm(event.target.value)}
+                placeholder="비밀번호를 다시 입력하세요."
+                type="password"
+                value={passwordConfirm}
+              />
+              {isPasswordMismatch && (
+                <p
+                  className="mt-2 text-[11px] leading-[1.6] text-[#ff786b]"
+                  id="signup-password-confirm-error"
+                  role="alert"
+                >
+                  비밀번호가 일치하지 않습니다.
+                </p>
+              )}
             </div>
 
             <div className="mt-5">
