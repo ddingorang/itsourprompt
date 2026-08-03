@@ -3,6 +3,7 @@ package com.promptstudio.attempt.service;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.CodeRunResult;
+import com.promptstudio.attempt.domain.CodeRunSummary;
 import com.promptstudio.attempt.domain.CodeRunView;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.CodeRunInProgressException;
@@ -123,6 +124,29 @@ public class CodeRunService {
 
         return attemptQueryRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+    }
+
+    public List<CodeRunSummary> getRuns(Long attemptId, Long userId) {
+        return getRuns(attemptId, AttemptOwner.user(userId));
+    }
+
+    /**
+     * 어템프트의 실행 기록 전체를 최근 순으로 반환한다.
+     *
+     * <p>실행 요청은 202로 접수증(runId)만 주고 결과는 뒤늦게 도착한다. 그 runId가 클라이언트에만
+     * 있으면 새로고침 한 번에 사라지고, 그러면 진행 중인 실행을 조회할 수도 없고 다시 요청할 수도 없다
+     * — 어템프트당 미완료 1건 제약 때문에 409가 나고 TTL 회수까지 기다려야 한다.
+     * 그 상태를 서버에 물어볼 수 있게 하는 것이 이 조회의 목적이다.
+     */
+    public List<CodeRunSummary> getRuns(Long attemptId, AttemptOwner owner) {
+        // 다른 조회 경로와 같은 이유로 먼저 회수한다. 빠뜨리면 좌초된 QUEUED가 "실행 중"으로 보이고,
+        // 그 상태로 새 실행을 시도한 사용자는 409만 받는다 — 화면과 동작이 어긋난다.
+        expireStaleRuns();
+
+        findAttempt(attemptId, owner)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        return codeRunRepository.findAllByAttemptId(attemptId);
     }
 
     public CodeRunView getRun(Long attemptId, Long userId, UUID runId) {

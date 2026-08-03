@@ -3,6 +3,7 @@ package com.promptstudio.attempt.controller;
 import com.promptstudio.attempt.controller.request.CreateAttemptRequest;
 import com.promptstudio.attempt.controller.request.TurnRequest;
 import com.promptstudio.attempt.controller.response.AttemptResponse;
+import com.promptstudio.attempt.controller.response.CodeRunListResponse;
 import com.promptstudio.attempt.controller.response.CodeRunResponse;
 import com.promptstudio.attempt.controller.response.FeedbackResponse;
 import com.promptstudio.attempt.service.AttemptService;
@@ -312,6 +313,33 @@ public class AttemptController {
             @PathVariable("ordinal") int ordinal
     ) {
         return attemptWebMapper.toCodeRunResponse(codeRunService.requestRun(id, ordinal));
+    }
+
+    @GetMapping("/{id}/runs")
+    @Operation(
+            summary = "코드 빌드/실행 목록 조회",
+            description = "이 어템프트에서 지금까지 요청한 빌드/실행을 최근 순으로 반환합니다. "
+                    + "실행 ID를 잃어버려도 진행 중인 실행과 지난 결과를 되찾을 수 있습니다. "
+                    + "응답에는 stdout·stderr가 없으므로 본문은 실행 ID로 단건 조회하세요."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "목록 조회 성공. 실행이 없으면 runs가 빈 배열",
+                    content = @Content(schema = @Schema(implementation = CodeRunListResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "어템프트를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
+            )
+    })
+    public CodeRunListResponse getRuns(
+            @AuthenticationPrincipal AppUserDetails principal,
+            HttpServletRequest httpRequest,
+            @PathVariable("id") Long id
+    ) {
+        return attemptWebMapper.toCodeRunListResponse(codeRunService.getRuns(id, owner(principal, httpRequest)));
     }
 
     @GetMapping("/{id}/runs/{runId}")

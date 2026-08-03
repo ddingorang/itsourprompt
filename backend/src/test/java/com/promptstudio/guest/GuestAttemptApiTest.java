@@ -59,6 +59,14 @@ class GuestAttemptApiTest extends DatabaseTest {
     }
 
     @Test
+    void 다른_게스트는_실행_목록도_조회할_수_없다() throws Exception {
+        Long attemptId = createGuestAttempt(issueGuestCookie());
+
+        mockMvc.perform(get("/api/attempts/{id}/runs", attemptId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void 게스트가_로그인하면_풀이가_회원_소유로_이전된다() throws Exception {
         Cookie guestCookie = issueGuestCookie();
         Long attemptId = createGuestAttempt(guestCookie);

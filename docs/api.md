@@ -21,10 +21,17 @@
 | POST | `/api/attempts/{id}/turns` | 불필요 | 어템프트 |
 | POST | `/api/attempts/{id}/submit` | 불필요 | 어템프트 |
 | GET | `/api/attempts/{id}/feedback` | 불필요 | 피드백 |
+| POST | `/api/attempts/{id}/runs` | 불필요 | 코드 실행 |
+| POST | `/api/attempts/{id}/turns/{ordinal}/runs` | 불필요 | 코드 실행 |
+| GET | `/api/attempts/{id}/runs` | 불필요 | 코드 실행 |
+| GET | `/api/attempts/{id}/runs/{runId}` | 불필요 | 코드 실행 |
 | POST | `/api/auth/signup` | 불필요 | 인증 |
 | POST | `/api/auth/login` | 불필요 | 인증 |
 | POST | `/api/auth/logout` | 불필요 (멱등) | 인증 |
 | GET | `/api/me` | **필요** | 인증 |
+| GET | `/api/me/attempts` | **필요** | 인증 |
+
+"인증 불필요"는 로그인을 요구하지 않는다는 뜻이고, **아무나 접근할 수 있다는 뜻은 아니다.** 어템프트 계열 경로는 모두 소유자 범위로 제한된다 — 아래 [소유권](#소유권)을 볼 것.
 
 ## 인증 방식
 
@@ -37,6 +44,16 @@
 인증이 필요한 경로는 `/api/me/**` 하나뿐이고, 나머지는 전부 공개다. 즉 문제·어템프트 API는 비로그인으로도 호출된다. 인증이 필요한 경로에 세션 없이 접근하면 Spring Security 필터가 컨트롤러 진입 전에 401 `unauthenticated`로 차단한다.
 
 CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요하지 않다. 쿠키 전송은 same-origin 전제다(개발 환경은 Vite proxy `/api` → 9090).
+
+## 소유권
+
+어템프트는 **로그인 사용자 또는 게스트 세션 중 정확히 하나**가 소유한다. 로그인하지 않은 상태로 어템프트 API(`/api/attempts/**`)나 `GET /api/me`를 호출하면 서버가 게스트 세션을 만들어 `Set-Cookie: GUEST_SESSION=...; HttpOnly`를 내려주고, 이후 그 쿠키가 소유자를 식별한다. 쿠키 원문은 저장되지 않고 SHA-256 해시만 보관된다.
+
+- 게스트 세션의 기본 수명은 1시간이다(`GUEST_SESSION` 쿠키의 `Max-Age`). 만료되면 그 게스트가 만든 어템프트에는 더 이상 접근할 수 없다.
+- **내 소유가 아닌 어템프트는 존재 여부를 알려주지 않고 404 `attempt-not-found`로 응답한다.** 403이 아니다 — ID를 무작위로 넣어 남의 풀이가 있는지 확인하는 것을 막기 위한 것이다.
+- 게스트 상태로 풀던 어템프트는 **로그인 시점에 그 계정 소유로 이전된다.** 이전이 끝나면 게스트 쿠키는 만료된다.
+
+즉 클라이언트는 로그인/비로그인 어느 쪽에서도 같은 어템프트 API를 그대로 호출하면 되고, 소유자 식별은 쿠키(세션 또는 게스트)로 자동 처리된다.
 
 ## 공통 규칙
 
@@ -61,7 +78,7 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 }
 ```
 
-예외: 요청 JSON 자체가 파싱 불가한 경우(깨진 JSON, 바디 누락)나 서버 내부 오류(500)는 위 핸들러를 거치지 않아 `{code, message}` 형식이 아닌 프레임워크 기본 응답이 나올 수 있다. 클라이언트는 `code`가 없는 4xx/5xx도 처리할 수 있어야 한다.
+깨진 JSON·바디 누락(400 `invalid-request`), 없는 경로(404 `not-found`), 잘못된 메서드(405 `method-not-allowed`), 서버 내부 오류(500 `internal-server-error`)도 모두 이 형식으로 응답한다. 다만 역프록시나 컨테이너가 애플리케이션에 닿기 전에 끊는 응답(502·504·nginx 오류 페이지 등)은 이 형식이 아니므로, 클라이언트는 `code`가 없는 4xx/5xx도 처리할 수 있어야 한다.
 
 ### 전체 에러 코드표
 
@@ -72,12 +89,17 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 | 401 | `bad-credentials` | 로그인 실패 (아이디 없음/비밀번호 불일치를 구분하지 않음) |
 | 401 | `unauthenticated` | 세션 없이 인증 필요 경로 접근 (Security 필터가 차단) |
 | 403 | `access-denied` | 인증됐으나 권한 부족 (현재 권한 등급이 하나라 사실상 미발생) |
+| 404 | `not-found` | 존재하지 않는 경로 |
 | 404 | `problem-not-found` | 해당 ID의 문제가 없음 |
-| 404 | `attempt-not-found` | 해당 ID의 어템프트가 없음 |
+| 404 | `attempt-not-found` | 해당 ID의 어템프트가 없음, **또는 내 소유가 아님** |
+| 404 | `turn-not-found` | 어템프트는 있으나 해당 번호의 턴이 없음 |
 | 404 | `feedback-not-found` | 어템프트는 있으나 아직 제출 전이라 피드백이 없음 |
+| 404 | `code-run-not-found` | 해당 어템프트에 그 실행 ID가 없음 |
+| 405 | `method-not-allowed` | 경로는 있으나 지원하지 않는 HTTP 메서드 |
 | 409 | `problem-inactive` | 비활성 문제로 새 어템프트를 시작하려 함 |
 | 409 | `attempt-already-submitted` | 이미 제출된 어템프트에 턴을 추가하려 함 |
 | 409 | `feedback-in-progress` | 해당 어템프트의 피드백 생성이 진행 중 |
+| 409 | `code-run-in-progress` | 해당 어템프트에 아직 끝나지 않은 코드 실행이 있음 |
 | 409 | `duplicate-request` | 같은 `Idempotency-Key`의 요청이 처리 중 |
 | 409 | `duplicate-username` | 가입 시 아이디 중복 |
 | 409 | `duplicate-email` | 가입 시 이메일 중복 |
@@ -450,6 +472,217 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 
 ---
 
+# 코드 빌드/실행 (Code Runs)
+
+어템프트의 코드를 컴파일해 실행하고, 문제에 채점용 테스트가 등록되어 있으면 그 테스트로 채점한다.
+
+**비동기다.** 실행 요청은 즉시 202로 실행 ID(`runId`)만 반환하고, 실제 실행은 별도 워커에서 일어난다. 클라이언트는 조회 API를 폴링해 결과를 확인한다.
+
+```
+POST .../runs  ──▶ 실행 접수(QUEUED) ──▶ 큐 ──▶ 워커(javac + JUnit)
+                                                    │
+GET .../runs/{runId} ◀── 결과 반영 ◀── 큐 ◀─────────┘
+```
+
+## 실행 방식
+
+문제에 채점 테스트가 있으면 JUnit으로, 없으면 `main`을 실행한다. **채점 테스트는 어떤 응답에도 포함되지 않는다** — 문제 조회의 `files`에도 어템프트의 `baseFiles`에도 없고, 실행 시점에 서버가 워커로 직접 전달한다.
+
+| | 테스트 있음 | 테스트 없음 |
+|---|---|---|
+| 실행 대상 | JUnit 콘솔 런처로 전체 테스트 | `Main` 클래스의 `main()` |
+| 타임아웃 | 30초 | 10초 |
+| 통과 판정 | 테스트 전원 통과 | 종료 코드 0 |
+
+- 컴파일 타임아웃은 30초다.
+- `stdout`·`stderr`는 각각 **64KB에서 절단**되며, 절단되면 끝에 안내 문구가 붙는다. **앞쪽부터 보관하므로 제출 코드가 출력을 많이 하면 뒤에 오는 JUnit 결과가 잘려 나갈 수 있다.**
+- 실행 환경은 힙 256MB, CPU 1개, 환경변수 없음, 실행마다 새 임시 디렉터리다.
+
+## 상태 값
+
+| status | 종료? | 의미 |
+|---|---|---|
+| `QUEUED` | ✗ | 큐 대기 또는 실행 중. **이 값만 진행 중이다** |
+| `SUCCEEDED` | ✓ | 테스트 전원 통과(테스트 있음) 또는 정상 종료(테스트 없음) |
+| `TEST_FAILED` | ✓ | 컴파일·실행은 됐지만 채점 테스트가 깨졌다. **사용자가 고쳐야 하는 유일한 실패** |
+| `COMPILE_ERROR` | ✓ | 컴파일 실패. `stderr`에 오류. 실행할 `.java`가 없을 때도 이 값 |
+| `RUNTIME_ERROR` | ✓ | 0이 아닌 코드로 종료, 또는 `main` 메서드를 못 찾음 |
+| `TIMEOUT` | ✓ | 위 타임아웃 초과. `exitCode`는 null |
+| `RUNNER_ERROR` | ✓ | 워커 장애, 잘못된 파일 경로, 좌초된 실행 회수 |
+
+## 동시성·수명 규칙
+
+1. **어템프트당 미완료 실행은 1건**이다. 진행 중에 새로 요청하면 409 `code-run-in-progress`.
+2. `QUEUED`가 **2분**을 넘기면 워커가 죽은 것으로 보고 `RUNNER_ERROR`로 회수한다. 회수는 실행 요청·조회 시점에 함께 수행되므로, 409에 갇혔다면 폴링을 이어가면 풀린다.
+3. 결과 반영은 멱등하다. 회수된 뒤 늦게 도착한 결과나 재전달된 메시지는 무시된다.
+4. **채점 테스트는 실행 시점의 것을 쓴다.** 문제 저장소가 재동기화되어 테스트가 바뀌면 같은 턴을 다시 실행해도 결과가 달라질 수 있다 — 코드만 불변이다.
+
+### POST /api/attempts/{id}/runs
+
+**마지막 턴**의 코드를 실행한다. 턴이 하나도 없으면 시작 스켈레톤을 실행하고 `turnOrdinal`은 null이 된다.
+
+- **인증**: 불필요 (소유자 스코프)
+- **요청 바디**: 없음
+- **`Idempotency-Key`**: 지원하지 않는다
+
+**성공 응답 — 202 Accepted**: [CodeRunResponse](#coderunresponse-스키마)
+
+**에러**
+
+| HTTP | code | 언제 |
+|---|---|---|
+| 404 | `attempt-not-found` | 어템프트가 없거나 내 소유가 아님 |
+| 409 | `code-run-in-progress` | 이 어템프트에 아직 끝나지 않은 실행이 있음 |
+
+### POST /api/attempts/{id}/turns/{ordinal}/runs
+
+**지정한 턴 시점**의 코드를 실행한다. 턴은 불변이므로 과거 턴을 다시 실행하면 그때의 코드가 그대로 실행된다 — "몇 번째 프롬프트까지 통과했는지"를 확인하는 용도다.
+
+- **인증**: 불필요 (소유자 스코프)
+
+| 경로 파라미터 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `id` | number | 필수 | 어템프트 ID |
+| `ordinal` | number | 필수 | 실행할 턴 번호. **0부터 시작**한다 (`AttemptResponse.turns` 배열 인덱스와 같다) |
+
+> 피드백의 `turns[].turn`은 1부터 시작하지만 이 `ordinal`은 **0부터**다. 혼동하지 말 것.
+
+**성공 응답 — 202 Accepted**: [CodeRunResponse](#coderunresponse-스키마). `turnOrdinal`은 요청한 값 그대로다.
+
+**에러**
+
+| HTTP | code | 언제 |
+|---|---|---|
+| 404 | `attempt-not-found` | 어템프트가 없음 |
+| 404 | `turn-not-found` | `ordinal`이 0보다 작거나 턴 개수 이상 |
+| 409 | `code-run-in-progress` | 이 어템프트에 아직 끝나지 않은 실행이 있음 |
+
+### GET /api/attempts/{id}/runs
+
+이 어템프트에서 지금까지 요청한 실행을 **최근 순으로 전부** 반환한다.
+
+실행 ID를 클라이언트가 보관하지 않아도 되게 하는 것이 이 API의 목적이다. 새로고침 후 진행 중인 실행을 이어서 폴링하거나, 턴별 통과 여부를 표시하거나, 409를 받았을 때 무엇이 진행 중인지 확인할 때 쓴다.
+
+- **인증**: 불필요 (소유자 스코프)
+- **파라미터**: 없음
+
+**성공 응답 — 200**
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `runs` | array | 실행 목록. 최근 실행이 먼저 온다. 실행이 없으면 빈 배열 |
+| `runs[].runId` | string | 실행 ID (UUID) |
+| `runs[].turnOrdinal` | number \| null | 실행한 코드가 몇 번째 턴의 것인지(0-based). 스켈레톤 실행이거나 턴 단위 기록 이전이면 null |
+| `runs[].status` | string | 위 [상태 값](#상태-값) |
+| `runs[].exitCode` | number \| null | 종료 코드. 종료 전이거나 타임아웃이면 null |
+| `runs[].durationMs` | number \| null | 소요 시간(ms). 종료 전에는 null |
+| `runs[].createdAt` | string | 실행을 접수한 시각 (ISO-8601) |
+| `runs[].finishedAt` | string \| null | 실행이 끝난 시각. 아직 `QUEUED`면 null |
+
+**`stdout`·`stderr`는 목록에 포함되지 않는다.** 두 값은 각각 64KB까지 커질 수 있어 목록에 실으면 응답이 지나치게 무거워진다. 본문이 필요하면 `runId`로 단건 조회한다.
+
+```json
+{
+  "runs": [
+    {
+      "runId": "630f4bb3-67e7-4ca4-8ab9-75762d897bdf",
+      "turnOrdinal": 1,
+      "status": "QUEUED",
+      "exitCode": null,
+      "durationMs": null,
+      "createdAt": "2026-08-03T06:35:34.060670Z",
+      "finishedAt": null
+    },
+    {
+      "runId": "05707367-5c71-4fe4-bcea-e943c9b6f077",
+      "turnOrdinal": 0,
+      "status": "TEST_FAILED",
+      "exitCode": 1,
+      "durationMs": 1224,
+      "createdAt": "2026-08-03T06:35:05.554402Z",
+      "finishedAt": "2026-08-03T06:35:06.788055Z"
+    }
+  ]
+}
+```
+
+**에러**
+
+| HTTP | code | 언제 |
+|---|---|---|
+| 404 | `attempt-not-found` | 어템프트가 없거나 내 소유가 아님 |
+
+### GET /api/attempts/{id}/runs/{runId}
+
+실행 하나의 상태와 결과 본문을 반환한다. 폴링에 쓴다.
+
+- **인증**: 불필요 (소유자 스코프)
+
+| 경로 파라미터 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `id` | number | 필수 | 어템프트 ID |
+| `runId` | string | 필수 | 실행 ID (UUID) |
+
+**성공 응답 — 200**: [CodeRunResponse](#coderunresponse-스키마)
+
+**에러**
+
+| HTTP | code | 언제 |
+|---|---|---|
+| 404 | `attempt-not-found` | 어템프트가 없거나 내 소유가 아님 |
+| 404 | `code-run-not-found` | **그 어템프트에** 해당 실행 ID가 없음 (다른 어템프트의 `runId`로는 조회되지 않는다) |
+
+## CodeRunResponse 스키마
+
+실행 요청(202)과 단건 조회(200)가 같은 형태를 반환한다.
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `runId` | string | 실행 ID (UUID) |
+| `turnOrdinal` | number \| null | 실행한 코드가 몇 번째 턴의 것인지(0-based) |
+| `status` | string | 위 [상태 값](#상태-값) |
+| `exitCode` | number \| null | 종료 코드 |
+| `stdout` | string \| null | 표준 출력. **JUnit 실행 결과가 여기 담긴다** |
+| `stderr` | string \| null | 표준 에러. **컴파일 오류 메시지가 여기 담긴다** |
+| `durationMs` | number \| null | 소요 시간(ms) |
+
+미완료(`QUEUED`) 상태에서는 `exitCode`·`stdout`·`stderr`·`durationMs`가 모두 **키는 있고 값이 `null`이다**(키가 생략되지 않는다).
+
+```json
+{
+  "runId": "630f4bb3-67e7-4ca4-8ab9-75762d897bdf",
+  "turnOrdinal": 0,
+  "status": "QUEUED",
+  "exitCode": null,
+  "stdout": null,
+  "stderr": null,
+  "durationMs": null
+}
+```
+
+`stdout`에는 JUnit 콘솔 런처의 출력이 그대로 들어온다. 구조화된 케이스별 결과는 아직 제공하지 않으므로, 클라이언트는 이 문자열을 그대로 보여주는 것을 전제로 한다.
+
+```
+├─ PhoneNumberFormatterTest ✔
+│  ├─ 휴대전화_번호를_마스킹한다() ✔
+│  ├─ 지역번호_2자리와_국번_3자리를_마스킹한다() ✘ expected: <02-***-4567> but was: <02-1****567>
+[         5 tests successful      ]
+[         3 tests failed          ]
+```
+
+## 권장 폴링 절차
+
+```
+1) POST .../runs                     → 202, runId 획득
+   409 code-run-in-progress 이면 → GET .../runs 로 진행 중인 실행을 찾아 그 runId로 이어감
+2) GET .../runs/{runId} 반복 (1~2초 간격)
+3) status !== 'QUEUED' 이면 종료. 최대 대기는 2분(회수 TTL)으로 잡으면 충분하다
+```
+
+화면에 처음 들어올 때는 `GET .../runs`를 먼저 호출해 상태를 복원한다. 목록 첫 항목이 `QUEUED`면 그 `runId`로 폴링을 이어가면 된다.
+
+---
+
 # 피드백 (Feedback)
 
 ## FeedbackResponse 계약
@@ -631,3 +864,35 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 |---|---|---|
 | 401 | `unauthenticated` | 세션이 없거나 만료됨 |
 | 403 | `access-denied` | 인증됐으나 권한 부족 (현재 권한 등급이 하나라 사실상 미발생) |
+
+### GET /api/me/attempts
+
+현재 로그인 사용자가 **제출 완료한** 풀이 목록을 제출 시각 내림차순으로 반환한다. 같은 문제를 여러 번 제출했으면 각각 별도 항목이다. 제출 전(`IN_PROGRESS`) 어템프트는 포함되지 않는다.
+
+- **인증**: **필요** (세션 쿠키)
+- **파라미터**: 없음
+
+**성공 응답 — 200**
+
+봉투 없이 배열을 그대로 반환한다(다른 목록 API와 형태가 다르다).
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `[].attemptId` | number | 어템프트 ID. 피드백 조회(`GET /api/attempts/{id}/feedback`)에 쓴다 |
+| `[].problemId` | number | 문제 ID |
+| `[].problemTitle` | string | 문제 제목 |
+| `[].submittedAt` | string \| null | 제출 완료 시각 (ISO-8601). 제출 시각 기록 이전의 오래된 기록은 null일 수 있다 |
+
+```json
+[
+  { "attemptId": 42, "problemId": 3, "problemTitle": "전화번호 개인정보 보호 처리", "submittedAt": "2026-07-31T05:10:32Z" }
+]
+```
+
+**에러**
+
+| HTTP | code | 언제 |
+|---|---|---|
+| 401 | `unauthenticated` | 세션이 없거나 만료됨 |
+
+> 게스트로 제출한 풀이도 **게스트 세션이 유효한 동안 로그인하면** 소유권이 이전되어(위 [소유권](#소유권)) 이 목록에 함께 나타난다. 이전은 제출 여부와 무관하게 그 게스트의 모든 어템프트에 적용된다. 반대로 게스트 세션이 만료된 뒤 로그인하면 이전되지 않으므로, 그 풀이는 이 목록에도 나오지 않고 어템프트 API로도 접근할 수 없다.

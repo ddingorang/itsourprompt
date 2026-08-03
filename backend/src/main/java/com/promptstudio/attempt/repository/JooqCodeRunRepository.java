@@ -2,11 +2,13 @@ package com.promptstudio.attempt.repository;
 
 import com.promptstudio.attempt.domain.CodeRunResult;
 import com.promptstudio.attempt.domain.CodeRunStatus;
+import com.promptstudio.attempt.domain.CodeRunSummary;
 import com.promptstudio.attempt.domain.CodeRunView;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -55,6 +57,27 @@ public class JooqCodeRunRepository implements CodeRunRepository {
                         record.value6(),
                         record.value7(),
                         record.value8()
+                ));
+    }
+
+    /**
+     * created_at 뒤에 id를 덧붙여 정렬한다. 같은 시각의 두 행이 호출마다 다른 순서로 나오면
+     * 목록을 그리는 화면이 흔들린다 — UUID 순서에 의미는 없고 안정성만 취한다.
+     */
+    @Override
+    public List<CodeRunSummary> findAllByAttemptId(Long attemptId) {
+        return dsl.select(ID, TURN_ORDINAL, STATUS, EXIT_CODE, DURATION_MS, CREATED_AT, FINISHED_AT)
+                .from(CODE_RUN)
+                .where(ATTEMPT_ID.eq(attemptId))
+                .orderBy(CREATED_AT.desc(), ID.desc())
+                .fetch(record -> new CodeRunSummary(
+                        record.value1(),
+                        record.value2(),
+                        CodeRunStatus.valueOf(record.value3()),
+                        record.value4(),
+                        record.value5(),
+                        record.value6(),
+                        record.value7()
                 ));
     }
 
