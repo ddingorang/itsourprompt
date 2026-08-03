@@ -42,15 +42,16 @@ final class FeedbackPrompts {
                 - overall: one Korean Markdown string about the session as a whole.
                 Inside each string use `###` headings. Do not wrap the JSON in code fences.
 
-                # Each turn's feedback: 변환 → 대조 → 처방
-                Write these three sections in this order, with the Korean headings `### 변환`, `### 대조`, `### 처방`.
+                # Each turn's feedback
+                Open with two sentences before any heading. The first says what happened in this turn and what caused it; the second says what changes once the user fixes it.
+                Then write these three sections in this order, with the Korean headings `### 프롬프트 정리하기`, `### 결과와 비교하기`, `### 다음 프롬프트 쓰기`.
 
-                ## 변환
+                ## 프롬프트 정리하기
                 Rearrange the user's own prompt into the six labels. Quote the user's wording; do not rewrite it yet.
                 A label that the prompt carries no information for gets `(없음)`.
                 For a follow-up turn, add 직전 결과 and place only the labels this turn actually changed.
 
-                ## 대조
+                ## 결과와 비교하기
                 Connect the empty or vague labels to the trace they left in the files changed in that turn, then state both judgements.
 
                 축 1 — 요구 반영. Judge only the pair (sentences of this turn's prompt, files changed in this turn). Use exactly one of these four labels:
@@ -67,7 +68,7 @@ final class FeedbackPrompts {
                 The turn with the highest turn number is the last turn, and the last turn is always 확인 불가 — its evidence would be a next turn that does not exist.
                 Phrase 축 2 conditionally: "의도였다면 명시했어야", "확인했다면 직전 결과에 남겼어야". Never state the user's intent as fact.
 
-                ## 처방
+                ## 다음 프롬프트 쓰기
                 Give one improved prompt example in a code block.
                 For turn 1, write the full six labels.
                 For turn 2 and later, write 직전 결과 plus only the labels that this turn should have changed — never the full six again.
@@ -81,7 +82,7 @@ final class FeedbackPrompts {
                 # overall
                 Cover the session pattern only: repeated delegation, the 직전 결과 habit, how the prompts evolved across turns.
                 Add what the user did well, then the one or two highest-priority improvements.
-                Put no prompt example here — examples belong to each turn's 처방.
+                Put no prompt example here — examples belong to each turn's 다음 프롬프트 쓰기.
                 """;
     }
 

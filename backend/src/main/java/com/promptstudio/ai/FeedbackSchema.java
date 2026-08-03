@@ -21,7 +21,7 @@ final class FeedbackSchema {
               "properties": {
                 "turnFeedbacks": {
                   "type": "array",
-                  "description": "정확히 %1$d개. 턴 순서대로의 피드백이며, 각 항목은 변환·대조·처방 세 절의 한국어 Markdown.",
+                  "description": "정확히 %1$d개. 턴 순서대로의 피드백이며, 각 항목은 요약 두 문장과 프롬프트 정리하기·결과와 비교하기·다음 프롬프트 쓰기 세 절의 한국어 Markdown.",
                   "minItems": %1$d,
                   "maxItems": %1$d,
                   "items": {
