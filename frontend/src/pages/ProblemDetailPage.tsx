@@ -234,6 +234,9 @@ export default function ProblemDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGrading, setIsGrading] = useState(false);
+  const [testResults, setTestResults] = useState<TestCaseResult[] | null>(null);
+  const [gradedVersion, setGradedVersion] = useState<string | null>(null);
   const isRunPendingRef = useRef(false);
   /**
    * 실패한 턴 요청의 Idempotency-Key를 기억한다. 같은 프롬프트로 다시 실행하면
@@ -241,6 +244,7 @@ export default function ProblemDetailPage() {
    * 돌려준다(AI 호출이 수 분 걸리므로 중복 호출 비용이 크다).
    */
   const pendingRunRef = useRef<{ prompt: string; key: string } | null>(null);
+  const gradingTimeoutRef = useRef<number | null>(null);
   /** 진행 중인 로드. 새 로드가 시작되면 이전 것을 끊어 마지막 응답만 화면에 남긴다. */
   const loadControllerRef = useRef<AbortController | null>(null);
   /**
@@ -251,8 +255,10 @@ export default function ProblemDetailPage() {
 
   const files = attempt?.files ?? problem?.files ?? [];
   const turns = attempt?.turns ?? [];
-  const passedTestCount = mockTestResults.filter((result) => result.passed).length;
-  const testPassRate = (passedTestCount / mockTestResults.length) * 100;
+  const passedTestCount = testResults?.filter((result) => result.passed).length ?? 0;
+  const testPassRate = testResults?.length
+    ? (passedTestCount / testResults.length) * 100
+    : 0;
   const isSubmitted = attempt?.status === 'SUBMITTED';
   const canSubmit = turns.length > 0 && !isSubmitted;
 
@@ -273,6 +279,13 @@ export default function ProblemDetailPage() {
     const { signal } = controller;
 
     setIsLoading(true);
+    if (gradingTimeoutRef.current !== null) {
+      window.clearTimeout(gradingTimeoutRef.current);
+      gradingTimeoutRef.current = null;
+    }
+    setTestResults(null);
+    setGradedVersion(null);
+    setIsGrading(false);
 
     try {
       const loadedAttempt =
@@ -378,6 +391,9 @@ export default function ProblemDetailPage() {
 
     return () => {
       loadControllerRef.current?.abort();
+      if (gradingTimeoutRef.current !== null) {
+        window.clearTimeout(gradingTimeoutRef.current);
+      }
     };
   }, [isAttemptRoute, routeAttemptId, routeProblemId]);
 
@@ -497,6 +513,25 @@ export default function ProblemDetailPage() {
     }
 
     void handleRun();
+  };
+
+  const handleDetailTabClick = (tab: DetailTab) => {
+    setActiveTab(tab);
+
+    if (tab !== 'test' || turns.length === 0 || isGrading) return;
+
+    const currentVersion = `${attempt?.id ?? 'new'}:${turns.length}`;
+    if (gradedVersion === currentVersion && testResults) return;
+
+    setIsGrading(true);
+
+    // TODO: 채점 API가 추가되면 임시 지연과 mockTestResults를 API 호출로 교체한다.
+    gradingTimeoutRef.current = window.setTimeout(() => {
+      setTestResults(mockTestResults);
+      setGradedVersion(currentVersion);
+      setIsGrading(false);
+      gradingTimeoutRef.current = null;
+    }, 700);
   };
 
   const handleSubmit = async () => {
@@ -748,7 +783,7 @@ export default function ProblemDetailPage() {
                       : 'text-[#8b8b8b] hover:text-[#b8b8b8]',
                   ].join(' ')}
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => handleDetailTabClick(tab)}
                   role="tab"
                   type="button"
                 >
@@ -832,7 +867,15 @@ export default function ProblemDetailPage() {
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
                   실행한 프롬프트가 없습니다.
                 </div>
-              ) : (
+              ) : isGrading ? (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#a3a3a3]">
+                  테스트 케이스를 채점하고 있습니다…
+                </div>
+              ) : turns.length === 0 ? (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
+                  프롬프트 실행 후 테스트할 수 있습니다.
+                </div>
+              ) : testResults ? (
                 <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif]">
                   <div className="border border-[#3f3f3f] bg-[#111] p-4">
                     <div className="flex items-start justify-between gap-4">
@@ -846,7 +889,7 @@ export default function ProblemDetailPage() {
                       </div>
                       <div className="flex shrink-0 items-baseline gap-1 text-right">
                         <strong className="text-xl text-[#d6ff50]">
-                          {passedTestCount}/{mockTestResults.length}
+                          {passedTestCount}/{testResults.length}
                         </strong>
                         <span className="text-[10px] text-[#8b8b8b]">
                           개 통과
@@ -855,10 +898,10 @@ export default function ProblemDetailPage() {
                     </div>
 
                     <div
-                      aria-label={`테스트 케이스 ${mockTestResults.length}개 중 ${passedTestCount}개 통과`}
+                      aria-label={`테스트 케이스 ${testResults.length}개 중 ${passedTestCount}개 통과`}
                       className="mt-4 h-1.5 overflow-hidden bg-[#303030]"
                       role="progressbar"
-                      aria-valuemax={mockTestResults.length}
+                      aria-valuemax={testResults.length}
                       aria-valuemin={0}
                       aria-valuenow={passedTestCount}
                     >
@@ -870,7 +913,7 @@ export default function ProblemDetailPage() {
                   </div>
 
                   <div className="mt-3 grid border-x border-t border-[#343434]">
-                    {mockTestResults.map((result) => (
+                    {testResults.map((result) => (
                       <div
                         className="flex min-h-10 items-center justify-between border-b border-[#343434] px-3"
                         key={result.id}
@@ -888,6 +931,10 @@ export default function ProblemDetailPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              ) : (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
+                  테스트 결과가 없습니다.
                 </div>
               )}
             </div>
