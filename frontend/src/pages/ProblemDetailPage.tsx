@@ -50,6 +50,19 @@ interface FileTreeNode {
   deleted?: boolean;
 }
 
+interface TestCaseResult {
+  id: number;
+  passed: boolean;
+}
+
+const mockTestResults: TestCaseResult[] = [
+  { id: 1, passed: true },
+  { id: 2, passed: true },
+  { id: 3, passed: false },
+  { id: 4, passed: true },
+  { id: 5, passed: true },
+];
+
 const labelClasses =
   'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
 
@@ -238,6 +251,8 @@ export default function ProblemDetailPage() {
 
   const files = attempt?.files ?? problem?.files ?? [];
   const turns = attempt?.turns ?? [];
+  const passedTestCount = mockTestResults.filter((result) => result.passed).length;
+  const testPassRate = (passedTestCount / mockTestResults.length) * 100;
   const isSubmitted = attempt?.status === 'SUBMITTED';
   const canSubmit = turns.length > 0 && !isSubmitted;
 
@@ -818,8 +833,61 @@ export default function ProblemDetailPage() {
                   실행한 프롬프트가 없습니다.
                 </div>
               ) : (
-                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
-                  테스트 결과가 없습니다.
+                <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif]">
+                  <div className="border border-[#3f3f3f] bg-[#111] p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="m-0 text-[10px] font-bold tracking-[0.12em] text-[#777]">
+                          TEST RESULT
+                        </p>
+                        <h2 className="mt-1.5 mb-0 text-[14px] font-bold text-[#f5f5ef]">
+                          테스트 케이스 채점 결과
+                        </h2>
+                      </div>
+                      <div className="flex shrink-0 items-baseline gap-1 text-right">
+                        <strong className="text-xl text-[#d6ff50]">
+                          {passedTestCount}/{mockTestResults.length}
+                        </strong>
+                        <span className="text-[10px] text-[#8b8b8b]">
+                          개 통과
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      aria-label={`테스트 케이스 ${mockTestResults.length}개 중 ${passedTestCount}개 통과`}
+                      className="mt-4 h-1.5 overflow-hidden bg-[#303030]"
+                      role="progressbar"
+                      aria-valuemax={mockTestResults.length}
+                      aria-valuemin={0}
+                      aria-valuenow={passedTestCount}
+                    >
+                      <div
+                        className="h-full bg-[#d6ff50]"
+                        style={{ width: `${testPassRate}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid border-x border-t border-[#343434]">
+                    {mockTestResults.map((result) => (
+                      <div
+                        className="flex min-h-10 items-center justify-between border-b border-[#343434] px-3"
+                        key={result.id}
+                      >
+                        <span className="text-[11px] text-[#aaa]">
+                          TEST CASE {String(result.id).padStart(2, '0')}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold tracking-[0.08em] ${
+                            result.passed ? 'text-[#d6ff50]' : 'text-[#ff786b]'
+                          }`}
+                        >
+                          {result.passed ? 'PASSED' : 'FAILED'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
