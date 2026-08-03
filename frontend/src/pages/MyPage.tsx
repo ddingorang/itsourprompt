@@ -188,9 +188,9 @@ export default function MyPage() {
                 <p className="mb-1 font-mono text-[13px] tracking-[0.12em] text-[#777]">
                   USER NAME
                 </p>
-                <h1 className="text-[clamp(28px,4vw,42px)] leading-none font-black tracking-[-0.05em]">
+                <h2 className="text-[clamp(28px,4vw,42px)] leading-none font-black tracking-[-0.05em]">
                   {user.nickname}
-                </h1>
+                </h2>
               </div>
             </div>
 
