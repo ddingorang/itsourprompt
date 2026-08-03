@@ -1,17 +1,20 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { getProblems } from '../features/problem/api';
+import Pagination from '../features/problem/Pagination';
+import { usePagination } from '../features/problem/usePagination';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
-// [임시 데이터] 통계 3종은 아직 백엔드 API가 없어 더미 값이다.
-// 실데이터 연동에는 예: GET /api/me/stats { solved, submissions, streakDays } 같은
-// 신규 API가 필요하다 (S15P11A505-backend/docs/auth-api.md §6 후속 과제 참고).
-const stats = [
-  { label: 'SOLVED', value: '12' },
-  { label: 'SUBMISSIONS', value: '28' },
-  { label: 'STREAK', value: '04', unit: 'DAYS' },
-];
+const ACTIVITY_ITEMS_PER_PAGE = 5;
+const FEEDBACK_ITEMS_PER_PAGE = 3;
+const PAGES_PER_GROUP = 5;
 
+// [임시 데이터] 풀이 수와 전체 턴 수는 아직 백엔드 API가 없어 더미 값이다.
+// 전체 문제 수는 기존 문제 목록 API에서 조회하고, 사용자 통계 연동에는
+// 예: GET /api/me/stats { solved, totalTurns } 같은
+// 신규 API가 필요하다 (S15P11A505-backend/docs/auth-api.md §6 후속 과제 참고).
 // [임시 데이터] 활동 내역도 더미다. 실데이터 연동에는 어템프트에 소유자(userId)를
 // 붙인 뒤 GET /api/me/attempts 로 조회하는 후속 작업이 필요하다.
 // 주의: 아래 Link가 activity.id를 problemId로 그대로 쓰고 있으므로,
@@ -34,6 +37,16 @@ const recentActivity = [
   },
 ];
 
+// [임시 데이터] 사용자별 제출 내역 API가 연결되면 가장 최근 피드백으로 교체한다.
+const recentFeedback = [
+  {
+    attemptId: 1,
+    date: '2026.07.27',
+    title: 'Hello World 출력',
+    summary: '요구사항과 출력 형식을 더 구체적으로 작성하면 원하는 결과를 빠르게 얻을 수 있습니다.',
+  },
+];
+
 /** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (MEMBER SINCE 표기용) */
 function formatMemberSince(createdAt: string): string {
   const date = new Date(createdAt);
@@ -43,21 +56,74 @@ function formatMemberSince(createdAt: string): string {
 export default function MyPage() {
   // 이 페이지는 ProtectedRoute로 감싸져 있어 user가 항상 존재한다(비로그인은 /login으로 이동됨).
   const { user } = useAuth();
+  const [totalProblemCount, setTotalProblemCount] = useState<number | null>(null);
+  const [requestedActivityPage, setRequestedActivityPage] = useState(1);
+  const [requestedFeedbackPage, setRequestedFeedbackPage] = useState(1);
+  const activityPagination = usePagination({
+    itemCount: recentActivity.length,
+    itemsPerPage: ACTIVITY_ITEMS_PER_PAGE,
+    pagesPerGroup: PAGES_PER_GROUP,
+    requestedPage: requestedActivityPage,
+  });
+  const feedbackPagination = usePagination({
+    itemCount: recentFeedback.length,
+    itemsPerPage: FEEDBACK_ITEMS_PER_PAGE,
+    pagesPerGroup: PAGES_PER_GROUP,
+    requestedPage: requestedFeedbackPage,
+  });
+  const visibleActivities = recentActivity.slice(
+    activityPagination.pageStart,
+    activityPagination.pageStart + ACTIVITY_ITEMS_PER_PAGE,
+  );
+  const visibleFeedback = recentFeedback.slice(
+    feedbackPagination.pageStart,
+    feedbackPagination.pageStart + FEEDBACK_ITEMS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getProblems()
+      .then((response) => {
+        if (isMounted) {
+          setTotalProblemCount(response.problems.length);
+        }
+      })
+      .catch(() => {
+        // 문제 목록을 불러오지 못하면 대체값을 유지한다.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   if (!user) {
     return null;
   }
+
+  const stats = [
+    {
+      label: 'SOLVED',
+      value: '3',
+      suffix: `/${totalProblemCount ?? '--'}`,
+    },
+    { label: 'TOTAL TURNS', value: '28', suffix: null },
+  ];
 
   return (
     <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
       <Header />
 
-      <main className="mx-auto w-[calc(100%_-_10vw)] flex-1 pt-[clamp(36px,5vw,64px)] pb-24 max-[640px]:w-[calc(100%_-_40px)]">
-        <div className="mb-[54px] font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-          USER PROFILE
-        </div>
+      <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-24 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
+        <section className="flex items-center bg-[#d6ff50] px-[22px] py-5 text-[#090909]">
+          <h1 className="m-0 font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em]">
+            USER PROFILE
+          </h1>
+        </section>
 
-        <section className="grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[#f5f5ef] max-[820px]:grid-cols-1">
-          <div className="flex min-h-[220px] flex-col justify-between border-r border-[#343434] p-[clamp(24px,4vw,48px)] max-[820px]:min-h-[200px] max-[820px]:border-r-0 max-[820px]:border-b">
+        <section className="mt-4 grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[#f5f5ef] max-[1200px]:grid-cols-1">
+          <div className="flex min-h-[180px] flex-col justify-between border-r border-[#343434] p-[clamp(20px,3vw,32px)] max-[1200px]:min-h-[170px] max-[1200px]:border-r-0 max-[1200px]:border-b">
             <div className="flex items-center gap-5">
               <div
                 className="grid size-16 shrink-0 place-items-center rounded-full bg-[#d6ff50] text-2xl font-black text-[#090909]"
@@ -84,10 +150,10 @@ export default function MyPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 max-[520px]:grid-cols-1">
+          <div className="grid grid-cols-2 max-[520px]:grid-cols-1">
             {stats.map((stat, index) => (
               <div
-                className="flex min-h-[150px] flex-col justify-between border-r border-[#343434] p-[clamp(18px,3vw,32px)] last:border-r-0 max-[520px]:min-h-[120px] max-[520px]:border-r-0 max-[520px]:border-b max-[520px]:last:border-b-0"
+                className="flex min-h-[130px] flex-col justify-between border-r border-[#343434] p-[clamp(16px,2vw,24px)] last:border-r-0 max-[520px]:min-h-[110px] max-[520px]:border-r-0 max-[520px]:border-b max-[520px]:last:border-b-0"
                 key={stat.label}
               >
                 <span className="font-mono text-[13px] tracking-[0.1em] text-[#777]">
@@ -97,9 +163,9 @@ export default function MyPage() {
                   <strong className="font-mono text-[clamp(32px,5vw,60px)] leading-none tracking-[-0.08em]">
                     {stat.value}
                   </strong>
-                  {stat.unit && (
-                    <span className="font-mono text-[12px] text-[#d6ff50]">
-                      {stat.unit}
+                  {stat.suffix && (
+                    <span className="font-mono text-[clamp(15px,2vw,22px)] leading-none tracking-[-0.04em] text-[#777]">
+                      {stat.suffix}
                     </span>
                   )}
                 </div>
@@ -111,19 +177,19 @@ export default function MyPage() {
         <section className="mt-[clamp(52px,8vw,96px)]">
           <div className="flex items-end justify-between gap-6 pb-5">
               <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-                YOUR PROGRESS
+                SOLVED PROBLEMS
               </div>
           </div>
 
           <div className="border-y border-t-[#f5f5ef] border-b-[#343434]">
-            {recentActivity.map((activity, index) => (
+            {visibleActivities.map((activity, index) => (
               <Link
-                className="group grid min-h-[92px] grid-cols-[52px_110px_minmax(0,1fr)_42px] items-center gap-4 border-b border-[#343434] px-2 transition-[background,padding] last:border-b-0 hover:bg-[#171717] hover:px-4 focus-visible:bg-[#171717] focus-visible:px-4 focus-visible:outline-none max-[680px]:grid-cols-[38px_minmax(0,1fr)_28px] max-[680px]:gap-3"
+                className="group grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_42px] items-center gap-4 border-b border-[#343434] px-2 py-3 transition-[background,padding] last:border-b-0 hover:bg-[#171717] hover:px-4 focus-visible:bg-[#171717] focus-visible:px-4 focus-visible:outline-none max-[680px]:grid-cols-[38px_minmax(0,1fr)_28px] max-[680px]:gap-3"
                 key={activity.id}
                 to={`/problems/${activity.id}`}
               >
                 <span className="font-mono text-[17px] text-[#777]">
-                  {String(index + 1).padStart(2, '0')}
+                  {String(activityPagination.pageStart + index + 1).padStart(2, '0')}
                 </span>
                 <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
                   {activity.date}
@@ -140,6 +206,64 @@ export default function MyPage() {
               </Link>
             ))}
           </div>
+
+          {activityPagination.totalPages > 1 && (
+            <Pagination
+              currentPage={activityPagination.currentPage}
+              pageGroupEnd={activityPagination.pageGroupEnd}
+              pageGroupStart={activityPagination.pageGroupStart}
+              totalPages={activityPagination.totalPages}
+              onPageChange={setRequestedActivityPage}
+            />
+          )}
+        </section>
+
+        <section className="mt-[clamp(52px,8vw,96px)]">
+          <div className="flex items-end justify-between gap-6 pb-5">
+            <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+              RECENT FEEDBACK
+            </div>
+          </div>
+
+          <div className="border-y border-t-[#f5f5ef] border-b-[#343434]">
+            {visibleFeedback.map((feedback) => (
+              <Link
+                className="group grid grid-cols-[120px_minmax(0,1fr)_42px] items-center gap-6 border-b border-[#343434] px-2 py-7 text-inherit no-underline transition-[background,padding] last:border-b-0 hover:bg-[#171717] hover:px-4 focus-visible:bg-[#171717] focus-visible:px-4 focus-visible:outline-none max-[680px]:grid-cols-[minmax(0,1fr)_28px] max-[680px]:gap-3"
+                key={feedback.attemptId}
+                to={`/feedback/${feedback.attemptId}`}
+              >
+                <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
+                  {feedback.date}
+                </span>
+
+                <span className="min-w-0">
+                  <strong className="block truncate text-[clamp(17px,2vw,22px)] tracking-[-0.02em]">
+                    {feedback.title}
+                  </strong>
+                  <span className="mt-2 block line-clamp-2 text-[13px] leading-[1.7] text-[#777] [word-break:keep-all]">
+                    {feedback.summary}
+                  </span>
+                </span>
+
+                <span
+                  className="justify-self-end text-2xl text-[#d6ff50] transition-transform duration-200 group-hover:translate-x-[3px] group-hover:-translate-y-[3px] group-focus-visible:translate-x-[3px] group-focus-visible:-translate-y-[3px]"
+                  aria-hidden="true"
+                >
+                  ↗
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          {feedbackPagination.totalPages > 1 && (
+            <Pagination
+              currentPage={feedbackPagination.currentPage}
+              pageGroupEnd={feedbackPagination.pageGroupEnd}
+              pageGroupStart={feedbackPagination.pageGroupStart}
+              totalPages={feedbackPagination.totalPages}
+              onPageChange={setRequestedFeedbackPage}
+            />
+          )}
         </section>
 
         <p className="mt-5 font-mono text-[10px] leading-5 tracking-[0.04em] text-[#555]">
