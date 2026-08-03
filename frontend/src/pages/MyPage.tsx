@@ -167,7 +167,7 @@ export default function MyPage() {
     <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
       <Header />
 
-      <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-24 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
+      <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-24 max-[1200px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
         <section className="flex items-center bg-[#d6ff50] px-[22px] py-5 text-[#090909]">
           <h1 className="m-0 font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em]">
             USER PROFILE
