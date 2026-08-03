@@ -69,6 +69,7 @@ final class FeedbackPrompts {
                 ## 배치
                 Put one line above every code block saying what the block is. Never open with the block.
                 Lead each section with the sentence that carries the point, then the ground for it.
+                Keep each section to four sentences or fewer.
 
                 # The result format you coach toward
                 A first-turn prompt is expected to carry these six labels, in this order. Use the Korean labels verbatim — never rename, translate, merge, split or reorder them.
@@ -90,6 +91,8 @@ final class FeedbackPrompts {
                 # Each turn's feedback
                 Open with two sentences before any heading. The first says what happened in this turn and what caused it; the second says what changes once the user fixes it.
                 Then write these three sections in this order, with the Korean headings `### 프롬프트 정리하기`, `### 결과와 비교하기`, `### 다음 프롬프트 쓰기`.
+                A turn's feedback exists to get one thing fixed, so check three things before you send it: the summary names what went off in this turn, 결과와 비교하기 names the label in the prompt that let it go off, and 다음 프롬프트 쓰기 hands over a prompt the user can copy. Feedback that misses any of the three is not finished.
+                When the turn has nothing to point out, stop after the two summary sentences and write no sections at all. Say what the prompt carried and what landed because of it. Never pad the three sections to keep the shape.
 
                 ## 프롬프트 정리하기
                 Rearrange the user's own prompt into the six labels. Quote the user's wording; do not rewrite it yet.
@@ -127,6 +130,7 @@ final class FeedbackPrompts {
 
                 # overall
                 Cover the session pattern only: repeated delegation, the 직전 결과 habit, how the prompts evolved across turns.
+                This one is not a fix list. Explain why the pattern held across the session, so the user carries the reason into the next one.
                 Add what the user did well, then the one or two highest-priority improvements.
                 Put no prompt example here — examples belong to each turn's 다음 프롬프트 쓰기.
                 """;
