@@ -89,7 +89,7 @@ export default function HomePage() {
               <span>PROMPT ENGINEERING PRACTICE</span>
             </div>
             <div className="pt-7 pb-14">
-              <h1 className="landing-display m-0 max-w-[1100px] text-[clamp(52px,9vw,110px)] leading-[1.0] font-black tracking-[-0.085em]">
+              <h1 className="landing-display m-0 max-w-[1100px] text-[clamp(52px,9vw,110px)] leading-[1.0] font-black tracking-[-0.05em]">
                 더 명확한 요청
                 <br />
                 <span className="text-[#d6ff50]">더 정확한 코드</span>
@@ -119,7 +119,7 @@ export default function HomePage() {
           <div className="mx-auto grid min-h-[calc(100svh-66px)] w-[80%] grid-cols-2 items-center gap-[8vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:min-h-[90svh] max-[760px]:w-[calc(100%_-_32px)] max-[760px]:grid-cols-1">
           <div className="order-2 max-[760px]:order-1" data-reveal>
             <div className="mb-7 font-mono text-sm font-bold tracking-[0.16em]">NO SIGN-IN NEEDED</div>
-            <h2 className="m-0 text-[clamp(46px,6.5vw,94px)] leading-[1.1] font-black tracking-[-0.07em] [word-break:keep-all]">
+            <h2 className="m-0 text-[clamp(46px,6.5vw,94px)] leading-[1.1] font-black tracking-[-0.04em] [word-break:keep-all]">
               로그인은
               <br />
               나중이어도
@@ -149,7 +149,7 @@ export default function HomePage() {
             <div className="mb-[clamp(36px,5vh,52px)] flex items-end justify-between gap-8 max-[680px]:items-start">
               <div data-reveal>
                 <div className="mb-6 font-mono text-sm font-bold tracking-[0.16em] text-[#d6ff50]">HOW IT WORKS</div>
-                <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-[1.1] font-black tracking-[-0.065em]">
+                <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-[1.1] font-black tracking-[-0.04em]">
                   세 단계면 충분합니다.
                 </h2>
               </div>
@@ -172,7 +172,7 @@ export default function HomePage() {
           <div className="relative mb-8 flex items-end justify-between gap-8 pb-6" data-reveal>
             <div>
               <div className="mb-5 font-mono text-sm font-bold tracking-[0.16em] text-[#d6ff50]">PRACTICE NOW</div>
-              <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-none font-black tracking-[-0.06em]">어떤 문제부터 풀어볼까요?</h2>
+              <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-none font-black tracking-[-0.04em]">어떤 문제부터 풀어볼까요?</h2>
             </div>
             <Link
   className="hidden items-center gap-4 text-base font-bold text-[#d6ff50] sm:flex"
@@ -208,7 +208,7 @@ export default function HomePage() {
             <div className="landing-final-grid" aria-hidden="true" />
             <div className="relative z-[1]" data-reveal>
               <p className="mb-7 font-mono text-lg font-bold tracking-[0.18em] text-[#d6ff50]">READY WHEN YOU ARE</p>
-              <h2 className="mx-auto mb-10 max-w-[1000px] text-[clamp(50px,9vw,100px)] leading-[1.0] font-black tracking-[-0.08em]">
+              <h2 className="mx-auto mb-10 max-w-[1000px] text-[clamp(50px,9vw,100px)] leading-[1.0] font-black tracking-[-0.05em]">
                 연습이 쌓이면
                 <br />
                 프롬프트가 달라집니다.
