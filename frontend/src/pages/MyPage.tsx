@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { getMySubmittedAttempts } from '../features/me/api';
 import type { SubmittedAttempt } from '../features/me/types';
+import {
+  ApiError,
+  API_ERROR_CODES,
+  isAbortError,
+} from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
@@ -46,10 +51,14 @@ function normalizePageParam(
 export default function MyPage() {
   // 이 페이지는 ProtectedRoute로 감싸져 있어 user가 항상 존재한다(비로그인은 /login으로 이동됨).
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [submittedAttempts, setSubmittedAttempts] = useState<SubmittedAttempt[]>(
     [],
   );
+  const [isLoadingAttempts, setIsLoadingAttempts] = useState(true);
+  const [attemptsError, setAttemptsError] = useState<string | null>(null);
   const solvedProblemsSectionRef = useRef<HTMLElement>(null);
   const solvedPageParam = searchParams.get('solvedPage');
   const sortParam = searchParams.get('sort');
@@ -97,16 +106,39 @@ export default function MyPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    getMySubmittedAttempts(controller.signal)
-      .then(setSubmittedAttempts)
-      .catch(() => {
-        // 로딩 및 오류 상태 UI는 후속 작업에서 연결한다.
-      });
+    void (async () => {
+      try {
+        setIsLoadingAttempts(true);
+        setAttemptsError(null);
+        setSubmittedAttempts(await getMySubmittedAttempts(controller.signal));
+      } catch (error: unknown) {
+        if (isAbortError(error)) return;
+
+        if (
+          error instanceof ApiError &&
+          error.code === API_ERROR_CODES.unauthenticated
+        ) {
+          navigate('/login', {
+            replace: true,
+            state: { from: location.pathname },
+          });
+          return;
+        }
+
+        setAttemptsError(
+          error instanceof ApiError
+            ? error.message
+            : '제출 내역을 불러오지 못했습니다.',
+        );
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingAttempts(false);
+      }
+    })();
 
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     const normalizedSolvedPage = normalizePageParam(
@@ -275,7 +307,35 @@ export default function MyPage() {
           </div>
 
           <div className="border-y border-[#f5f5ef]">
-            {visibleSubmittedAttempts.map((submittedAttempt, index) => (
+            {isLoadingAttempts && (
+              <div className="py-11 font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+                제출 내역을 불러오는 중입니다.
+              </div>
+            )}
+
+            {!isLoadingAttempts && attemptsError && (
+              <div
+                className="py-11 font-mono text-xs leading-[1.7] text-[#ff786b]"
+                role="alert"
+              >
+                {attemptsError}
+              </div>
+            )}
+
+            {!isLoadingAttempts &&
+              !attemptsError &&
+              submittedAttempts.length === 0 && (
+                <div className="flex flex-col items-start gap-5 py-11">
+                  <p className="font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+                    아직 제출한 문제가 없습니다.
+                  </p>
+                  <Button to="/problems">문제 목록으로 이동 ↗</Button>
+                </div>
+              )}
+
+            {!isLoadingAttempts &&
+              !attemptsError &&
+              visibleSubmittedAttempts.map((submittedAttempt, index) => (
               <div
                 className="grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[#343434] px-2 py-3 last:border-b-0 max-[680px]:grid-cols-[38px_minmax(0,1fr)] max-[680px]:gap-3"
                 key={submittedAttempt.attemptId}
@@ -317,10 +377,12 @@ export default function MyPage() {
                   </Button>
                 </div>
               </div>
-            ))}
+              ))}
           </div>
 
-          {solvedPagination.totalPages > 1 && (
+          {!isLoadingAttempts &&
+            !attemptsError &&
+            solvedPagination.totalPages > 1 && (
             <Pagination
               currentPage={solvedPagination.currentPage}
               pageGroupEnd={solvedPagination.pageGroupEnd}
@@ -328,7 +390,7 @@ export default function MyPage() {
               totalPages={solvedPagination.totalPages}
               onPageChange={moveToPage}
             />
-          )}
+            )}
         </section>
       </main>
       <Footer />
