@@ -322,7 +322,7 @@ export default function MyPage() {
         </section>
 
         <p className="mt-5 font-mono text-[10px] leading-5 tracking-[0.04em] text-[#555]">
-          * 통계·활동 데이터는 추후 연동 예정입니다. (사용자 정보는 실제 데이터)
+          * 풀이 수·전체 턴 수·해결 문제 내역은 추후 사용자별 API 연동 예정입니다.
         </p>
       </main>
       <Footer />
