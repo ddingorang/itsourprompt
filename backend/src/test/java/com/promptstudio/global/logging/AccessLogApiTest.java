@@ -198,6 +198,7 @@ class AccessLogApiTest extends DatabaseTest {
     }
 
     private Problem newProblem() {
-        return problemRepository.save(new Problem("hello-world", "Hello World 출력", "# Hello World 출력", List.of(SKELETON)));
+        return problemRepository.save(
+                new Problem("hello-world", "Hello World 출력", "# Hello World 출력", List.of(SKELETON), List.of()));
     }
 }

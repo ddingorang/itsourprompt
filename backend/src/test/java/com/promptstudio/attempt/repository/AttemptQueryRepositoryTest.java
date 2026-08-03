@@ -277,7 +277,7 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
                         usage(1, 900L, 0L, 0L, 0L, 700L),
                         new BigDecimal("0.00110000")
                 ),
-                AttemptLlmCall.failed(attempt.id(), LlmCallPurpose.CODE, 2, "provider-error")
+                AttemptLlmCall.failed(attempt.id(), LlmCallPurpose.CODE, 2, "provider-error", "실패한 프롬프트")
         ));
 
         AttemptView view = attemptQueryRepository.findById(attempt.id()).orElseThrow();
