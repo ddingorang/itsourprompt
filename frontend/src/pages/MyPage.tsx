@@ -19,26 +19,17 @@ const PAGES_PER_GROUP = 5;
 // 붙인 뒤 GET /api/me/attempts 로 조회하는 후속 작업이 필요하다.
 // 주의: 아래 Link가 activity.id를 problemId로 그대로 쓰고 있으므로,
 // 실데이터 연결 시 problemId를 별도 필드로 분리해야 한다.
-const recentActivity = [
-  {
-    attemptId: 1,
-    date: '2026.07.27',
-    problemId: 1,
-    title: 'Hello World 출력',
-  },
-  {
-    attemptId: 2,
-    date: '2026.07.25',
-    problemId: 2,
-    title: 'SSAFY 출력',
-  },
-  {
-    attemptId: 3,
-    date: '2026.07.22',
-    problemId: 3,
-    title: '환영 메시지 출력',
-  },
-];
+// [정렬·페이지네이션 확인용 임시 데이터] 실제 API 연동 전에 제거한다.
+const recentActivity = Array.from({ length: 15 }, (_, index) => {
+  const day = 13 + index;
+
+  return {
+    attemptId: index + 1,
+    date: `2026.07.${String(day).padStart(2, '0')}`,
+    problemId: (index % 3) + 1,
+    title: `연습 문제 ${String(index + 1).padStart(2, '0')}`,
+  };
+});
 
 /** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (MEMBER SINCE 표기용) */
 function formatMemberSince(createdAt: string): string {
@@ -64,6 +55,8 @@ export default function MyPage() {
   const [totalProblemCount, setTotalProblemCount] = useState<number | null>(null);
   const activitySectionRef = useRef<HTMLElement>(null);
   const activityPageParam = searchParams.get('solvedPage');
+  const sortParam = searchParams.get('sort');
+  const sortOrder = sortParam === 'oldest' ? 'oldest' : 'latest';
   const requestedActivityPage = Number(activityPageParam);
   const activityPagination = usePagination({
     itemCount: recentActivity.length,
@@ -71,7 +64,12 @@ export default function MyPage() {
     pagesPerGroup: PAGES_PER_GROUP,
     requestedPage: requestedActivityPage,
   });
-  const visibleActivities = recentActivity.slice(
+  const sortedActivities = [...recentActivity].sort((activityA, activityB) =>
+    sortOrder === 'latest'
+      ? activityB.date.localeCompare(activityA.date)
+      : activityA.date.localeCompare(activityB.date),
+  );
+  const visibleActivities = sortedActivities.slice(
     activityPagination.pageStart,
     activityPagination.pageStart + ACTIVITY_ITEMS_PER_PAGE,
   );
@@ -84,6 +82,13 @@ export default function MyPage() {
       behavior: 'smooth',
       block: 'start',
     });
+  };
+
+  const changeSortOrder = (nextSortOrder: 'latest' | 'oldest') => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('sort', nextSortOrder);
+    nextParams.set('solvedPage', '1');
+    setSearchParams(nextParams);
   };
 
   useEffect(() => {
@@ -125,6 +130,15 @@ export default function MyPage() {
       shouldReplace = true;
     }
 
+    if (
+      sortParam !== null &&
+      sortParam !== 'latest' &&
+      sortParam !== 'oldest'
+    ) {
+      nextParams.set('sort', 'latest');
+      shouldReplace = true;
+    }
+
     if (shouldReplace) {
       setSearchParams(nextParams, { replace: true });
     }
@@ -133,6 +147,7 @@ export default function MyPage() {
     activityPagination.totalPages,
     searchParams,
     setSearchParams,
+    sortParam,
   ]);
 
   if (!user) {
@@ -215,10 +230,42 @@ export default function MyPage() {
           className="mt-[clamp(52px,8vw,96px)]"
           ref={activitySectionRef}
         >
-          <div className="flex items-end justify-between gap-6 pb-5">
-              <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-                SOLVED PROBLEMS
-              </div>
+          <div className="flex items-end justify-between gap-6 pb-5 max-[640px]:flex-col max-[640px]:items-start">
+            <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+              SOLVED PROBLEMS
+            </div>
+            <div
+              className="flex items-center gap-3 whitespace-nowrap text-[14px] font-normal tracking-[-0.01em] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
+              aria-label="문제 정렬 기준"
+            >
+              <button
+                className={`cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none ${
+                  sortOrder === 'latest'
+                    ? 'text-[#d6ff50]'
+                    : 'text-[#a3a3a3]'
+                }`}
+                type="button"
+                aria-pressed={sortOrder === 'latest'}
+                onClick={() => changeSortOrder('latest')}
+              >
+                최신순
+              </button>
+              <span className="text-[#555]" aria-hidden="true">
+                |
+              </span>
+              <button
+                className={`cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none ${
+                  sortOrder === 'oldest'
+                    ? 'text-[#d6ff50]'
+                    : 'text-[#a3a3a3]'
+                }`}
+                type="button"
+                aria-pressed={sortOrder === 'oldest'}
+                onClick={() => changeSortOrder('oldest')}
+              >
+                오래된순
+              </button>
+            </div>
           </div>
 
           <div className="border-y border-t-[#f5f5ef] border-b-[#343434]">
