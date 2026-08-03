@@ -18,6 +18,7 @@ import type {
   Attempt,
   ChangedFile,
   ChangeType,
+  TokenUsage,
   Turn,
 } from '../features/attempt/types';
 import { getProblemDetail } from '../features/problem/api';
@@ -39,7 +40,13 @@ interface StatusMessage {
   type: StatusType;
 }
 
-type DetailTab = 'problem' | 'logs';
+type DetailTab = 'problem' | 'logs' | 'test';
+
+const detailTabs: ReadonlyArray<readonly [DetailTab, string]> = [
+  ['problem', 'PROBLEM'],
+  ['logs', 'PROMPT LOG'],
+  ['test', 'TEST'],
+];
 
 interface FileTreeNode {
   name: string;
@@ -61,12 +68,6 @@ const changeColorClasses: Record<ChangeType, string> = {
   ADDED: 'text-[#d6ff50]',
   MODIFIED: 'text-white',
   DELETED: 'text-[#ff786b]',
-};
-
-const toolLabels: Record<string, string> = {
-  edit_file: 'EDIT',
-  list_files: 'LIST',
-  read_file: 'READ',
 };
 
 interface ErrorInfo {
@@ -126,6 +127,23 @@ function normalizeRepositoryPath(path: string): string {
     .replaceAll('\\', '/')
     .replace(/\/+/g, '/')
     .replace(/^\/+|\/+$/g, '');
+}
+
+function getTokenUsageTotal(usage?: TokenUsage | null): number | null {
+  if (
+    typeof usage?.inputTokens !== 'number' ||
+    typeof usage.outputTokens !== 'number'
+  ) {
+    return null;
+  }
+
+  return usage.inputTokens + usage.outputTokens;
+}
+
+function formatUsageValue(value: unknown, suffix = ''): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? `${value.toLocaleString('ko-KR')}${suffix}`
+    : '—';
 }
 
 function createFileTree(
@@ -221,6 +239,9 @@ export default function ProblemDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const detailTabRefs = useRef<
+    Partial<Record<DetailTab, HTMLButtonElement | null>>
+  >({});
   const isRunPendingRef = useRef(false);
   /**
    * 실패한 턴 요청의 Idempotency-Key를 기억한다. 같은 프롬프트로 다시 실행하면
@@ -230,6 +251,8 @@ export default function ProblemDetailPage() {
   const pendingRunRef = useRef<{ prompt: string; key: string } | null>(null);
   /** 진행 중인 로드. 새 로드가 시작되면 이전 것을 끊어 마지막 응답만 화면에 남긴다. */
   const loadControllerRef = useRef<AbortController | null>(null);
+  /** 마지막으로 정상 반영된 라우트. 다른 주소의 로드 실패 시 이전 문제를 지우는 기준이다. */
+  const loadedResourceRef = useRef<string | null>(null);
   /**
    * 지금 화면에 올라와 있는 문제. problem state와 같은 값이지만, loadFromRoute가
    * 렌더마다 새로 만들어져 낡은 state를 붙들 수 있어 ref로 따로 들고 읽는다.
@@ -238,6 +261,13 @@ export default function ProblemDetailPage() {
 
   const files = attempt?.files ?? problem?.files ?? [];
   const turns = attempt?.turns ?? [];
+  const attemptTokenUsage = getTokenUsageTotal(attempt?.usage);
+  const turnTokenUsages = turns.map((turn) => getTokenUsageTotal(turn.usage));
+  const hasTokenUsage =
+    attemptTokenUsage !== null || turnTokenUsages.some((usage) => usage !== null);
+  const totalTokenUsage =
+    attemptTokenUsage ??
+    turnTokenUsages.reduce<number>((total, usage) => total + (usage ?? 0), 0);
   const isSubmitted = attempt?.status === 'SUBMITTED';
   const canSubmit = turns.length > 0 && !isSubmitted;
 
@@ -252,6 +282,8 @@ export default function ProblemDetailPage() {
     attemptId: number | null,
     problemId: number | null,
   ) => {
+    const requestedResource =
+      attemptId === null ? `problem:${problemId}` : `attempt:${attemptId}`;
     loadControllerRef.current?.abort();
     const controller = new AbortController();
     loadControllerRef.current = controller;
@@ -288,6 +320,7 @@ export default function ProblemDetailPage() {
         : [];
 
       problemRef.current = loadedProblem;
+      loadedResourceRef.current = requestedResource;
       setProblem(loadedProblem);
       setAttempt(loadedAttempt);
       // 사용자가 펼쳐 둔 폴더는 유지한 채 새로 생긴 폴더만 더한다.
@@ -325,7 +358,15 @@ export default function ProblemDetailPage() {
       // 잘못됐다는 사실과 갈 곳을 같이 줘야 사용자가 막히지 않는다. 반대로 작업장이
       // 이미 떠 있으면(턴 실행 뒤 reload 등) 화면을 통째로 덮는 대신 상태줄에만
       // 남긴다. 보고 있던 파일과 턴 기록을 오류 하나로 걷어낼 이유가 없다.
-      if (problemRef.current === null) {
+      if (
+        problemRef.current === null ||
+        loadedResourceRef.current !== requestedResource
+      ) {
+        problemRef.current = null;
+        loadedResourceRef.current = null;
+        setProblem(null);
+        setAttempt(null);
+
         if (errorInfo.code === API_ERROR_CODES.attemptNotFound) {
           setLoadError(toProblemsError('어템프트를 찾을 수 없습니다.'));
         } else if (errorInfo.code === API_ERROR_CODES.problemNotFound) {
@@ -482,6 +523,31 @@ export default function ProblemDetailPage() {
     }
 
     void handleRun();
+  };
+
+  const handleDetailTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentTab: DetailTab,
+  ) => {
+    const currentIndex = detailTabs.findIndex(([tab]) => tab === currentTab);
+    let nextIndex: number | null = null;
+
+    if (event.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % detailTabs.length;
+    } else if (event.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + detailTabs.length) % detailTabs.length;
+    } else if (event.key === 'Home') {
+      nextIndex = 0;
+    } else if (event.key === 'End') {
+      nextIndex = detailTabs.length - 1;
+    }
+
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextTab = detailTabs[nextIndex][0];
+    setActiveTab(nextTab);
+    detailTabRefs.current[nextTab]?.focus();
   };
 
   const handleSubmit = async () => {
@@ -714,26 +780,30 @@ export default function ProblemDetailPage() {
         <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[#343434] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
             <div
-              className="grid shrink-0 grid-cols-2 border border-[#3f3f3f]"
+              className="grid shrink-0 grid-cols-3 border border-[#3f3f3f]"
               role="tablist"
               aria-label="문제 상세 정보"
             >
-              {([
-                ['problem', 'PROBLEM'],
-                ['logs', `PROMPT LOG ${turns.length ? `(${turns.length})` : ''}`],
-              ] as const).map(([tab, label]) => (
+              {detailTabs.map(([tab, label]) => (
                 <button
+                  aria-controls="problem-detail-tabpanel"
                   aria-selected={activeTab === tab}
                   className={[
                     'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm leading-[1.5] font-bold tracking-[0.08em]',
-                    tab === 'problem' ? 'border-r border-[#3f3f3f]' : '',
+                    tab !== 'test' ? 'border-r border-[#3f3f3f]' : '',
                     activeTab === tab
                       ? 'border-b-2 border-b-[#d6ff50] text-[#d6ff50]'
                       : 'text-[#8b8b8b] hover:text-[#b8b8b8]',
                   ].join(' ')}
+                  id={`problem-detail-tab-${tab}`}
                   key={tab}
                   onClick={() => setActiveTab(tab)}
+                  onKeyDown={(event) => handleDetailTabKeyDown(event, tab)}
+                  ref={(element) => {
+                    detailTabRefs.current[tab] = element;
+                  }}
                   role="tab"
+                  tabIndex={activeTab === tab ? 0 : -1}
                   type="button"
                 >
                   {label}
@@ -741,7 +811,13 @@ export default function ProblemDetailPage() {
               ))}
             </div>
 
-            <div className="workspace-scrollbar mt-[18px] min-h-[210px] flex-1 overflow-y-auto overflow-x-hidden max-[700px]:overflow-visible" role="tabpanel">
+            <div
+              aria-labelledby={`problem-detail-tab-${activeTab}`}
+              className="workspace-scrollbar mt-[18px] min-h-[210px] flex-1 overflow-y-auto overflow-x-hidden max-[700px]:overflow-visible"
+              id="problem-detail-tabpanel"
+              role="tabpanel"
+              tabIndex={0}
+            >
               {activeTab === 'problem' ? (
                 <>
                   <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[#a3a3a3] [word-break:keep-all]">
@@ -763,15 +839,45 @@ export default function ProblemDetailPage() {
                     </ReactMarkdown>
                   </div>
                 </>
-              ) : turns.length ? (
+              ) : activeTab === 'logs' && turns.length ? (
                 <div className="grid gap-4">
+                  <div className="flex items-end justify-between border border-[#3f3f3f] bg-[#111] px-4 py-3">
+                    <div>
+                      <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[#777]">
+                        TOTAL TOKEN USAGE
+                      </p>
+                      <p className="mt-1 mb-0 text-[12px] text-[#f5f5ef]">
+                        전체 프롬프트 토큰 사용량
+                      </p>
+                    </div>
+                    <strong className="font-mono text-xl text-[#d6ff50]">
+                      {formatUsageValue(hasTokenUsage ? totalTokenUsage : null)}
+                    </strong>
+                  </div>
+
                   {turns.map((turn, index) => (
                     <article
                       className="border-l-2 border-[#d6ff50] pl-3"
                       key={`turn-${index + 1}`}
                     >
-                      <div className="font-mono text-[9px] font-bold text-[#d6ff50]">
-                        TURN {String(index + 1).padStart(2, '0')}
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 font-mono text-[11px] font-bold">
+                        <span className="text-[#d6ff50]">
+                          TURN {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <span className="flex gap-3 text-[#777]">
+                          <span>
+                            TOKENS{' '}
+                            <strong className="text-[#c7c7c2]">
+                              {formatUsageValue(turnTokenUsages[index])}
+                            </strong>
+                          </span>
+                          <span>
+                            LATENCY{' '}
+                            <strong className="text-[#c7c7c2]">
+                              {formatUsageValue(turn.usage?.latencyMs, 'ms')}
+                            </strong>
+                          </span>
+                        </span>
                       </div>
                       <p className="my-2 whitespace-pre-wrap text-[12px] leading-[1.6] text-[#f5f5ef]">
                         {turn.prompt}
@@ -779,23 +885,6 @@ export default function ProblemDetailPage() {
                       <p className="m-0 whitespace-pre-wrap text-[11px] leading-[1.6] text-[#8f8f8f]">
                         {turn.aiResponse}
                       </p>
-
-                      {turn.toolCalls.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[9px] text-[#767676]">
-                          {turn.toolCalls.map((toolCall, toolIndex) => (
-                            <span
-                              className="border border-[#3f3f3f] px-1.5 py-0.5"
-                              key={`tool-${index}-${toolIndex}`}
-                              title={toolCall.path ?? toolCall.tool}
-                            >
-                              {toolLabels[toolCall.tool] ?? toolCall.tool}
-                              {toolCall.path
-                                ? ` ${toolCall.path.split('/').pop()}`
-                                : ''}
-                            </span>
-                          ))}
-                        </div>
-                      )}
 
                       {turn.changedFiles.length > 0 && (
                         <div className="mt-1.5 grid gap-0.5 font-mono text-[9px]">
@@ -812,9 +901,13 @@ export default function ProblemDetailPage() {
                     </article>
                   ))}
                 </div>
-              ) : (
+              ) : activeTab === 'logs' ? (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
                   실행한 프롬프트가 없습니다.
+                </div>
+              ) : (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
+                  테스트 결과가 없습니다.
                 </div>
               )}
             </div>
