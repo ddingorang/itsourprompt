@@ -1,9 +1,11 @@
 package com.promptstudio.attempt.repository;
 
 import com.promptstudio.attempt.domain.CodeRunResult;
+import com.promptstudio.attempt.domain.CodeRunSummary;
 import com.promptstudio.attempt.domain.CodeRunView;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -17,6 +19,14 @@ public interface CodeRunRepository {
     boolean tryInsertQueued(UUID runId, Long attemptId, Integer turnOrdinal, Instant now);
 
     Optional<CodeRunView> findByIdAndAttemptId(UUID runId, Long attemptId);
+
+    /**
+     * 어템프트의 실행 기록을 최근 순으로 전부 반환한다. 실행이 없으면 빈 목록이다.
+     *
+     * <p>본문(stdout·stderr) 없는 요약만 담는다({@link CodeRunSummary} 참고).
+     * 정렬은 부분 인덱스가 아닌 idx_code_run_attempt (attempt_id, created_at DESC)가 그대로 받는다.
+     */
+    List<CodeRunSummary> findAllByAttemptId(Long attemptId);
 
     /**
      * staleBefore보다 오래된 QUEUED를 RUNNER_ERROR로 전환한다. 워커가 죽어 좌초된 run이

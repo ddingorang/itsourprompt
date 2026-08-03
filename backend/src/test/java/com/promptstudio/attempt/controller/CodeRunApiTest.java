@@ -158,6 +158,74 @@ class CodeRunApiTest extends DatabaseTest {
     }
 
     @Test
+    void 실행_목록을_최근순으로_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        UUID first = requestRun(attemptId);
+        // 어템프트당 미완료 실행은 하나뿐이라 앞 실행을 끝내야 다음 실행을 넣을 수 있다.
+        codeRunService.applyResult(new CodeRunResult(first, CodeRunStatus.TEST_FAILED, 1, "", "", 900L));
+        UUID second = requestRun(attemptId);
+
+        mockMvc.perform(get("/api/attempts/{id}/runs", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runs.length()").value(2))
+                .andExpect(jsonPath("$.runs[0].runId").value(second.toString()))
+                .andExpect(jsonPath("$.runs[0].status").value("QUEUED"))
+                .andExpect(jsonPath("$.runs[1].runId").value(first.toString()))
+                .andExpect(jsonPath("$.runs[1].status").value("TEST_FAILED"))
+                .andExpect(jsonPath("$.runs[1].exitCode").value(1))
+                .andExpect(jsonPath("$.runs[1].durationMs").value(900));
+    }
+
+    @Test
+    void 실행이_없으면_빈_목록을_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+
+        mockMvc.perform(get("/api/attempts/{id}/runs", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runs").isArray())
+                .andExpect(jsonPath("$.runs.length()").value(0));
+    }
+
+    /**
+     * stdout·stderr는 각각 64KB까지 커질 수 있어 목록에 실으면 응답이 메가바이트가 된다.
+     * 요약만 담는다는 계약을 여기서 못 박는다.
+     */
+    @Test
+    void 목록에는_본문을_담지_않는다() throws Exception {
+        Long attemptId = createAttempt();
+        UUID runId = requestRun(attemptId);
+        codeRunService.applyResult(new CodeRunResult(
+                runId, CodeRunStatus.SUCCEEDED, 0, "출력 본문", "에러 본문", 1200L));
+
+        mockMvc.perform(get("/api/attempts/{id}/runs", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runs[0].stdout").doesNotExist())
+                .andExpect(jsonPath("$.runs[0].stderr").doesNotExist())
+                .andExpect(jsonPath("$.runs[0].createdAt").isString())
+                .andExpect(jsonPath("$.runs[0].finishedAt").isString());
+    }
+
+    @Test
+    void 턴을_지정해_실행한_기록은_목록에_그_턴_번호로_남는다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+
+        mockMvc.perform(post("/api/attempts/{id}/turns/{ordinal}/runs", attemptId, 0))
+                .andExpect(status().isAccepted());
+
+        mockMvc.perform(get("/api/attempts/{id}/runs", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runs[0].turnOrdinal").value(0));
+    }
+
+    @Test
+    void 없는_어템프트의_목록을_조회하면_404다() throws Exception {
+        mockMvc.perform(get("/api/attempts/{id}/runs", 999))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("attempt-not-found"));
+    }
+
+    @Test
     void 없는_실행_ID를_조회하면_404다() throws Exception {
         Long attemptId = createAttempt();
 

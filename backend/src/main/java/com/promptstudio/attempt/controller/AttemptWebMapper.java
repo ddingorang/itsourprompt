@@ -1,9 +1,11 @@
 package com.promptstudio.attempt.controller;
 
 import com.promptstudio.attempt.controller.response.AttemptResponse;
+import com.promptstudio.attempt.controller.response.CodeRunListResponse;
 import com.promptstudio.attempt.controller.response.CodeRunResponse;
 import com.promptstudio.attempt.controller.response.FeedbackResponse;
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.CodeRunSummary;
 import com.promptstudio.attempt.domain.CodeRunView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.attempt.domain.LlmUsageSummary;
@@ -52,6 +54,24 @@ public class AttemptWebMapper {
         }
 
         return new FeedbackResponse(turns, attempt.feedback());
+    }
+
+    public CodeRunListResponse toCodeRunListResponse(List<CodeRunSummary> runs) {
+        List<CodeRunListResponse.CodeRunSummaryResponse> responses = new ArrayList<>();
+
+        for (CodeRunSummary run : runs) {
+            responses.add(new CodeRunListResponse.CodeRunSummaryResponse(
+                    run.id(),
+                    run.turnOrdinal(),
+                    run.status(),
+                    run.exitCode(),
+                    run.durationMs(),
+                    run.createdAt(),
+                    run.finishedAt()
+            ));
+        }
+
+        return new CodeRunListResponse(responses);
     }
 
     public CodeRunResponse toCodeRunResponse(CodeRunView run) {
