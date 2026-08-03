@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { getAttempt, getAttemptFeedback } from '../features/attempt/api';
 import type { Attempt, AttemptFeedback } from '../features/attempt/types';
+import { useAuth } from '../features/auth/AuthContext';
 import PromptFeedback from '../features/feedback/PromptFeedback';
 import { ApiError, API_ERROR_CODES, isAbortError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
@@ -31,6 +32,9 @@ interface LoadNotice {
 export default function FeedbackPage() {
   const { attemptId: attemptIdParam } = useParams();
   const attemptId = Number(attemptIdParam);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { refresh } = useAuth();
 
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [feedback, setFeedback] = useState<AttemptFeedback | null>(null);
@@ -67,6 +71,20 @@ export default function FeedbackPage() {
       } catch (error: unknown) {
         if (isAbortError(error)) return;
 
+        if (
+          error instanceof ApiError &&
+          error.code === API_ERROR_CODES.unauthenticated
+        ) {
+          await refresh();
+          if (signal.aborted) return;
+
+          navigate('/login', {
+            replace: true,
+            state: { from: location.pathname },
+          });
+          return;
+        }
+
         // 제출 전이면 피드백이 아직 없다 — 오류가 아니라 작업장으로 돌아가라는 안내다.
         if (
           error instanceof ApiError &&
@@ -99,7 +117,7 @@ export default function FeedbackPage() {
     return () => {
       controller.abort();
     };
-  }, [attemptId]);
+  }, [attemptId, location.pathname, navigate, refresh]);
 
   const turnSections = (feedback?.turns ?? []).map((turnFeedback) => ({
     ...turnFeedback,

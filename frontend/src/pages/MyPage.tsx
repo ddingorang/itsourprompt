@@ -1,42 +1,40 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
-import { getProblems } from '../features/problem/api';
+import { getMySubmittedAttempts } from '../features/me/api';
+import type { SubmittedAttempt } from '../features/me/types';
+import {
+  ApiError,
+  API_ERROR_CODES,
+  isAbortError,
+} from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 import Pagination from '../shared/components/Pagination';
 import { usePagination } from '../shared/hooks/usePagination';
 
-const SOLVED_PROBLEMS_PER_PAGE = 5;
+const SUBMISSIONS_PER_PAGE = 5;
 const PAGES_PER_GROUP = 5;
-
-// [임시 데이터] 사용자별 해결 문제 조회 API가 연결되면 실제 내역으로 교체한다.
-const solvedProblems = [
-  {
-    attemptId: 1,
-    date: '2026.07.27',
-    problemId: 1,
-    title: 'Hello World 출력',
-  },
-  {
-    attemptId: 2,
-    date: '2026.07.25',
-    problemId: 2,
-    title: 'SSAFY 출력',
-  },
-  {
-    attemptId: 3,
-    date: '2026.07.22',
-    problemId: 3,
-    title: '환영 메시지 출력',
-  },
-];
 
 /** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (MEMBER SINCE 표기용) */
 function formatMemberSince(createdAt: string): string {
   const date = new Date(createdAt);
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** 제출 시각(ISO 문자열)을 "YYYY.MM.DD" 형태로 바꾼다. */
+function formatSubmittedAt(submittedAt: string | null): string {
+  if (!submittedAt) return '--';
+
+  const date = new Date(submittedAt);
+  if (Number.isNaN(date.getTime())) return '--';
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('.');
 }
 
 function normalizePageParam(
@@ -52,36 +50,47 @@ function normalizePageParam(
 
 export default function MyPage() {
   // 이 페이지는 ProtectedRoute로 감싸져 있어 user가 항상 존재한다(비로그인은 /login으로 이동됨).
-  const { user } = useAuth();
+  const { refresh, user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [totalProblemCount, setTotalProblemCount] = useState<number | null>(null);
-  const solvedProblemsSectionRef = useRef<HTMLElement>(null);
-  const solvedPageParam = searchParams.get('solvedPage');
+  const [submittedAttempts, setSubmittedAttempts] = useState<SubmittedAttempt[]>(
+    [],
+  );
+  const [isLoadingAttempts, setIsLoadingAttempts] = useState(true);
+  const [attemptsError, setAttemptsError] = useState<string | null>(null);
+  const submissionHistorySectionRef = useRef<HTMLElement>(null);
+  const submissionPageParam = searchParams.get('submissionPage');
   const sortParam = searchParams.get('sort');
   const sortOrder = sortParam === 'oldest' ? 'oldest' : 'latest';
-  const requestedSolvedPage = Number(solvedPageParam);
-  const solvedPagination = usePagination({
-    itemCount: solvedProblems.length,
-    itemsPerPage: SOLVED_PROBLEMS_PER_PAGE,
+  const requestedSubmissionPage = Number(submissionPageParam);
+  const submissionPagination = usePagination({
+    itemCount: submittedAttempts.length,
+    itemsPerPage: SUBMISSIONS_PER_PAGE,
     pagesPerGroup: PAGES_PER_GROUP,
-    requestedPage: requestedSolvedPage,
+    requestedPage: requestedSubmissionPage,
   });
-  const sortedSolvedProblems = [...solvedProblems].sort(
-    (solvedProblemA, solvedProblemB) =>
-    sortOrder === 'latest'
-      ? solvedProblemB.date.localeCompare(solvedProblemA.date)
-      : solvedProblemA.date.localeCompare(solvedProblemB.date),
+  const sortedSubmittedAttempts = [...submittedAttempts].sort(
+    (attemptA, attemptB) => {
+      if (attemptA.submittedAt === null && attemptB.submittedAt === null) return 0;
+      if (attemptA.submittedAt === null) return 1;
+      if (attemptB.submittedAt === null) return -1;
+
+      return sortOrder === 'latest'
+        ? attemptB.submittedAt.localeCompare(attemptA.submittedAt)
+        : attemptA.submittedAt.localeCompare(attemptB.submittedAt);
+    },
   );
-  const visibleSolvedProblems = sortedSolvedProblems.slice(
-    solvedPagination.pageStart,
-    solvedPagination.pageStart + SOLVED_PROBLEMS_PER_PAGE,
+  const visibleSubmittedAttempts = sortedSubmittedAttempts.slice(
+    submissionPagination.pageStart,
+    submissionPagination.pageStart + SUBMISSIONS_PER_PAGE,
   );
 
   const moveToPage = (page: number) => {
     const nextParams = new URLSearchParams(searchParams);
-    nextParams.set('solvedPage', String(page));
+    nextParams.set('submissionPage', String(page));
     setSearchParams(nextParams);
-    solvedProblemsSectionRef.current?.scrollIntoView({
+    submissionHistorySectionRef.current?.scrollIntoView({
       behavior: 'smooth',
       block: 'start',
     });
@@ -90,45 +99,71 @@ export default function MyPage() {
   const changeSortOrder = (nextSortOrder: 'latest' | 'oldest') => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('sort', nextSortOrder);
-    nextParams.set('solvedPage', '1');
+    nextParams.set('submissionPage', '1');
     setSearchParams(nextParams);
   };
 
   useEffect(() => {
-    let isMounted = true;
+    const controller = new AbortController();
 
-    getProblems()
-      .then((response) => {
-        if (isMounted) {
-          setTotalProblemCount(response.problems.length);
+    void (async () => {
+      try {
+        setIsLoadingAttempts(true);
+        setAttemptsError(null);
+        setSubmittedAttempts(await getMySubmittedAttempts(controller.signal));
+      } catch (error: unknown) {
+        if (isAbortError(error)) return;
+
+        if (
+          error instanceof ApiError &&
+          error.code === API_ERROR_CODES.unauthenticated
+        ) {
+          await refresh();
+          if (controller.signal.aborted) return;
+
+          navigate('/login', {
+            replace: true,
+            state: { from: location.pathname },
+          });
+          return;
         }
-      })
-      .catch(() => {
-        // 문제 목록을 불러오지 못하면 대체값을 유지한다.
-      });
+
+        setAttemptsError(
+          error instanceof ApiError
+            ? error.message
+            : '제출 내역을 불러오지 못했습니다.',
+        );
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingAttempts(false);
+      }
+    })();
 
     return () => {
-      isMounted = false;
+      controller.abort();
     };
-  }, []);
+  }, [location.pathname, navigate, refresh]);
 
   useEffect(() => {
-    const normalizedSolvedPage = normalizePageParam(
-      solvedPageParam,
-      solvedPagination.totalPages,
-    );
+    const normalizedSubmissionPage =
+      !isLoadingAttempts && !attemptsError
+        ? normalizePageParam(
+            submissionPageParam,
+            submissionPagination.totalPages,
+          )
+        : null;
     const nextParams = new URLSearchParams(searchParams);
     let shouldReplace = false;
 
     if (
-      normalizedSolvedPage !== null &&
-      solvedPageParam !== String(normalizedSolvedPage)
+      normalizedSubmissionPage !== null &&
+      submissionPageParam !== String(normalizedSubmissionPage)
     ) {
-      nextParams.set('solvedPage', String(normalizedSolvedPage));
+      nextParams.set('submissionPage', String(normalizedSubmissionPage));
       shouldReplace = true;
     }
 
-    if (nextParams.has('feedbackPage')) {
+    if (nextParams.has('solvedPage') || nextParams.has('feedbackPage')) {
+      nextParams.delete('solvedPage');
       nextParams.delete('feedbackPage');
       shouldReplace = true;
     }
@@ -146,8 +181,10 @@ export default function MyPage() {
       setSearchParams(nextParams, { replace: true });
     }
   }, [
-    solvedPageParam,
-    solvedPagination.totalPages,
+    attemptsError,
+    isLoadingAttempts,
+    submissionPageParam,
+    submissionPagination.totalPages,
     searchParams,
     setSearchParams,
     sortParam,
@@ -157,16 +194,20 @@ export default function MyPage() {
     return null;
   }
 
-  // [임시 데이터] 풀이 수와 전체 턴 수는 아직 사용자 통계 API가 없어 더미 값이다.
-  // 전체 문제 수만 기존 문제 목록 API에서 조회한다. 추후에는 예:
-  // GET /api/me/stats { solved, totalTurns } 형태의 사용자별 API 연동이 필요하다.
+  const solvedCount = new Set(
+    submittedAttempts.map((attempt) => attempt.problemId),
+  ).size;
   const stats = [
     {
       label: 'SOLVED',
-      value: '3',
-      suffix: `/${totalProblemCount ?? '--'}`,
+      value: isLoadingAttempts ? '--' : String(solvedCount),
+      suffix: null,
     },
-    { label: 'TOTAL TURNS', value: '28', suffix: null },
+    {
+      label: 'SUBMISSIONS',
+      value: isLoadingAttempts ? '--' : String(submittedAttempts.length),
+      suffix: null,
+    },
   ];
 
   return (
@@ -174,13 +215,11 @@ export default function MyPage() {
       <Header />
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-24 max-[1200px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
-        <section className="flex items-center bg-[#d6ff50] px-[22px] py-5 text-[#090909]">
-          <h1 className="m-0 font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em]">
-            USER PROFILE
-          </h1>
-        </section>
+        <h1 className="pb-5 font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+          USER PROFILE
+        </h1>
 
-        <section className="mt-4 grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[#f5f5ef] max-[1200px]:grid-cols-1">
+        <section className="grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[#f5f5ef] max-[1200px]:grid-cols-1">
           <div className="flex min-h-[180px] flex-col justify-between border-r border-[#343434] p-[clamp(20px,3vw,32px)] max-[1200px]:min-h-[170px] max-[1200px]:border-r-0 max-[1200px]:border-b">
             <div className="flex items-center gap-5">
               <div
@@ -234,11 +273,11 @@ export default function MyPage() {
 
         <section
           className="mt-[clamp(52px,8vw,96px)]"
-          ref={solvedProblemsSectionRef}
+          ref={submissionHistorySectionRef}
         >
           <div className="flex items-end justify-between gap-6 pb-5 max-[640px]:flex-col max-[640px]:items-start">
             <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-              SOLVED PROBLEMS
+              SUBMISSION HISTORY
             </div>
             <div
               className="flex items-center gap-3 pr-2 whitespace-nowrap text-[14px] font-normal tracking-[-0.01em] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
@@ -275,24 +314,55 @@ export default function MyPage() {
           </div>
 
           <div className="border-y border-[#f5f5ef]">
-            {visibleSolvedProblems.map((solvedProblem, index) => (
+            {isLoadingAttempts && (
+              <div className="py-11 font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+                제출 내역을 불러오는 중입니다.
+              </div>
+            )}
+
+            {!isLoadingAttempts && attemptsError && (
+              <div
+                className="py-11 font-mono text-xs leading-[1.7] text-[#ff786b]"
+                role="alert"
+              >
+                {attemptsError}
+              </div>
+            )}
+
+            {!isLoadingAttempts &&
+              !attemptsError &&
+              submittedAttempts.length === 0 && (
+                <div className="flex flex-col items-start gap-5 py-11">
+                  <p className="font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+                    아직 제출한 문제가 없습니다.
+                  </p>
+                  <Button to="/problems">문제 목록으로 이동 ↗</Button>
+                </div>
+              )}
+
+            {!isLoadingAttempts &&
+              !attemptsError &&
+              visibleSubmittedAttempts.map((submittedAttempt, index) => (
               <div
                 className="grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[#343434] px-2 py-3 last:border-b-0 max-[680px]:grid-cols-[38px_minmax(0,1fr)] max-[680px]:gap-3"
-                key={solvedProblem.attemptId}
+                key={submittedAttempt.attemptId}
               >
                 <span className="font-mono text-[17px] text-[#777]">
-                  {String(solvedPagination.pageStart + index + 1).padStart(2, '0')}
+                  {String(submissionPagination.pageStart + index + 1).padStart(
+                    2,
+                    '0',
+                  )}
                 </span>
                 <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
-                  {solvedProblem.date}
+                  {formatSubmittedAt(submittedAttempt.submittedAt)}
                 </span>
                 <strong className="truncate text-[clamp(15px,2vw,20px)] tracking-[-0.02em]">
-                  {solvedProblem.title}
+                  {submittedAttempt.problemTitle}
                 </strong>
                 <div className="flex justify-self-end gap-2 max-[680px]:col-span-2 max-[680px]:justify-self-stretch">
                   <Button
                     className="group hover:!border-[#d6ff50] hover:!bg-[#090909] hover:!text-[#d6ff50] focus-visible:!border-[#d6ff50] focus-visible:!bg-[#090909] focus-visible:!text-[#d6ff50] max-[680px]:flex-1"
-                    to={`/problems/${solvedProblem.problemId}`}
+                    to={`/problems/${submittedAttempt.problemId}`}
                     variant="secondary"
                   >
                     <span className="text-[14px]">문제 풀기</span>
@@ -305,7 +375,7 @@ export default function MyPage() {
                   </Button>
                   <Button
                     className="group max-[680px]:flex-1"
-                    to={`/attempts/${solvedProblem.attemptId}/feedback`}
+                    to={`/attempts/${submittedAttempt.attemptId}/feedback`}
                   >
                     <span className="text-[14px]">피드백 보기</span>
                     <span
@@ -317,23 +387,21 @@ export default function MyPage() {
                   </Button>
                 </div>
               </div>
-            ))}
+              ))}
           </div>
 
-          {solvedPagination.totalPages > 1 && (
+          {!isLoadingAttempts &&
+            !attemptsError &&
+            submissionPagination.totalPages > 1 && (
             <Pagination
-              currentPage={solvedPagination.currentPage}
-              pageGroupEnd={solvedPagination.pageGroupEnd}
-              pageGroupStart={solvedPagination.pageGroupStart}
-              totalPages={solvedPagination.totalPages}
+              currentPage={submissionPagination.currentPage}
+              pageGroupEnd={submissionPagination.pageGroupEnd}
+              pageGroupStart={submissionPagination.pageGroupStart}
+              totalPages={submissionPagination.totalPages}
               onPageChange={moveToPage}
             />
-          )}
+            )}
         </section>
-
-        <p className="mt-5 font-mono text-[10px] leading-5 tracking-[0.04em] text-[#555]">
-          * 풀이 수·전체 턴 수·해결 문제 내역은 추후 사용자별 API 연동 예정입니다.
-        </p>
       </main>
       <Footer />
     </div>
