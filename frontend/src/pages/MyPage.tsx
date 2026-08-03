@@ -11,13 +11,7 @@ import { usePagination } from '../shared/hooks/usePagination';
 const SOLVED_PROBLEMS_PER_PAGE = 5;
 const PAGES_PER_GROUP = 5;
 
-// [임시 데이터] 풀이 수와 전체 턴 수는 아직 백엔드 API가 없어 더미 값이다.
-// 전체 문제 수는 기존 문제 목록 API에서 조회하고, 사용자 통계 연동에는
-// 예: GET /api/me/stats { solved, totalTurns } 같은
-// 신규 API가 필요하다 (S15P11A505-backend/docs/auth-api.md §6 후속 과제 참고).
-// [임시 데이터] 활동 내역도 더미다. 실데이터 연동에는 어템프트에 소유자(userId)를
-// 붙인 뒤 GET /api/me/attempts 로 조회하는 후속 작업이 필요하다.
-// [정렬·페이지네이션 확인용 임시 데이터] 실제 API 연동 전에 제거한다.
+// [정렬·페이지네이션 확인용 임시 데이터] 사용자별 해결 문제 조회 API 연동 전에 제거한다.
 const solvedProblems = Array.from({ length: 15 }, (_, index) => {
   const day = 13 + index;
 
@@ -153,6 +147,9 @@ export default function MyPage() {
     return null;
   }
 
+  // [임시 데이터] 풀이 수와 전체 턴 수는 아직 사용자 통계 API가 없어 더미 값이다.
+  // 전체 문제 수만 기존 문제 목록 API에서 조회한다. 추후에는 예:
+  // GET /api/me/stats { solved, totalTurns } 형태의 사용자별 API 연동이 필요하다.
   const stats = [
     {
       label: 'SOLVED',
