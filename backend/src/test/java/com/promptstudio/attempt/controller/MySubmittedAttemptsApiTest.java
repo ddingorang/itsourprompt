@@ -10,6 +10,7 @@ import com.promptstudio.support.DatabaseTest;
 import com.promptstudio.user.domain.User;
 import com.promptstudio.user.repository.UserRepository;
 import org.jooq.DSLContext;
+import org.jooq.impl.SQLDataType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -19,6 +20,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 import java.util.List;
 
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.name;
+import static org.jooq.impl.DSL.table;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -88,7 +92,10 @@ class MySubmittedAttemptsApiTest extends DatabaseTest {
     }
 
     private void setSubmittedAt(Attempt attempt, String submittedAt) {
-        dsl.execute("UPDATE attempt SET submitted_at = ? WHERE id = ?", Instant.parse(submittedAt), attempt.id());
+        dsl.update(table(name("attempt")))
+                .set(field(name("attempt", "submitted_at"), SQLDataType.INSTANT), Instant.parse(submittedAt))
+                .where(field(name("attempt", "id"), SQLDataType.BIGINT).eq(attempt.id()))
+                .execute();
     }
 
     private Problem newProblem(String title) {
