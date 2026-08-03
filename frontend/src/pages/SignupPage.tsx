@@ -252,7 +252,7 @@ export default function SignupPage() {
 
             <p className="mt-6 text-center text-xs text-[#a3a3a3]">
               이미 계정이 있나요?{' '}
-              <Link className="text-[#d6ff50] hover:underline" to="/login">
+              <Link className="ml-2 text-[#d6ff50] hover:underline" to="/login">
                 로그인 ↗
               </Link>
             </p>
