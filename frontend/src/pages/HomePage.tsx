@@ -85,7 +85,7 @@ export default function HomePage() {
       <main className="flex-1 overflow-clip">
         <section className="landing-hero mx-auto flex min-h-[calc(100svh-66px)] w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
           <div className="flex flex-1 flex-col justify-center">
-            <div className="flex items-center justify-between gap-4 font-mono text-[17px] font-bold tracking-[0.14em] text-[#d6ff50]">
+            <div className="flex items-center justify-between gap-4 font-mono text-[19px] font-bold tracking-[0.14em] text-[#d6ff50]">
               <span>PROMPT ENGINEERING PRACTICE</span>
             </div>
             <div className="pt-7 pb-14">
@@ -118,7 +118,7 @@ export default function HomePage() {
         <section className="landing-guest min-h-[calc(100svh-66px)] border-b border-[#090909] bg-[#d6ff50] text-[#090909]">
           <div className="mx-auto grid min-h-[calc(100svh-66px)] w-[80%] grid-cols-2 items-center gap-[8vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:min-h-[90svh] max-[760px]:w-[calc(100%_-_32px)] max-[760px]:grid-cols-1">
           <div className="order-2 max-[760px]:order-1" data-reveal>
-            <div className="mb-7 font-mono text-sm font-bold tracking-[0.16em]">NO SIGN-IN NEEDED</div>
+            <div className="mb-7 font-mono text-[16px] font-bold tracking-[0.16em]">NO SIGN-IN NEEDED</div>
             <h2 className="m-0 text-[clamp(46px,6.5vw,94px)] leading-[1.1] font-black tracking-[-0.04em] [word-break:keep-all]">
               로그인은
               <br />
@@ -148,7 +148,7 @@ export default function HomePage() {
           <div className="mx-auto w-[80%] max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
             <div className="mb-[clamp(36px,5vh,52px)] flex items-end justify-between gap-8 max-[680px]:items-start">
               <div data-reveal>
-                <div className="mb-6 font-mono text-sm font-bold tracking-[0.16em] text-[#d6ff50]">HOW IT WORKS</div>
+                <div className="mb-6 font-mono text-[16px] font-bold tracking-[0.16em] text-[#d6ff50]">HOW IT WORKS</div>
                 <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-[1.1] font-black tracking-[-0.04em]">
                   세 단계면 충분합니다.
                 </h2>
@@ -171,7 +171,7 @@ export default function HomePage() {
         <section className="mx-auto flex h-[calc(100svh-66px)] min-h-[620px] w-[80%] flex-col pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:w-[calc(100%_-_32px)] max-[760px]:pb-20">
           <div className="relative mb-8 flex items-end justify-between gap-8 pb-6" data-reveal>
             <div>
-              <div className="mb-5 font-mono text-sm font-bold tracking-[0.16em] text-[#d6ff50]">PRACTICE NOW</div>
+              <div className="mb-5 font-mono text-[16px] font-bold tracking-[0.16em] text-[#d6ff50]">PRACTICE NOW</div>
               <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-none font-black tracking-[-0.04em]">어떤 문제부터 풀어볼까요?</h2>
             </div>
             <Link
@@ -207,7 +207,7 @@ export default function HomePage() {
           <section className="landing-final relative flex flex-1 items-center justify-center overflow-hidden border-t border-[#343434] px-[5vw] py-[clamp(64px,8vh,100px)] text-center">
             <div className="landing-final-grid" aria-hidden="true" />
             <div className="relative z-[1]" data-reveal>
-              <p className="mb-7 font-mono text-lg font-bold tracking-[0.18em] text-[#d6ff50]">READY WHEN YOU ARE</p>
+              <p className="mb-7 font-mono text-[20px] font-bold tracking-[0.18em] text-[#d6ff50]">READY WHEN YOU ARE</p>
               <h2 className="mx-auto mb-10 max-w-[1000px] text-[clamp(50px,9vw,100px)] leading-[1.0] font-black tracking-[-0.05em]">
                 연습이 쌓이면
                 <br />
