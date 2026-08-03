@@ -242,6 +242,8 @@ export default function ProblemDetailPage() {
   const pendingRunRef = useRef<{ prompt: string; key: string } | null>(null);
   /** 진행 중인 로드. 새 로드가 시작되면 이전 것을 끊어 마지막 응답만 화면에 남긴다. */
   const loadControllerRef = useRef<AbortController | null>(null);
+  /** 마지막으로 정상 반영된 라우트. 다른 주소의 로드 실패 시 이전 문제를 지우는 기준이다. */
+  const loadedResourceRef = useRef<string | null>(null);
   /**
    * 지금 화면에 올라와 있는 문제. problem state와 같은 값이지만, loadFromRoute가
    * 렌더마다 새로 만들어져 낡은 state를 붙들 수 있어 ref로 따로 들고 읽는다.
@@ -271,6 +273,8 @@ export default function ProblemDetailPage() {
     attemptId: number | null,
     problemId: number | null,
   ) => {
+    const requestedResource =
+      attemptId === null ? `problem:${problemId}` : `attempt:${attemptId}`;
     loadControllerRef.current?.abort();
     const controller = new AbortController();
     loadControllerRef.current = controller;
@@ -307,6 +311,7 @@ export default function ProblemDetailPage() {
         : [];
 
       problemRef.current = loadedProblem;
+      loadedResourceRef.current = requestedResource;
       setProblem(loadedProblem);
       setAttempt(loadedAttempt);
       // 사용자가 펼쳐 둔 폴더는 유지한 채 새로 생긴 폴더만 더한다.
@@ -344,7 +349,15 @@ export default function ProblemDetailPage() {
       // 잘못됐다는 사실과 갈 곳을 같이 줘야 사용자가 막히지 않는다. 반대로 작업장이
       // 이미 떠 있으면(턴 실행 뒤 reload 등) 화면을 통째로 덮는 대신 상태줄에만
       // 남긴다. 보고 있던 파일과 턴 기록을 오류 하나로 걷어낼 이유가 없다.
-      if (problemRef.current === null) {
+      if (
+        problemRef.current === null ||
+        loadedResourceRef.current !== requestedResource
+      ) {
+        problemRef.current = null;
+        loadedResourceRef.current = null;
+        setProblem(null);
+        setAttempt(null);
+
         if (errorInfo.code === API_ERROR_CODES.attemptNotFound) {
           setLoadError(toProblemsError('어템프트를 찾을 수 없습니다.'));
         } else if (errorInfo.code === API_ERROR_CODES.problemNotFound) {
