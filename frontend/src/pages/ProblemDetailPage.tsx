@@ -39,7 +39,7 @@ interface StatusMessage {
   type: StatusType;
 }
 
-type DetailTab = 'problem' | 'logs';
+type DetailTab = 'problem' | 'logs' | 'test';
 
 interface FileTreeNode {
   name: string;
@@ -714,19 +714,20 @@ export default function ProblemDetailPage() {
         <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[#343434] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
             <div
-              className="grid shrink-0 grid-cols-2 border border-[#3f3f3f]"
+              className="grid shrink-0 grid-cols-3 border border-[#3f3f3f]"
               role="tablist"
               aria-label="문제 상세 정보"
             >
               {([
                 ['problem', 'PROBLEM'],
                 ['logs', `PROMPT LOG ${turns.length ? `(${turns.length})` : ''}`],
+                ['test', 'TEST'],
               ] as const).map(([tab, label]) => (
                 <button
                   aria-selected={activeTab === tab}
                   className={[
                     'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm leading-[1.5] font-bold tracking-[0.08em]',
-                    tab === 'problem' ? 'border-r border-[#3f3f3f]' : '',
+                    tab !== 'test' ? 'border-r border-[#3f3f3f]' : '',
                     activeTab === tab
                       ? 'border-b-2 border-b-[#d6ff50] text-[#d6ff50]'
                       : 'text-[#8b8b8b] hover:text-[#b8b8b8]',
@@ -763,7 +764,7 @@ export default function ProblemDetailPage() {
                     </ReactMarkdown>
                   </div>
                 </>
-              ) : turns.length ? (
+              ) : activeTab === 'logs' && turns.length ? (
                 <div className="grid gap-4">
                   {turns.map((turn, index) => (
                     <article
@@ -812,9 +813,13 @@ export default function ProblemDetailPage() {
                     </article>
                   ))}
                 </div>
-              ) : (
+              ) : activeTab === 'logs' ? (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
                   실행한 프롬프트가 없습니다.
+                </div>
+              ) : (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
+                  테스트 결과가 없습니다.
                 </div>
               )}
             </div>
