@@ -210,7 +210,7 @@ export default function HomePage() {
                 프롬프트가 달라집니다.
               </h2>
               <Button className="min-h-14 gap-2.5 px-7" to="/problems">
-                <span className="text-[14px]">첫 문제 시작하기</span>
+                <span className="text-[14px]">문제 풀어보기</span>
                 <span className="text-[14px]" aria-hidden="true">↗</span>
               </Button>
             </div>
