@@ -87,7 +87,7 @@ interface LoadError {
 
 /** 목록으로 돌려보내는 안내. 잘못된 주소는 사용자가 고칠 수 있는 게 없다. */
 function toProblemsError(message: string): LoadError {
-  return { actionLabel: 'BACK TO PROBLEMS ↗', actionTo: '/problems', message };
+  return { actionLabel: '문제 목록으로 돌아가기 ↗', actionTo: '/problems', message };
 }
 
 function getErrorInfo(error: unknown, fallback: string): ErrorInfo {
@@ -657,7 +657,7 @@ export default function ProblemDetailPage() {
         <div>
           <p>{notice.message}</p>
           <Button className="mt-5" to={notice.actionTo}>
-            {notice.actionLabel}
+            <span className="text-[14px]">{notice.actionLabel}</span>
           </Button>
         </div>
       </div>
@@ -907,7 +907,9 @@ export default function ProblemDetailPage() {
                 fullWidth
                 onClick={handleSubmit}
               >
-                {isSubmitting ? 'LOADING…' : 'GO TO FEEDBACK ↗'}
+                <span className="text-[14px]">
+                  {isSubmitting ? 'LOADING…' : '최종 제출 & 피드백 확인하기 ↗'}
+                </span>
               </Button>
             </div>
 
