@@ -250,10 +250,10 @@ export default function SignupPage() {
               {submitting ? 'CREATING…' : 'CREATE ACCOUNT ↗'}
             </Button>
 
-            <p className="mt-6 text-center font-mono text-xs text-[#a3a3a3]">
+            <p className="mt-6 text-center text-xs text-[#a3a3a3]">
               이미 계정이 있나요?{' '}
               <Link className="text-[#d6ff50] hover:underline" to="/login">
-                로그인 →
+                로그인 ↗
               </Link>
             </p>
           </form>
