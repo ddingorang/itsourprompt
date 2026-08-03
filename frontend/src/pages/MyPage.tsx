@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { getProblems } from '../features/problem/api';
-import Pagination from '../features/problem/Pagination';
-import { usePagination } from '../features/problem/usePagination';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
+import Pagination from '../shared/components/Pagination';
+import { usePagination } from '../shared/hooks/usePagination';
 
 const ACTIVITY_ITEMS_PER_PAGE = 5;
 const PAGES_PER_GROUP = 5;
