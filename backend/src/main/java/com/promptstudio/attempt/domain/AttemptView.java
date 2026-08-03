@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * @param baseFiles 시작 스켈레톤
  * @param files     턴을 재생한 현재 상태
- * @param usage     어템프트 전체의 LLM 사용량 총계. 기록이 없으면 null
+ * @param usage     어템프트의 턴 합계. 턴 기록이 없으면 null
  */
 public record AttemptView(
         Long id,

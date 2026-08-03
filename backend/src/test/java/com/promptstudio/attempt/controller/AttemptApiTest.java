@@ -273,9 +273,11 @@ class AttemptApiTest extends DatabaseTest {
                         .content("{\"prompt\":\"Hello 출력해줘\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.turns[0].usage.inputTokens").value(2500))
-                .andExpect(jsonPath("$.turns[0].usage.outputTokens").value(500))
+                .andExpect(jsonPath("$.turns[0].usage.uncachedInputTokens").value(1500))
                 .andExpect(jsonPath("$.turns[0].usage.cachedInputTokens").value(1000))
+                .andExpect(jsonPath("$.turns[0].usage.outputTokens").value(500))
                 .andExpect(jsonPath("$.turns[0].usage.reasoningTokens").value(120))
+                .andExpect(jsonPath("$.turns[0].usage.latencyMs").value(260))
                 .andExpect(jsonPath("$.turns[0].usage.model").value("test-model"))
                 .andExpect(jsonPath("$.turns[0].usage.rounds").value(2))
                 .andExpect(jsonPath("$.turns[0].usage.cost").value(0.003))
@@ -283,7 +285,7 @@ class AttemptApiTest extends DatabaseTest {
     }
 
     @Test
-    void 조회_응답에_전체_총계가_실린다() throws Exception {
+    void 제출한_뒤에도_총계는_턴_합계다() throws Exception {
         Long attemptId = createAttempt();
         addTurn(attemptId);
         mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
@@ -291,13 +293,15 @@ class AttemptApiTest extends DatabaseTest {
 
         mockMvc.perform(get("/api/attempts/{id}", attemptId))
                 .andExpect(status().isOk())
-                // 코드 생성 2건 + 피드백 1건
-                .andExpect(jsonPath("$.usage.inputTokens").value(4500))
-                .andExpect(jsonPath("$.usage.outputTokens").value(900))
+                // 제출이 부른 피드백 생성 호출은 서비스 비용이라 총계에서 빠진다 — 턴 하나의 값과 같다.
+                .andExpect(jsonPath("$.usage.inputTokens").value(2500))
+                .andExpect(jsonPath("$.usage.uncachedInputTokens").value(1500))
                 .andExpect(jsonPath("$.usage.cachedInputTokens").value(1000))
-                .andExpect(jsonPath("$.usage.reasoningTokens").value(220))
-                .andExpect(jsonPath("$.usage.cost").value(0.0058))
-                // 턴 합계에는 피드백 호출이 들어가지 않는다.
+                .andExpect(jsonPath("$.usage.outputTokens").value(500))
+                .andExpect(jsonPath("$.usage.reasoningTokens").value(120))
+                .andExpect(jsonPath("$.usage.latencyMs").value(260))
+                .andExpect(jsonPath("$.usage.cost").value(0.003))
+                .andExpect(jsonPath("$.usage.rounds").value(2))
                 .andExpect(jsonPath("$.turns[0].usage.inputTokens").value(2500));
     }
 
