@@ -840,7 +840,7 @@ export default function ProblemDetailPage() {
                       <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[#777]">
                         TOTAL TOKEN USAGE
                       </p>
-                      <p className="mt-1 mb-0 text-[12px] text-[#a3a3a3]">
+                      <p className="mt-1 mb-0 text-[12px] text-[#f5f5ef]">
                         전체 프롬프트 토큰 사용량
                       </p>
                     </div>
