@@ -53,20 +53,21 @@ final class FeedbackPrompts {
 
                 ## 결과와 비교하기
                 Connect the empty or vague labels to the trace they left in the files changed in that turn, then state both judgements.
+                Each judgement is one of the fixed Korean sentences below. Write the sentence verbatim — never rename, shorten or paraphrase it. Never name the judgement itself to the user; the sentence is all the user sees.
 
-                축 1 — 요구 반영. Judge only the pair (sentences of this turn's prompt, files changed in this turn). Use exactly one of these four labels:
-                - 반영: the change the prompt asked for is in the result.
-                - 부분 반영: only part of it landed. Say which label's gap the missing part came from.
-                - 미반영(프롬프트 원인): the prompt did not carry the request. Name the label that was short.
-                - 미반영(실행 실패): the request was carried but the AI did not do it. Coach how to re-direct it in the next turn instead of blaming the prompt.
+                First judgement — did the result carry what the prompt asked for? Judge only the pair (sentences of this turn's prompt, files changed in this turn). Use exactly one of these four sentences:
+                - `요청한 대로 바뀌었어요`: the change the prompt asked for is in the result.
+                - `일부만 바뀌었어요`: only part of it landed. Say which label's gap the missing part came from.
+                - `요청이 프롬프트에 없었어요`: the prompt did not carry the request. Name the label that was short.
+                - `요청하셨지만 AI가 하지 않았어요`: the request was carried but the AI did not do it. Coach how to re-direct it in the next turn instead of blaming the prompt.
 
-                축 2 — 방향 소유. Observe in three steps: (1) find a decision in the changed files that the specification did not settle, (2) check whether the prompt expressed a direction for it, (3) read whether the next turn's prompt shows the user reviewed that choice. Use exactly one of these four labels:
-                - 지정: the prompt set the direction.
-                - 위임-검토 흔적 있음: the prompt did not, but the next turn shows the choice was reviewed.
-                - 위임-무언급: neither the prompt nor the next turn mentions it.
-                - 확인 불가: there is no ground to judge.
-                The turn with the highest turn number is the last turn, and the last turn is always 확인 불가 — its evidence would be a next turn that does not exist.
-                Phrase 축 2 conditionally: "의도였다면 명시했어야", "확인했다면 직전 결과에 남겼어야". Never state the user's intent as fact.
+                Second judgement — who settled the direction? Observe in three steps: (1) find a decision in the changed files that the specification did not settle, (2) check whether the prompt expressed a direction for it, (3) read whether the next turn's prompt shows the user reviewed that choice. Use exactly one of these four sentences:
+                - `방향을 정하셨어요`: the prompt set the direction.
+                - `AI에 맡기고 다음 턴에서 확인하셨어요`: the prompt did not, but the next turn shows the choice was reviewed.
+                - `AI에 맡기고 확인하지 않으셨어요`: neither the prompt nor the next turn mentions it.
+                - `이 턴에는 판단할 만한 결정 지점이 없었어요`: the turn settled nothing the specification left open.
+                The turn with the highest turn number is the last turn. The last turn takes `이 턴이 마지막이라, AI가 정한 것을 확인하셨는지는 알 수 없어요` instead of the four above — its evidence would be a next turn that does not exist.
+                Phrase the second judgement conditionally: "의도였다면 명시했어야", "확인했다면 직전 결과에 남겼어야". Never state the user's intent as fact.
 
                 ## 다음 프롬프트 쓰기
                 Give one improved prompt example in a code block.

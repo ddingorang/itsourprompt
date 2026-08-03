@@ -94,16 +94,30 @@ class FeedbackPromptsTest {
 
         assertThat(prompt)
                 .contains("목표", "작업 대상", "요구사항", "제약", "완료 조건", "검증", "직전 결과")
-                .contains("반영", "부분 반영", "미반영(프롬프트 원인)", "미반영(실행 실패)")
-                .contains("지정", "위임-검토 흔적 있음", "위임-무언급", "확인 불가")
+                .contains(
+                        "요청한 대로 바뀌었어요",
+                        "일부만 바뀌었어요",
+                        "요청이 프롬프트에 없었어요",
+                        "요청하셨지만 AI가 하지 않았어요")
+                .contains(
+                        "방향을 정하셨어요",
+                        "AI에 맡기고 다음 턴에서 확인하셨어요",
+                        "AI에 맡기고 확인하지 않으셨어요",
+                        "이 턴에는 판단할 만한 결정 지점이 없었어요")
                 .contains("프롬프트 정리하기", "결과와 비교하기", "다음 프롬프트 쓰기");
     }
 
     @Test
-    void 시스템_프롬프트는_마지막_턴의_방향_소유를_확인_불가로_고정한다() {
+    void 시스템_프롬프트는_판정의_축_이름을_사용자에게_드러내지_않는다() {
+        assertThat(FeedbackPrompts.systemPrompt())
+                .doesNotContain("축 1", "축 2", "요구 반영", "방향 소유");
+    }
+
+    @Test
+    void 시스템_프롬프트는_마지막_턴의_방향_판정을_전용_문장으로_고정한다() {
         assertThat(FeedbackPrompts.systemPrompt())
                 .contains("last turn")
-                .contains("확인 불가");
+                .contains("이 턴이 마지막이라, AI가 정한 것을 확인하셨는지는 알 수 없어요");
     }
 
     @Test
