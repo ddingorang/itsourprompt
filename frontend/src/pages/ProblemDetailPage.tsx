@@ -123,7 +123,7 @@ function normalizeRepositoryPath(path: string): string {
     .replace(/^\/+|\/+$/g, '');
 }
 
-function getTokenUsageTotal(usage?: TokenUsage): number | null {
+function getTokenUsageTotal(usage?: TokenUsage | null): number | null {
   if (
     typeof usage?.inputTokens !== 'number' ||
     typeof usage.outputTokens !== 'number'
