@@ -230,7 +230,7 @@ export default function MyPage() {
               <Link
                 className="group grid grid-cols-[120px_minmax(0,1fr)_42px] items-center gap-6 border-b border-[#343434] px-2 py-7 text-inherit no-underline transition-[background,padding] last:border-b-0 hover:bg-[#171717] hover:px-4 focus-visible:bg-[#171717] focus-visible:px-4 focus-visible:outline-none max-[680px]:grid-cols-[minmax(0,1fr)_28px] max-[680px]:gap-3"
                 key={feedback.attemptId}
-                to={`/feedback/${feedback.attemptId}`}
+                to={`/attempts/${feedback.attemptId}/feedback`}
               >
                 <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
                   {feedback.date}
