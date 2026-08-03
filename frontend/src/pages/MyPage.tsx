@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { getProblems } from '../features/problem/api';
 import Pagination from '../features/problem/Pagination';
 import { usePagination } from '../features/problem/usePagination';
+import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
 const ACTIVITY_ITEMS_PER_PAGE = 5;
-const FEEDBACK_ITEMS_PER_PAGE = 3;
 const PAGES_PER_GROUP = 5;
 
 // [임시 데이터] 풀이 수와 전체 턴 수는 아직 백엔드 API가 없어 더미 값이다.
@@ -21,29 +21,22 @@ const PAGES_PER_GROUP = 5;
 // 실데이터 연결 시 problemId를 별도 필드로 분리해야 한다.
 const recentActivity = [
   {
-    id: 1,
+    attemptId: 1,
     date: '2026.07.27',
+    problemId: 1,
     title: 'Hello World 출력',
   },
   {
-    id: 2,
+    attemptId: 2,
     date: '2026.07.25',
+    problemId: 2,
     title: 'SSAFY 출력',
   },
   {
-    id: 3,
+    attemptId: 3,
     date: '2026.07.22',
+    problemId: 3,
     title: '환영 메시지 출력',
-  },
-];
-
-// [임시 데이터] 사용자별 제출 내역 API가 연결되면 가장 최근 피드백으로 교체한다.
-const recentFeedback = [
-  {
-    attemptId: 1,
-    date: '2026.07.27',
-    title: 'Hello World 출력',
-    summary: '요구사항과 출력 형식을 더 구체적으로 작성하면 원하는 결과를 빠르게 얻을 수 있습니다.',
   },
 ];
 
@@ -53,32 +46,45 @@ function formatMemberSince(createdAt: string): string {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function normalizePageParam(
+  pageParam: string | null,
+  totalPages: number,
+): number | null {
+  if (pageParam === null) return null;
+
+  const page = Number(pageParam);
+  if (!Number.isInteger(page) || page < 1) return 1;
+  return Math.min(page, totalPages);
+}
+
 export default function MyPage() {
   // 이 페이지는 ProtectedRoute로 감싸져 있어 user가 항상 존재한다(비로그인은 /login으로 이동됨).
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [totalProblemCount, setTotalProblemCount] = useState<number | null>(null);
-  const [requestedActivityPage, setRequestedActivityPage] = useState(1);
-  const [requestedFeedbackPage, setRequestedFeedbackPage] = useState(1);
+  const activitySectionRef = useRef<HTMLElement>(null);
+  const activityPageParam = searchParams.get('solvedPage');
+  const requestedActivityPage = Number(activityPageParam);
   const activityPagination = usePagination({
     itemCount: recentActivity.length,
     itemsPerPage: ACTIVITY_ITEMS_PER_PAGE,
     pagesPerGroup: PAGES_PER_GROUP,
     requestedPage: requestedActivityPage,
   });
-  const feedbackPagination = usePagination({
-    itemCount: recentFeedback.length,
-    itemsPerPage: FEEDBACK_ITEMS_PER_PAGE,
-    pagesPerGroup: PAGES_PER_GROUP,
-    requestedPage: requestedFeedbackPage,
-  });
   const visibleActivities = recentActivity.slice(
     activityPagination.pageStart,
     activityPagination.pageStart + ACTIVITY_ITEMS_PER_PAGE,
   );
-  const visibleFeedback = recentFeedback.slice(
-    feedbackPagination.pageStart,
-    feedbackPagination.pageStart + FEEDBACK_ITEMS_PER_PAGE,
-  );
+
+  const moveToPage = (page: number) => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('solvedPage', String(page));
+    setSearchParams(nextParams);
+    activitySectionRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -97,6 +103,37 @@ export default function MyPage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const normalizedActivityPage = normalizePageParam(
+      activityPageParam,
+      activityPagination.totalPages,
+    );
+    const nextParams = new URLSearchParams(searchParams);
+    let shouldReplace = false;
+
+    if (
+      normalizedActivityPage !== null &&
+      activityPageParam !== String(normalizedActivityPage)
+    ) {
+      nextParams.set('solvedPage', String(normalizedActivityPage));
+      shouldReplace = true;
+    }
+
+    if (nextParams.has('feedbackPage')) {
+      nextParams.delete('feedbackPage');
+      shouldReplace = true;
+    }
+
+    if (shouldReplace) {
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [
+    activityPageParam,
+    activityPagination.totalPages,
+    searchParams,
+    setSearchParams,
+  ]);
 
   if (!user) {
     return null;
@@ -174,7 +211,10 @@ export default function MyPage() {
           </div>
         </section>
 
-        <section className="mt-[clamp(52px,8vw,96px)]">
+        <section
+          className="mt-[clamp(52px,8vw,96px)]"
+          ref={activitySectionRef}
+        >
           <div className="flex items-end justify-between gap-6 pb-5">
               <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
                 SOLVED PROBLEMS
@@ -183,10 +223,9 @@ export default function MyPage() {
 
           <div className="border-y border-t-[#f5f5ef] border-b-[#343434]">
             {visibleActivities.map((activity, index) => (
-              <Link
-                className="group grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_42px] items-center gap-4 border-b border-[#343434] px-2 py-3 transition-[background,padding] last:border-b-0 hover:bg-[#171717] hover:px-4 focus-visible:bg-[#171717] focus-visible:px-4 focus-visible:outline-none max-[680px]:grid-cols-[38px_minmax(0,1fr)_28px] max-[680px]:gap-3"
-                key={activity.id}
-                to={`/problems/${activity.id}`}
+              <div
+                className="grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[#343434] px-2 py-3 last:border-b-0 max-[680px]:grid-cols-[38px_minmax(0,1fr)] max-[680px]:gap-3"
+                key={activity.attemptId}
               >
                 <span className="font-mono text-[17px] text-[#777]">
                   {String(activityPagination.pageStart + index + 1).padStart(2, '0')}
@@ -197,13 +236,24 @@ export default function MyPage() {
                 <strong className="truncate text-[clamp(15px,2vw,20px)] tracking-[-0.02em]">
                   {activity.title}
                 </strong>
-                <span
-                  className="justify-self-end text-2xl text-[#d6ff50] transition-transform duration-200 group-hover:translate-x-[3px] group-hover:-translate-y-[3px] group-focus-visible:translate-x-[3px] group-focus-visible:-translate-y-[3px]"
-                  aria-hidden="true"
-                >
-                  ↗
-                </span>
-              </Link>
+                <div className="flex justify-self-end gap-2 max-[680px]:col-span-2 max-[680px]:justify-self-stretch">
+                  <Button
+                    className="max-[680px]:flex-1"
+                    to={`/problems/${activity.problemId}`}
+                    variant="secondary"
+                  >
+                    <span className="text-[14px]">문제 풀기</span>
+                    <span className="text-[14px]" aria-hidden="true">↗</span>
+                  </Button>
+                  <Button
+                    className="max-[680px]:flex-1"
+                    to={`/attempts/${activity.attemptId}/feedback`}
+                  >
+                    <span className="text-[14px]">피드백 보기</span>
+                    <span className="text-[14px]" aria-hidden="true">↗</span>
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
 
@@ -213,55 +263,7 @@ export default function MyPage() {
               pageGroupEnd={activityPagination.pageGroupEnd}
               pageGroupStart={activityPagination.pageGroupStart}
               totalPages={activityPagination.totalPages}
-              onPageChange={setRequestedActivityPage}
-            />
-          )}
-        </section>
-
-        <section className="mt-[clamp(52px,8vw,96px)]">
-          <div className="flex items-end justify-between gap-6 pb-5">
-            <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-              RECENT FEEDBACK
-            </div>
-          </div>
-
-          <div className="border-y border-t-[#f5f5ef] border-b-[#343434]">
-            {visibleFeedback.map((feedback) => (
-              <Link
-                className="group grid grid-cols-[120px_minmax(0,1fr)_42px] items-center gap-6 border-b border-[#343434] px-2 py-7 text-inherit no-underline transition-[background,padding] last:border-b-0 hover:bg-[#171717] hover:px-4 focus-visible:bg-[#171717] focus-visible:px-4 focus-visible:outline-none max-[680px]:grid-cols-[minmax(0,1fr)_28px] max-[680px]:gap-3"
-                key={feedback.attemptId}
-                to={`/attempts/${feedback.attemptId}/feedback`}
-              >
-                <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
-                  {feedback.date}
-                </span>
-
-                <span className="min-w-0">
-                  <strong className="block truncate text-[clamp(17px,2vw,22px)] tracking-[-0.02em]">
-                    {feedback.title}
-                  </strong>
-                  <span className="mt-2 block line-clamp-2 text-[13px] leading-[1.7] text-[#777] [word-break:keep-all]">
-                    {feedback.summary}
-                  </span>
-                </span>
-
-                <span
-                  className="justify-self-end text-2xl text-[#d6ff50] transition-transform duration-200 group-hover:translate-x-[3px] group-hover:-translate-y-[3px] group-focus-visible:translate-x-[3px] group-focus-visible:-translate-y-[3px]"
-                  aria-hidden="true"
-                >
-                  ↗
-                </span>
-              </Link>
-            ))}
-          </div>
-
-          {feedbackPagination.totalPages > 1 && (
-            <Pagination
-              currentPage={feedbackPagination.currentPage}
-              pageGroupEnd={feedbackPagination.pageGroupEnd}
-              pageGroupStart={feedbackPagination.pageGroupStart}
-              totalPages={feedbackPagination.totalPages}
-              onPageChange={setRequestedFeedbackPage}
+              onPageChange={moveToPage}
             />
           )}
         </section>
