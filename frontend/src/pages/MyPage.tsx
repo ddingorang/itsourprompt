@@ -11,17 +11,27 @@ import { usePagination } from '../shared/hooks/usePagination';
 const SOLVED_PROBLEMS_PER_PAGE = 5;
 const PAGES_PER_GROUP = 5;
 
-// [정렬·페이지네이션 확인용 임시 데이터] 사용자별 해결 문제 조회 API 연동 전에 제거한다.
-const solvedProblems = Array.from({ length: 15 }, (_, index) => {
-  const day = 13 + index;
-
-  return {
-    attemptId: index + 1,
-    date: `2026.07.${String(day).padStart(2, '0')}`,
-    problemId: (index % 3) + 1,
-    title: `연습 문제 ${String(index + 1).padStart(2, '0')}`,
-  };
-});
+// [임시 데이터] 사용자별 해결 문제 조회 API가 연결되면 실제 내역으로 교체한다.
+const solvedProblems = [
+  {
+    attemptId: 1,
+    date: '2026.07.27',
+    problemId: 1,
+    title: 'Hello World 출력',
+  },
+  {
+    attemptId: 2,
+    date: '2026.07.25',
+    problemId: 2,
+    title: 'SSAFY 출력',
+  },
+  {
+    attemptId: 3,
+    date: '2026.07.22',
+    problemId: 3,
+    title: '환영 메시지 출력',
+  },
+];
 
 /** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (MEMBER SINCE 표기용) */
 function formatMemberSince(createdAt: string): string {
