@@ -133,10 +133,10 @@ export default function LoginPage() {
               {submitting ? 'LOGGING IN…' : 'LOG IN ↗'}
             </Button>
 
-            <p className="mt-6 text-center font-mono text-xs text-[#a3a3a3]">
+            <p className="mt-6 text-center text-xs text-[#a3a3a3]">
               계정이 없나요?{' '}
-              <Link className="text-[#d6ff50] hover:underline" to="/signup">
-                회원가입 →
+              <Link className="ml-2 text-[#d6ff50] hover:underline" to="/signup">
+                회원가입 ↗
               </Link>
             </p>
           </form>
