@@ -114,6 +114,7 @@ export default function SignupPage() {
                 className={inputClasses}
                 disabled={submitting}
                 id="signup-username"
+                maxLength={30}
                 onChange={(event) => setUsername(event.target.value)}
                 placeholder="아이디 (3~30자)"
                 value={username}
@@ -171,6 +172,7 @@ export default function SignupPage() {
                 className={inputClasses}
                 disabled={submitting}
                 id="signup-nickname"
+                maxLength={30}
                 onChange={(event) => setNickname(event.target.value)}
                 placeholder="닉네임 (2~30자) — 마이페이지에 표시됩니다."
                 value={nickname}
