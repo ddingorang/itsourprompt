@@ -94,10 +94,10 @@ export default function HomePage() {
                 <br />
                 <span className="text-[#d6ff50]">더 정확한 코드</span>
               </h1>
-              <p className="mt-7 mb-0 max-w-[650px] text-[clamp(17px,1.6vw,22px)] leading-[1.65] font-semibold [word-break:keep-all]">
-                우리는 프롬프트를 ‘잘 쓰는 문장’이 아니라
+              <p className="mt-7 mb-0 max-w-[650px] text-[clamp(14px,1.8vw,25px)] leading-[1.65] font-semibold [word-break:keep-all]">
+                우리는 프롬프트를 단순한 문장이 아니라
                 <br />
-                ‘명확하게 사고하는 과정’이라고 믿습니다.
+                ‘문제를 해결하는 논리적 사고’ 라고 믿습니다.
               </p>
             </div>
           </div>
