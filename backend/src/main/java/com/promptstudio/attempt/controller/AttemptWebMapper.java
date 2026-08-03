@@ -100,9 +100,11 @@ public class AttemptWebMapper {
 
         return new AttemptResponse.TurnUsageResponse(
                 usage.inputTokens(),
-                usage.outputTokens(),
+                usage.uncachedInputTokens(),
                 usage.cachedInputTokens(),
+                usage.outputTokens(),
                 usage.reasoningTokens(),
+                usage.latencyMs(),
                 usage.cost(),
                 usage.model(),
                 usage.rounds()
@@ -116,10 +118,13 @@ public class AttemptWebMapper {
 
         return new AttemptResponse.AttemptUsageResponse(
                 usage.inputTokens(),
-                usage.outputTokens(),
+                usage.uncachedInputTokens(),
                 usage.cachedInputTokens(),
+                usage.outputTokens(),
                 usage.reasoningTokens(),
-                usage.cost()
+                usage.latencyMs(),
+                usage.cost(),
+                usage.rounds()
         );
     }
 }

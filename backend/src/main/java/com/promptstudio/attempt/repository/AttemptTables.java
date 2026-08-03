@@ -61,6 +61,8 @@ final class AttemptTables {
             field(name("attempt_llm_call", "cached_input_tokens"), SQLDataType.BIGINT);
     static final Field<Long> CALL_REASONING_TOKENS =
             field(name("attempt_llm_call", "reasoning_tokens"), SQLDataType.BIGINT);
+    static final Field<Long> CALL_LATENCY_MS =
+            field(name("attempt_llm_call", "latency_ms"), SQLDataType.BIGINT);
     static final Field<BigDecimal> CALL_COST = field(name("attempt_llm_call", "cost"), SQLDataType.DECIMAL);
 
     private AttemptTables() {

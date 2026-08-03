@@ -212,28 +212,36 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 | `turns[].toolCalls[].tool` | string | `list_files` \| `read_file` \| `edit_file` |
 | `turns[].toolCalls[].path` | string \| null | 대상 파일 경로. 대상이 없는 툴(`list_files`)은 null |
 | `turns[].usage` | object \| null | 그 턴의 LLM 사용량 합계. 사용량 기록 도입 이전 턴은 null |
-| `turns[].usage.inputTokens` | number \| null | 입력 토큰 합계 |
+| `turns[].usage.inputTokens` | number \| null | 입력 토큰 합계. 캐시 적중분을 포함한 전체 |
+| `turns[].usage.uncachedInputTokens` | number \| null | 캐시가 안 먹은 입력 토큰 합계(= `inputTokens` − `cachedInputTokens`) |
+| `turns[].usage.cachedInputTokens` | number \| null | 캐시 적중 입력 토큰 합계. `inputTokens`에 포함된 값 |
 | `turns[].usage.outputTokens` | number \| null | 출력 토큰 합계 |
-| `turns[].usage.cachedInputTokens` | number \| null | 캐시 적중 입력 토큰 합계 |
-| `turns[].usage.reasoningTokens` | number \| null | 추론 토큰 합계 |
+| `turns[].usage.reasoningTokens` | number \| null | 추론 토큰 합계. `outputTokens`에 포함된 값 |
+| `turns[].usage.latencyMs` | number \| null | LLM 호출 왕복 시간 합(ms) |
 | `turns[].usage.cost` | number \| null | USD 비용. 단가가 등록되지 않은 모델은 null |
 | `turns[].usage.model` | string \| null | 그 턴의 호출에 쓴 모델 |
 | `turns[].usage.rounds` | number | 그 턴의 LLM 호출 횟수 |
 | `status` | string | `IN_PROGRESS` \| `SUBMITTED` |
-| `usage` | object \| null | 어템프트 전체의 LLM 사용량 총계. 기록이 없으면 null |
-| `usage.inputTokens` | number \| null | 입력 토큰 총계 |
+| `usage` | object \| null | 어템프트의 LLM 사용량 총계(= 턴별 합계의 합). 턴 사용량 기록이 없으면 null |
+| `usage.inputTokens` | number \| null | 입력 토큰 총계. 캐시 적중분을 포함한 전체 |
+| `usage.uncachedInputTokens` | number \| null | 캐시가 안 먹은 입력 토큰 총계 |
+| `usage.cachedInputTokens` | number \| null | 캐시 적중 입력 토큰 총계. `inputTokens`에 포함된 값 |
 | `usage.outputTokens` | number \| null | 출력 토큰 총계 |
-| `usage.cachedInputTokens` | number \| null | 캐시 적중 입력 토큰 총계 |
-| `usage.reasoningTokens` | number \| null | 추론 토큰 총계 |
+| `usage.reasoningTokens` | number \| null | 추론 토큰 총계. `outputTokens`에 포함된 값 |
+| `usage.latencyMs` | number \| null | LLM 호출 왕복 시간 합(ms) |
 | `usage.cost` | number \| null | USD 비용 총계. 단가가 등록되지 않은 모델의 호출은 빠진다 |
+| `usage.rounds` | number | 어템프트의 턴들이 낸 LLM 호출 횟수 합 |
 
 이 응답에 피드백은 포함되지 않는다. 피드백은 `GET /api/attempts/{id}/feedback` 또는 제출 응답으로만 받는다.
 
 사용량 계약:
 
-- **`turns[].usage`의 합은 `usage`와 다르다.** 최상위 `usage`는 턴에 속하지 않는 호출(제출 시 피드백 생성, 실패로 턴이 저장되지 않은 호출)까지 포함한 총계다.
+- **`turns[].usage`를 모두 더하면 `usage`가 된다.** 턴에 속하지 않는 호출(제출 시 피드백 생성, 실패로 턴이 저장되지 않은 호출)은 총계에서 뺀다 — 이 수치는 사용자가 자기 프롬프트의 효율을 보는 지표이고, 그 호출들은 서비스가 부담하는 비용이기 때문이다. 그래서 제출 전후로 `usage`가 달라지지 않는다.
 - **사용량 기록 도입 이전 데이터는 `usage`가 null이다.** 기존 데이터를 마이그레이션하지 않으므로 클라이언트는 null을 정상 케이스로 처리해야 한다.
+- **토큰 항목에는 포함 관계가 있다.** `cachedInputTokens`는 `inputTokens`의 일부이고, `reasoningTokens`는 `outputTokens`의 일부다. 나란히 더하면 이중 계산이 된다. 캐시 적중분과 신규 입력분은 단가가 10배 가까이 차이 나므로, 비용 구조를 보여줄 때는 `uncachedInputTokens`와 `cachedInputTokens`를 쓴다. 다만 `uncachedInputTokens`는 호출마다 입력에서 캐시 적중분을 뺀 값을 더한 것이라, **입력 토큰을 모르는 호출이 섞이면 `cachedInputTokens`와 더해도 `inputTokens`가 되지 않는다.** 표시할 값은 계산하지 말고 각각 그대로 쓴다.
+- `latencyMs`는 **LLM 호출의 왕복 시간 합**이다. 툴 실행·응답 파싱·저장에 든 시간은 들어가지 않으므로 사용자가 실제로 기다린 시간보다 짧다.
 - `cost`는 호출 시점 단가로 계산해 저장한 USD 값이다. 단가가 등록되지 않은 모델은 0이 아니라 null이며, 그런 호출은 합계에서 빠진다.
+- **제공자가 사용량을 주지 않은 호출은 해당 항목의 합계에서 빠진다.** 0으로 세지 않는다 — 모르는 값을 0으로 적으면 합계가 거짓말이 되기 때문이다. 그런 호출도 `rounds`와 `latencyMs`에는 잡힌다.
 - 이 봉투는 필드 추가 방식으로만 확장한다. **클라이언트는 모르는 JSON 키를 무시해야 한다.**
 
 턴이 있는 어템프트의 전체 예시:
@@ -272,9 +280,11 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
       ],
       "usage": {
         "inputTokens": 2500,
-        "outputTokens": 500,
+        "uncachedInputTokens": 1500,
         "cachedInputTokens": 1000,
+        "outputTokens": 500,
         "reasoningTokens": 120,
+        "latencyMs": 260,
         "cost": 0.00300000,
         "model": "gpt-5.6-luna",
         "rounds": 2
@@ -284,10 +294,13 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
   "status": "IN_PROGRESS",
   "usage": {
     "inputTokens": 2500,
-    "outputTokens": 500,
+    "uncachedInputTokens": 1500,
     "cachedInputTokens": 1000,
+    "outputTokens": 500,
     "reasoningTokens": 120,
-    "cost": 0.00300000
+    "latencyMs": 260,
+    "cost": 0.00300000,
+    "rounds": 2
   }
 }
 ```
