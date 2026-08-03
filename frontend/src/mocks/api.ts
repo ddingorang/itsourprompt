@@ -144,12 +144,34 @@ public record Post${turnNumber}(Long id, String title, String content) {}`,
       { tool: 'read_file', path: 'src/main/java/App.java' },
       { tool: 'edit_file', path: addedFile.path },
     ],
+    usage: {
+      inputTokens: 2500 + (turnNumber - 1) * 320,
+      uncachedInputTokens: 1500 + (turnNumber - 1) * 200,
+      cachedInputTokens: 1000 + (turnNumber - 1) * 120,
+      outputTokens: 500 + (turnNumber - 1) * 80,
+      reasoningTokens: 120 + (turnNumber - 1) * 20,
+      latencyMs: 260 + (turnNumber - 1) * 35,
+      cost: 0.003 + (turnNumber - 1) * 0.0004,
+    },
   };
 
   const updated: Attempt = {
     ...attempt,
     files: [...attempt.files, addedFile],
     turns: [...attempt.turns, turn],
+    usage: {
+      inputTokens: (attempt.usage?.inputTokens ?? 0) + turn.usage!.inputTokens,
+      uncachedInputTokens:
+        (attempt.usage?.uncachedInputTokens ?? 0) + turn.usage!.uncachedInputTokens,
+      cachedInputTokens:
+        (attempt.usage?.cachedInputTokens ?? 0) + turn.usage!.cachedInputTokens,
+      outputTokens: (attempt.usage?.outputTokens ?? 0) + turn.usage!.outputTokens,
+      reasoningTokens:
+        (attempt.usage?.reasoningTokens ?? 0) + turn.usage!.reasoningTokens,
+      latencyMs: (attempt.usage?.latencyMs ?? 0) + turn.usage!.latencyMs,
+      cost: (attempt.usage?.cost ?? 0) + turn.usage!.cost,
+      rounds: (attempt.usage?.rounds ?? 0) + 1,
+    },
   };
 
   mockAttempts.set(attemptId, updated);

@@ -18,6 +18,7 @@ import type {
   Attempt,
   ChangedFile,
   ChangeType,
+  TokenUsage,
   Turn,
 } from '../features/attempt/types';
 import { getProblemDetail } from '../features/problem/api';
@@ -141,6 +142,23 @@ function normalizeRepositoryPath(path: string): string {
     .replace(/^\/+|\/+$/g, '');
 }
 
+function getTokenUsageTotal(usage?: TokenUsage): number | null {
+  if (
+    typeof usage?.inputTokens !== 'number' ||
+    typeof usage.outputTokens !== 'number'
+  ) {
+    return null;
+  }
+
+  return usage.inputTokens + usage.outputTokens;
+}
+
+function formatUsageValue(value: unknown, suffix = ''): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? `${value.toLocaleString('ko-KR')}${suffix}`
+    : '—';
+}
+
 function createFileTree(
   files: RepositoryFile[],
   changedFiles: ChangedFile[],
@@ -255,6 +273,13 @@ export default function ProblemDetailPage() {
 
   const files = attempt?.files ?? problem?.files ?? [];
   const turns = attempt?.turns ?? [];
+  const attemptTokenUsage = getTokenUsageTotal(attempt?.usage);
+  const turnTokenUsages = turns.map((turn) => getTokenUsageTotal(turn.usage));
+  const hasTokenUsage =
+    attemptTokenUsage !== null || turnTokenUsages.some((usage) => usage !== null);
+  const totalTokenUsage =
+    attemptTokenUsage ??
+    turnTokenUsages.reduce<number>((total, usage) => total + (usage ?? 0), 0);
   const passedTestCount = testResults?.filter((result) => result.passed).length ?? 0;
   const testPassRate = testResults?.length
     ? (passedTestCount / testResults.length) * 100
@@ -816,13 +841,43 @@ export default function ProblemDetailPage() {
                 </>
               ) : activeTab === 'logs' && turns.length ? (
                 <div className="grid gap-4">
+                  <div className="flex items-end justify-between border border-[#3f3f3f] bg-[#111] px-4 py-3">
+                    <div>
+                      <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[#777]">
+                        TOTAL TOKEN USAGE
+                      </p>
+                      <p className="mt-1 mb-0 text-[12px] text-[#a3a3a3]">
+                        전체 프롬프트 토큰 사용량
+                      </p>
+                    </div>
+                    <strong className="font-mono text-xl text-[#d6ff50]">
+                      {formatUsageValue(hasTokenUsage ? totalTokenUsage : null)}
+                    </strong>
+                  </div>
+
                   {turns.map((turn, index) => (
                     <article
                       className="border-l-2 border-[#d6ff50] pl-3"
                       key={`turn-${index + 1}`}
                     >
-                      <div className="font-mono text-[9px] font-bold text-[#d6ff50]">
-                        TURN {String(index + 1).padStart(2, '0')}
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 font-mono text-[9px] font-bold">
+                        <span className="text-[#d6ff50]">
+                          TURN {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <span className="flex gap-3 text-[#777]">
+                          <span>
+                            TOKENS{' '}
+                            <strong className="text-[#c7c7c2]">
+                              {formatUsageValue(turnTokenUsages[index])}
+                            </strong>
+                          </span>
+                          <span>
+                            LATENCY{' '}
+                            <strong className="text-[#c7c7c2]">
+                              {formatUsageValue(turn.usage?.latencyMs, 'ms')}
+                            </strong>
+                          </span>
+                        </span>
                       </div>
                       <p className="my-2 whitespace-pre-wrap text-[12px] leading-[1.6] text-[#f5f5ef]">
                         {turn.prompt}
