@@ -72,11 +72,8 @@ export default function LoginPage() {
       <Header />
 
       <main className="mx-auto flex w-[calc(100%_-_10vw)] flex-1 items-center justify-center py-16 max-[640px]:w-[calc(100%_-_40px)]">
-        <section className="w-full max-w-2xl border-y border-[#343434] py-12">
-          <p className="text-center font-mono text-xs tracking-[0.12em] text-[#d6ff50]">
-            SESSION / COOKIE AUTH
-          </p>
-          <h1 className="mt-4 text-center font-mono text-[clamp(44px,8vw,72px)] leading-none font-bold tracking-[-0.05em]">
+        <section className="w-full max-w-2xl border-y border-[#343434] py-8">
+          <h1 className="text-center font-mono text-[clamp(44px,8vw,72px)] leading-none font-bold tracking-[-0.05em]">
             LOGIN
           </h1>
 
