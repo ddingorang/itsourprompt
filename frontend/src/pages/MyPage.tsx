@@ -200,12 +200,12 @@ export default function MyPage() {
   const stats = [
     {
       label: 'SOLVED',
-      value: String(solvedCount),
+      value: isLoadingAttempts ? '--' : String(solvedCount),
       suffix: null,
     },
     {
       label: 'SUBMISSIONS',
-      value: String(submittedAttempts.length),
+      value: isLoadingAttempts ? '--' : String(submittedAttempts.length),
       suffix: null,
     },
   ];
