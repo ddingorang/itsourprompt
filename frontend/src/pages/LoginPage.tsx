@@ -86,7 +86,7 @@ export default function LoginPage() {
           >
             <div>
               <label className={labelClasses} htmlFor="login-username">
-                USERNAME
+                ID
               </label>
               <input
                 autoComplete="username"
