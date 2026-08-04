@@ -116,12 +116,12 @@ export default function HomePage() {
       />
 
       <main className="flex-1 overflow-clip">
-        <section className="landing-hero mx-auto flex min-h-[calc(100svh-66px)] w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
+        <section className="landing-hero mx-auto flex h-[calc(100svh-66px)] min-h-0 w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-4 max-[1100px]:w-[90%] max-[760px]:h-[calc(100svh-81px)] max-[760px]:w-[calc(100%_-_32px)]">
           <div className="flex flex-1 flex-col justify-center">
             <div className="flex items-center gap-4 font-mono text-[19px] font-bold tracking-[0.14em] text-[var(--acid)]">
               <span>PROMPT ENGINEERING PRACTICE</span>
             </div>
-            <div className="pt-7 pb-14">
+            <div className="pt-7 pb-6">
               <h1 className="landing-display m-0 max-w-[1100px] text-[clamp(52px,9vw,110px)] leading-[1.0] font-black tracking-[-0.05em]">
                 더 명확한 요청
                 <br />
@@ -135,7 +135,32 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-8 border-t border-[var(--landing-border)] pt-7 max-[680px]:grid-cols-1">
+          <div className="landing-hero-actions mb-5 ml-auto flex flex-wrap justify-end gap-3 max-[680px]:ml-0 max-[680px]:grid max-[680px]:grid-cols-1">
+            <Button className="group min-h-14 px-7" to="/problems">
+              <span>혼자 시작하기</span>
+              <span
+                className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
+                aria-hidden="true"
+              >
+                ↗
+              </span>
+            </Button>
+            <Button
+              className="group min-h-14 px-7"
+              to="/problems?mode=together"
+              variant="secondary"
+            >
+              <span>친구와 함께 풀기</span>
+              <span
+                className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
+                aria-hidden="true"
+              >
+                ↗
+              </span>
+            </Button>
+          </div>
+
+          <div className="relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-8 border-t border-[var(--landing-border)] pt-6 max-[680px]:grid-cols-1">
             <span className="max-[680px]:hidden" aria-hidden="true" />
             <div className="landing-scroll-cue">
               <span className="landing-scroll-arrows" aria-hidden="true">
@@ -247,8 +272,8 @@ export default function HomePage() {
                 프롬프트가 달라집니다.
               </h2>
               <Button className="min-h-14 gap-2.5 px-7" to="/problems">
-                <span className="text-[14px]">문제 풀어보기</span>
-                <span className="text-[14px]" aria-hidden="true">↗</span>
+                <span>문제 풀어보기</span>
+                <span aria-hidden="true">↗</span>
               </Button>
             </div>
           </section>

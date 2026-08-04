@@ -57,6 +57,12 @@ html { scroll-behavior: smooth; }
 .landing-page > header i { color: var(--acid); }
 .landing-display { text-wrap: balance; }
 .landing-hero { position: relative; }
+.landing-hero-actions a:first-child { border-color: var(--acid); background: var(--acid); color: #090909; }
+.landing-hero-actions a:first-child:hover,
+.landing-hero-actions a:first-child:focus-visible { background: transparent; color: var(--acid); }
+.landing-hero-actions a:last-child { border-color: var(--landing-border); color: var(--landing-text); }
+.landing-hero-actions a:last-child:hover,
+.landing-hero-actions a:last-child:focus-visible { border-color: var(--acid); background: var(--landing-bg); color: var(--acid); }
 .landing-scroll-cue { display: flex; flex-direction: column; align-items: center; gap: 24px; justify-self: center; color: var(--landing-text); font: 400 12px/1 Arial, 'Noto Sans KR', sans-serif; letter-spacing: .08em; white-space: nowrap; }
 .landing-scroll-arrows { display: flex; height: 31px; flex-direction: column; align-items: center; }
 .landing-scroll-arrows i { display: block; width: 22px; height: 22px; margin-bottom: -10px; transform: rotate(45deg); border-right: 3px solid #777; border-bottom: 3px solid #777; animation: landing-scroll-pulse 1.6s ease-in-out infinite; }
