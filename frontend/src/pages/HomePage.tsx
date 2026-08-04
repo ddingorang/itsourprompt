@@ -198,31 +198,24 @@ export default function HomePage() {
         </section>
 
         <section className="landing-guest min-h-[calc(100svh-66px)] border-b border-[var(--landing-border)] bg-[var(--landing-guest-bg)] text-[var(--landing-guest-text)]">
-          <div className="mx-auto grid min-h-[calc(100svh-66px)] w-[80%] grid-cols-2 content-center items-stretch gap-[8vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[900px]:min-h-[90svh] max-[900px]:w-[calc(100%_-_32px)] max-[900px]:grid-cols-1">
-          <div className="order-2 flex min-h-0 min-w-0 flex-col max-[900px]:order-1" data-reveal>
-            <div className="mb-7 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--landing-guest-eyebrow)]">NO SIGN-IN NEEDED</div>
-            <h2 className="m-0 text-[clamp(42px,5.4vw,76px)] leading-[1.1] font-black tracking-[-0.04em] [word-break:keep-all]">
-              로그인은
-              <br />
-              나중이어도
-              <br />
-              괜찮아요.
-            </h2>
-            <p className="mt-auto max-w-[520px] pt-9 text-[clamp(17px,1.5vw,21px)] leading-[1.7] text-[var(--landing-guest-copy)] [word-break:keep-all]">
-              회원가입 없이 문제를 고르고, 프롬프트를 실행하고, 
-              <br />
-              피드백까지 확인할 수 있습니다. 
-              <br />
-              먼저 경험한 뒤 기록을 남기고 싶을 때 로그인하세요.
-            </p>
-          </div>
-          <div className="landing-pass order-1 min-w-0 max-w-full self-stretch max-[900px]:order-2" data-reveal style={{ '--reveal-delay': '140ms' } as CSSProperties}>
-            <div className="landing-pass-center">
-              <span className="landing-pass-check" aria-hidden="true">✓</span>
-              <strong>NO LOGIN</strong>
-              <span>REQUIRED</span>
+          <div className="mx-auto flex min-h-[calc(100svh-66px)] w-[80%] items-center pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
+            <div className="max-w-[850px]" data-reveal>
+              <div className="mb-7 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--landing-guest-eyebrow)]">NO LOGIN NEEDED</div>
+              <h2 className="m-0 text-[clamp(42px,5.4vw,76px)] leading-[1.1] font-black tracking-[-0.04em] [word-break:keep-all]">
+                로그인은
+                <br />
+                나중이어도
+                <br />
+                괜찮아요.
+              </h2>
+              <p className="mt-10 mb-0 max-w-[650px] text-[clamp(17px,1.5vw,21px)] leading-[1.7] text-[var(--landing-guest-copy)] [word-break:keep-all]">
+                회원가입 없이 문제를 고르고, 프롬프트를 실행하고,
+                <br />
+                피드백까지 확인할 수 있습니다.
+                <br />
+                먼저 경험한 뒤 기록을 남기고 싶을 때 로그인하세요.
+              </p>
             </div>
-          </div>
           </div>
         </section>
 
