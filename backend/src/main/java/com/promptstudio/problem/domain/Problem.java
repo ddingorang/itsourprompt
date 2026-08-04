@@ -35,6 +35,9 @@ public class Problem {
     @Column(name = "spec_md", nullable = false, columnDefinition = "text")
     private String specMd;
 
+    @Column(name = "problem_type", nullable = false, length = 20)
+    private String type = "coding";
+
     @ElementCollection
     @CollectionTable(name = "problem_file", joinColumns = @JoinColumn(name = "problem_id"))
     @OrderColumn(name = "ordinal")
@@ -56,7 +59,7 @@ public class Problem {
     }
 
     public Problem(String slug, String title, String specMd, List<ProblemFile> files, List<ProblemFile> testFiles) {
-        this(null, slug, title, specMd, files, testFiles);
+        this(null, slug, title, specMd, "coding", files, testFiles);
     }
 
     public Problem(
@@ -67,10 +70,34 @@ public class Problem {
             List<ProblemFile> files,
             List<ProblemFile> testFiles
     ) {
+        this(id, slug, title, specMd, "coding", files, testFiles);
+    }
+
+    public Problem(
+            String slug,
+            String title,
+            String specMd,
+            String type,
+            List<ProblemFile> files,
+            List<ProblemFile> testFiles
+    ) {
+        this(null, slug, title, specMd, type, files, testFiles);
+    }
+
+    public Problem(
+            Long id,
+            String slug,
+            String title,
+            String specMd,
+            String type,
+            List<ProblemFile> files,
+            List<ProblemFile> testFiles
+    ) {
         this.id = id;
         this.slug = slug;
         this.title = title;
         this.specMd = specMd;
+        this.type = type;
         this.files = new ArrayList<>(files);
         this.testFiles = new ArrayList<>(testFiles);
     }
@@ -79,8 +106,19 @@ public class Problem {
      * 저장소에서 다시 읽어온 내용으로 갈아끼운다. slug는 문제의 식별자라 바뀌지 않는다.
      */
     public void updateFrom(String title, String specMd, List<ProblemFile> files, List<ProblemFile> testFiles) {
+        updateFrom(title, specMd, "coding", files, testFiles);
+    }
+
+    public void updateFrom(
+            String title,
+            String specMd,
+            String type,
+            List<ProblemFile> files,
+            List<ProblemFile> testFiles
+    ) {
         this.title = title;
         this.specMd = specMd;
+        this.type = type;
         this.files.clear();
         this.files.addAll(files);
         this.testFiles.clear();
@@ -109,6 +147,10 @@ public class Problem {
 
     public String specMd() {
         return specMd;
+    }
+
+    public String type() {
+        return type;
     }
 
     public List<ProblemFile> files() {
