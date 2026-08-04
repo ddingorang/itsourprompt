@@ -5,6 +5,8 @@ import com.promptstudio.attempt.controller.response.CodeRunListResponse;
 import com.promptstudio.attempt.controller.response.CodeRunResponse;
 import com.promptstudio.attempt.controller.response.FeedbackResponse;
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.CodeRunCase;
+import com.promptstudio.attempt.domain.CodeRunCaseTally;
 import com.promptstudio.attempt.domain.CodeRunSummary;
 import com.promptstudio.attempt.domain.CodeRunView;
 import com.promptstudio.attempt.domain.FileChange;
@@ -67,14 +69,36 @@ public class AttemptWebMapper {
                     run.exitCode(),
                     run.durationMs(),
                     run.createdAt(),
-                    run.finishedAt()
+                    run.finishedAt(),
+                    toTallyResponse(run.tally())
             ));
         }
 
         return new CodeRunListResponse(responses);
     }
 
+    private CodeRunListResponse.CodeRunCaseTallyResponse toTallyResponse(CodeRunCaseTally tally) {
+        if (tally == null) {
+            return null;
+        }
+
+        return new CodeRunListResponse.CodeRunCaseTallyResponse(
+                tally.total(), tally.passed(), tally.failed(), tally.error(), tally.skipped());
+    }
+
     public CodeRunResponse toCodeRunResponse(CodeRunView run) {
+        List<CodeRunResponse.CodeRunCaseResponse> cases = new ArrayList<>();
+
+        for (CodeRunCase testCase : run.cases()) {
+            cases.add(new CodeRunResponse.CodeRunCaseResponse(
+                    testCase.className(),
+                    testCase.name(),
+                    testCase.status(),
+                    testCase.message(),
+                    testCase.durationMs()
+            ));
+        }
+
         return new CodeRunResponse(
                 run.id(),
                 run.turnOrdinal(),
@@ -82,7 +106,8 @@ public class AttemptWebMapper {
                 run.exitCode(),
                 run.stdout(),
                 run.stderr(),
-                run.durationMs()
+                run.durationMs(),
+                cases
         );
     }
 

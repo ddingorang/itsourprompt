@@ -1,11 +1,15 @@
 package com.promptstudio.attempt.repository;
 
+import com.promptstudio.attempt.domain.CodeRunCase;
+import com.promptstudio.attempt.domain.CodeRunCaseTally;
 import com.promptstudio.attempt.domain.CodeRunResult;
 import com.promptstudio.attempt.domain.CodeRunSummary;
 import com.promptstudio.attempt.domain.CodeRunView;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -19,6 +23,18 @@ public interface CodeRunRepository {
     boolean tryInsertQueued(UUID runId, Long attemptId, Integer turnOrdinal, Instant now);
 
     Optional<CodeRunView> findByIdAndAttemptId(UUID runId, Long attemptId);
+
+    /**
+     * 실행 한 건의 채점 케이스를 리포트 순서대로 반환한다. 케이스 기록 이전에 실행된 run이면 빈 목록이다.
+     */
+    List<CodeRunCase> findCasesByRunId(UUID runId);
+
+    /**
+     * 여러 실행의 케이스 집계를 한 번에 읽는다. 목록 화면이 실행마다 단건 조회를 반복하지 않게 하려는 것이다.
+     *
+     * @return runId → 집계. 케이스가 없는 실행은 키가 없다
+     */
+    Map<UUID, CodeRunCaseTally> tallyCasesByRunIds(Collection<UUID> runIds);
 
     /**
      * 어템프트의 실행 기록을 최근 순으로 전부 반환한다. 실행이 없으면 빈 목록이다.

@@ -14,6 +14,8 @@ import java.util.UUID;
  *                    턴 단위 기록 이전에 만들어진 행이면 null이다.
  * @param exitCode    아직 끝나지 않은 실행이거나 타임아웃으로 종료 코드가 없으면 null
  * @param finishedAt  아직 끝나지 않은 실행(QUEUED)이면 null
+ * @param tally       채점 케이스 집계. 목록 화면의 "2/5 통과" 배지용이다. 케이스 기록이 없으면 null이며,
+ *                    그것은 통과 0건이 아니라 기록 없음이다 — 통과 여부는 {@code status}가 진실이다.
  */
 public record CodeRunSummary(
         UUID id,
@@ -22,6 +24,25 @@ public record CodeRunSummary(
         Integer exitCode,
         Long durationMs,
         Instant createdAt,
-        Instant finishedAt
+        Instant finishedAt,
+        CodeRunCaseTally tally
 ) {
+
+    /** 집계를 아직 붙이지 않은 조회 결과. 저장소가 code_run 행만 읽어 만들 때 쓴다. */
+    public CodeRunSummary(
+            UUID id,
+            Integer turnOrdinal,
+            CodeRunStatus status,
+            Integer exitCode,
+            Long durationMs,
+            Instant createdAt,
+            Instant finishedAt
+    ) {
+        this(id, turnOrdinal, status, exitCode, durationMs, createdAt, finishedAt, null);
+    }
+
+    public CodeRunSummary withTally(CodeRunCaseTally tally) {
+        return new CodeRunSummary(
+                id, turnOrdinal, status, exitCode, durationMs, createdAt, finishedAt, tally);
+    }
 }

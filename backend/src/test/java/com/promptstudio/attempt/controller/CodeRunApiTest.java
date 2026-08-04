@@ -1,6 +1,8 @@
 package com.promptstudio.attempt.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import com.promptstudio.attempt.domain.CodeRunCase;
+import com.promptstudio.attempt.domain.CodeRunCaseStatus;
 import com.promptstudio.attempt.domain.CodeRunResult;
 import com.promptstudio.attempt.domain.CodeRunStatus;
 import com.promptstudio.attempt.service.CodeRunService;
@@ -223,6 +225,104 @@ class CodeRunApiTest extends DatabaseTest {
         mockMvc.perform(get("/api/attempts/{id}/runs", 999))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("attempt-not-found"));
+    }
+
+    @Test
+    void 채점_케이스가_단건_조회에_담긴다() throws Exception {
+        Long attemptId = createAttempt();
+        UUID runId = requestRun(attemptId);
+
+        codeRunService.applyResult(new CodeRunResult(
+                runId, CodeRunStatus.TEST_FAILED, 1, "트리 출력", "", 1200L,
+                List.of(
+                        new CodeRunCase("PhoneNumberFormatterTest", "휴대전화_번호를_마스킹한다()",
+                                CodeRunCaseStatus.PASSED, null, 30L),
+                        new CodeRunCase("PhoneNumberFormatterTest", "지역번호_2자리와_국번_3자리를_마스킹한다()",
+                                CodeRunCaseStatus.FAILED, "expected: <02-***-4567> but was: <02-1****567>", 17L))));
+
+        mockMvc.perform(get("/api/attempts/{id}/runs/{runId}", attemptId, runId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("TEST_FAILED"))
+                // 원문은 그대로 유지한다. 컴파일 오류·예외는 케이스에 안 나오므로 진단에 필요하다.
+                .andExpect(jsonPath("$.stdout").value("트리 출력"))
+                .andExpect(jsonPath("$.cases.length()").value(2))
+                .andExpect(jsonPath("$.cases[0].name").value("휴대전화_번호를_마스킹한다()"))
+                .andExpect(jsonPath("$.cases[0].className").value("PhoneNumberFormatterTest"))
+                .andExpect(jsonPath("$.cases[0].status").value("PASSED"))
+                .andExpect(jsonPath("$.cases[0].message").doesNotExist())
+                .andExpect(jsonPath("$.cases[1].status").value("FAILED"))
+                .andExpect(jsonPath("$.cases[1].message")
+                        .value("expected: <02-***-4567> but was: <02-1****567>"))
+                .andExpect(jsonPath("$.cases[1].durationMs").value(17));
+    }
+
+    @Test
+    void 케이스가_없는_실행은_빈_배열이다() throws Exception {
+        Long attemptId = createAttempt();
+        UUID runId = requestRun(attemptId);
+        codeRunService.applyResult(new CodeRunResult(runId, CodeRunStatus.SUCCEEDED, 0, "hi", "", 900L));
+
+        mockMvc.perform(get("/api/attempts/{id}/runs/{runId}", attemptId, runId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cases").isArray())
+                .andExpect(jsonPath("$.cases.length()").value(0));
+    }
+
+    /**
+     * 목록은 배지를 그릴 집계만 받는다. 케이스 배열을 목록에 실으면 stdout을 뺀 이유를 그대로 반복한다.
+     */
+    @Test
+    void 목록에는_케이스_집계만_담긴다() throws Exception {
+        Long attemptId = createAttempt();
+        UUID runId = requestRun(attemptId);
+
+        codeRunService.applyResult(new CodeRunResult(
+                runId, CodeRunStatus.TEST_FAILED, 1, "", "", 1200L,
+                List.of(
+                        new CodeRunCase("T", "통과1()", CodeRunCaseStatus.PASSED, null, 1L),
+                        new CodeRunCase("T", "통과2()", CodeRunCaseStatus.PASSED, null, 1L),
+                        new CodeRunCase("T", "실패()", CodeRunCaseStatus.FAILED, "diff", 1L),
+                        new CodeRunCase("T", "에러()", CodeRunCaseStatus.ERROR, "boom", 1L),
+                        new CodeRunCase("T", "스킵()", CodeRunCaseStatus.SKIPPED, null, null))));
+
+        mockMvc.perform(get("/api/attempts/{id}/runs", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runs[0].tally.total").value(5))
+                .andExpect(jsonPath("$.runs[0].tally.passed").value(2))
+                .andExpect(jsonPath("$.runs[0].tally.failed").value(1))
+                .andExpect(jsonPath("$.runs[0].tally.error").value(1))
+                .andExpect(jsonPath("$.runs[0].tally.skipped").value(1))
+                .andExpect(jsonPath("$.runs[0].cases").doesNotExist());
+    }
+
+    @Test
+    void 케이스_기록이_없는_실행은_목록_집계가_null이다() throws Exception {
+        Long attemptId = createAttempt();
+
+        mockMvc.perform(post("/api/attempts/{id}/runs", attemptId)).andExpect(status().isAccepted());
+
+        mockMvc.perform(get("/api/attempts/{id}/runs", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runs[0].tally").doesNotExist());
+    }
+
+    /**
+     * 결과 반영은 멱등해야 한다. 이미 종료된 run에 결과가 다시 도착해도 케이스가 중복으로 쌓이면 안 된다.
+     */
+    @Test
+    void 결과가_두_번_도착해도_케이스가_중복되지_않는다() throws Exception {
+        Long attemptId = createAttempt();
+        UUID runId = requestRun(attemptId);
+        CodeRunResult result = new CodeRunResult(
+                runId, CodeRunStatus.SUCCEEDED, 0, "", "", 900L,
+                List.of(new CodeRunCase("T", "통과()", CodeRunCaseStatus.PASSED, null, 1L)));
+
+        codeRunService.applyResult(result);
+        codeRunService.applyResult(result);
+
+        mockMvc.perform(get("/api/attempts/{id}/runs/{runId}", attemptId, runId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cases.length()").value(1));
     }
 
     @Test

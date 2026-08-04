@@ -1,5 +1,7 @@
 package com.promptstudio.rabbit;
 
+import com.promptstudio.attempt.domain.CodeRunCase;
+import com.promptstudio.attempt.domain.CodeRunCaseStatus;
 import com.promptstudio.attempt.domain.CodeRunResult;
 import com.promptstudio.attempt.domain.CodeRunStatus;
 import com.promptstudio.attempt.service.CodeRunService;
@@ -8,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.MDC;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -71,6 +74,53 @@ class CodeRunResultListenerTest {
         listener.onResult(new RunResultMessage(RUN_ID, "QUEUED", null, "", "", 1L));
 
         assertThat(captureApplied().status()).isEqualTo(CodeRunStatus.RUNNER_ERROR);
+    }
+
+    @Test
+    void 케이스가_있으면_상태를_변환해_전달한다() {
+        listener.onResult(new RunResultMessage(RUN_ID, "TEST_FAILED", 1, "", "", 1200L, List.of(
+                new RunResultMessage.RunCaseMessage("T", "통과()", "PASSED", null, 30L),
+                new RunResultMessage.RunCaseMessage("T", "실패()", "FAILED", "expected: <1> but was: <2>", 17L),
+                new RunResultMessage.RunCaseMessage("T", "죽음()", "ERROR", "boom", 1L),
+                new RunResultMessage.RunCaseMessage("T", "건너뜀()", "SKIPPED", null, null))));
+
+        assertThat(captureApplied().cases())
+                .extracting(CodeRunCase::status)
+                .containsExactly(CodeRunCaseStatus.PASSED, CodeRunCaseStatus.FAILED,
+                        CodeRunCaseStatus.ERROR, CodeRunCaseStatus.SKIPPED);
+    }
+
+    /** 케이스 기록 이전 버전의 워커가 보낸 메시지다. */
+    @Test
+    void cases가_null이면_빈_목록으로_전달한다() {
+        listener.onResult(new RunResultMessage(RUN_ID, "SUCCEEDED", 0, "", "", 1L));
+
+        assertThat(captureApplied().cases()).isEmpty();
+    }
+
+    /**
+     * 케이스는 보조 자료다. 알 수 없는 상태값을 임의로 뭉개면 통과/실패가 뒤집히므로 그 케이스만 버린다.
+     * 실행 판정(status)은 건드리지 않는다.
+     */
+    @Test
+    void 모르는_케이스_상태값은_그_케이스만_버린다() {
+        listener.onResult(new RunResultMessage(RUN_ID, "TEST_FAILED", 1, "", "", 1L, List.of(
+                new RunResultMessage.RunCaseMessage("T", "정상()", "PASSED", null, 1L),
+                new RunResultMessage.RunCaseMessage("T", "미래상태()", "SOME_FUTURE_CASE_STATUS", null, 1L),
+                new RunResultMessage.RunCaseMessage("T", "상태없음()", null, null, 1L))));
+
+        CodeRunResult applied = captureApplied();
+        assertThat(applied.status()).isEqualTo(CodeRunStatus.TEST_FAILED);
+        assertThat(applied.cases()).extracting(CodeRunCase::name).containsExactly("정상()");
+    }
+
+    @Test
+    void 이름_없는_케이스는_버린다() {
+        listener.onResult(new RunResultMessage(RUN_ID, "SUCCEEDED", 0, "", "", 1L, List.of(
+                new RunResultMessage.RunCaseMessage("T", null, "PASSED", null, 1L),
+                new RunResultMessage.RunCaseMessage("T", "  ", "PASSED", null, 1L))));
+
+        assertThat(captureApplied().cases()).isEmpty();
     }
 
     @Test

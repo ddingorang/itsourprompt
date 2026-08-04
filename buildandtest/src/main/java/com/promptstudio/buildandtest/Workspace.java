@@ -15,6 +15,7 @@ import java.util.stream.Stream;
 final class Workspace implements AutoCloseable {
 
     private static final String OUTPUT_DIR = "out";
+    private static final String REPORTS_DIR = "reports";
     private static final String SOURCE_LIST = "sources.txt";
 
     private final Path root;
@@ -33,6 +34,14 @@ final class Workspace implements AutoCloseable {
 
     Path outputDir() {
         return root.resolve(OUTPUT_DIR);
+    }
+
+    /**
+     * JUnit 콘솔 런처가 XML 리포트를 남길 곳. 런처가 직접 만들므로 미리 생성하지 않는다 —
+     * 테스트를 돌리지 않는 실행에서는 이 디렉터리가 아예 없고, 파서는 그것을 빈 결과로 다룬다.
+     */
+    Path reportsDir() {
+        return root.resolve(REPORTS_DIR);
     }
 
     /**

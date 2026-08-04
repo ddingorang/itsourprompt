@@ -6,6 +6,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -70,8 +71,25 @@ public class RunRequestListener {
                         outcome.exitCode(),
                         outcome.stdout(),
                         outcome.stderr(),
-                        outcome.durationMs()
+                        outcome.durationMs(),
+                        toCaseMessages(outcome.cases())
                 )
         );
+    }
+
+    private List<RunResultMessage.RunCaseMessage> toCaseMessages(List<RunCase> cases) {
+        List<RunResultMessage.RunCaseMessage> messages = new ArrayList<>();
+
+        for (RunCase testCase : cases) {
+            messages.add(new RunResultMessage.RunCaseMessage(
+                    testCase.className(),
+                    testCase.name(),
+                    testCase.status().name(),
+                    testCase.message(),
+                    testCase.durationMs()
+            ));
+        }
+
+        return messages;
     }
 }

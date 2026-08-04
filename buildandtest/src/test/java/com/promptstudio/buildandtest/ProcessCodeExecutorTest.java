@@ -257,6 +257,70 @@ class ProcessCodeExecutorTest {
         assertThat(outcome.stdout()).contains("CalculatorTest");
     }
 
+    /**
+     * --reports-dir · 파서 · Workspace 배선이 실제 실행에서 맞물리는지 확인한다.
+     * stdout 파싱과 달리 이 경로는 출력 상한에 좌우되지 않는 것이 요점이다.
+     */
+    @Test
+    void 실행하면_케이스별_결과가_구조화되어_담긴다() {
+        RunOutcome outcome = testRunner.execute(
+                List.of(file("src/main/java/Calculator.java", """
+                        public class Calculator {
+                            public int add(int a, int b) {
+                                return a + b;
+                            }
+                        }
+                        """)),
+                List.of(file("src/test/java/CalculatorTest.java", TEST_SOURCE)));
+
+        assertThat(outcome.status()).isEqualTo(RunStatus.SUCCEEDED);
+        assertThat(outcome.cases()).singleElement().satisfies(testCase -> {
+            assertThat(testCase.name()).contains("두_수를_더한다");
+            assertThat(testCase.className()).isEqualTo("CalculatorTest");
+            assertThat(testCase.status()).isEqualTo(RunCaseStatus.PASSED);
+            assertThat(testCase.message()).isNull();
+            assertThat(testCase.durationMs()).isNotNull();
+        });
+    }
+
+    @Test
+    void 깨진_테스트의_사유가_케이스에_담긴다() {
+        RunOutcome outcome = testRunner.execute(
+                List.of(file("src/main/java/Calculator.java", """
+                        public class Calculator {
+                            public int add(int a, int b) {
+                                return a - b;
+                            }
+                        }
+                        """)),
+                List.of(file("src/test/java/CalculatorTest.java", TEST_SOURCE)));
+
+        assertThat(outcome.status()).isEqualTo(RunStatus.TEST_FAILED);
+        assertThat(outcome.cases()).singleElement().satisfies(testCase -> {
+            assertThat(testCase.status()).isEqualTo(RunCaseStatus.FAILED);
+            assertThat(testCase.message()).contains("expected").contains("but was");
+        });
+    }
+
+    /**
+     * 테스트 없이 main만 실행하면 리포트가 생기지 않는다. 그때 케이스는 빈 목록이어야 한다 —
+     * "테스트 0개 통과"와 "테스트를 돌리지 않았다"를 클라이언트가 구분할 수 있어야 하고,
+     * 그 구분은 status로 한다.
+     */
+    @Test
+    void 테스트를_돌리지_않은_실행은_케이스가_비어_있다() {
+        RunOutcome outcome = runWithoutTests(file("Main.java", """
+                public class Main {
+                    public static void main(String[] args) {
+                        System.out.println("hi");
+                    }
+                }
+                """));
+
+        assertThat(outcome.status()).isEqualTo(RunStatus.SUCCEEDED);
+        assertThat(outcome.cases()).isEmpty();
+    }
+
     @Test
     void 테스트가_깨지면_TEST_FAILED와_실패_내용을_돌려준다() {
         RunOutcome outcome = testRunner.execute(

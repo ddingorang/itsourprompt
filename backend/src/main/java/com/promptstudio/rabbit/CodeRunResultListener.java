@@ -1,5 +1,7 @@
 package com.promptstudio.rabbit;
 
+import com.promptstudio.attempt.domain.CodeRunCase;
+import com.promptstudio.attempt.domain.CodeRunCaseStatus;
 import com.promptstudio.attempt.domain.CodeRunResult;
 import com.promptstudio.attempt.domain.CodeRunStatus;
 import com.promptstudio.attempt.service.CodeRunService;
@@ -9,6 +11,10 @@ import org.slf4j.MDC;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * 워커가 돌려준 결과를 어템프트에 반영한다.
@@ -56,10 +62,47 @@ public class CodeRunResultListener {
                     message.exitCode(),
                     message.stdout(),
                     message.stderr(),
-                    message.durationMs()
+                    message.durationMs(),
+                    toCases(message)
             ));
         } finally {
             MDC.remove(MDC_RUN_ID);
+        }
+    }
+
+    /**
+     * 케이스는 보조 자료다. 워커가 안 보냈거나(케이스 기록 이전 버전) 알 수 없는 상태값을 보내도
+     * 실행 판정은 건드리지 않고 그 케이스만 버린다 — 상태를 임의로 뭉개면 통과/실패가 뒤집힌다.
+     */
+    private List<CodeRunCase> toCases(RunResultMessage message) {
+        if (message.cases() == null) {
+            return List.of();
+        }
+
+        List<CodeRunCase> cases = new ArrayList<>();
+
+        for (RunResultMessage.RunCaseMessage source : message.cases()) {
+            CodeRunCaseStatus status = toCaseStatus(source, message.runId());
+
+            if (status == null || source.name() == null || source.name().isBlank()) {
+                continue;
+            }
+
+            cases.add(new CodeRunCase(
+                    source.className(), source.name(), status, source.message(), source.durationMs()));
+        }
+
+        return cases;
+    }
+
+    private CodeRunCaseStatus toCaseStatus(RunResultMessage.RunCaseMessage source, UUID runId) {
+        try {
+            return CodeRunCaseStatus.valueOf(source.status());
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            log.warn("[CODE RUN] 알 수 없는 케이스 상태값을 버립니다. runId={} | name={} | status={}",
+                    runId, source.name(), source.status());
+
+            return null;
         }
     }
 
