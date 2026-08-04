@@ -16,5 +16,6 @@ export interface ProblemDetail {
   id: number;
   title: string;
   specMd: string;
+  type: 'coding' | 'game';
   files: RepositoryFile[];
 }

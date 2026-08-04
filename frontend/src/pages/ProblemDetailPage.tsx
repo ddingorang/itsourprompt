@@ -158,6 +158,13 @@ function findFile(files: RepositoryFile[], path: string): RepositoryFile | undef
   );
 }
 
+function findPreviewHtml(files: RepositoryFile[]): RepositoryFile | undefined {
+  return (
+    findFile(files, 'index.html') ??
+    files.find((file) => normalizeRepositoryPath(file.path).endsWith('/index.html'))
+  );
+}
+
 function normalizeRepositoryPath(path: string): string {
   return path
     .replaceAll('\\', '/')
@@ -324,6 +331,11 @@ export default function ProblemDetailPage() {
   const problemRef = useRef<ProblemDetail | null>(null);
 
   const files = attempt?.files ?? problem?.files ?? [];
+  const isGame = problem?.type === 'game';
+  const previewHtml = useMemo(
+    () => findPreviewHtml(files)?.content ?? null,
+    [files],
+  );
   const turns = attempt?.turns ?? [];
   const attemptTokenUsage = getTokenUsageTotal(attempt?.usage);
   const turnTokenUsages = turns.map((turn) => getTokenUsageTotal(turn.usage));
@@ -538,7 +550,12 @@ export default function ProblemDetailPage() {
     setCodeRunError(null);
     setIsCodeRunLoading(false);
 
-    if (routeAttemptId === null) return stopCodeRunPolling;
+    const isCurrentAttempt =
+      attempt?.id === routeAttemptId && attempt.problemId === problem?.id;
+
+    if (routeAttemptId === null || !isCurrentAttempt || isGame) {
+      return stopCodeRunPolling;
+    }
 
     const controller = new AbortController();
     codeRunControllerRef.current = controller;
@@ -585,7 +602,7 @@ export default function ProblemDetailPage() {
     void restoreLatestCodeRun();
 
     return stopCodeRunPolling;
-  }, [routeAttemptId, routeProblemId]);
+  }, [attempt?.id, attempt?.problemId, isGame, problem?.id, routeAttemptId, routeProblemId]);
 
   const fileTree = useMemo(
     () => createFileTree(files, getLatestChangedFiles(turns)),
@@ -602,7 +619,7 @@ export default function ProblemDetailPage() {
   };
 
   const handleCodeRunRequest = async () => {
-    if (!problem || isCodeRunLoading || isCodeRunPendingRef.current) return;
+    if (isGame || !problem || isCodeRunLoading || isCodeRunPendingRef.current) return;
 
     isCodeRunPendingRef.current = true;
     stopCodeRunPolling();
@@ -736,7 +753,7 @@ export default function ProblemDetailPage() {
 
   const handleDetailTabClick = (tab: DetailTab) => {
     setActiveTab(tab);
-    if (tab === 'test') void handleCodeRunRequest();
+    if (tab === 'test' && !isGame) void handleCodeRunRequest();
   };
 
   const handleRun = async () => {
@@ -866,7 +883,7 @@ export default function ProblemDetailPage() {
     const nextTab = detailTabs[nextIndex][0];
     setActiveTab(nextTab);
     detailTabRefs.current[nextTab]?.focus();
-    if (nextTab === 'test') void handleCodeRunRequest();
+    if (nextTab === 'test' && !isGame) void handleCodeRunRequest();
   };
 
   const handleSubmit = async () => {
@@ -1136,7 +1153,7 @@ export default function ProblemDetailPage() {
                   tabIndex={activeTab === tab ? 0 : -1}
                   type="button"
                 >
-                  {label}
+                  {isGame && tab === 'test' ? 'PLAY' : label}
                 </button>
               ))}
             </div>
@@ -1235,6 +1252,20 @@ export default function ProblemDetailPage() {
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[var(--problem-detail-subtle)]">
                   실행한 프롬프트가 없습니다.
                 </div>
+              ) : activeTab === 'test' && isGame ? (
+                previewHtml ? (
+                  <iframe
+                    className="h-full min-h-[320px] w-full border border-[#3f3f3f] bg-white"
+                    key={previewHtml}
+                    sandbox="allow-scripts"
+                    srcDoc={previewHtml}
+                    title="게임 미리보기"
+                  />
+                ) : (
+                  <div className="grid min-h-[160px] place-items-center border border-[#343434] px-4 text-center font-mono text-[11px] leading-[1.7] text-[#777]">
+                    실행할 index.html 파일이 없습니다.
+                  </div>
+                )
               ) : codeRunError ? (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#ff786b]">
                   <div>
