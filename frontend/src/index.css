@@ -290,6 +290,63 @@ html { scroll-behavior: smooth; }
   background: #fff;
   color: #090909;
 }
+.auth-page {
+  --auth-page-bg: #090909;
+  --auth-page-text: #f5f5ef;
+  --auth-page-muted: #a3a3a3;
+  --auth-page-border: #343434;
+  --auth-page-border-strong: #555;
+  --auth-page-input-bg: #131313;
+  --auth-page-acid: #d6ff50;
+  transition: background-color 240ms ease, color 240ms ease;
+}
+.auth-page[data-color-mode='light'] {
+  --auth-page-bg: #fff;
+  --auth-page-text: #090909;
+  --auth-page-muted: #585858;
+  --auth-page-border: #c7c7c1;
+  --auth-page-border-strong: #9c9c95;
+  --auth-page-input-bg: #f7f7f2;
+  --auth-page-acid: #bee034;
+}
+.auth-page > header {
+  border-color: var(--auth-page-border);
+  background: color-mix(in srgb, var(--auth-page-bg) 94%, transparent);
+  color: var(--auth-page-text);
+}
+.auth-page > header nav a,
+.auth-page > header nav button { color: var(--auth-page-muted); }
+.auth-page > header nav a[aria-current='page'],
+.auth-page > header nav a:hover,
+.auth-page > header nav button:hover,
+.auth-page > header nav a:focus-visible,
+.auth-page > header nav button:focus-visible { color: var(--auth-page-acid); }
+.auth-page > header nav span { color: var(--auth-page-border); }
+.auth-page > header i { color: var(--auth-page-acid); }
+.auth-page input {
+  caret-color: var(--auth-page-acid);
+}
+.auth-page input::placeholder {
+  color: var(--auth-page-muted);
+}
+.auth-page .auth-page-primary-action {
+  border-color: var(--auth-page-acid);
+  background: var(--auth-page-acid);
+  color: #090909;
+}
+.auth-page .auth-page-primary-action:hover,
+.auth-page .auth-page-primary-action:focus-visible {
+  background: transparent;
+  color: var(--auth-page-acid);
+}
+.auth-page footer {
+  border-color: var(--auth-page-border);
+  color: var(--auth-page-muted);
+}
+.auth-page ::selection {
+  background: var(--auth-page-acid);
+  color: #090909;
+}
 [data-reveal] { opacity: 0; transform: translateY(38px); transition: opacity 700ms cubic-bezier(.2,.7,.2,1) var(--reveal-delay, 0ms), transform 700ms cubic-bezier(.2,.7,.2,1) var(--reveal-delay, 0ms); }
 [data-reveal].is-visible { opacity: 1; transform: translateY(0); }
 @keyframes landing-scroll-pulse {
