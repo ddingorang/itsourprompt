@@ -800,7 +800,11 @@ function CodePanel({
 
       <div className="min-h-0 flex-1 overflow-auto border border-[#292929] bg-[#202020]">
         {selected ? (
-          <CodeViewer code={selected.content} gutterWidth="2.5rem" />
+          <CodeViewer
+            code={selected.content}
+            gutterWidth="2.5rem"
+            path={selected.path}
+          />
         ) : (
           <div className="grid h-full place-items-center font-mono text-[11px] text-[#666]">
             코드를 불러오는 중…

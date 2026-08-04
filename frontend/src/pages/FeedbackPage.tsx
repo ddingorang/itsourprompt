@@ -403,7 +403,10 @@ export default function FeedbackPage() {
                               {file.path}
                             </div>
                             <div className="workspace-scrollbar min-h-[280px] max-w-full overflow-auto max-[760px]:min-h-[220px]">
-                              <CodeViewer code={file.content ?? '(deleted)'} />
+                              <CodeViewer
+                                code={file.content ?? '(deleted)'}
+                                path={file.path}
+                              />
                             </div>
                           </div>
                         ))}

@@ -660,6 +660,34 @@ html { scroll-behavior: smooth; }
   --code-viewer-gutter-text: #686868;
   --code-viewer-gutter-border: #333;
   --code-viewer-gutter-bg: #202020;
+
+  /* 구문 강조 팔레트(VS Code 다크 계열). acid(#d6ff50)는 이 화면들에서 UI 강조
+   * 전용으로 이미 포화 상태라 코드 토큰에는 절대 쓰지 않는다. */
+  --code-keyword: #c586c0;
+  --code-type: #4ec9b0;
+  --code-string: #ce9178;
+  --code-number: #b5cea8;
+  --code-comment: #6a9955;
+  --code-function: #dcdcaa;
+  --code-punct: #808080;
+  --code-tag: #569cd6;
+  --code-attr: #9cdcfe;
+}
+
+/* 라이트 팔레트는 라이트 모드를 가진 페이지에만 건다. ThemeProvider가 html에도
+ * data-color-mode를 심으므로, 페이지를 명시하지 않으면 다크 전용인 릴레이 화면까지
+ * 라이트 색으로 칠해진다. */
+.problem-detail-page[data-color-mode='light'] .code-viewer,
+.feedback-page[data-color-mode='light'] .code-viewer {
+  --code-keyword: #0000ff;
+  --code-type: #267f99;
+  --code-string: #a31515;
+  --code-number: #098658;
+  --code-comment: #008000;
+  --code-function: #795e26;
+  --code-punct: #6a6a6a;
+  --code-tag: #800000;
+  --code-attr: #e50000;
 }
 
 .problem-detail-page .code-viewer {

@@ -1126,7 +1126,7 @@ export default function ProblemDetailPage() {
               aria-hidden="true"
               className="sticky top-0 z-[2] h-8 min-w-full border-b border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-header)]"
             />
-            <CodeViewer code={selectedCode} />
+            <CodeViewer code={selectedCode} path={selectedFile} />
           </div>
         </section>
 
