@@ -40,6 +40,8 @@ export const API_ERROR_CODES = {
   attemptAlreadySubmitted: 'attempt-already-submitted',
   attemptHasNoTurns: 'attempt-has-no-turns',
   attemptNotFound: 'attempt-not-found',
+  codeRunInProgress: 'code-run-in-progress',
+  codeRunNotFound: 'code-run-not-found',
   badCredentials: 'bad-credentials',
   duplicateEmail: 'duplicate-email',
   duplicateRequest: 'duplicate-request',
