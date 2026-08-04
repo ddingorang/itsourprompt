@@ -30,6 +30,18 @@ const steps = [
   },
 ];
 
+/** 부모 Button의 `group` hover·focus를 따라 살짝 밀려나는 화살표. 마이페이지 버튼과 같은 동작. */
+function ButtonArrow() {
+  return (
+    <span
+      className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
+      aria-hidden="true"
+    >
+      ↗
+    </span>
+  );
+}
+
 function useRevealOnScroll() {
   useEffect(() => {
     const elements = document.querySelectorAll<HTMLElement>('[data-reveal]');
@@ -140,25 +152,16 @@ export default function HomePage() {
           <div className="landing-hero-actions mb-5 ml-auto flex flex-wrap justify-end gap-3 max-[680px]:ml-0 max-[680px]:grid max-[680px]:grid-cols-1">
             <Button className="group min-h-14 px-7" to="/problems">
               <span>혼자 시작하기</span>
-              <span
-                className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
-                aria-hidden="true"
-              >
-                ↗
-              </span>
+              <ButtonArrow />
             </Button>
+            {/* mode=together를 읽는 쪽은 아직 없다 — 향후 함께 풀기 연동을 위한 자리표시자다. */}
             <Button
               className="group min-h-14 px-7"
               to="/relay"
               variant="secondary"
             >
               <span>친구와 함께 풀기</span>
-              <span
-                className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
-                aria-hidden="true"
-              >
-                ↗
-              </span>
+              <ButtonArrow />
             </Button>
           </div>
 
@@ -296,9 +299,9 @@ export default function HomePage() {
                 <br />
                 프롬프트가 달라집니다.
               </h2>
-              <Button className="min-h-14 gap-2.5 px-7" to="/problems">
+              <Button className="group min-h-14 gap-2.5 px-7" to="/problems">
                 <span>문제 풀어보기</span>
-                <span aria-hidden="true">↗</span>
+                <ButtonArrow />
               </Button>
             </div>
           </section>
