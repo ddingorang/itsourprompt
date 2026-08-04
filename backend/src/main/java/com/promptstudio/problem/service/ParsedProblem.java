@@ -12,6 +12,7 @@ record ParsedProblem(
         String slug,
         String title,
         String specMd,
+        String type,
         List<ProblemFile> files,
         List<ProblemFile> testFiles
 ) {

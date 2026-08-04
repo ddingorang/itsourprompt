@@ -10,6 +10,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.zip.ZipEntry;
@@ -35,6 +36,8 @@ final class ProblemArchiveParser {
     /** skeleton 기준 상대경로. 저장소가 Gradle 표준 레이아웃을 쓰므로 테스트는 항상 여기 있다. */
     private static final String TEST_PREFIX = "src/test/";
     private static final String TITLE_KEY = "title";
+    private static final String TYPE_KEY = "type";
+    private static final String DEFAULT_TYPE = "coding";
 
     private ProblemArchiveParser() {
     }
@@ -94,6 +97,7 @@ final class ProblemArchiveParser {
 
     private static ParsedProblem toProblem(String slug, Map<String, String> entries) {
         String title = readTitle(slug, entries.get(PROBLEM_YML));
+        String type = readType(slug, entries.get(PROBLEM_YML));
         String specMd = entries.get(SPEC_MD);
 
         if (specMd == null) {
@@ -122,7 +126,7 @@ final class ProblemArchiveParser {
             throw new ProblemSyncFormatException(slug, SKELETON_PREFIX + " 아래에 스켈레톤 파일이 없습니다.");
         }
 
-        return new ParsedProblem(slug, title, specMd, files, testFiles);
+        return new ParsedProblem(slug, title, specMd, type, files, testFiles);
     }
 
     private static String readTitle(String slug, String problemYml) {
@@ -141,5 +145,25 @@ final class ProblemArchiveParser {
         }
 
         return String.valueOf(title);
+    }
+
+    private static String readType(String slug, String problemYml) {
+        if (!(new Yaml().load(problemYml) instanceof Map<?, ?> document)) {
+            throw new ProblemSyncFormatException(slug, "problem.yml must be a map.");
+        }
+
+        Object value = document.get(TYPE_KEY);
+
+        if (value == null) {
+            return DEFAULT_TYPE;
+        }
+
+        String type = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+
+        if (type.equals("coding") || type.equals("game")) {
+            return type;
+        }
+
+        throw new ProblemSyncFormatException(slug, "problem.yml type must be coding or game.");
     }
 }

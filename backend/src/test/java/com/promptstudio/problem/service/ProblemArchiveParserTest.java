@@ -26,6 +26,7 @@ class ProblemArchiveParserTest {
 
         assertThat(problems).hasSize(1);
         ParsedProblem problem = problems.getFirst();
+        assertThat(problem.type()).isEqualTo("coding");
         assertThat(problem.slug()).isEqualTo("hello-world");
         assertThat(problem.title()).isEqualTo("Hello World 출력");
         assertThat(problem.specMd()).isEqualTo("# Hello World 출력\n\n표준 출력으로 인사하세요.");
@@ -34,6 +35,19 @@ class ProblemArchiveParserTest {
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
         );
         assertThat(problem.testFiles()).isEmpty();
+    }
+
+    @Test
+    void reads_game_type_from_problem_yml() {
+        byte[] archive = ProblemZips.archive(Map.of(
+                "block-dodge/problem.yml", "title: block dodge\ntype: game\n",
+                "block-dodge/spec.md", "# specification",
+                "block-dodge/skeleton/index.html", "<!doctype html>"
+        ));
+
+        ParsedProblem problem = ProblemArchiveParser.parse(archive).getFirst();
+
+        assertThat(problem.type()).isEqualTo("game");
     }
 
     /**

@@ -48,6 +48,7 @@ class ProblemApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.id").value(saved.id()))
                 .andExpect(jsonPath("$.title").value("Hello World 출력"))
                 .andExpect(jsonPath("$.specMd").value("# Hello World 출력"))
+                .andExpect(jsonPath("$.type").value("coding"))
                 .andExpect(jsonPath("$.files.length()").value(1))
                 .andExpect(jsonPath("$.files[0].path").value("src/main/java/Main.java"))
                 .andExpect(jsonPath("$.files[0].content").value("class Main {}"));
@@ -93,6 +94,22 @@ class ProblemApiTest extends DatabaseTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(inactive.id()))
                 .andExpect(jsonPath("$.title").value("SSAFY 출력"));
+    }
+
+    @Test
+    void game_problem_type_is_included_in_detail_response() throws Exception {
+        Problem saved = problemRepository.save(new Problem(
+                "block-dodge",
+                "block dodge",
+                "# block dodge",
+                "game",
+                List.of(new ProblemFile("index.html", "<!doctype html>")),
+                List.of()
+        ));
+
+        mockMvc.perform(get("/api/problems/{id}", saved.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("game"));
     }
 
     private Problem deactivated(String slug, String title) {
