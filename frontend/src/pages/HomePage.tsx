@@ -143,6 +143,30 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section className="landing-how flex h-[calc(100svh-66px)] min-h-[640px] items-start border-y border-[var(--landing-border)] bg-[var(--landing-surface)] pt-[clamp(34px,5vw,64px)] pb-8 max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:pb-16">
+          <div className="mx-auto w-[80%] max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
+            <div className="mb-[clamp(36px,5vh,52px)] flex items-end justify-between gap-8 max-[680px]:items-start">
+              <div data-reveal>
+                <div className="mb-6 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--acid)]">HOW IT WORKS</div>
+                <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-[1.1] font-black tracking-[-0.04em]">
+                  세 단계면 충분합니다.
+                </h2>
+              </div>
+            </div>
+
+            <div className="landing-steps">
+              {steps.map((step, index) => (
+                <article className="landing-step" data-reveal key={step.number} style={{ '--reveal-delay': `${index * 100}ms` } as CSSProperties}>
+                  <div className="font-mono text-xs tracking-[0.13em] text-[var(--landing-muted)]">{step.number}</div>
+                  <div className="landing-step-visual" aria-hidden="true">{step.visual}</div>
+                  <h3 className="mb-4 text-[clamp(22px,2vw,30px)] font-bold tracking-[-0.04em]">{step.title}</h3>
+                  <p className="m-0 leading-[1.65] text-[var(--landing-muted)] [word-break:keep-all]">{step.description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="landing-guest min-h-[calc(100svh-66px)] border-b border-[var(--landing-border)] bg-[var(--landing-guest-bg)] text-[var(--landing-guest-text)]">
           <div className="mx-auto grid min-h-[calc(100svh-66px)] w-[80%] grid-cols-2 items-center gap-[8vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:min-h-[90svh] max-[760px]:w-[calc(100%_-_32px)] max-[760px]:grid-cols-1">
           <div className="order-2 max-[760px]:order-1" data-reveal>
@@ -169,30 +193,6 @@ export default function HomePage() {
               <span>REQUIRED</span>
             </div>
           </div>
-          </div>
-        </section>
-
-        <section className="landing-how flex h-[calc(100svh-66px)] min-h-[640px] items-start border-y border-[var(--landing-border)] bg-[var(--landing-surface)] pt-[clamp(34px,5vw,64px)] pb-8 max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:pb-16">
-          <div className="mx-auto w-[80%] max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
-            <div className="mb-[clamp(36px,5vh,52px)] flex items-end justify-between gap-8 max-[680px]:items-start">
-              <div data-reveal>
-                <div className="mb-6 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--acid)]">HOW IT WORKS</div>
-                <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-[1.1] font-black tracking-[-0.04em]">
-                  세 단계면 충분합니다.
-                </h2>
-              </div>
-            </div>
-
-            <div className="landing-steps">
-              {steps.map((step, index) => (
-                <article className="landing-step" data-reveal key={step.number} style={{ '--reveal-delay': `${index * 100}ms` } as CSSProperties}>
-                  <div className="font-mono text-xs tracking-[0.13em] text-[var(--landing-muted)]">{step.number}</div>
-                  <div className="landing-step-visual" aria-hidden="true">{step.visual}</div>
-                  <h3 className="mb-4 text-[clamp(22px,2vw,30px)] font-bold tracking-[-0.04em]">{step.title}</h3>
-                  <p className="m-0 leading-[1.65] text-[var(--landing-muted)] [word-break:keep-all]">{step.description}</p>
-                </article>
-              ))}
-            </div>
           </div>
         </section>
 
