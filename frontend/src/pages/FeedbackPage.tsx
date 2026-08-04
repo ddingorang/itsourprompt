@@ -5,6 +5,7 @@ import { getAttempt, getAttemptFeedback } from '../features/attempt/api';
 import type { Attempt, AttemptFeedback } from '../features/attempt/types';
 import { useAuth } from '../features/auth/AuthContext';
 import PromptFeedback from '../features/feedback/PromptFeedback';
+import { useTheme } from '../features/theme/ThemeContext';
 import { ApiError, API_ERROR_CODES, isAbortError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
@@ -30,6 +31,7 @@ interface LoadNotice {
  * 프롬프트 원문은 피드백 응답에 없으므로 어템프트도 함께 조회해 짝지어 보여준다.
  */
 export default function FeedbackPage() {
+  const { colorMode } = useTheme();
   const { attemptId: attemptIdParam } = useParams();
   const attemptId = Number(attemptIdParam);
   const location = useLocation();
@@ -136,11 +138,14 @@ export default function FeedbackPage() {
   };
 
   return (
-    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div
+      className="feedback-page flex min-h-screen min-w-80 flex-col bg-[var(--feedback-bg)] text-[var(--feedback-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
+      data-color-mode={colorMode}
+    >
       <Header mobileBreakpoint="760" />
 
       <main className="mx-auto w-[calc(100%_-_10vw)] max-w-[1840px] flex-1 pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
-        <section className="flex items-center justify-between gap-[18px] bg-[#d6ff50] px-[22px] py-5 text-[#090909] max-[760px]:flex-col max-[760px]:items-start">
+        <section className="flex items-center justify-between gap-[18px] bg-[var(--feedback-acid)] px-[22px] py-5 text-[#090909] max-[760px]:flex-col max-[760px]:items-start">
           <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em]">
             PROMPT FEEDBACK
           </h1>
@@ -151,7 +156,7 @@ export default function FeedbackPage() {
         </section>
 
         {isLoading && (
-          <section className="border-b border-[#343434] py-12 font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+          <section className="border-b border-[var(--feedback-border)] py-12 font-mono text-xs leading-[1.7] text-[var(--feedback-muted)]">
             피드백을 불러오는 중입니다...
           </section>
         )}
@@ -162,11 +167,11 @@ export default function FeedbackPage() {
               'mt-4 border p-8 text-sm leading-[1.7]',
               notice.isError
                 ? 'border-[#ff786b] text-[#ff786b]'
-                : 'border-[#343434] text-[#a3a3a3]',
+                : 'border-[var(--feedback-border)] text-[var(--feedback-muted)]',
             ].join(' ')}
           >
             <div>{notice.message}</div>
-            <Button className="mt-5" to={notice.actionTo}>
+            <Button className="feedback-page-primary-action mt-5" to={notice.actionTo}>
               {notice.actionLabel}
             </Button>
           </section>
@@ -174,9 +179,9 @@ export default function FeedbackPage() {
 
         {!isLoading && !notice && feedback && (
           <>
-            <section className="mt-4 border border-[#d6ff50] bg-transparent">
-              <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
-                <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
+            <section className="mt-4 border border-[var(--feedback-acid)] bg-transparent">
+              <div className="flex min-h-[58px] items-center border-b border-[var(--feedback-border)] px-6 max-[760px]:px-5">
+                <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
                   OVERALL.MD
                 </h2>
               </div>
@@ -187,16 +192,16 @@ export default function FeedbackPage() {
 
             {selectedSection && (
               <section
-                className="mt-4 border border-[#d6ff50] bg-[#121212]"
+                className="mt-4 border border-[var(--feedback-acid)] bg-[var(--feedback-surface)]"
                 aria-label="턴별 프롬프트 피드백"
               >
-                <div className="relative border-b border-[#393939]">
-                  <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[220px] place-items-center border-r border-[#393939] bg-[#121212] font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] max-[760px]:hidden">
+                <div className="relative border-b border-[var(--feedback-border)]">
+                  <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[220px] place-items-center border-r border-[var(--feedback-border)] bg-[var(--feedback-surface)] font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)] max-[760px]:hidden">
                     PROMPT HISTORY
                   </span>
                   <button
                     aria-label="이전 턴 보기"
-                    className="absolute top-0 bottom-0 left-[220px] z-20 w-10 cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
+                    className="absolute top-0 bottom-0 left-[220px] z-20 w-10 cursor-pointer border-0 border-r border-[var(--feedback-border)] bg-[var(--feedback-surface)] font-mono text-2xl font-bold text-[var(--feedback-acid)] hover:bg-[var(--feedback-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
                     onClick={() => scrollTurnNav(-1)}
                     type="button"
                   >
@@ -213,10 +218,10 @@ export default function FeedbackPage() {
                       return (
                         <button
                           aria-selected={isSelected}
-                          className={`relative min-h-[58px] min-w-[130px] shrink-0 cursor-pointer border-0 bg-transparent px-[22px] font-mono text-sm font-bold tracking-[0.06em] hover:text-[#f5f5ef] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-4px] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:z-10 after:h-[3px] ${
+                          className={`relative min-h-[58px] min-w-[130px] shrink-0 cursor-pointer border-0 bg-transparent px-[22px] font-mono text-sm font-bold tracking-[0.06em] hover:text-[var(--feedback-text)] focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-4px] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:z-10 after:h-[3px] ${
                             isSelected
-                              ? 'text-[#d6ff50] after:bg-[#d6ff50]'
-                              : 'text-[#8f8f8f] after:bg-transparent'
+                              ? 'text-[var(--feedback-acid)] after:bg-[var(--feedback-acid)]'
+                              : 'text-[var(--feedback-muted)] after:bg-transparent'
                           } max-[760px]:min-w-[110px] max-[760px]:px-3.5`}
                           key={section.turn}
                           onClick={() => setSelectedTurn(section.turn)}
@@ -232,10 +237,10 @@ export default function FeedbackPage() {
                   <button
                     aria-label="다음 턴 보기"
                     className={[
-                      'absolute top-0 right-0 bottom-0 z-20 w-10 border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px]',
+                      'absolute top-0 right-0 bottom-0 z-20 w-10 border-0 border-l border-[var(--feedback-border)] bg-[var(--feedback-surface)] font-mono text-2xl font-bold focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-3px]',
                       turnSections.length >= 8
-                        ? 'cursor-pointer text-[#d6ff50] hover:bg-[#202020]'
-                        : 'cursor-not-allowed text-[#666]',
+                        ? 'cursor-pointer text-[var(--feedback-acid)] hover:bg-[var(--feedback-surface-hover)]'
+                        : 'cursor-not-allowed text-[var(--feedback-subtle)]',
                     ].join(' ')}
                     disabled={turnSections.length < 8}
                     onClick={() => scrollTurnNav(1)}
@@ -246,48 +251,48 @@ export default function FeedbackPage() {
                 </div>
 
                 <div
-                  className="grid grid-cols-[minmax(0,1fr)_minmax(360px,1fr)] divide-x divide-[#393939] max-[760px]:grid-cols-1 max-[760px]:divide-x-0 max-[760px]:divide-y"
+                  className="grid grid-cols-[minmax(0,1fr)_minmax(360px,1fr)] divide-x divide-[var(--feedback-border)] max-[760px]:grid-cols-1 max-[760px]:divide-x-0 max-[760px]:divide-y"
                   role="tabpanel"
                 >
                   <article className="min-w-0 p-[22px]">
-                    <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
+                    <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
                       TURN {String(selectedSection.turn).padStart(2, '0')} GENERATED CODE
                     </h2>
                     {selectedSection.changedFiles.length > 0 ? (
                       <div className="mt-[18px] grid gap-3">
                         {selectedSection.changedFiles.map((file) => (
                           <div
-                            className="overflow-hidden border border-[#393939] bg-[#0d0d0d]"
+                            className="overflow-hidden border border-[var(--feedback-border)] bg-[var(--feedback-code-bg)]"
                             key={file.path}
                           >
-                            <div className="border-b border-[#393939] px-4 py-3 font-mono text-xs font-bold text-[#a3a3a3]">
+                            <div className="border-b border-[var(--feedback-border)] px-4 py-3 font-mono text-xs font-bold text-[var(--feedback-muted)]">
                               {file.path}
                             </div>
-                            <pre className="workspace-scrollbar m-0 min-h-[280px] max-w-full overflow-auto p-[18px] font-mono text-[13px] leading-[1.7] text-[#d8d8d2] max-[760px]:min-h-[220px]">
+                            <pre className="workspace-scrollbar m-0 min-h-[280px] max-w-full overflow-auto p-[18px] font-mono text-[13px] leading-[1.7] text-[var(--feedback-code-text)] max-[760px]:min-h-[220px]">
                               <code>{file.content ?? '(deleted)'}</code>
                             </pre>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="mt-[18px] grid min-h-[280px] place-items-center border border-[#393939] bg-[#0d0d0d] p-[18px] font-mono text-xs text-[#777]">
+                      <div className="mt-[18px] grid min-h-[280px] place-items-center border border-[var(--feedback-border)] bg-[var(--feedback-code-bg)] p-[18px] font-mono text-xs text-[var(--feedback-subtle)]">
                         NO CHANGED FILES
                       </div>
                     )}
                   </article>
 
-                  <div className="grid min-w-0 grid-rows-[auto_1fr] divide-y divide-[#393939]">
+                  <div className="grid min-w-0 grid-rows-[auto_1fr] divide-y divide-[var(--feedback-border)]">
                     <article className="min-w-0 p-[22px]">
-                      <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
+                      <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
                         TURN {String(selectedSection.turn).padStart(2, '0')} USER PROMPT
                       </h2>
-                      <p className="mt-[18px] min-h-[110px] whitespace-pre-wrap border border-[#393939] bg-[#111] p-[18px] font-mono text-[15px] leading-[1.9] text-[#d0d0ca] [word-break:keep-all] max-[760px]:min-h-40">
+                      <p className="mt-[18px] min-h-[110px] whitespace-pre-wrap border border-[var(--feedback-border)] bg-[var(--feedback-prompt-bg)] p-[18px] font-mono text-[15px] leading-[1.9] text-[var(--feedback-code-text)] [word-break:keep-all] max-[760px]:min-h-40">
                         {selectedSection.prompt || '(프롬프트 원문을 불러오지 못했습니다.)'}
                       </p>
                     </article>
 
                     <article className="min-w-0 p-[22px]">
-                      <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
+                      <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
                         TURN {String(selectedSection.turn).padStart(2, '0')} FEEDBACK
                       </h2>
                       <PromptFeedback feedback={selectedSection.feedbackMd} />
@@ -300,7 +305,7 @@ export default function FeedbackPage() {
             <div className="mt-5 flex justify-end gap-3 max-[760px]:flex-col max-[760px]:justify-stretch">
               {attempt && (
                 <Button
-                  className="max-[760px]:w-full"
+                  className="feedback-page-primary-action max-[760px]:w-full"
                   to={`/problems/${attempt.problemId}`}
                 >
                   <span className="text-[14px]">이전 문제로 돌아가기 ↗</span>
