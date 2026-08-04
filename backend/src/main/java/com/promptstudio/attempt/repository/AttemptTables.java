@@ -20,6 +20,7 @@ final class AttemptTables {
     static final Field<UUID> GUEST_SESSION_ID = field(name("attempt", "guest_session_id"), SQLDataType.UUID);
     static final Field<String> STATUS = field(name("attempt", "status"), SQLDataType.VARCHAR);
     static final Field<String> FEEDBACK = field(name("attempt", "feedback"), SQLDataType.CLOB);
+    static final Field<String> PATTERN_FEEDBACK = field(name("attempt", "pattern_feedback"), SQLDataType.CLOB);
 
     static final Table<?> ATTEMPT_FILE = table(name("attempt_file"));
     static final Field<Long> FILE_ATTEMPT_ID = field(name("attempt_file", "attempt_id"), SQLDataType.BIGINT);
@@ -34,6 +35,8 @@ final class AttemptTables {
     static final Field<String> TURN_USER_PROMPT = field(name("attempt_turn", "user_prompt"), SQLDataType.CLOB);
     static final Field<String> TURN_AI_SUMMARY = field(name("attempt_turn", "ai_summary"), SQLDataType.CLOB);
     static final Field<String> TURN_FEEDBACK = field(name("attempt_turn", "feedback"), SQLDataType.CLOB);
+    static final Field<String> TURN_PATTERN_FEEDBACK =
+            field(name("attempt_turn", "pattern_feedback"), SQLDataType.CLOB);
 
     static final Table<?> TURN_FILE_CHANGE = table(name("turn_file_change"));
     static final Field<Long> CHANGE_TURN_ID = field(name("turn_file_change", "turn_id"), SQLDataType.BIGINT);

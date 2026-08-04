@@ -17,9 +17,17 @@ import java.util.List;
  * <p>Spring AI는 /v1/chat/completions를 쓰는데, 이 엔드포인트는 함수 툴과 reasoning_effort 병용을
  * 거부한다(400 invalid_request_error, param=reasoning_effort). 그래서 툴을 싣는 코드 생성 경로는
  * reasoning_effort를 "none"으로 둔다. 툴이 없는 피드백 경로는 제약과 무관하다.
+ *
+ * <p>프롬프트 캐시 키는 경로마다 성격이 다르다. 코드 생성은 한 어템프트가 대화를 이어가므로 어템프트별
+ * 키를 받고, 피드백 두 경로는 시스템 프롬프트가 전 사용자·전 제출에서 같아 워크로드 고정 키를 쓴다.
+ * 사용자 데이터는 프리픽스 뒤에 오므로 고정 키를 써도 캐시에 섞이지 않는다. 두 피드백은 시스템 프롬프트가
+ * 다르므로 키도 갈라야 한다 — 같은 키를 주면 프리픽스가 어긋나 캐시가 빗나간다.
  */
 @Component
 public class OpenAiChatOptionsFactory {
+
+    private static final String FEEDBACK_PROMPT_CACHE_KEY = "feedback";
+    private static final String PATTERN_FEEDBACK_PROMPT_CACHE_KEY = "pattern-feedback";
 
     private static final String CODE_GENERATION_REASONING_EFFORT = "none";
     private static final String FEEDBACK_REASONING_EFFORT = "low";
@@ -29,6 +37,10 @@ public class OpenAiChatOptionsFactory {
     private static final int FEEDBACK_BASE_MAX_COMPLETION_TOKENS = 4_096;
     private static final int FEEDBACK_MAX_COMPLETION_TOKENS_PER_TURN = 2_048;
     private static final int FEEDBACK_MAX_COMPLETION_TOKENS_CAP = 32_768;
+    private static final String PATTERN_REASONING_EFFORT = "medium";
+    private static final int PATTERN_BASE_MAX_COMPLETION_TOKENS = 8_192;
+    private static final int PATTERN_MAX_COMPLETION_TOKENS_PER_TURN = 2_048;
+    private static final int PATTERN_MAX_COMPLETION_TOKENS_CAP = 32_768;
     private static final int SCOPE_VALIDATION_MAX_COMPLETION_TOKENS = 256;
 
     private final String codeModel;
@@ -90,8 +102,34 @@ public class OpenAiChatOptionsFactory {
                 .model(feedbackModel)
                 .reasoningEffort(FEEDBACK_REASONING_EFFORT)
                 .maxCompletionTokens(feedbackMaxCompletionTokens(turnCount))
+                .promptCacheKey(FEEDBACK_PROMPT_CACHE_KEY)
                 .responseFormat(OpenAiChatModel.ResponseFormat.builder()
                         .jsonSchema(FeedbackSchema.jsonSchema(turnCount))
+                        .build())
+                .build();
+    }
+
+    /**
+     * pattern 피드백 호출 옵션. 모델은 피드백과 같지만 effort는 한 단계 위다.
+     *
+     * <p>이 렌즈가 하는 일은 턴마다 (그 턴의 변경 파일 ↔ 다음 턴 프롬프트)를 이름으로 대조하는
+     * 것이라 판정이 프롬프트 렌즈보다 무겁다. low로 재 봤더니 reasoning을 480~540 토큰밖에 쓰지
+     * 않았고, 같은 세션을 두 번 돌렸을 때 턴 2 판정이 뒤집히고 없는 사실을 지어냈다.
+     *
+     * <p>출력 문장 자체는 프롬프트 렌즈의 절반 이하지만 <b>예산을 낮추면 안 된다</b>. reasoning이 같은
+     * 완성 토큰 예산에서 나가는데, medium에서 6턴 호출이 reasoning에만 4,979~13,879 토큰을 쓴 실측이
+     * {@link #feedbackMaxCompletionTokens} 주석에 남아 있다. 잘림은 재시도 대상이 아니고
+     * pattern은 프롬프트 렌즈와 함께 필수라, 예산이 모자라면 제출이 통째로 실패한다.
+     * 그래서 프롬프트 렌즈보다 오히려 넉넉하게 잡는다 — 6턴이면 20,480이다.
+     */
+    public OpenAiChatOptions forPatternFeedback(int turnCount) {
+        return OpenAiChatOptions.builder()
+                .model(feedbackModel)
+                .reasoningEffort(PATTERN_REASONING_EFFORT)
+                .maxCompletionTokens(patternMaxCompletionTokens(turnCount))
+                .promptCacheKey(PATTERN_FEEDBACK_PROMPT_CACHE_KEY)
+                .responseFormat(OpenAiChatModel.ResponseFormat.builder()
+                        .jsonSchema(PatternSchema.jsonSchema(turnCount))
                         .build())
                 .build();
     }
@@ -108,6 +146,13 @@ public class OpenAiChatOptionsFactory {
         return Math.min(
                 FEEDBACK_BASE_MAX_COMPLETION_TOKENS + FEEDBACK_MAX_COMPLETION_TOKENS_PER_TURN * turnCount,
                 FEEDBACK_MAX_COMPLETION_TOKENS_CAP
+        );
+    }
+
+    private int patternMaxCompletionTokens(int turnCount) {
+        return Math.min(
+                PATTERN_BASE_MAX_COMPLETION_TOKENS + PATTERN_MAX_COMPLETION_TOKENS_PER_TURN * turnCount,
+                PATTERN_MAX_COMPLETION_TOKENS_CAP
         );
     }
 }

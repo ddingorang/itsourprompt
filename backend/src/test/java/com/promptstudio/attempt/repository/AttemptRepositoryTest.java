@@ -131,7 +131,14 @@ class AttemptRepositoryTest extends DatabaseTest {
 
         attempt.applyTurn("Main을 채워줘", generated("생성된 내용", "첫 요약"));
         attempt.applyTurn("Main을 다시 고쳐줘", generated("다시 생성된 내용", "둘째 요약"));
-        attempt.submit(new AttemptFeedback(List.of("첫 턴 피드백", "둘째 턴 피드백"), "전체 피드백", List.of()));
+        attempt.submit(new AttemptFeedback(
+                List.of("첫 턴 피드백", "둘째 턴 피드백"),
+                "전체 피드백",
+                List.of("첫 턴 패턴", "둘째 턴 패턴"),
+                "전체 패턴 피드백",
+                List.of(),
+                List.of()
+        ));
         attemptRepository.save(attempt);
 
         AttemptView found = attemptQueryRepository.findById(attempt.id()).orElseThrow();
@@ -139,6 +146,29 @@ class AttemptRepositoryTest extends DatabaseTest {
                 .extracting(AttemptView.TurnView::feedback)
                 .containsExactly("첫 턴 피드백", "둘째 턴 피드백");
         assertThat(found.feedback()).isEqualTo("전체 피드백");
+    }
+
+    @Test
+    void 제출한_어템프트의_턴별_패턴_피드백을_저장하고_순서대로_조회한다() {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
+
+        attempt.applyTurn("Main을 채워줘", generated("생성된 내용", "첫 요약"));
+        attempt.applyTurn("Main을 다시 고쳐줘", generated("다시 생성된 내용", "둘째 요약"));
+        attempt.submit(new AttemptFeedback(
+                List.of("첫 턴 피드백", "둘째 턴 피드백"),
+                "전체 피드백",
+                List.of("첫 턴 패턴", "둘째 턴 패턴"),
+                "전체 패턴 피드백",
+                List.of(),
+                List.of()
+        ));
+        attemptRepository.save(attempt);
+
+        AttemptView found = attemptQueryRepository.findById(attempt.id()).orElseThrow();
+        assertThat(found.turns())
+                .extracting(AttemptView.TurnView::patternFeedback)
+                .containsExactly("첫 턴 패턴", "둘째 턴 패턴");
+        assertThat(found.patternFeedback()).isEqualTo("전체 패턴 피드백");
     }
 
     @Test
@@ -150,6 +180,7 @@ class AttemptRepositoryTest extends DatabaseTest {
 
         AttemptView found = attemptQueryRepository.findById(attempt.id()).orElseThrow();
         assertThat(found.turns().getFirst().feedback()).isNull();
+        assertThat(found.turns().getFirst().patternFeedback()).isNull();
     }
 
     @Test

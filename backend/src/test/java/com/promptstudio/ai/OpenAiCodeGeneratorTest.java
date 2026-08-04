@@ -206,7 +206,7 @@ class OpenAiCodeGeneratorTest {
     private AttemptView attempt() {
         List<ProblemFile> files = List.of(new ProblemFile("src/Main.java", "class Main {}"));
 
-        return new AttemptView(1L, 1L, files, files, List.of(), AttemptStatus.IN_PROGRESS, null, null);
+        return new AttemptView(1L, 1L, files, files, List.of(), AttemptStatus.IN_PROGRESS, null, null, null);
     }
 
     private ChatResponse textResponse(String text) {

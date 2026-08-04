@@ -179,6 +179,33 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.turns[0].feedbackMd").value("턴 1 피드백"));
     }
 
+    /**
+     * 두 스타일을 한 화면에서 나란히 읽으므로 한 응답에 함께 싣는다.
+     */
+    @Test
+    void 제출하면_pattern_피드백도_함께_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.patternOverallMd").value("생성된 패턴 피드백"))
+                .andExpect(jsonPath("$.turns[0].patternMd").value("턴 1 패턴"));
+    }
+
+    @Test
+    void 제출된_어템프트의_pattern_피드백을_조회한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/attempts/{id}/feedback", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.patternOverallMd").value("생성된 패턴 피드백"))
+                .andExpect(jsonPath("$.turns[0].patternMd").value("턴 1 패턴"));
+    }
+
     @Test
     void 제출_전에는_피드백_조회가_404를_반환한다() throws Exception {
         Long attemptId = createAttempt();

@@ -45,6 +45,12 @@ public class Turn {
     @Column(name = "feedback", columnDefinition = "text")
     private String feedback;
 
+    /**
+     * 같은 턴을 작업 방식의 렌즈로 본 두 번째 피드백. feedback과 한 번에 함께 배정된다.
+     */
+    @Column(name = "pattern_feedback", columnDefinition = "text")
+    private String patternFeedback;
+
     protected Turn() {
     }
 
@@ -75,8 +81,13 @@ public class Turn {
         return feedback;
     }
 
-    void applyFeedback(String feedback) {
+    public String patternFeedback() {
+        return patternFeedback;
+    }
+
+    void applyFeedback(String feedback, String patternFeedback) {
         this.feedback = feedback;
+        this.patternFeedback = patternFeedback;
     }
 
     @Override

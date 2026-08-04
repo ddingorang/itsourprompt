@@ -62,6 +62,9 @@ public class Attempt {
     @Column(name = "feedback")
     private String feedback;
 
+    @Column(name = "pattern_feedback")
+    private String patternFeedback;
+
     @Column(name = "submitted_at")
     private Instant submittedAt;
 
@@ -102,17 +105,24 @@ public class Attempt {
         }
 
         List<String> turnFeedbacks = feedback.turnFeedbacks();
+        List<String> patternTurnFeedbacks = feedback.patternTurnFeedbacks();
 
+        // 두 스타일 모두 필수라 어느 한쪽이라도 개수가 어긋나면 저장하지 않는다.
         if (turnFeedbacks.size() != turns.size()) {
             throw new FeedbackTurnCountMismatchException(turns.size(), turnFeedbacks.size());
         }
 
+        if (patternTurnFeedbacks.size() != turns.size()) {
+            throw new FeedbackTurnCountMismatchException(turns.size(), patternTurnFeedbacks.size());
+        }
+
         for (int index = 0; index < turns.size(); index++) {
-            turns.get(index).applyFeedback(turnFeedbacks.get(index));
+            turns.get(index).applyFeedback(turnFeedbacks.get(index), patternTurnFeedbacks.get(index));
         }
 
         this.status = AttemptStatus.SUBMITTED;
         this.feedback = feedback.overall();
+        this.patternFeedback = feedback.patternOverall();
         this.submittedAt = Instant.now();
     }
 
@@ -150,6 +160,10 @@ public class Attempt {
 
     public String feedback() {
         return feedback;
+    }
+
+    public String patternFeedback() {
+        return patternFeedback;
     }
 
     public Instant submittedAt() {

@@ -81,7 +81,10 @@ class AttemptWriter {
         }
 
         // 피드백이 채택되지 않았어도 호출은 이미 토큰을 썼으므로 기록한다.
+        // purpose가 갈리므로 두 목록이 각자 1부터 매긴 seq를 그대로 써도 충돌하지 않는다.
         llmCallRepository.saveAll(successCalls(attemptId, null, LlmCallPurpose.FEEDBACK, feedback.llmCalls()));
+        llmCallRepository.saveAll(
+                successCalls(attemptId, null, LlmCallPurpose.PATTERN_FEEDBACK, feedback.patternLlmCalls()));
 
         return AttemptView.from(attempt);
     }

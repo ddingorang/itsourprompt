@@ -1,7 +1,6 @@
 package com.promptstudio.ai;
 
 import com.openai.models.completions.CompletionUsage;
-import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.LlmCallUsage;
@@ -32,10 +31,16 @@ class OpenAiFeedbackGeneratorTest {
 
     private final StubChatModel chatModel = new StubChatModel();
 
+    private final OpenAiChatOptionsFactory chatOptionsFactory =
+            new OpenAiChatOptionsFactory("code-model", "feedback-model", "scope-model");
+
     private final OpenAiFeedbackGenerator feedbackGenerator = new OpenAiFeedbackGenerator(
             ChatClient.builder(chatModel),
             new AiCallExecutor(),
-            new OpenAiChatOptionsFactory("code-model", "feedback-model", "scope-model")
+            "OPENAI FEEDBACK",
+            FeedbackPrompts.systemPrompt(),
+            FeedbackPrompts::userPrompt,
+            chatOptionsFactory::forFeedback
     );
 
     @Test
@@ -44,7 +49,7 @@ class OpenAiFeedbackGeneratorTest {
                 {"turnFeedbacks":["첫 턴 피드백","둘째 턴 피드백"],"overall":"전체 피드백"}
                 """));
 
-        AttemptFeedback feedback = feedbackGenerator.generate(problem, attempt(2));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(2));
 
         assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴 피드백", "둘째 턴 피드백");
         assertThat(feedback.overall()).isEqualTo("전체 피드백");
@@ -134,7 +139,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
         chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴\",\"둘째 턴\"],\"overall\":\"전체 피드백\"}"));
 
-        AttemptFeedback feedback = feedbackGenerator.generate(problem, attempt(2));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(2));
 
         assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴", "둘째 턴");
         assertThat(chatModel.receivedPrompts()).hasSize(2);
@@ -172,7 +177,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(withUsage(
                 textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"), 500, 120, 300L, 80L));
 
-        AttemptFeedback feedback = feedbackGenerator.generate(problem, attempt(1));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1));
 
         assertThat(feedback.llmCalls()).hasSize(1);
 
@@ -208,10 +213,10 @@ class OpenAiFeedbackGeneratorTest {
 
         for (int index = 1; index <= turnCount; index++) {
             turns.add(
-                    new AttemptView.TurnView("프롬프트 " + index, "요약 " + index, List.of(), List.of(), null, null));
+                    new AttemptView.TurnView("프롬프트 " + index, "요약 " + index, List.of(), List.of(), null, null, null));
         }
 
-        return new AttemptView(1L, 1L, files, files, turns, AttemptStatus.IN_PROGRESS, null, null);
+        return new AttemptView(1L, 1L, files, files, turns, AttemptStatus.IN_PROGRESS, null, null, null);
     }
 
     private ChatResponse textResponse(String text) {

@@ -46,6 +46,7 @@ import static com.promptstudio.attempt.repository.AttemptTables.FILE_ORDINAL;
 import static com.promptstudio.attempt.repository.AttemptTables.FILE_PATH;
 import static com.promptstudio.attempt.repository.AttemptTables.ID;
 import static com.promptstudio.attempt.repository.AttemptTables.GUEST_SESSION_ID;
+import static com.promptstudio.attempt.repository.AttemptTables.PATTERN_FEEDBACK;
 import static com.promptstudio.attempt.repository.AttemptTables.PROBLEM_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.STATUS;
 import static com.promptstudio.attempt.repository.AttemptTables.USER_ID;
@@ -59,6 +60,7 @@ import static com.promptstudio.attempt.repository.AttemptTables.TURN_FEEDBACK;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_FILE_CHANGE;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_ORDINAL;
+import static com.promptstudio.attempt.repository.AttemptTables.TURN_PATTERN_FEEDBACK;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_TOOL_CALL;
 import static com.promptstudio.attempt.repository.AttemptTables.TURN_USER_PROMPT;
 import static org.jooq.impl.DSL.coalesce;
@@ -112,18 +114,29 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
         return findByCondition(ID.eq(id).and(GUEST_SESSION_ID.eq(guestSessionId)));
     }
 
+    /**
+     * multiset 컬럼은 지역 변수로 뽑아야 {@code record.get(...)}으로 되꺼낼 수 있다. 자리 번호로 꺼내면
+     * 컬럼이 하나 끼어들 때 조용히 어긋난다.
+     *
+     * <p>이름 없는 multiset은 모두 같은 이름을 갖는다 — 한 SELECT에 여럿이 들어가므로 별칭으로 갈라 둔다.
+     */
     private Optional<AttemptView> findByCondition(org.jooq.Condition condition) {
-        return dsl.select(ID, PROBLEM_ID, baseFilesField(), turnsField(), STATUS, FEEDBACK, usageTotalsField())
+        Field<List<ProblemFile>> baseFiles = baseFilesField();
+        Field<List<AttemptView.TurnView>> turns = turnsField();
+        Field<LlmUsageTotals> usage = usageTotalsField();
+
+        return dsl.select(ID, PROBLEM_ID, baseFiles, turns, STATUS, FEEDBACK, PATTERN_FEEDBACK, usage)
                 .from(ATTEMPT)
                 .where(condition)
                 .fetchOptional(record -> AttemptView.reconstruct(
-                        record.value1(),
-                        record.value2(),
-                        record.value3(),
-                        record.value4(),
-                        AttemptStatus.valueOf(record.value5()),
-                        record.value6(),
-                        record.value7()
+                        record.get(ID),
+                        record.get(PROBLEM_ID),
+                        record.get(baseFiles),
+                        record.get(turns),
+                        AttemptStatus.valueOf(record.get(STATUS)),
+                        record.get(FEEDBACK),
+                        record.get(PATTERN_FEEDBACK),
+                        record.get(usage)
                 ));
     }
 
@@ -133,24 +146,45 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
                         .from(TURN_FILE_CHANGE)
                         .where(CHANGE_TURN_ID.eq(TURN_ID))
                         .orderBy(CHANGE_ORDINAL)
-        ).convertFrom(result -> result.map(record ->
-                new FileChange(record.value1(), FileChange.ChangeType.valueOf(record.value2()), record.value3())));
+        ).convertFrom(result -> result.map(record -> new FileChange(
+                record.get(CHANGE_PATH),
+                FileChange.ChangeType.valueOf(record.get(CHANGE_TYPE)),
+                record.get(CHANGE_CONTENT)))
+        ).as("changes");
 
         Field<List<ToolCallEntry>> toolCalls = multiset(
                 select(TOOL_CALL_TOOL, TOOL_CALL_PATH)
                         .from(TURN_TOOL_CALL)
                         .where(TOOL_CALL_TURN_ID.eq(TURN_ID))
                         .orderBy(TOOL_CALL_ORDINAL)
-        ).convertFrom(result -> result.map(record -> new ToolCallEntry(record.value1(), record.value2())));
+        ).convertFrom(result -> result.map(record ->
+                new ToolCallEntry(record.get(TOOL_CALL_TOOL), record.get(TOOL_CALL_PATH)))
+        ).as("tool_calls");
+
+        Field<LlmUsageSummary> usage = turnUsageField();
 
         return multiset(
-                select(TURN_USER_PROMPT, TURN_AI_SUMMARY, changes, toolCalls, TURN_FEEDBACK, turnUsageField())
+                select(
+                        TURN_USER_PROMPT,
+                        TURN_AI_SUMMARY,
+                        changes,
+                        toolCalls,
+                        TURN_FEEDBACK,
+                        TURN_PATTERN_FEEDBACK,
+                        usage
+                )
                         .from(ATTEMPT_TURN)
                         .where(TURN_ATTEMPT_ID.eq(ID))
                         .orderBy(TURN_ORDINAL)
         ).convertFrom(result -> result.map(record -> new AttemptView.TurnView(
-                record.value1(), record.value2(), record.value3(), record.value4(), record.value5(),
-                record.value6())));
+                record.get(TURN_USER_PROMPT),
+                record.get(TURN_AI_SUMMARY),
+                record.get(changes),
+                record.get(toolCalls),
+                record.get(TURN_FEEDBACK),
+                record.get(TURN_PATTERN_FEEDBACK),
+                record.get(usage)))
+        ).as("turns");
     }
 
     /**
@@ -177,7 +211,7 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
                             row.get(MODEL),
                             rounds
                     );
-                });
+                }).as("turn_usage");
     }
 
     /**
@@ -207,7 +241,7 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
                             row.get(COST),
                             rounds
                     );
-                });
+                }).as("usage_totals");
     }
 
     /**
@@ -248,6 +282,8 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
                         .from(ATTEMPT_FILE)
                         .where(FILE_ATTEMPT_ID.eq(ID))
                         .orderBy(FILE_ORDINAL)
-        ).convertFrom(result -> result.map(record -> new ProblemFile(record.value1(), record.value2())));
+        ).convertFrom(result -> result.map(record ->
+                new ProblemFile(record.get(FILE_PATH), record.get(FILE_CONTENT)))
+        ).as("base_files");
     }
 }
