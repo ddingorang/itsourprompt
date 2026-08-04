@@ -10,6 +10,8 @@ import ErrorPage from '../pages/ErrorPage'
 import MyPage from '../pages/MyPage'
 import LoginPage from '../pages/LoginPage'
 import SignupPage from '../pages/SignupPage'
+import RelayLobbyPage from '../pages/RelayLobbyPage'
+import RelayRoomPage from '../pages/RelayRoomPage'
 
 export const router = createBrowserRouter([
   {
@@ -64,5 +66,23 @@ export const router = createBrowserRouter([
   {
     path: '/signup',
     element: <SignupPage />,
+  },
+  // 릴레이 게임. 게스트 풀이가 가능한 문제 풀이와 달리 전부 로그인 필수다 —
+  // 백엔드가 게스트를 받지 않는다(좌석의 주인이 세션 만료로 바뀌면 안 되기 때문).
+  {
+    path: '/relay',
+    element: (
+      <ProtectedRoute>
+        <RelayLobbyPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/relay/rooms/:roomId',
+    element: (
+      <ProtectedRoute>
+        <RelayRoomPage />
+      </ProtectedRoute>
+    ),
   },
 ])

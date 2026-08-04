@@ -78,6 +78,15 @@ export default function Header({
         <span className="text-[#555]" aria-hidden="true">
           |
         </span>
+        {/* 로그인 여부와 무관하게 노출한다. 라우트가 ProtectedRoute라 비로그인 클릭은
+            /login으로 갔다가 로그인 후 /relay로 복귀한다. end가 없어서 방 화면
+            (/relay/rooms/:id)에서도 이 메뉴가 활성으로 표시된다. */}
+        <NavLink className={getMenuLinkClasses} to="/relay">
+          RELAY
+        </NavLink>
+        <span className="text-[#555]" aria-hidden="true">
+          |
+        </span>
         {/* 랭킹은 로그인과 무관하게 열리므로 세션 확인 게이트 바깥에 둔다. */}
         <NavLink className={getMenuLinkClasses} to="/ranking">
           RANKING
