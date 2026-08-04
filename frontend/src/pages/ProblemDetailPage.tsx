@@ -536,7 +536,7 @@ export default function ProblemDetailPage() {
     setCodeRunError(null);
     setIsCodeRunLoading(false);
 
-    if (routeAttemptId === null) return;
+    if (routeAttemptId === null) return stopCodeRunPolling;
 
     const controller = new AbortController();
     codeRunControllerRef.current = controller;
@@ -583,7 +583,7 @@ export default function ProblemDetailPage() {
     void restoreLatestCodeRun();
 
     return stopCodeRunPolling;
-  }, [routeAttemptId]);
+  }, [routeAttemptId, routeProblemId]);
 
   const fileTree = useMemo(
     () => createFileTree(files, getLatestChangedFiles(turns)),
