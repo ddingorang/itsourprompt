@@ -16,6 +16,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 type HeaderProps = {
   variant?: 'default' | 'workspace';
   mobileBreakpoint?: '640' | '760';
+  onLogoClick?: () => void;
 };
 
 const defaultHeaderBaseClasses =
@@ -38,6 +39,7 @@ const getMenuLinkClasses = ({ isActive }: { isActive: boolean }) =>
 export default function Header({
   variant = 'default',
   mobileBreakpoint = '640',
+  onLogoClick,
 }: HeaderProps) {
   const { loading, logout, user } = useAuth();
   const navigate = useNavigate();
@@ -60,6 +62,7 @@ export default function Header({
         className="text-xl leading-none font-black tracking-[-1.6px] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
         to="/"
         aria-label="홈으로 이동"
+        onClick={onLogoClick}
       >
         prompt<i className="not-italic text-[#d6ff50]">.</i>practice
       </Link>
