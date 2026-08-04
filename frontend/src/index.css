@@ -15,6 +15,9 @@ html { scroll-behavior: smooth; }
 ::selection { background: #d6ff50; color: #090909; }
 .landing-page {
   --acid: #d6ff50;
+  /* 헤더 실제 높이. 섹션이 "화면 한 장"을 차지하려면 이만큼 빼야 한다.
+     480px 이하에서 헤더가 세로로 쌓이며 커지므로 아래 미디어쿼리에서 덮는다. */
+  --landing-header-h: 66px;
   --landing-bg: #090909;
   --landing-surface: #111;
   --landing-surface-hover: #171717;
@@ -596,6 +599,10 @@ html { scroll-behavior: smooth; }
   html { scroll-snap-type: y mandatory; scroll-padding-top: 66px; }
   .landing-page main > section,
   .landing-ending { scroll-snap-align: start; scroll-snap-stop: always; }
+}
+@media (max-width: 480px) {
+  /* Header가 flex-col + py-4로 바뀌는 지점(Header.tsx의 max-[480px])과 같은 값이어야 한다. */
+  .landing-page { --landing-header-h: 81px; }
 }
 @media (max-width: 760px) {
   .landing-scroll-cue { margin-top: 12px; justify-self: center; }
