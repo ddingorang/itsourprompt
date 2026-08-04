@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 
 import { getProblems } from '../features/problem/api';
@@ -50,12 +50,40 @@ function useRevealOnScroll() {
   }, []);
 }
 
+function useResetLandingScroll() {
+  useLayoutEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration;
+    let secondFrame = 0;
+
+    const scrollToFirstSection = () => {
+      window.scrollTo(0, 0);
+    };
+
+    window.history.scrollRestoration = 'manual';
+    scrollToFirstSection();
+
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(scrollToFirstSection);
+    });
+
+    window.addEventListener('pageshow', scrollToFirstSection);
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+      window.removeEventListener('pageshow', scrollToFirstSection);
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+  }, []);
+}
+
 export default function HomePage() {
   const { colorMode, setColorMode } = useTheme();
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  useResetLandingScroll();
   useRevealOnScroll();
 
   useEffect(() => {
