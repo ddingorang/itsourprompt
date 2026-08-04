@@ -246,12 +246,6 @@ export async function requestMockCodeRun(
 
   const attempt = mockAttempts.get(attemptId);
   if (!attempt) throw mockAttemptNotFound(attemptId);
-  if (attempt.turns.length === 0) {
-    throw new ApiError(409, {
-      code: API_ERROR_CODES.attemptHasNoTurns,
-      message: '실행할 턴이 없습니다.',
-    });
-  }
 
   const entries = mockCodeRuns.get(attemptId) ?? [];
   if (entries.some((entry) => completeMockCodeRun(entry).status === 'QUEUED')) {
@@ -263,7 +257,8 @@ export async function requestMockCodeRun(
 
   const run: CodeRun = {
     runId: crypto.randomUUID(),
-    turnOrdinal: turnOrdinal ?? attempt.turns.length - 1,
+    turnOrdinal:
+      turnOrdinal ?? (attempt.turns.length > 0 ? attempt.turns.length - 1 : null),
     status: 'QUEUED',
     exitCode: null,
     stdout: null,

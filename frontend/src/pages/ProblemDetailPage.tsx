@@ -298,6 +298,7 @@ export default function ProblemDetailPage() {
     Partial<Record<DetailTab, HTMLButtonElement | null>>
   >({});
   const isRunPendingRef = useRef(false);
+  const isCodeRunPendingRef = useRef(false);
   /**
    * 실패한 턴 요청의 Idempotency-Key를 기억한다. 같은 프롬프트로 다시 실행하면
    * 같은 키가 나가므로, 백엔드가 이미 AI를 호출해 둔 경우 재호출 없이 그 결과를
@@ -309,7 +310,9 @@ export default function ProblemDetailPage() {
   const codeRunControllerRef = useRef<AbortController | null>(null);
   const codeRunPollTimeoutRef = useRef<number | null>(null);
   const routeAttemptIdRef = useRef(routeAttemptId);
+  const routeProblemIdRef = useRef(routeProblemId);
   routeAttemptIdRef.current = routeAttemptId;
+  routeProblemIdRef.current = routeProblemId;
   /** 마지막으로 정상 반영된 라우트. 다른 주소의 로드 실패 시 이전 문제를 지우는 기준이다. */
   const loadedResourceRef = useRef<string | null>(null);
   /**
@@ -597,29 +600,62 @@ export default function ProblemDetailPage() {
   };
 
   const handleCodeRunRequest = async () => {
-    if (!attempt || turns.length === 0 || isCodeRunLoading) return;
+    if (!problem || isCodeRunLoading || isCodeRunPendingRef.current) return;
 
+    isCodeRunPendingRef.current = true;
     stopCodeRunPolling();
-    const requestedAttemptId = attempt.id;
     const controller = new AbortController();
     codeRunControllerRef.current = controller;
+    const requestedProblemId = problem.id;
+    let requestedAttempt = attempt;
+    let requestedAttemptId = attempt?.id ?? null;
+    let createdForSkeleton = false;
     setCodeRunError(null);
     setCodeRunTally(null);
     setIsCodeRunLoading(true);
 
+    const isCurrentTarget = () =>
+      !controller.signal.aborted &&
+      (createdForSkeleton
+        ? routeProblemIdRef.current === requestedProblemId
+        : routeAttemptIdRef.current === requestedAttemptId);
+
+    const moveToCreatedAttempt = () => {
+      if (!createdForSkeleton || !requestedAttempt || requestedAttemptId === null) {
+        return;
+      }
+
+      setAttempt(requestedAttempt);
+      routeAttemptIdRef.current = requestedAttemptId;
+      navigate(`/attempts/${requestedAttemptId}`, { replace: true });
+    };
+
     try {
+      if (requestedAttemptId === null) {
+        requestedAttempt = await createAttempt(requestedProblemId);
+        if (
+          controller.signal.aborted ||
+          routeProblemIdRef.current !== requestedProblemId
+        ) {
+          return;
+        }
+
+        requestedAttemptId = requestedAttempt.id;
+        createdForSkeleton = true;
+      }
+
       const requestedRun = await requestCodeRun(
         requestedAttemptId,
         controller.signal,
       );
-      if (
-        controller.signal.aborted ||
-        routeAttemptIdRef.current !== requestedAttemptId
-      ) {
-        return;
-      }
+      if (!isCurrentTarget()) return;
 
       applyCodeRun(requestedRun);
+
+      if (createdForSkeleton) {
+        moveToCreatedAttempt();
+        return;
+      }
 
       if (requestedRun.status === 'QUEUED') {
         startCodeRunPolling(requestedAttemptId, requestedRun.runId);
@@ -634,22 +670,20 @@ export default function ProblemDetailPage() {
 
       if (errorInfo.code === API_ERROR_CODES.codeRunInProgress) {
         try {
+          if (requestedAttemptId === null) return;
+
           const response = await getCodeRuns(
             requestedAttemptId,
             controller.signal,
           );
-          if (
-            controller.signal.aborted ||
-            routeAttemptIdRef.current !== requestedAttemptId
-          ) {
-            return;
-          }
+          if (!isCurrentTarget()) return;
 
           const queuedRun = response.runs.find((run) => run.status === 'QUEUED');
 
           if (queuedRun) {
             setCodeRunTally(queuedRun.tally);
-            startCodeRunPolling(requestedAttemptId, queuedRun.runId);
+            if (createdForSkeleton) moveToCreatedAttempt();
+            else startCodeRunPolling(requestedAttemptId, queuedRun.runId);
             return;
           }
 
@@ -662,16 +696,13 @@ export default function ProblemDetailPage() {
               latestRun.runId,
               controller.signal,
             );
-            if (
-              controller.signal.aborted ||
-              routeAttemptIdRef.current !== requestedAttemptId
-            ) {
-              return;
-            }
+            if (!isCurrentTarget()) return;
 
             setCodeRunTally(latestRun.tally);
             applyCodeRun(restoredRun);
-            if (restoredRun.status === 'QUEUED') {
+            if (createdForSkeleton) {
+              moveToCreatedAttempt();
+            } else if (restoredRun.status === 'QUEUED') {
               startCodeRunPolling(requestedAttemptId, restoredRun.runId);
             } else {
               setIsCodeRunLoading(false);
@@ -696,6 +727,8 @@ export default function ProblemDetailPage() {
       setCodeRunError(errorInfo.message);
       setIsCodeRunLoading(false);
       codeRunControllerRef.current = null;
+    } finally {
+      isCodeRunPendingRef.current = false;
     }
   };
 
@@ -1188,10 +1221,6 @@ export default function ProblemDetailPage() {
               ) : activeTab === 'logs' ? (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
                   실행한 프롬프트가 없습니다.
-                </div>
-              ) : !attempt || turns.length === 0 ? (
-                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
-                  프롬프트 실행 후 테스트할 수 있습니다.
                 </div>
               ) : codeRunError ? (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#ff786b]">
