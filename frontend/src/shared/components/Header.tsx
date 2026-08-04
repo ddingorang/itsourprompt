@@ -69,11 +69,18 @@ export default function Header({
         prompt<i className="not-italic text-[#d6ff50]">.</i>practice
       </Link>
       <nav
-        className="flex items-center gap-3 whitespace-nowrap max-[480px]:w-full max-[480px]:justify-between max-[480px]:gap-2 max-[480px]:text-xs"
+        className="flex items-center gap-3 whitespace-nowrap max-[480px]:w-full max-[480px]:flex-wrap max-[480px]:justify-start max-[480px]:gap-2 max-[480px]:text-xs"
         aria-label="주요 메뉴"
       >
         <NavLink className={getMenuLinkClasses} end to="/problems">
           PROBLEM LIST
+        </NavLink>
+        <span className="text-[#555]" aria-hidden="true">
+          |
+        </span>
+        {/* 랭킹은 로그인과 무관하게 열리므로 세션 확인 게이트 바깥에 둔다. */}
+        <NavLink className={getMenuLinkClasses} to="/ranking">
+          RANKING
         </NavLink>
         {/* 세션 확인이 끝나기 전에는 로그인/게스트 메뉴를 그리지 않는다(깜빡임 방지). */}
         {!loading && (

@@ -3,8 +3,10 @@ package com.promptstudio.attempt.controller;
 import com.promptstudio.attempt.controller.request.CreateAttemptRequest;
 import com.promptstudio.attempt.controller.request.TurnRequest;
 import com.promptstudio.attempt.controller.response.AttemptResponse;
+import com.promptstudio.attempt.controller.response.CodeRunResponse;
 import com.promptstudio.attempt.controller.response.FeedbackResponse;
 import com.promptstudio.attempt.service.AttemptService;
+import com.promptstudio.attempt.service.CodeRunService;
 import com.promptstudio.global.exception.ApiErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,6 +28,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/attempts")
 @CrossOrigin(origins = "http://localhost:5173")
@@ -33,10 +37,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class AttemptController {
 
     private final AttemptService attemptService;
+    private final CodeRunService codeRunService;
     private final AttemptWebMapper attemptWebMapper;
 
-    public AttemptController(AttemptService attemptService, AttemptWebMapper attemptWebMapper) {
+    public AttemptController(
+            AttemptService attemptService,
+            CodeRunService codeRunService,
+            AttemptWebMapper attemptWebMapper
+    ) {
         this.attemptService = attemptService;
+        this.codeRunService = codeRunService;
         this.attemptWebMapper = attemptWebMapper;
     }
 
@@ -215,5 +225,54 @@ public class AttemptController {
     })
     public FeedbackResponse submit(@PathVariable("id") Long id) {
         return attemptWebMapper.toFeedbackResponse(attemptService.submit(id));
+    }
+
+    @PostMapping("/{id}/runs")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(
+            summary = "코드 빌드/실행 요청",
+            description = "어템프트의 현재 파일 전체를 빌드/실행 워커에 큐로 넘기고 즉시 실행 ID를 반환합니다. "
+                    + "결과는 조회 API로 폴링해서 확인합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "202",
+                    description = "실행 요청 접수",
+                    content = @Content(schema = @Schema(implementation = CodeRunResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "어템프트를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "해당 어템프트의 코드 실행이 이미 진행 중",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
+            )
+    })
+    public CodeRunResponse requestRun(@PathVariable("id") Long id) {
+        return attemptWebMapper.toCodeRunResponse(codeRunService.requestRun(id));
+    }
+
+    @GetMapping("/{id}/runs/{runId}")
+    @Operation(
+            summary = "코드 빌드/실행 결과 조회",
+            description = "실행 상태와 결과를 반환합니다. 아직 끝나지 않았으면 status가 QUEUED이고 결과 필드는 모두 null입니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "실행 조회 성공",
+                    content = @Content(schema = @Schema(implementation = CodeRunResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "해당 어템프트에서 실행 ID를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
+            )
+    })
+    public CodeRunResponse getRun(@PathVariable("id") Long id, @PathVariable("runId") UUID runId) {
+        return attemptWebMapper.toCodeRunResponse(codeRunService.getRun(id, runId));
     }
 }

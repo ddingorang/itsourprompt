@@ -3,6 +3,8 @@ package com.promptstudio.global.exception;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
+import com.promptstudio.attempt.exception.CodeRunInProgressException;
+import com.promptstudio.attempt.exception.CodeRunNotFoundException;
 import com.promptstudio.attempt.exception.DuplicateRequestException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
@@ -91,6 +93,26 @@ public class GlobalExceptionHandler {
     ) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "feedback-in-progress",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(CodeRunNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleCodeRunNotFound(CodeRunNotFoundException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "code-run-not-found",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(CodeRunInProgressException.class)
+    public ResponseEntity<ApiErrorResponse> handleCodeRunInProgress(CodeRunInProgressException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "code-run-in-progress",
                 exception.getMessage()
         );
 

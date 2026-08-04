@@ -57,7 +57,19 @@ export const API_ERROR_CODES = {
   unauthenticated: 'unauthenticated',
 } as const;
 
-const API_BASE_PATH = import.meta.env.VITE_API_BASE_URL ?? '/api';
+/**
+ * API 경로. 기본값은 상대 경로 '/api'로, 페이지의 오리진과 스킴을 그대로 물려받는다.
+ *
+ * 절대 URL을 넣으면 세 가지가 함께 따라온다 — HTTPS 페이지에서 http를 부르면 브라우저가
+ * mixed content로 차단하고(Postman은 이 규칙이 없어 정상 응답이 온다), 오리진이 달라지면
+ * 백엔드 CORS 허용 목록이 필요하고, 세션 쿠키는 SameSite=None; Secure 없이는 전송되지 않는다.
+ * 프론트와 백엔드가 같은 호스트에 배포되는 한 상대 경로가 이 셋을 모두 없앤다.
+ *
+ * ?? 가 아니라 || 인 이유: Dockerfile의 ARG를 주지 않으면 ENV가 빈 문자열로 정의되어
+ * 이 값이 ''가 된다. ?? 는 ''를 통과시켜 '/api'가 빠진 요청(/problems 등)을 만들고,
+ * 그러면 nginx의 try_files가 SPA HTML을 200으로 돌려줘 원인을 찾기 어려워진다.
+ */
+const API_BASE_PATH = import.meta.env.VITE_API_BASE_URL?.trim() || '/api';
 
 export interface ApiRequestInit extends RequestInit {
   /**
