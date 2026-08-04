@@ -652,6 +652,33 @@ export default function ProblemDetailPage() {
             startCodeRunPolling(requestedAttemptId, queuedRun.runId);
             return;
           }
+
+          // 목록을 읽는 사이 실행이 끝났다면 409를 오류로 남기지 않고
+          // 최근 완료 실행의 상세 결과를 바로 복원한다.
+          const latestRun = response.runs[0];
+          if (latestRun) {
+            const restoredRun = await getCodeRun(
+              requestedAttemptId,
+              latestRun.runId,
+              controller.signal,
+            );
+            if (
+              controller.signal.aborted ||
+              routeAttemptIdRef.current !== requestedAttemptId
+            ) {
+              return;
+            }
+
+            setCodeRunTally(latestRun.tally);
+            applyCodeRun(restoredRun);
+            if (restoredRun.status === 'QUEUED') {
+              startCodeRunPolling(requestedAttemptId, restoredRun.runId);
+            } else {
+              setIsCodeRunLoading(false);
+              codeRunControllerRef.current = null;
+            }
+            return;
+          }
         } catch (restoreError: unknown) {
           if (isAbortError(restoreError) || controller.signal.aborted) return;
 
