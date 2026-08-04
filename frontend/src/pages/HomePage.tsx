@@ -3,19 +3,11 @@ import { Link } from 'react-router-dom';
 
 import { getProblems } from '../features/problem/api';
 import type { ProblemSummary } from '../features/problem/types';
+import { useTheme } from '../features/theme/ThemeContext';
 import { ApiError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
-
-type ColorMode = 'dark' | 'light';
-
-const COLOR_MODE_STORAGE_KEY = 'prompt-practice-color-mode';
-
-function getInitialColorMode(): ColorMode {
-  const savedMode = window.localStorage.getItem(COLOR_MODE_STORAGE_KEY);
-  return savedMode === 'light' ? 'light' : 'dark';
-}
 
 const steps = [
   {
@@ -59,18 +51,12 @@ function useRevealOnScroll() {
 }
 
 export default function HomePage() {
-  const [colorMode, setColorMode] = useState<ColorMode>(getInitialColorMode);
+  const { colorMode, setColorMode } = useTheme();
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useRevealOnScroll();
-
-  useEffect(() => {
-    document.documentElement.dataset.colorMode = colorMode;
-    document.documentElement.style.colorScheme = colorMode;
-    window.localStorage.setItem(COLOR_MODE_STORAGE_KEY, colorMode);
-  }, [colorMode]);
 
   useEffect(() => {
     let isMounted = true;
