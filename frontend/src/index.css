@@ -57,16 +57,39 @@ html { scroll-behavior: smooth; }
 .landing-page > header i { color: var(--acid); }
 .landing-display { text-wrap: balance; }
 .landing-hero { position: relative; }
+.landing-hero-actions a:first-child { border-color: var(--acid); background: var(--acid); color: #090909; }
+.landing-hero-actions a:first-child:hover,
+.landing-hero-actions a:first-child:focus-visible { background: transparent; color: var(--acid); }
+.landing-hero-actions a:last-child { border-color: var(--landing-border); color: var(--landing-text); }
+.landing-hero-actions a:last-child:hover,
+.landing-hero-actions a:last-child:focus-visible { border-color: var(--acid); background: var(--landing-bg); color: var(--acid); }
 .landing-scroll-cue { display: flex; flex-direction: column; align-items: center; gap: 24px; justify-self: center; color: var(--landing-text); font: 400 12px/1 Arial, 'Noto Sans KR', sans-serif; letter-spacing: .08em; white-space: nowrap; }
 .landing-scroll-arrows { display: flex; height: 31px; flex-direction: column; align-items: center; }
 .landing-scroll-arrows i { display: block; width: 22px; height: 22px; margin-bottom: -10px; transform: rotate(45deg); border-right: 3px solid #777; border-bottom: 3px solid #777; animation: landing-scroll-pulse 1.6s ease-in-out infinite; }
 .landing-scroll-arrows i:nth-child(2) { animation-delay: .22s; }
-.landing-pass { position: relative; display: flex; min-height: 0; aspect-ratio: 1.1 / 1; align-items: center; padding: clamp(22px, 3vw, 36px); overflow: hidden; border: 1px solid #090909; background: linear-gradient(145deg, #1d1d1d, #101010 60%); color: #f5f5ef; }
-.landing-pass::before { position: absolute; inset: 0; opacity: .12; background: repeating-linear-gradient(90deg, transparent 0 31px, #fff 31px 32px); content: ''; }
-.landing-pass-center { position: relative; z-index: 1; display: flex; width: 100%; min-height: 330px; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.landing-pass-center strong { margin: 18px 0 2px; font-size: clamp(42px, 6vw, 78px); line-height: .9; letter-spacing: -.075em; }
-.landing-pass-center > span:last-child { font: 700 13px/1 monospace; letter-spacing: .35em; color: #d6ff50; }
-.landing-pass-check { display: grid; width: 72px; height: 72px; place-items: center; border-radius: 50%; background: #d6ff50; color: #090909; font-size: 36px; font-weight: 900; }
+.landing-detail-preview-frame { min-width: 0; }
+.landing-detail-preview { min-height: 430px; overflow: hidden; border: 1px solid var(--landing-border); background: var(--landing-bg); color: var(--landing-text); }
+.landing-detail-preview-body { display: grid; min-height: 430px; grid-template-columns: .9fr 1.35fr .75fr; }
+.landing-detail-preview-body > div { min-width: 0; padding: 28px 20px; border-right: 1px solid var(--landing-border); }
+.landing-detail-preview-body > div:last-child { border-right: 0; }
+.landing-detail-preview-label { display: block; margin-bottom: 20px; color: var(--acid); font: 700 9px/1 monospace; letter-spacing: .15em; }
+.landing-detail-preview-problem strong,
+.landing-detail-preview-result strong { display: block; font-size: 18px; line-height: 1.25; letter-spacing: -.04em; }
+.landing-detail-preview-problem p,
+.landing-detail-preview-result p { margin: 18px 0 0; color: var(--landing-muted); font-size: 10px; line-height: 1.7; word-break: keep-all; }
+.landing-detail-preview-editor { display: flex; flex-direction: column; background: var(--landing-surface); }
+.landing-detail-preview-tab { padding-bottom: 16px; border-bottom: 2px solid var(--acid); color: var(--acid); font: 700 9px/1 monospace; letter-spacing: .12em; }
+.landing-detail-preview-code { display: flex; flex: 1; flex-direction: column; gap: 14px; padding-top: 25px; }
+.landing-detail-preview-code i { display: block; height: 7px; background: color-mix(in srgb, var(--landing-text) 17%, transparent); }
+.landing-detail-preview-code i:nth-child(1) { width: 86%; }
+.landing-detail-preview-code i:nth-child(2) { width: 68%; }
+.landing-detail-preview-code i:nth-child(3) { width: 78%; }
+.landing-detail-preview-code i:nth-child(4) { width: 52%; }
+.landing-detail-preview-run { align-self: flex-end; padding: 11px 13px; background: var(--acid); color: #090909; font: 800 9px/1 Arial, sans-serif; }
+.landing-detail-preview-output { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; padding: 16px 12px; border: 1px solid var(--landing-border); background: var(--landing-surface); }
+.landing-detail-preview-output i { display: block; width: 100%; height: 6px; background: color-mix(in srgb, var(--landing-text) 17%, transparent); }
+.landing-detail-preview-output i:nth-child(2) { width: 72%; }
+.landing-detail-preview-output i:nth-child(3) { width: 84%; }
 .landing-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--landing-border); border: 1px solid var(--landing-border); }
 .landing-step { min-height: 380px; padding: clamp(20px, 2.2vw, 30px); background: var(--landing-surface); }
 .landing-step-visual { display: flex; height: 150px; align-items: center; justify-content: center; margin: 18px 0 14px; border: 1px solid var(--landing-border); font: 900 clamp(25px, 2.6vw, 38px)/1 Arial, sans-serif; letter-spacing: -.06em; color: var(--acid); }
@@ -576,13 +599,18 @@ html { scroll-behavior: smooth; }
 }
 @media (max-width: 760px) {
   .landing-scroll-cue { margin-top: 12px; justify-self: center; }
-  .landing-pass-center { min-height: 280px; }
   .landing-steps { grid-template-columns: 1fr; }
   .landing-step { min-height: auto; }
   .landing-step-visual { height: 160px; }
 }
 @media (max-width: 900px) {
-  .landing-pass { min-height: 400px; aspect-ratio: auto; }
+  .landing-detail-preview { min-height: 380px; }
+  .landing-detail-preview-body { min-height: 380px; }
+}
+@media (max-width: 560px) {
+  .landing-detail-preview { min-height: 350px; }
+  .landing-detail-preview-body { min-height: 350px; grid-template-columns: .9fr 1.25fr; }
+  .landing-detail-preview-result { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

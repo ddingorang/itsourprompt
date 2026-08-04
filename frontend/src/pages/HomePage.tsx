@@ -26,7 +26,7 @@ const steps = [
     number: '03',
     title: '피드백을 확인하세요',
     description: '실행 결과와 항목별 피드백을 비교하며 더 좋은 프롬프트의 기준을 익힙니다.',
-    visual: 'TEST',
+    visual: 'FEEDBACK',
   },
 ];
 
@@ -116,12 +116,12 @@ export default function HomePage() {
       />
 
       <main className="flex-1 overflow-clip">
-        <section className="landing-hero mx-auto flex min-h-[calc(100svh-66px)] w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
+        <section className="landing-hero mx-auto flex h-[calc(100svh-66px)] min-h-0 w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-4 max-[1100px]:w-[90%] max-[760px]:h-[calc(100svh-81px)] max-[760px]:w-[calc(100%_-_32px)]">
           <div className="flex flex-1 flex-col justify-center">
             <div className="flex items-center gap-4 font-mono text-[19px] font-bold tracking-[0.14em] text-[var(--acid)]">
               <span>PROMPT ENGINEERING PRACTICE</span>
             </div>
-            <div className="pt-7 pb-14">
+            <div className="pt-7 pb-6">
               <h1 className="landing-display m-0 max-w-[1100px] text-[clamp(52px,9vw,110px)] leading-[1.0] font-black tracking-[-0.05em]">
                 더 명확한 요청
                 <br />
@@ -135,7 +135,32 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-8 border-t border-[var(--landing-border)] pt-7 max-[680px]:grid-cols-1">
+          <div className="landing-hero-actions mb-5 ml-auto flex flex-wrap justify-end gap-3 max-[680px]:ml-0 max-[680px]:grid max-[680px]:grid-cols-1">
+            <Button className="group min-h-14 px-7" to="/problems">
+              <span>혼자 시작하기</span>
+              <span
+                className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
+                aria-hidden="true"
+              >
+                ↗
+              </span>
+            </Button>
+            <Button
+              className="group min-h-14 px-7"
+              to="/problems?mode=together"
+              variant="secondary"
+            >
+              <span>친구와 함께 풀기</span>
+              <span
+                className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
+                aria-hidden="true"
+              >
+                ↗
+              </span>
+            </Button>
+          </div>
+
+          <div className="relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-8 border-t border-[var(--landing-border)] pt-6 max-[680px]:grid-cols-1">
             <span className="max-[680px]:hidden" aria-hidden="true" />
             <div className="landing-scroll-cue">
               <span className="landing-scroll-arrows" aria-hidden="true">
@@ -172,32 +197,55 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="landing-guest min-h-[calc(100svh-66px)] border-b border-[var(--landing-border)] bg-[var(--landing-guest-bg)] text-[var(--landing-guest-text)]">
-          <div className="mx-auto grid min-h-[calc(100svh-66px)] w-[80%] grid-cols-2 content-center items-stretch gap-[8vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[900px]:min-h-[90svh] max-[900px]:w-[calc(100%_-_32px)] max-[900px]:grid-cols-1">
-          <div className="order-2 flex min-h-0 min-w-0 flex-col max-[900px]:order-1" data-reveal>
-            <div className="mb-7 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--landing-guest-eyebrow)]">NO SIGN-IN NEEDED</div>
-            <h2 className="m-0 text-[clamp(42px,5.4vw,76px)] leading-[1.1] font-black tracking-[-0.04em] [word-break:keep-all]">
-              로그인은
-              <br />
-              나중이어도
-              <br />
-              괜찮아요.
-            </h2>
-            <p className="mt-auto max-w-[520px] pt-9 text-[clamp(17px,1.5vw,21px)] leading-[1.7] text-[var(--landing-guest-copy)] [word-break:keep-all]">
-              회원가입 없이 문제를 고르고, 프롬프트를 실행하고, 
-              <br />
-              피드백까지 확인할 수 있습니다. 
-              <br />
-              먼저 경험한 뒤 기록을 남기고 싶을 때 로그인하세요.
-            </p>
-          </div>
-          <div className="landing-pass order-1 min-w-0 max-w-full self-stretch max-[900px]:order-2" data-reveal style={{ '--reveal-delay': '140ms' } as CSSProperties}>
-            <div className="landing-pass-center">
-              <span className="landing-pass-check" aria-hidden="true">✓</span>
-              <strong>NO LOGIN</strong>
-              <span>REQUIRED</span>
+        <section className="landing-guest min-h-[calc(100svh-66px)] overflow-hidden border-b border-[var(--landing-border)] bg-[var(--landing-guest-bg)] text-[var(--landing-guest-text)]">
+          <div className="mx-auto grid min-h-[calc(100svh-66px)] w-[80%] grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-[6vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[900px]:w-[calc(100%_-_32px)] max-[900px]:grid-cols-1 max-[900px]:gap-12 max-[900px]:py-16">
+            <div className="max-w-[560px]" data-reveal>
+              <div className="mb-7 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--landing-guest-eyebrow)]">NO LOGIN NEEDED</div>
+              <h2 className="m-0 text-[clamp(42px,5.4vw,76px)] leading-[1.1] font-black tracking-[-0.04em] [word-break:keep-all]">
+                로그인은
+                <br />
+                나중이어도
+                <br />
+                괜찮아요.
+              </h2>
+              <p className="mt-10 mb-0 max-w-[650px] text-[clamp(17px,1.5vw,21px)] leading-[1.7] text-[var(--landing-guest-copy)] [word-break:keep-all]">
+                회원가입 없이 문제를 고르고, 프롬프트를 실행하고, 피드백까지 확인할 수 있습니다.
+                <br />
+                먼저 경험한 뒤 기록을 남기고 싶을 때 로그인하세요.
+              </p>
             </div>
-          </div>
+
+            <div className="landing-detail-preview-frame" data-reveal style={{ '--reveal-delay': '140ms' } as CSSProperties}>
+              <div className="landing-detail-preview" aria-hidden="true">
+                <div className="landing-detail-preview-body">
+                  <div className="landing-detail-preview-problem">
+                    <span className="landing-detail-preview-label">PROBLEM</span>
+                    <strong>API 응답에서 필요한 값 찾기</strong>
+                    <p>주어진 응답 구조를 분석하고 원하는 결과를 얻는 프롬프트를 작성하세요.</p>
+                  </div>
+                  <div className="landing-detail-preview-editor">
+                    <div className="landing-detail-preview-tab">PROMPT</div>
+                    <div className="landing-detail-preview-code">
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                    </div>
+                    <div className="landing-detail-preview-run">RUN PROMPT ↗</div>
+                  </div>
+                  <div className="landing-detail-preview-result">
+                    <span className="landing-detail-preview-label">FEEDBACK</span>
+                    <strong>실행 결과</strong>
+                    <div className="landing-detail-preview-output">
+                      <i />
+                      <i />
+                      <i />
+                    </div>
+                    <p>요청이 명확하고 출력 형식이 구체적입니다.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -247,8 +295,8 @@ export default function HomePage() {
                 프롬프트가 달라집니다.
               </h2>
               <Button className="min-h-14 gap-2.5 px-7" to="/problems">
-                <span className="text-[14px]">문제 풀어보기</span>
-                <span className="text-[14px]" aria-hidden="true">↗</span>
+                <span>문제 풀어보기</span>
+                <span aria-hidden="true">↗</span>
               </Button>
             </div>
           </section>
