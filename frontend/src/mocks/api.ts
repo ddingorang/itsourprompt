@@ -17,6 +17,11 @@ import type {
   ProblemDetail,
   ProblemListResponse,
 } from '../features/problem/types';
+import type {
+  ProblemRanking,
+  RankingEntry,
+  RankingOwnerType,
+} from '../features/ranking/types';
 import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
 
 export const useMocks = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -77,13 +82,127 @@ export async function getMockProblems(): Promise<ProblemListResponse> {
       { id: 2, title: 'Todo 입력 예외 처리' },
       { id: 3, title: '사용자 프로필 컴포넌트' },
       { id: 4, title: '상품 목록 필터링' },
+      { id: 5, title: '주문 상태 전이 검증' },
     ],
   };
 }
 
+/**
+ * 목 문제는 100번 미만만 있다. 그 위는 실서버와 같은 404 + problem-not-found로
+ * 실패시킨다 — 목만 성공하면 없는 문제를 가리키는 화면이 목에서만 다르게 보인다.
+ */
+function mockProblemNotFound(problemId: number): ApiError {
+  return new ApiError(404, {
+    code: API_ERROR_CODES.problemNotFound,
+    message: `목 문제 ${problemId}를 찾을 수 없습니다.`,
+  });
+}
+
 export async function getMockProblemDetail(problemId: number): Promise<ProblemDetail> {
   await delay(250);
+
+  if (problemId >= 100) throw mockProblemNotFound(problemId);
   return { ...problemDetail, id: problemId };
+}
+
+const mockRankingOwners: { ownerType: RankingOwnerType; ownerLabel: string }[] = [
+  { ownerType: 'USER', ownerLabel: '프롬프트왕' },
+  { ownerType: 'GUEST', ownerLabel: '8f2a' },
+  { ownerType: 'USER', ownerLabel: 'tokenshaver' },
+  { ownerType: 'USER', ownerLabel: '한줄이면충분' },
+  { ownerType: 'GUEST', ownerLabel: 'c41d' },
+  { ownerType: 'USER', ownerLabel: 'minimal_prompt' },
+  { ownerType: 'GUEST', ownerLabel: '0b73' },
+  { ownerType: 'USER', ownerLabel: '캐시장인' },
+];
+
+/**
+ * 랭킹 한 줄을 만든다. 비용·토큰은 등수로 계산해 동점 줄이 같은 값을 갖게 한다 —
+ * 등수와 비용이 어긋나면 표가 목에서만 이상해 보인다.
+ */
+function buildMockRankingEntry(
+  rank: number,
+  index: number,
+  mineIndex: number | null,
+): RankingEntry {
+  const owner = mockRankingOwners[index % mockRankingOwners.length];
+  const mine = index === mineIndex;
+
+  return {
+    rank,
+    // attemptId는 내 줄에만 온다 — 남의 줄에 링크가 생기면 목이 실서버와 어긋난다.
+    attemptId: mine ? 4200 + rank : null,
+    mine,
+    ownerType: mine ? 'USER' : owner.ownerType,
+    ownerLabel: mine ? '내닉네임' : owner.ownerLabel,
+    cost: 0.0012 + (rank - 1) * 0.00037,
+    uncachedInputTokens: 1500 + (rank - 1) * 220,
+    cachedInputTokens: 400 + (rank - 1) * 130,
+    outputTokens: 500 + (rank - 1) * 90,
+    turns: 1 + (rank % 4),
+    rounds: 2 + (rank % 5),
+    submittedAt: `2026-08-0${(rank % 3) + 1}T0${rank % 9}:1${rank % 9}:32Z`,
+  };
+}
+
+function buildMockRanking(
+  problemId: number,
+  ranks: number[],
+  mineIndex: number | null,
+  totalCount = ranks.length,
+): ProblemRanking {
+  const entries = ranks.map((rank, index) =>
+    buildMockRankingEntry(rank, index, mineIndex),
+  );
+
+  return {
+    problemId,
+    totalCount,
+    entries,
+    myBest: mineIndex === null ? null : (entries[mineIndex] ?? null),
+  };
+}
+
+function sequentialRanks(count: number): number[] {
+  return Array.from({ length: count }, (_, index) => index + 1);
+}
+
+/**
+ * 손으로는 재현할 수 없는 랭킹 상태를 문제 ID로 갈라 둔다 —
+ * FE에 테스트 프레임워크가 없어 목이 화면을 검증하는 유일한 수단이다.
+ */
+function buildMockRankingFor(problemId: number): ProblemRanking {
+  switch (problemId) {
+    // 정상 12줄, 내 줄이 상위 목록 안(3위)에 있다.
+    case 1:
+      return buildMockRanking(problemId, sequentialRanks(12), 2);
+    // 동점 — 같은 등수가 반복되고 다음 등수는 건너뛴다.
+    case 2:
+      return buildMockRanking(problemId, [1, 1, 3, 4, 5, 5, 5, 8, 9, 10], 5);
+    // limit(50)으로 잘린 상위 목록. 51위 이하는 볼 방법이 없다.
+    case 3:
+      return buildMockRanking(problemId, sequentialRanks(50), 46, 500);
+    // 자격을 갖춘 내 어템프트가 없어 myBest가 비어 있다.
+    case 4:
+      return buildMockRanking(problemId, sequentialRanks(8), null);
+    // 아직 아무도 통과하지 못한 문제.
+    case 5:
+      return buildMockRanking(problemId, [], null, 0);
+    default:
+      return buildMockRanking(problemId, sequentialRanks(6), null);
+  }
+}
+
+export async function getMockProblemRanking(
+  problemId: number,
+  limit: number,
+): Promise<ProblemRanking> {
+  await delay(250);
+
+  if (problemId >= 100) throw mockProblemNotFound(problemId);
+
+  const ranking = buildMockRankingFor(problemId);
+  return { ...ranking, entries: ranking.entries.slice(0, limit) };
 }
 
 export async function createMockAttempt(problemId: number): Promise<Attempt> {
