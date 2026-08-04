@@ -2,11 +2,19 @@ import {
   createMockAttempt,
   addMockTurn,
   getMockAttempt,
+  getMockCodeRun,
+  getMockCodeRuns,
+  requestMockCodeRun,
   submitMockAttempt,
   useMocks,
 } from '../../mocks/api';
 import { apiRequest } from '../../shared/api/apiClient';
-import type { Attempt, AttemptFeedback } from './types';
+import type {
+  Attempt,
+  AttemptFeedback,
+  CodeRun,
+  CodeRunListResponse,
+} from './types';
 
 /**
  * 어템프트 API 호출 모음.
@@ -81,4 +89,51 @@ export async function getAttemptFeedback(
   if (useMocks) return submitMockAttempt(attemptId);
 
   return apiRequest<AttemptFeedback>(`/attempts/${attemptId}/feedback`, { signal });
+}
+
+/** 현재 어템프트의 마지막 턴 코드 실행을 요청한다. */
+export async function requestCodeRun(attemptId: number): Promise<CodeRun> {
+  if (useMocks) return requestMockCodeRun(attemptId);
+
+  return apiRequest<CodeRun>(`/attempts/${attemptId}/runs`, {
+    method: 'POST',
+  });
+}
+
+/** 지정한 0-based 턴의 코드 실행을 요청한다. */
+export async function requestTurnCodeRun(
+  attemptId: number,
+  turnOrdinal: number,
+): Promise<CodeRun> {
+  if (useMocks) return requestMockCodeRun(attemptId, turnOrdinal);
+
+  return apiRequest<CodeRun>(
+    `/attempts/${attemptId}/turns/${turnOrdinal}/runs`,
+    { method: 'POST' },
+  );
+}
+
+/** 실행 이력을 최근순으로 조회한다. */
+export async function getCodeRuns(
+  attemptId: number,
+  signal?: AbortSignal,
+): Promise<CodeRunListResponse> {
+  if (useMocks) return getMockCodeRuns(attemptId);
+
+  return apiRequest<CodeRunListResponse>(`/attempts/${attemptId}/runs`, {
+    signal,
+  });
+}
+
+/** 실행 한 건의 상세 결과와 테스트 케이스를 조회한다. */
+export async function getCodeRun(
+  attemptId: number,
+  runId: string,
+  signal?: AbortSignal,
+): Promise<CodeRun> {
+  if (useMocks) return getMockCodeRun(attemptId, runId);
+
+  return apiRequest<CodeRun>(`/attempts/${attemptId}/runs/${runId}`, {
+    signal,
+  });
 }
