@@ -15,6 +15,12 @@ public interface ProblemRepository {
     Optional<Problem> findById(Long id);
 
     /**
+     * 여러 문제를 id로 한 번에 읽는다. 릴레이 로비가 방 목록에 문제 제목을 붙이는 데 쓴다 —
+     * EntityGraph 없는 기본 조회라 files는 딸려 오지 않는다.
+     */
+    List<Problem> findAllById(Iterable<Long> ids);
+
+    /**
      * 존재만 확인한다. 문제 명세(spec_md)는 수 KB라, 있는지만 알면 되는 곳에서 엔티티를 통째로 꺼내지 않는다.
      */
     boolean existsById(Long id);

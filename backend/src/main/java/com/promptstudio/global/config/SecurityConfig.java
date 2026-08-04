@@ -74,6 +74,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/me/**").authenticated()
+                        // 릴레이는 게스트를 받지 않는다. 여러 사람의 좌석을 몇 분에 걸쳐 지켜야 하는데
+                        // 게스트 세션은 만료·재발급으로 신원이 바뀌어 좌석의 주인을 보장할 수 없다.
+                        .requestMatchers("/api/relay/**").authenticated()
                         .requestMatchers("/api/attempts/**").permitAll()
                         .anyRequest().permitAll()
                 )

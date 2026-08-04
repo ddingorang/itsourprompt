@@ -31,6 +31,10 @@ public class JooqMyAttemptQueryRepository implements MyAttemptQueryRepository {
     private static final Field<Long> PROBLEM_ID = field(name("problem", "id"), SQLDataType.BIGINT);
     private static final Field<String> PROBLEM_TITLE = field(name("problem", "title"), SQLDataType.VARCHAR);
 
+    private static final Table<?> RELAY_ROOM = table(name("relay_room"));
+    private static final Field<Long> RELAY_ROOM_ATTEMPT_ID =
+            field(name("relay_room", "attempt_id"), SQLDataType.BIGINT);
+
     private final DSLContext dsl;
 
     public JooqMyAttemptQueryRepository(DSLContext dsl) {
@@ -45,6 +49,9 @@ public class JooqMyAttemptQueryRepository implements MyAttemptQueryRepository {
                 .join(PROBLEM).on(ATTEMPT_PROBLEM_ID.eq(PROBLEM_ID))
                 .where(ATTEMPT_USER_ID.eq(userId))
                 .and(ATTEMPT_STATUS.eq(AttemptStatus.SUBMITTED.name()))
+                // 릴레이 게임의 어템프트는 방장 소유로 만들어질 뿐 방장의 개인 풀이가 아니다.
+                // 제외하지 않으면 게임이 끝날 때마다 방장 마이페이지에 섞여 나온다.
+                .andNotExists(dsl.selectOne().from(RELAY_ROOM).where(RELAY_ROOM_ATTEMPT_ID.eq(ATTEMPT_ID)))
                 .orderBy(ATTEMPT_SUBMITTED_AT.desc().nullsLast(), ATTEMPT_ID.desc())
                 .fetch(record -> new SubmittedAttempt(
                         record.value1(), record.value2(), record.value3(), record.value4()));
