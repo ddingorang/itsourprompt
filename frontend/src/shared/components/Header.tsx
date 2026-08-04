@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../features/auth/AuthContext';
+import { useTheme } from '../../features/theme/ThemeContext';
 
 /**
  * 공통 헤더. 로그인 상태(useAuth)를 스스로 읽어 메뉴를 전환한다.
@@ -16,6 +17,7 @@ import { useAuth } from '../../features/auth/AuthContext';
 type HeaderProps = {
   variant?: 'default' | 'workspace';
   mobileBreakpoint?: '640' | '760';
+  onLogoClick?: () => void;
 };
 
 const defaultHeaderBaseClasses =
@@ -38,8 +40,10 @@ const getMenuLinkClasses = ({ isActive }: { isActive: boolean }) =>
 export default function Header({
   variant = 'default',
   mobileBreakpoint = '640',
+  onLogoClick,
 }: HeaderProps) {
   const { loading, logout, user } = useAuth();
+  const { colorMode, setColorMode } = useTheme();
   const navigate = useNavigate();
 
   const headerClasses =
@@ -60,6 +64,7 @@ export default function Header({
         className="text-xl leading-none font-black tracking-[-1.6px] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
         to="/"
         aria-label="홈으로 이동"
+        onClick={onLogoClick}
       >
         prompt<i className="not-italic text-[#d6ff50]">.</i>practice
       </Link>
@@ -107,6 +112,54 @@ export default function Header({
             )}
           </>
         )}
+        <span className="text-[#555]" aria-hidden="true">
+          |
+        </span>
+        <button
+          aria-label={`헤더에서 ${colorMode === 'dark' ? '라이트' : '다크'} 모드로 전환`}
+          aria-pressed={colorMode === 'light'}
+          className={`${menuItemClasses} header-theme-toggle inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] text-[#a3a3a3]`}
+          onClick={() =>
+            setColorMode((currentMode) =>
+              currentMode === 'dark' ? 'light' : 'dark',
+            )
+          }
+          type="button"
+        >
+          {colorMode === 'dark' ? (
+            <svg
+              aria-hidden="true"
+              className="size-3.5 shrink-0"
+              fill="none"
+              viewBox="0 0 18 18"
+            >
+              <circle cx="9" cy="9" r="3.2" stroke="currentColor" strokeWidth="1.8" />
+              <path
+                d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M14.3 3.7l-1.4 1.4M5.1 12.9l-1.4 1.4"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="1.6"
+              />
+            </svg>
+          ) : (
+            <svg
+              aria-hidden="true"
+              className="size-3.5 shrink-0"
+              fill="none"
+              viewBox="0 0 18 18"
+            >
+              <path
+                d="M14.8 11.2A6.2 6.2 0 0 1 6.8 3.2a6.2 6.2 0 1 0 8 8Z"
+                stroke="currentColor"
+                strokeLinejoin="round"
+                strokeWidth="1.8"
+              />
+            </svg>
+          )}
+          <b className="max-[480px]:hidden">
+            {colorMode === 'dark' ? 'LIGHT' : 'DARK'}
+          </b>
+        </button>
       </nav>
     </header>
   );
