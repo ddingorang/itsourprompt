@@ -18,7 +18,12 @@ export interface RankingEntry {
   cachedInputTokens: number;
   outputTokens: number;
   turns: number;
-  /** LLM 호출 수. 턴 하나가 여러 라운드를 쓸 수 있다. */
+  /**
+   * LLM 호출 수. 턴 하나가 여러 라운드를 쓸 수 있다.
+   *
+   * 화면에는 그리지 않는다 — 사용자가 조절하는 것은 턴이고 라운드는 AI가 정하므로,
+   * 나란히 놓으면 자기가 못 바꾸는 숫자로 등수를 읽게 된다. 응답에는 오므로 남겨 둔다.
+   */
   rounds: number;
   submittedAt: string | null;
 }

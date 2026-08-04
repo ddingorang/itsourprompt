@@ -128,6 +128,96 @@ html { scroll-behavior: smooth; }
   border-color: var(--problem-list-border);
   color: var(--problem-list-muted);
 }
+/*
+ * 랭킹 화면. 표가 중심이라 흐린 단계를 셋으로 나눈다 — muted(본문 보조),
+ * subtle(머리글·단위), faint(비용의 뒤쪽 0과 구분자). faint는 "읽히되 눈이
+ * 먼저 가지 않는" 자리라 라이트 모드에서도 선(border)보다 살짝 진해야 한다.
+ */
+.ranking-page {
+  --ranking-bg: #090909;
+  --ranking-text: #f5f5ef;
+  --ranking-muted: #a3a3a3;
+  --ranking-subtle: #777;
+  --ranking-faint: #555;
+  --ranking-border: #343434;
+  --ranking-surface: #121212;
+  --ranking-surface-border: #393939;
+  --ranking-surface-hover: #202020;
+  --ranking-tab-idle: #8f8f8f;
+  --ranking-acid: #d6ff50;
+  transition: background-color 240ms ease, color 240ms ease;
+}
+.ranking-page[data-color-mode='light'] {
+  --ranking-bg: #fff;
+  --ranking-text: #090909;
+  --ranking-muted: #585858;
+  --ranking-subtle: #70706a;
+  --ranking-faint: #a8a8a2;
+  --ranking-border: #c7c7c1;
+  --ranking-surface: #f7f7f2;
+  --ranking-surface-border: #c7c7c1;
+  --ranking-surface-hover: #e9efd7;
+  --ranking-tab-idle: #70706a;
+  --ranking-acid: #bee034;
+}
+.ranking-page > header {
+  border-color: var(--ranking-border);
+  background: color-mix(in srgb, var(--ranking-bg) 94%, transparent);
+  color: var(--ranking-text);
+}
+.ranking-page > header nav a,
+.ranking-page > header nav button { color: var(--ranking-muted); }
+.ranking-page > header nav a[aria-current='page'],
+.ranking-page > header nav a:hover,
+.ranking-page > header nav button:hover,
+.ranking-page > header nav a:focus-visible,
+.ranking-page > header nav button:focus-visible { color: var(--ranking-acid); }
+.ranking-page > header nav span { color: var(--ranking-border); }
+.ranking-page > header i { color: var(--ranking-acid); }
+.ranking-page .ranking-primary-action {
+  border-color: var(--ranking-acid);
+  background: var(--ranking-acid);
+  color: #090909;
+}
+.ranking-page .ranking-primary-action:hover,
+.ranking-page .ranking-primary-action:focus-visible {
+  background: transparent;
+  color: var(--ranking-acid);
+}
+.ranking-page .ranking-secondary-action {
+  border-color: var(--ranking-border);
+  background: transparent;
+  color: var(--ranking-text);
+}
+.ranking-page .ranking-secondary-action:hover,
+.ranking-page .ranking-secondary-action:focus-visible {
+  border-color: var(--ranking-acid);
+  background: var(--ranking-acid);
+  color: #090909;
+}
+.ranking-page nav[aria-label='페이지 이동'] button {
+  border-color: var(--ranking-border);
+  background: transparent;
+  color: var(--ranking-muted);
+}
+.ranking-page nav[aria-label='페이지 이동'] button[aria-current='page'] {
+  border-color: var(--ranking-acid);
+  background: var(--ranking-acid);
+  color: #090909;
+}
+.ranking-page nav[aria-label='페이지 이동'] button:not(:disabled):not([aria-current='page']):hover,
+.ranking-page nav[aria-label='페이지 이동'] button:not(:disabled):not([aria-current='page']):focus-visible {
+  border-color: var(--ranking-acid);
+  color: var(--ranking-acid);
+}
+.ranking-page footer {
+  border-color: var(--ranking-border);
+  color: var(--ranking-muted);
+}
+.ranking-page ::selection {
+  background: var(--ranking-acid);
+  color: #090909;
+}
 .problem-detail-page {
   --problem-detail-bg: #090909;
   --problem-detail-text: #f5f5ef;
