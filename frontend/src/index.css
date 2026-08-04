@@ -55,13 +55,6 @@ html { scroll-behavior: smooth; }
 .landing-page > header nav button:focus-visible { color: var(--acid); }
 .landing-page > header nav span { color: var(--landing-border); }
 .landing-page > header i { color: var(--acid); }
-.landing-theme-toggle { display: inline-flex; width: 94px; align-items: center; gap: 10px; border: 0; background: transparent; color: var(--landing-text); font: 800 11px/1 monospace; letter-spacing: .12em; cursor: pointer; }
-.landing-theme-toggle-track { position: relative; width: 46px; height: 24px; border: 1px solid var(--landing-border); border-radius: 999px; background: var(--landing-surface); transition: background-color 220ms ease, border-color 220ms ease; }
-.landing-theme-toggle-thumb { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--acid); transition: transform 220ms ease; }
-.landing-page[data-color-mode='light'] .landing-theme-toggle-thumb { transform: translateX(22px); background: #090909; }
-.landing-theme-toggle:hover .landing-theme-toggle-track,
-.landing-theme-toggle:focus-visible .landing-theme-toggle-track { border-color: var(--acid); }
-.landing-theme-toggle:focus-visible { outline: 2px solid var(--acid); outline-offset: 5px; }
 .landing-display { text-wrap: balance; }
 .landing-hero { position: relative; }
 .landing-scroll-cue { display: flex; flex-direction: column; align-items: center; gap: 24px; justify-self: center; color: var(--landing-text); font: 400 12px/1 Arial, 'Noto Sans KR', sans-serif; letter-spacing: .08em; white-space: nowrap; }
