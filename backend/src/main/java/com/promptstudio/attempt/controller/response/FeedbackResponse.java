@@ -10,7 +10,11 @@ public record FeedbackResponse(
         List<TurnFeedback> turns,
 
         @Schema(description = "세션 전체에 대한 피드백 (Markdown)")
-        String overallMd
+        String overallMd,
+
+        @Schema(description = "세션 전체의 작업 방식에 이름을 붙인 피드백 (Markdown). "
+                + "pattern 피드백 이전에 제출된 어템프트는 null이다.")
+        String patternOverallMd
 ) {
 
     @Schema(description = "한 턴의 프롬프트 피드백")
@@ -19,7 +23,11 @@ public record FeedbackResponse(
             int turn,
 
             @Schema(description = "해당 턴 프롬프트에 대한 피드백 (Markdown)")
-            String feedbackMd
+            String feedbackMd,
+
+            @Schema(description = "해당 턴의 작업 방식에 이름을 붙인 피드백 (Markdown). "
+                    + "pattern 피드백 이전에 제출된 어템프트는 null이다.")
+            String patternMd
     ) {
     }
 }

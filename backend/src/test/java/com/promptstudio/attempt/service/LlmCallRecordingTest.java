@@ -139,6 +139,29 @@ class LlmCallRecordingTest extends DatabaseTest {
         assertThat(call.cost()).isEqualByComparingTo("0.00280000");
     }
 
+    /**
+     * 제출 한 번이 두 호출을 낸다. purpose가 갈리므로 두 행이 같은 seq 1을 가져도 충돌하지 않는다.
+     */
+    @Test
+    void 제출_시_패턴_피드백_호출_행이_함께_저장된다() {
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
+
+        attemptService.submit(started.id(), ownerId);
+
+        List<AttemptLlmCall> patternCalls = purpose(started.id(), LlmCallPurpose.PATTERN_FEEDBACK);
+        assertThat(patternCalls).hasSize(1);
+
+        AttemptLlmCall call = patternCalls.getFirst();
+        assertThat(call.turnOrdinal()).isNull();
+        assertThat(call.seq()).isEqualTo(1);
+        assertThat(call.status()).isEqualTo(LlmCallStatus.SUCCESS);
+        assertThat(call.inputTokens()).isEqualTo(1_000L);
+        assertThat(call.outputTokens()).isEqualTo(200L);
+        // 1000 * 1.0 + 200 * 2.0 = 1400 / 1_000_000
+        assertThat(call.cost()).isEqualByComparingTo("0.00140000");
+    }
+
     @Test
     void 피드백_실패_시_누적분을_flush하고_FAILED_행을_남긴다() {
         AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);

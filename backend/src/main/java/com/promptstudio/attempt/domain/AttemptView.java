@@ -6,9 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @param baseFiles 시작 스켈레톤
- * @param files     턴을 재생한 현재 상태
- * @param usage     어템프트의 턴 합계. 턴 기록이 없으면 null
+ * @param baseFiles       시작 스켈레톤
+ * @param files           턴을 재생한 현재 상태
+ * @param patternFeedback 세션 전체 pattern 피드백. pattern 피드백 이전에 제출된 어템프트면 null
+ * @param usage           어템프트의 턴 합계. 턴 기록이 없으면 null
  */
 public record AttemptView(
         Long id,
@@ -18,6 +19,7 @@ public record AttemptView(
         List<TurnView> turns,
         AttemptStatus status,
         String feedback,
+        String patternFeedback,
         LlmUsageTotals usage
 ) {
 
@@ -30,7 +32,14 @@ public record AttemptView(
 
         for (Turn turn : attempt.turns()) {
             turns.add(new TurnView(
-                    turn.userPrompt(), turn.aiSummary(), turn.changes(), turn.toolCalls(), turn.feedback(), null));
+                    turn.userPrompt(),
+                    turn.aiSummary(),
+                    turn.changes(),
+                    turn.toolCalls(),
+                    turn.feedback(),
+                    turn.patternFeedback(),
+                    null
+            ));
         }
 
         return reconstruct(
@@ -40,6 +49,7 @@ public record AttemptView(
                 turns,
                 attempt.status(),
                 attempt.feedback(),
+                attempt.patternFeedback(),
                 null
         );
     }
@@ -54,6 +64,7 @@ public record AttemptView(
             List<TurnView> turns,
             AttemptStatus status,
             String feedback,
+            String patternFeedback,
             LlmUsageTotals usage
     ) {
         return new AttemptView(
@@ -64,6 +75,7 @@ public record AttemptView(
                 List.copyOf(turns),
                 status,
                 feedback,
+                patternFeedback,
                 usage
         );
     }
@@ -90,8 +102,9 @@ public record AttemptView(
     }
 
     /**
-     * @param feedback 제출 전이거나 턴별 피드백 이전에 제출된 어템프트면 null
-     * @param usage    이 턴의 LLM 사용량 합계. 사용량 기록 도입 전 턴이면 null
+     * @param feedback        제출 전이거나 턴별 피드백 이전에 제출된 어템프트면 null
+     * @param patternFeedback 제출 전이거나 pattern 피드백 이전에 제출된 어템프트면 null
+     * @param usage           이 턴의 LLM 사용량 합계. 사용량 기록 도입 전 턴이면 null
      */
     public record TurnView(
             String userPrompt,
@@ -99,6 +112,7 @@ public record AttemptView(
             List<FileChange> changes,
             List<ToolCallEntry> toolCalls,
             String feedback,
+            String patternFeedback,
             LlmUsageSummary usage
     ) {
     }

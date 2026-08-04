@@ -159,6 +159,20 @@ class AttemptServiceTest extends DatabaseTest {
     }
 
     @Test
+    void 제출된_어템프트의_피드백을_조회하면_패턴_피드백도_함께_반환한다() {
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
+        attemptService.submit(started.id(), ownerId);
+
+        AttemptView feedback = attemptService.getFeedback(started.id(), ownerId);
+
+        assertThat(feedback.patternFeedback()).isEqualTo("생성된 패턴 피드백");
+        assertThat(feedback.turns())
+                .extracting(AttemptView.TurnView::patternFeedback)
+                .containsExactly("턴 1 패턴");
+    }
+
+    @Test
     void 제출_전에_피드백을_조회하면_예외를_던진다() {
         AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
         attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");

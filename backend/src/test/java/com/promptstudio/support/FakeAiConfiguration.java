@@ -39,6 +39,13 @@ public class FakeAiConfiguration {
             new LlmCallUsage(1, "test-model", 2_000L, 400L, 0L, 100L, 200L)
     );
 
+    /**
+     * 비용 0.00140000. purpose가 갈리므로 seq는 프롬프트 피드백과 마찬가지로 1부터 매긴다.
+     */
+    public static final List<LlmCallUsage> PATTERN_FEEDBACK_USAGE = List.of(
+            new LlmCallUsage(1, "test-model", 1_000L, 200L, 0L, 50L, 150L)
+    );
+
     @Bean
     @Primary
     public FakeCodeGenerator fakeCodeGenerator() {
@@ -203,12 +210,21 @@ public class FakeAiConfiguration {
             }
 
             List<String> turnFeedbacks = new ArrayList<>();
+            List<String> patternTurnFeedbacks = new ArrayList<>();
 
             for (int index = 0; index < attempt.turns().size(); index++) {
                 turnFeedbacks.add("턴 " + (index + 1) + " 피드백");
+                patternTurnFeedbacks.add("턴 " + (index + 1) + " 패턴");
             }
 
-            return new AttemptFeedback(turnFeedbacks, "생성된 피드백", FEEDBACK_USAGE);
+            return new AttemptFeedback(
+                    turnFeedbacks,
+                    "생성된 피드백",
+                    patternTurnFeedbacks,
+                    "생성된 패턴 피드백",
+                    FEEDBACK_USAGE,
+                    PATTERN_FEEDBACK_USAGE
+            );
         }
 
         /**

@@ -2,10 +2,8 @@ package com.promptstudio.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.LlmCallUsage;
-import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.problem.domain.ProblemView;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.attempt.port.FeedbackTimeoutException;
@@ -17,16 +15,24 @@ import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiFunction;
+import java.util.function.IntFunction;
 
-@Component
-public class OpenAiFeedbackGenerator implements FeedbackGenerator {
+/**
+ * 피드백 렌즈 하나를 굽는 어댑터. 렌즈마다 다른 것은 시스템 프롬프트·유저 프롬프트 조립·호출 옵션·로그
+ * 태그 넷뿐이라, 클래스를 복제하지 않고 그 넷만 생성자로 받는다 — 복제하면 응답 계약을 고칠 때마다
+ * 두 곳을 고쳐야 한다.
+ *
+ * <p>포트({@link com.promptstudio.attempt.port.FeedbackGenerator})를 구현하지 않는다. 구현이 둘이 되면
+ * 운영 컨텍스트가 부팅에 실패하므로 포트는 {@link FeedbackGenerators} 하나만 구현한다.
+ */
+class OpenAiFeedbackGenerator {
 
     private static final long FEEDBACK_TIMEOUT_MINUTES = 5;
     private static final String TRUNCATED_FINISH_REASON = "length";
@@ -49,16 +55,25 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
 
     private final ChatClient chatClient;
     private final AiCallExecutor aiCallExecutor;
-    private final OpenAiChatOptionsFactory chatOptionsFactory;
+    private final String logTag;
+    private final String systemPrompt;
+    private final BiFunction<ProblemView, AttemptView, String> userPrompt;
+    private final IntFunction<OpenAiChatOptions> chatOptions;
 
-    public OpenAiFeedbackGenerator(
+    OpenAiFeedbackGenerator(
             ChatClient.Builder chatClientBuilder,
             AiCallExecutor aiCallExecutor,
-            OpenAiChatOptionsFactory chatOptionsFactory
+            String logTag,
+            String systemPrompt,
+            BiFunction<ProblemView, AttemptView, String> userPrompt,
+            IntFunction<OpenAiChatOptions> chatOptions
     ) {
         this.chatClient = chatClientBuilder.build();
         this.aiCallExecutor = aiCallExecutor;
-        this.chatOptionsFactory = chatOptionsFactory;
+        this.logTag = logTag;
+        this.systemPrompt = systemPrompt;
+        this.userPrompt = userPrompt;
+        this.chatOptions = chatOptions;
     }
 
     private record FeedbackPayload(List<String> turnFeedbacks, String overall) {
@@ -80,35 +95,35 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
         }
     }
 
-    @Override
-    public AttemptFeedback generate(ProblemView problem, AttemptView attempt) {
-        String systemPrompt = FeedbackPrompts.systemPrompt();
-        String userPrompt = FeedbackPrompts.userPrompt(problem, attempt);
+    FeedbackDraft generate(ProblemView problem, AttemptView attempt) {
+        String userMessage = userPrompt.apply(problem, attempt);
         int turnCount = attempt.turns().size();
-        OpenAiChatOptions chatOptions = chatOptionsFactory.forFeedback(turnCount);
+        OpenAiChatOptions options = chatOptions.apply(turnCount);
 
         log.info(
-                "[OPENAI FEEDBACK] request started | model={} | problemId={} | attemptId={} | inputChars={} | turns={}",
-                chatOptions.getModel(),
+                "[{}] request started | model={} | problemId={} | attemptId={} | inputChars={} | turns={}",
+                logTag,
+                options.getModel(),
                 problem.id(),
                 attempt.id(),
-                systemPrompt.length() + userPrompt.length(),
+                systemPrompt.length() + userMessage.length(),
                 turnCount
         );
 
         LlmUsageTracker tracker = new LlmUsageTracker();
 
         try {
-            return callAndParse(systemPrompt, userPrompt, chatOptions, attempt.id(), turnCount, tracker);
+            return callAndParse(userMessage, options, attempt.id(), turnCount, tracker);
         } catch (FeedbackResponseException exception) {
             log.warn(
-                    "[OPENAI FEEDBACK] response contract broken, retrying once | attemptId={} | turns={} | reason={}",
+                    "[{}] response contract broken, retrying once | attemptId={} | turns={} | reason={}",
+                    logTag,
                     attempt.id(),
                     turnCount,
                     exception.reason()
             );
 
-            return callAndParse(systemPrompt, userPrompt, chatOptions, attempt.id(), turnCount, tracker);
+            return callAndParse(userMessage, options, attempt.id(), turnCount, tracker);
         }
     }
 
@@ -118,10 +133,9 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
      *
      * <p>사용량 tracker는 호출 사이에 이어져야 한다 — 재시도로 끝난 제출도 두 호출이 쓴 토큰을 모두 싣는다.
      */
-    private AttemptFeedback callAndParse(
-            String systemPrompt,
-            String userPrompt,
-            OpenAiChatOptions chatOptions,
+    private FeedbackDraft callAndParse(
+            String userMessage,
+            OpenAiChatOptions options,
             Long attemptId,
             int turnCount,
             LlmUsageTracker tracker
@@ -131,29 +145,31 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
         try {
             ChatResponse response = aiCallExecutor.call(() -> chatClient.prompt()
                     .system(systemPrompt)
-                    .user(userPrompt)
-                    .options(chatOptions.mutate())
+                    .user(userMessage)
+                    .options(options.mutate())
                     .call()
                     .chatResponse(), FEEDBACK_TIMEOUT_MINUTES);
 
-            tracker.record(chatOptions.getModel(), response, elapsedMillis(startedAt));
+            tracker.record(options.getModel(), response, elapsedMillis(startedAt));
 
-            CallTrace trace = traceOf(attemptId, turnCount, chatOptions, response);
+            CallTrace trace = traceOf(attemptId, turnCount, options, response);
             String content = contentOf(response);
-            AttemptFeedback feedback = parse(content, trace, tracker.snapshot());
+            FeedbackDraft draft = parse(content, trace, tracker.snapshot());
 
             log.info(
-                    "[OPENAI FEEDBACK] response received | duration={} ms | finishReason={} | completionTokens={}"
+                    "[{}] response received | duration={} ms | finishReason={} | completionTokens={}"
                             + " | feedbackChars={}",
+                    logTag,
                     elapsedMillis(startedAt),
                     trace.finishReason(),
                     trace.completionTokens(),
                     content.length()
             );
-            return feedback;
+            return draft;
         } catch (TimeoutException exception) {
             log.error(
-                    "[OPENAI FEEDBACK] timed out | duration={} ms | timeout={} min",
+                    "[{}] timed out | duration={} ms | timeout={} min",
+                    logTag,
                     elapsedMillis(startedAt),
                     FEEDBACK_TIMEOUT_MINUTES
             );
@@ -168,7 +184,8 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
             );
         } catch (ExecutionException exception) {
             log.error(
-                    "[OPENAI FEEDBACK] generation failed | reason={} | attemptId={} | turns={} | duration={} ms",
+                    "[{}] generation failed | reason={} | attemptId={} | turns={} | duration={} ms",
+                    logTag,
                     FeedbackGenerationException.PROVIDER_ERROR,
                     attemptId,
                     turnCount,
@@ -191,7 +208,7 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
      *
      * <p>여기까지 왔다면 호출은 이미 성공해 토큰을 썼다 — 실패로 끝나도 그 사용량을 예외에 실어 보낸다.
      */
-    private AttemptFeedback parse(String content, CallTrace trace, List<LlmCallUsage> llmCalls) {
+    private FeedbackDraft parse(String content, CallTrace trace, List<LlmCallUsage> llmCalls) {
         if (trace.truncated()) {
             throw failure(
                     FeedbackGenerationException.TRUNCATED,
@@ -250,17 +267,17 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
             );
         }
 
-        return new AttemptFeedback(turnFeedbacks, payload.overall().trim(), llmCalls);
+        return new FeedbackDraft(turnFeedbacks, payload.overall().trim(), llmCalls);
     }
 
-    private CallTrace traceOf(Long attemptId, int turnCount, OpenAiChatOptions chatOptions, ChatResponse response) {
+    private CallTrace traceOf(Long attemptId, int turnCount, OpenAiChatOptions options, ChatResponse response) {
         Generation result = response == null ? null : response.getResult();
         ChatGenerationMetadata metadata = result == null ? null : result.getMetadata();
 
         return new CallTrace(
                 attemptId,
                 turnCount,
-                chatOptions.getMaxCompletionTokens(),
+                options.getMaxCompletionTokens(),
                 metadata == null ? null : metadata.getFinishReason(),
                 completionTokensOf(response)
         );
@@ -314,8 +331,9 @@ public class OpenAiFeedbackGenerator implements FeedbackGenerator {
                 : new FeedbackGenerationException(reason, message, cause, llmCalls);
 
         log.error(
-                "[OPENAI FEEDBACK] generation failed | reason={} | attemptId={} | turns={} | finishReason={}"
+                "[{}] generation failed | reason={} | attemptId={} | turns={} | finishReason={}"
                         + " | completionTokens={} | maxCompletionTokens={} | responseBody={}",
+                logTag,
                 reason,
                 trace.attemptId(),
                 trace.turnCount(),

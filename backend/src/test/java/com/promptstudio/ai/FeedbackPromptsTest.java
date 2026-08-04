@@ -20,8 +20,8 @@ class FeedbackPromptsTest {
         AttemptView attempt = new AttemptView(1L, 1L, List.of(
                 new ProblemFile("src/Main.java", "class Main {}")
         ), List.of(), List.of(
-                new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of(), null, null)
-        ), AttemptStatus.IN_PROGRESS, null, null);
+                new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of(), null, null, null)
+        ), AttemptStatus.IN_PROGRESS, null, null, null);
 
         String prompt = FeedbackPrompts.userPrompt(problem, attempt);
 
@@ -32,7 +32,7 @@ class FeedbackPromptsTest {
     @Test
     void 문제_제목과_명세를_태그로_감싼다() {
         String prompt = FeedbackPrompts.userPrompt(problem, attemptWith(
-                new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of(), null, null)));
+                new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of(), null, null, null)));
 
         assertThat(prompt)
                 .contains("<problem_title>\n제목\n</problem_title>")
@@ -44,10 +44,10 @@ class FeedbackPromptsTest {
         String prompt = FeedbackPrompts.userPrompt(problem, attemptWith(
                 new AttemptView.TurnView("첫 프롬프트", "첫 요약", List.of(
                         new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "class Main {}")
-                ), List.of(), null, null),
+                ), List.of(), null, null, null),
                 new AttemptView.TurnView("두 번째 프롬프트", "두 번째 요약", List.of(
                         new FileChange("src/Util.java", FileChange.ChangeType.ADDED, "class Util {}")
-                ), List.of(), null, null)
+                ), List.of(), null, null, null)
         ));
 
         assertThat(prompt)
@@ -63,7 +63,7 @@ class FeedbackPromptsTest {
                 new AttemptView.TurnView("프롬프트", "요약", List.of(
                         new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "class Main { void run() {} }"),
                         new FileChange("src/Old.java", FileChange.ChangeType.DELETED, null)
-                ), List.of(), null, null)));
+                ), List.of(), null, null, null)));
 
         assertThat(prompt)
                 .contains("<changed_file turn=\"1\" path=\"src/Main.java\" type=\"MODIFIED\">\n"
@@ -75,7 +75,7 @@ class FeedbackPromptsTest {
     @Test
     void 턴에_변경_파일이_없으면_표시_문구를_넣는다() {
         String prompt = FeedbackPrompts.userPrompt(problem, attemptWith(
-                new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of(), null, null)));
+                new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of(), null, null, null)));
 
         assertThat(prompt).contains("(no changed files)");
     }
@@ -83,7 +83,7 @@ class FeedbackPromptsTest {
     @Test
     void 이미_생성된_피드백은_프롬프트에_싣지_않는다() {
         String prompt = FeedbackPrompts.userPrompt(problem, attemptWith(
-                new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of(), "앞선 피드백", null)));
+                new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of(), "앞선 피드백", null, null)));
 
         assertThat(prompt).doesNotContain("앞선 피드백");
     }
@@ -154,6 +154,6 @@ class FeedbackPromptsTest {
 
     private AttemptView attemptWith(AttemptView.TurnView... turns) {
         return new AttemptView(
-                1L, 1L, List.of(), List.of(), List.of(turns), AttemptStatus.IN_PROGRESS, null, null);
+                1L, 1L, List.of(), List.of(), List.of(turns), AttemptStatus.IN_PROGRESS, null, null, null);
     }
 }

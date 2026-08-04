@@ -144,14 +144,17 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
 
         assertThat(started.status()).isEqualTo(AttemptStatus.IN_PROGRESS);
         assertThat(started.feedback()).isNull();
+        assertThat(started.patternFeedback()).isNull();
 
-        attempt.submit(new AttemptFeedback(List.of(), "저장된 피드백", List.of()));
+        attempt.submit(
+                new AttemptFeedback(List.of(), "저장된 피드백", List.of(), "저장된 패턴 피드백", List.of(), List.of()));
         attemptRepository.save(attempt);
 
         AttemptView submitted = attemptQueryRepository.findById(attempt.id()).orElseThrow();
 
         assertThat(submitted.status()).isEqualTo(AttemptStatus.SUBMITTED);
         assertThat(submitted.feedback()).isEqualTo("저장된 피드백");
+        assertThat(submitted.patternFeedback()).isEqualTo("저장된 패턴 피드백");
     }
 
     @Test

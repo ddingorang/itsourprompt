@@ -44,6 +44,9 @@ public class AttemptWebMapper {
      * 턴별 피드백 이전에 제출된 어템프트는 턴 피드백이 없으므로 turns를 비우고 전체 피드백만 내보낸다.
      *
      * <p>제출은 모든 턴에 피드백을 배정하거나 하나도 배정하지 않으므로 첫 턴만 보면 어느 쪽인지 알 수 있다.
+     *
+     * <p>가드는 프롬프트 피드백만 본다. 두 스타일 모두 필수라 pattern만 있는 상태는 생기지 않고,
+     * pattern 도입 이전에 제출된 어템프트는 pattern 자리가 null로 나간다.
      */
     public FeedbackResponse toFeedbackResponse(AttemptView attempt) {
         List<AttemptView.TurnView> turnViews = attempt.turns();
@@ -51,11 +54,13 @@ public class AttemptWebMapper {
 
         if (!turnViews.isEmpty() && turnViews.getFirst().feedback() != null) {
             for (int index = 0; index < turnViews.size(); index++) {
-                turns.add(new FeedbackResponse.TurnFeedback(index + 1, turnViews.get(index).feedback()));
+                AttemptView.TurnView turn = turnViews.get(index);
+
+                turns.add(new FeedbackResponse.TurnFeedback(index + 1, turn.feedback(), turn.patternFeedback()));
             }
         }
 
-        return new FeedbackResponse(turns, attempt.feedback());
+        return new FeedbackResponse(turns, attempt.feedback(), attempt.patternFeedback());
     }
 
     public CodeRunListResponse toCodeRunListResponse(List<CodeRunSummary> runs) {

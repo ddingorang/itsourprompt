@@ -16,4 +16,12 @@ public record LlmCallUsage(
         Long reasoningTokens,
         long latencyMs
 ) {
+
+    /**
+     * 순번만 다시 매긴 복사본. 각자 1부터 세는 두 호출의 사용량을 한 목록으로 이어 붙일 때 쓴다.
+     */
+    public LlmCallUsage withSeq(int seq) {
+        return new LlmCallUsage(
+                seq, model, inputTokens, outputTokens, cachedInputTokens, reasoningTokens, latencyMs);
+    }
 }

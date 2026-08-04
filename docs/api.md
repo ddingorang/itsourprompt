@@ -559,7 +559,7 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 
 ### POST /api/attempts/{id}/submit
 
-문제 명세와 어템프트의 전체 턴 기록을 바탕으로 턴별 프롬프트 피드백과 세션 전체 피드백을 생성해 저장하고 어템프트를 종료한다(`status` → `SUBMITTED`). 이미 제출된 어템프트를 다시 제출하면 AI를 재호출하지 않고 저장된 피드백을 그대로 반환한다. AI 호출이 포함되므로 응답이 오래 걸릴 수 있다(서버 측 피드백 생성 상한 5분, 초과 시 504 `feedback-timeout`).
+문제 명세와 어템프트의 전체 턴 기록을 바탕으로 턴별 피드백과 세션 전체 피드백을 생성해 저장하고 어템프트를 종료한다(`status` → `SUBMITTED`). 프롬프트 렌즈와 작업 방식(pattern) 렌즈를 **동시에 두 번** 호출하고, 둘 다 성공해야 제출이 완료된다. 이미 제출된 어템프트를 다시 제출하면 AI를 재호출하지 않고 저장된 피드백을 그대로 반환한다. AI 호출이 포함되므로 응답이 오래 걸릴 수 있다(호출 하나당 상한 5분이고 응답 형태가 어긋나면 각 호출이 한 번씩 재시도하므로 최악은 그보다 길다. 초과 시 504 `feedback-timeout`).
 
 - **인증**: 불필요
 - **요청 바디**: 없음
@@ -805,13 +805,20 @@ GET .../runs/{runId} ◀── 결과 반영 ◀── 큐 ◀──────
 | `turns` | array | 턴별 피드백 |
 | `turns[].turn` | number | 턴 번호. **1부터 시작**한다 |
 | `turns[].feedbackMd` | string | 해당 턴 프롬프트에 대한 피드백 (**Markdown**) |
+| `turns[].patternMd` | string \| null | 해당 턴의 **작업 방식**에 이름을 붙인 피드백 (**Markdown**) |
 | `overallMd` | string | 세션 전체에 대한 피드백 (**Markdown**) |
+| `patternOverallMd` | string \| null | 세션 전체의 **작업 방식**에 대한 피드백 (**Markdown**) |
+
+`feedbackMd`/`overallMd`와 `patternMd`/`patternOverallMd`는 같은 세션을 다른 렌즈로 본 결과다. 앞은 프롬프트가
+무엇을 전달했는지 짚고, 뒤는 사용자가 어떻게 일했는지에 이름을 붙인다. 한 화면에 나란히 렌더하는 것을 의도한다.
 
 계약 사항:
 
 - `turns[].turn`은 **1부터** 매겨진다. `AttemptResponse.turns` 배열의 인덱스 `n`은 `turn = n + 1`에 대응한다.
-- `feedbackMd`와 `overallMd`는 **Markdown 문자열**이다. 클라이언트가 Markdown으로 렌더해야 한다.
+- `feedbackMd`·`overallMd`·`patternMd`·`patternOverallMd`는 모두 **Markdown 문자열**이다. 클라이언트가 Markdown으로 렌더해야 한다.
 - **턴별 피드백 도입 이전에 제출된 어템프트는 `turns`가 빈 배열(`[]`)이다.** 이때는 `overallMd`만 렌더한다. 즉 `turns.length === 0`인 경우를 정상 케이스로 처리해야 한다.
+- **pattern 피드백 도입 이전에 제출된 어템프트는 `turns[].patternMd`와 `patternOverallMd`가 `null`이다.** 이때는 프롬프트 피드백만 렌더한다. 기존 데이터를 마이그레이션하지 않는다.
+- 두 pattern 필드는 **함께 채워지거나 함께 `null`이다.** 제출은 두 렌즈를 모두 성공시켜야 완료되므로 한쪽만 있는 상태는 생기지 않는다.
 - 턴별 피드백이 있는 경우 `turns`의 길이는 어템프트의 턴 수와 같다(전부 배정되거나 하나도 배정되지 않는다).
 - 이 봉투는 필드 추가 방식으로만 확장한다. **클라이언트는 모르는 JSON 키를 무시해야 한다.**
 
@@ -820,14 +827,17 @@ GET .../runs/{runId} ◀── 결과 반영 ◀── 큐 ◀──────
   "turns": [
     {
       "turn": 1,
-      "feedbackMd": "## 좋은 점\n출력 형식을 명확히 지정했습니다.\n\n## 개선점\n어떤 파일을 수정해야 하는지 함께 알려주면 더 정확한 결과를 얻습니다."
+      "feedbackMd": "## 좋은 점\n출력 형식을 명확히 지정했습니다.\n\n## 개선점\n어떤 파일을 수정해야 하는지 함께 알려주면 더 정확한 결과를 얻습니다.",
+      "patternMd": "### 이 턴의 패턴\nhuman-in-the-loop — 세션이 도는 동안 사람이 붙어 읽고 방향을 바꾸는 방식\n턴 1에서 AI가 고친 Main.java를 턴 2 프롬프트에서 그대로 부르셨어요.\n\n### 쓸 기법\nhuman review — 요약 말고 바뀐 코드를 읽는 것"
     },
     {
       "turn": 2,
-      "feedbackMd": "## 개선점\n\"고쳐줘\"처럼 대상이 모호한 표현 대신 기대 동작을 서술하세요."
+      "feedbackMd": "## 개선점\n\"고쳐줘\"처럼 대상이 모호한 표현 대신 기대 동작을 서술하세요.",
+      "patternMd": "### 이 턴의 패턴\nvibe coding — AI가 낸 코드를 읽지 않고 받아들이는 방식\n턴 2에서 AI가 OrderValidator를 새로 만들었어요. 그 뒤로 그 이름이 프롬프트에 안 나와요.\n\n### 쓸 기법\nhuman review — diff를 열어 새로 생긴 파일부터 읽는 것"
     }
   ],
-  "overallMd": "## 전체 평가\n요구사항을 단계적으로 좁혀간 흐름이 좋았습니다.\n\n## 다음 세션 제안\n첫 프롬프트에 입출력 예시를 포함해 보세요."
+  "overallMd": "## 전체 평가\n요구사항을 단계적으로 좁혀간 흐름이 좋았습니다.\n\n## 다음 세션 제안\n첫 프롬프트에 입출력 예시를 포함해 보세요.",
+  "patternOverallMd": "### 이번 세션의 이름\nvibe coding\n2턴 중 1턴에서 바뀐 파일이 다음 턴 프롬프트에 안 나왔어요.\n\n### 다음 세션에 가져갈 것\nhuman review\n\n---\n여기 쓴 용어는 AI Coding Dictionary에서 가져왔어요. https://aicodingdictionary.com"
 }
 ```
 
@@ -836,13 +846,30 @@ GET .../runs/{runId} ◀── 결과 반영 ◀── 큐 ◀──────
 ```json
 {
   "turns": [],
-  "overallMd": "## 전체 평가\n요구사항을 단계적으로 좁혀간 흐름이 좋았습니다."
+  "overallMd": "## 전체 평가\n요구사항을 단계적으로 좁혀간 흐름이 좋았습니다.",
+  "patternOverallMd": null
+}
+```
+
+pattern 피드백 도입 이전 어템프트(턴별 피드백은 있음):
+
+```json
+{
+  "turns": [
+    {
+      "turn": 1,
+      "feedbackMd": "## 개선점\n어떤 파일을 수정해야 하는지 함께 알려주세요.",
+      "patternMd": null
+    }
+  ],
+  "overallMd": "## 전체 평가\n요구사항을 단계적으로 좁혀간 흐름이 좋았습니다.",
+  "patternOverallMd": null
 }
 ```
 
 ### GET /api/attempts/{id}/feedback
 
-제출 시 생성해 저장한 프롬프트 피드백을 턴별 피드백과 전체 피드백으로 반환한다. 제출 전에는 조회할 수 없다.
+제출 시 생성해 저장한 피드백을 두 렌즈(프롬프트·작업 방식) 모두 턴별과 전체로 반환한다. 제출 전에는 조회할 수 없다.
 
 - **인증**: 불필요
 
