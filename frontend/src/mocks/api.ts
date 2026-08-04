@@ -17,17 +17,21 @@ import type {
   ProblemDetail,
   ProblemListResponse,
 } from '../features/problem/types';
+<<<<<<< HEAD
+=======
 import type {
   ProblemRanking,
   RankingEntry,
   RankingOwnerType,
 } from '../features/ranking/types';
+>>>>>>> 3b1e1afdf2a7e0bcbeaf4a55469af2bcf0b9d371
 import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
 
 export const useMocks = import.meta.env.VITE_USE_MOCKS === 'true';
 
 const problemDetail: ProblemDetail = {
   id: 1,
+  type: 'coding',
   title: '게시판 API 구현',
   specMd:
     '# 문제\n\n게시글 엔티티와 CRUD API 계층을 구현하세요. 코드는 직접 편집할 수 없고, 프롬프트로만 수정합니다.',
