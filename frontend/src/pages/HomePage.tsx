@@ -110,7 +110,10 @@ export default function HomePage() {
 
   return (
     <div className="landing-page flex min-h-screen min-w-80 flex-col bg-[var(--landing-bg)] text-[var(--landing-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]" data-color-mode={colorMode}>
-      <Header mobileBreakpoint="760" />
+      <Header
+        mobileBreakpoint="760"
+        onLogoClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      />
 
       <main className="flex-1 overflow-clip">
         <section className="landing-hero mx-auto flex min-h-[calc(100svh-66px)] w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
