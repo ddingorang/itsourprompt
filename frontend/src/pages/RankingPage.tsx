@@ -6,6 +6,7 @@ import { getProblemDetail, getProblems } from '../features/problem/api';
 import type { ProblemSummary } from '../features/problem/types';
 import { getProblemRanking } from '../features/ranking/api';
 import type { ProblemRanking, RankingEntry } from '../features/ranking/types';
+import { useTheme } from '../features/theme/ThemeContext';
 import {
   ApiError,
   API_ERROR_CODES,
@@ -34,9 +35,9 @@ interface RankingNotice {
 }
 
 const headCellClasses =
-  'border-b border-[#343434] px-2 py-3 text-left font-mono text-[11px] font-bold tracking-[0.06em] text-[#777]';
+  'border-b border-[var(--ranking-border)] px-2 py-3 text-left font-mono text-[11px] font-bold tracking-[0.06em] text-[var(--ranking-subtle)]';
 const cellClasses =
-  'border-b border-[#343434] px-2 py-3 font-mono text-[13px] max-[860px]:border-b-0 max-[860px]:py-1';
+  'border-b border-[var(--ranking-border)] px-2 py-3 font-mono text-[13px] max-[860px]:border-b-0 max-[860px]:py-1';
 
 /** 제출 시각(ISO 문자열)을 "YYYY.MM.DD" 형태로 바꾼다. */
 function formatSubmittedAt(submittedAt: string | null): string {
@@ -76,6 +77,19 @@ function formatTokens(tokens: number): string {
 }
 
 /**
+ * 턴 수. 단위를 값에 붙인다 — 860px 미만에서는 thead가 숨어 머리글이 사라지고,
+ * MY BEST 밴드에는 머리글이 애초에 없다. 숫자만 두면 무엇을 센 것인지 알 수 없다.
+ */
+function TurnCount({ turns }: { turns: number }) {
+  return (
+    <>
+      {turns}
+      <span className="text-[var(--ranking-subtle)]">턴</span>
+    </>
+  );
+}
+
+/**
  * 문제 하나를 누가 가장 적은 비용으로 풀었는지 보여주는 화면.
  *
  * 백엔드에는 문제별 랭킹(GET /api/problems/{id}/ranking) 하나뿐이라, 이 화면은
@@ -84,6 +98,7 @@ function formatTokens(tokens: number): string {
  */
 export default function RankingPage() {
   const { user } = useAuth();
+  const { colorMode } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
@@ -309,38 +324,41 @@ export default function RankingPage() {
   }, [selectedProblemId, tabProblems.length]);
 
   return (
-    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div
+      className="ranking-page flex min-h-screen min-w-80 flex-col bg-[var(--ranking-bg)] text-[var(--ranking-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
+      data-color-mode={colorMode}
+    >
       <Header />
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-16 max-[1200px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
         <header className="flex items-end justify-between gap-6 pb-10 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-4 max-[640px]:pb-8">
-          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--ranking-acid)]">
             RANKING
           </h1>
-          <span className="font-mono text-[11px] leading-[1.6] font-bold tracking-[0.06em] text-[#a3a3a3] max-[640px]:text-left">
+          <span className="font-mono text-[11px] leading-[1.6] font-bold tracking-[0.06em] text-[var(--ranking-muted)] max-[640px]:text-left">
             가장 적은 비용으로 푼 순서
           </span>
         </header>
 
         {problemsError && (
-          <div className="border-b border-[#343434] py-12 font-mono text-xs leading-[1.7] text-[#ff786b]">
+          <div className="border-b border-[var(--ranking-border)] py-12 font-mono text-xs leading-[1.7] text-[#ff786b]">
             {problemsError}
           </div>
         )}
 
         {tabProblems.length > 0 && (
           <section
-            className="border border-[#393939] bg-[#121212]"
+            className="border border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)]"
             aria-label="문제 선택"
           >
             <div className="relative">
-              <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[180px] place-items-center border-r border-[#393939] bg-[#121212] font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] max-[760px]:hidden">
+              <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[180px] place-items-center border-r border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--ranking-acid)] max-[760px]:hidden">
                 PROBLEMS
               </span>
               {hasTabOverflow && (
                 <button
                   aria-label="이전 문제 보기"
-                  className="absolute top-0 bottom-0 left-[180px] z-20 w-10 cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
+                  className="absolute top-0 bottom-0 left-[180px] z-20 w-10 cursor-pointer border-0 border-r border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-2xl font-bold text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
                   onClick={() => scrollTabNav(-1)}
                   type="button"
                 >
@@ -362,10 +380,10 @@ export default function RankingPage() {
                   return (
                     <Link
                       aria-current={isSelected ? 'page' : undefined}
-                      className={`relative flex min-h-[58px] shrink-0 items-center gap-2.5 px-[22px] font-mono text-sm font-bold tracking-[0.06em] whitespace-nowrap hover:text-[#f5f5ef] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-4px] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:z-10 after:h-[3px] ${
+                      className={`relative flex min-h-[58px] shrink-0 items-center gap-2.5 px-[22px] font-mono text-sm font-bold tracking-[0.06em] whitespace-nowrap hover:text-[var(--ranking-text)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-4px] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:z-10 after:h-[3px] ${
                         isSelected
-                          ? 'text-[#d6ff50] after:bg-[#d6ff50]'
-                          : 'text-[#8f8f8f] after:bg-transparent'
+                          ? 'text-[var(--ranking-acid)] after:bg-[var(--ranking-acid)]'
+                          : 'text-[var(--ranking-tab-idle)] after:bg-transparent'
                       } max-[760px]:px-3.5`}
                       key={problem.id}
                       ref={isSelected ? selectedTabRef : undefined}
@@ -382,7 +400,7 @@ export default function RankingPage() {
               {hasTabOverflow && (
                 <button
                   aria-label="다음 문제 보기"
-                  className="absolute top-0 right-0 bottom-0 z-20 w-10 cursor-pointer border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] focus-visible:outline-2 focus-visible:outline-[#d6ff50] focus-visible:outline-offset-[-3px]"
+                  className="absolute top-0 right-0 bottom-0 z-20 w-10 cursor-pointer border-0 border-l border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-2xl font-bold text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px]"
                   onClick={() => scrollTabNav(1)}
                   type="button"
                 >
@@ -394,10 +412,10 @@ export default function RankingPage() {
         )}
 
         <section
-          className="mt-6 border-y border-t-[#f5f5ef] border-b-[#343434] py-[15px]"
+          className="mt-6 border-y border-t-[var(--ranking-text)] border-b-[var(--ranking-border)] py-[15px]"
           aria-label="랭킹 정보"
         >
-          <div className="font-mono text-[11px] font-bold tracking-[0.06em] text-[#a3a3a3]">
+          <div className="font-mono text-[11px] font-bold tracking-[0.06em] text-[var(--ranking-muted)]">
             RANKED SUBMISSIONS /{' '}
             {String(ranking?.totalCount ?? 0).padStart(2, '0')}
             {ranking && ranking.totalCount > RANKING_LIMIT && (
@@ -407,7 +425,7 @@ export default function RankingPage() {
         </section>
 
         {isLoading && (
-          <div className="border-b border-[#343434] py-12 font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+          <div className="border-b border-[var(--ranking-border)] py-12 font-mono text-xs leading-[1.7] text-[var(--ranking-muted)]">
             랭킹을 불러오는 중입니다…
           </div>
         )}
@@ -418,29 +436,34 @@ export default function RankingPage() {
               'flex flex-col items-start gap-5 border-b py-12 font-mono text-xs leading-[1.7]',
               notice.isError
                 ? 'border-[#ff786b] text-[#ff786b]'
-                : 'border-[#343434] text-[#a3a3a3]',
+                : 'border-[var(--ranking-border)] text-[var(--ranking-muted)]',
             ].join(' ')}
             role={notice.isError ? 'alert' : undefined}
           >
             <div>{notice.message}</div>
             {notice.actionLabel && notice.actionTo && (
-              <Button to={notice.actionTo}>{notice.actionLabel}</Button>
+              <Button className="ranking-primary-action" to={notice.actionTo}>
+                {notice.actionLabel}
+              </Button>
             )}
           </div>
         )}
 
         {!isLoading && !notice && selectedProblemId === null && (
-          <div className="border-b border-[#343434] py-12 font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+          <div className="border-b border-[var(--ranking-border)] py-12 font-mono text-xs leading-[1.7] text-[var(--ranking-muted)]">
             등록된 문제가 없습니다.
           </div>
         )}
 
         {!isLoading && !notice && ranking && ranking.entries.length === 0 && (
-          <div className="flex flex-col items-start gap-5 border-b border-[#343434] py-12">
-            <p className="m-0 font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+          <div className="flex flex-col items-start gap-5 border-b border-[var(--ranking-border)] py-12">
+            <p className="m-0 font-mono text-xs leading-[1.7] text-[var(--ranking-muted)]">
               아직 이 문제의 랭킹에 오른 풀이가 없습니다.
             </p>
-            <Button to={`/problems/${ranking.problemId}`}>
+            <Button
+              className="ranking-primary-action"
+              to={`/problems/${ranking.problemId}`}
+            >
               문제 풀러 가기 ↗
             </Button>
           </div>
@@ -496,7 +519,7 @@ export default function RankingPage() {
                     role="columnheader"
                     scope="col"
                   >
-                    T·R
+                    TURNS
                   </th>
                   <th
                     className={`${headCellClasses} text-right`}
@@ -513,12 +536,12 @@ export default function RankingPage() {
 
                   return (
                     <tr
-                      className="max-[860px]:grid max-[860px]:grid-cols-[52px_minmax(0,1fr)_auto] max-[860px]:items-center max-[860px]:gap-x-2 max-[860px]:border-b max-[860px]:border-[#343434] max-[860px]:py-2"
+                      className="max-[860px]:grid max-[860px]:grid-cols-[52px_minmax(0,1fr)_auto] max-[860px]:items-center max-[860px]:gap-x-2 max-[860px]:border-b max-[860px]:border-[var(--ranking-border)] max-[860px]:py-2"
                       key={pageStart + index}
                       role="row"
                     >
                       <td
-                        className={`${cellClasses} text-[#a3a3a3] max-[860px]:col-start-1 max-[860px]:row-start-1`}
+                        className={`${cellClasses} text-[var(--ranking-muted)] max-[860px]:col-start-1 max-[860px]:row-start-1`}
                         role="cell"
                       >
                         {String(entry.rank).padStart(2, '0')}
@@ -532,7 +555,7 @@ export default function RankingPage() {
                             {formatOwnerLabel(entry)}
                           </span>
                           {entry.mine && (
-                            <span className="shrink-0 border border-[#d6ff50] px-1.5 py-0.5 font-mono text-[10px] leading-none font-bold tracking-[0.08em] text-[#d6ff50]">
+                            <span className="shrink-0 border border-[var(--ranking-acid)] px-1.5 py-0.5 font-mono text-[10px] leading-none font-bold tracking-[0.08em] text-[var(--ranking-acid)]">
                               YOU
                             </span>
                           )}
@@ -542,32 +565,32 @@ export default function RankingPage() {
                         className={`${cellClasses} text-right whitespace-nowrap max-[860px]:col-start-3 max-[860px]:row-start-1`}
                         role="cell"
                       >
-                        <span className="text-[#777]">$</span>
+                        <span className="text-[var(--ranking-subtle)]">$</span>
                         {significantCost}
-                        <span className="text-[#555]">{trailingZeros}</span>
+                        <span className="text-[var(--ranking-faint)]">{trailingZeros}</span>
                       </td>
                       {/*
                         접힌 줄에서는 옆 칸(DATE)과 폭을 나눠 쓰므로 넘치면 잘라낸다 —
                         넘치는 대로 두면 320px에서 날짜 위에 숫자가 겹쳐 찍힌다.
                       */}
                       <td
-                        className={`${cellClasses} text-right text-[12px] whitespace-nowrap text-[#a3a3a3] max-[860px]:col-start-2 max-[860px]:row-start-2 max-[860px]:overflow-hidden max-[860px]:text-ellipsis`}
+                        className={`${cellClasses} text-right text-[12px] whitespace-nowrap text-[var(--ranking-muted)] max-[860px]:col-start-2 max-[860px]:row-start-2 max-[860px]:overflow-hidden max-[860px]:text-ellipsis`}
                         role="cell"
                       >
                         {formatTokens(entry.uncachedInputTokens)}
-                        <span className="text-[#555]">/</span>
+                        <span className="text-[var(--ranking-faint)]">/</span>
                         {formatTokens(entry.cachedInputTokens)}
-                        <span className="text-[#555]">/</span>
+                        <span className="text-[var(--ranking-faint)]">/</span>
                         {formatTokens(entry.outputTokens)}
                       </td>
                       <td
-                        className={`${cellClasses} text-right whitespace-nowrap text-[#a3a3a3] max-[860px]:col-start-1 max-[860px]:row-start-2 max-[860px]:text-left`}
+                        className={`${cellClasses} text-right whitespace-nowrap text-[var(--ranking-muted)] max-[860px]:col-start-1 max-[860px]:row-start-2 max-[860px]:text-left`}
                         role="cell"
                       >
-                        {entry.turns}·{entry.rounds}
+                        <TurnCount turns={entry.turns} />
                       </td>
                       <td
-                        className={`${cellClasses} text-right whitespace-nowrap text-[#777] max-[860px]:col-start-3 max-[860px]:row-start-2`}
+                        className={`${cellClasses} text-right whitespace-nowrap text-[var(--ranking-subtle)] max-[860px]:col-start-3 max-[860px]:row-start-2`}
                         role="cell"
                       >
                         {formatSubmittedAt(entry.submittedAt)}
@@ -592,10 +615,10 @@ export default function RankingPage() {
 
         {!isLoading && !notice && ranking && (
           <section
-            className="mt-6 border border-[#d6ff50] p-5 max-[640px]:p-4"
+            className="mt-6 border border-[var(--ranking-acid)] p-5 max-[640px]:p-4"
             aria-label="내 최고 기록"
           >
-            <div className="font-mono text-[11px] font-bold tracking-[0.14em] text-[#d6ff50]">
+            <div className="font-mono text-[11px] font-bold tracking-[0.14em] text-[var(--ranking-acid)]">
               MY BEST
             </div>
             {ranking.myBest ? (
@@ -603,19 +626,20 @@ export default function RankingPage() {
                 <div className="flex flex-wrap items-baseline gap-x-7 gap-y-2 font-mono text-[15px]">
                   <span>#{ranking.myBest.rank}</span>
                   <span>
-                    <span className="text-[#777]">$</span>
+                    <span className="text-[var(--ranking-subtle)]">$</span>
                     {splitCost(ranking.myBest.cost)[0]}
-                    <span className="text-[#555]">
+                    <span className="text-[var(--ranking-faint)]">
                       {splitCost(ranking.myBest.cost)[1]}
                     </span>
                   </span>
-                  <span className="text-[#a3a3a3]">
-                    {ranking.myBest.turns}·{ranking.myBest.rounds}
+                  <span className="text-[var(--ranking-muted)]">
+                    <TurnCount turns={ranking.myBest.turns} />
                   </span>
                 </div>
                 {/* attemptId는 내 줄에만 오므로 피드백 링크는 여기서만 걸린다. */}
                 {ranking.myBest.attemptId !== null && (
                   <Button
+                    className="ranking-secondary-action"
                     to={`/attempts/${ranking.myBest.attemptId}/feedback`}
                     variant="secondary"
                   >
@@ -624,7 +648,7 @@ export default function RankingPage() {
                 )}
               </div>
             ) : (
-              <p className="m-0 mt-3.5 font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+              <p className="m-0 mt-3.5 font-mono text-xs leading-[1.7] text-[var(--ranking-muted)]">
                 아직 이 문제의 랭킹에 오른 내 풀이가 없습니다.
                 {!user && ' 로그인하면 계정에 쌓인 기록도 함께 잡힙니다.'}
               </p>

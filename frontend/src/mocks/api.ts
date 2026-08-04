@@ -17,14 +17,11 @@ import type {
   ProblemDetail,
   ProblemListResponse,
 } from '../features/problem/types';
-<<<<<<< HEAD
-=======
 import type {
   ProblemRanking,
   RankingEntry,
   RankingOwnerType,
 } from '../features/ranking/types';
->>>>>>> 3b1e1afdf2a7e0bcbeaf4a55469af2bcf0b9d371
 import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
 
 export const useMocks = import.meta.env.VITE_USE_MOCKS === 'true';
