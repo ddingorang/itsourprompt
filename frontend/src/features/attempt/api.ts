@@ -92,11 +92,15 @@ export async function getAttemptFeedback(
 }
 
 /** 현재 어템프트의 마지막 턴 코드 실행을 요청한다. */
-export async function requestCodeRun(attemptId: number): Promise<CodeRun> {
+export async function requestCodeRun(
+  attemptId: number,
+  signal?: AbortSignal,
+): Promise<CodeRun> {
   if (useMocks) return requestMockCodeRun(attemptId);
 
   return apiRequest<CodeRun>(`/attempts/${attemptId}/runs`, {
     method: 'POST',
+    signal,
   });
 }
 

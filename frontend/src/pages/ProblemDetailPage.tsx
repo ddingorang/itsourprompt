@@ -308,6 +308,8 @@ export default function ProblemDetailPage() {
   const loadControllerRef = useRef<AbortController | null>(null);
   const codeRunControllerRef = useRef<AbortController | null>(null);
   const codeRunPollTimeoutRef = useRef<number | null>(null);
+  const routeAttemptIdRef = useRef(routeAttemptId);
+  routeAttemptIdRef.current = routeAttemptId;
   /** 마지막으로 정상 반영된 라우트. 다른 주소의 로드 실패 시 이전 문제를 지우는 기준이다. */
   const loadedResourceRef = useRef<string | null>(null);
   /**
@@ -598,33 +600,61 @@ export default function ProblemDetailPage() {
     if (!attempt || turns.length === 0 || isCodeRunLoading) return;
 
     stopCodeRunPolling();
+    const requestedAttemptId = attempt.id;
+    const controller = new AbortController();
+    codeRunControllerRef.current = controller;
     setCodeRunError(null);
     setCodeRunTally(null);
     setIsCodeRunLoading(true);
 
     try {
-      const requestedRun = await requestCodeRun(attempt.id);
+      const requestedRun = await requestCodeRun(
+        requestedAttemptId,
+        controller.signal,
+      );
+      if (
+        controller.signal.aborted ||
+        routeAttemptIdRef.current !== requestedAttemptId
+      ) {
+        return;
+      }
+
       applyCodeRun(requestedRun);
 
       if (requestedRun.status === 'QUEUED') {
-        startCodeRunPolling(attempt.id, requestedRun.runId);
+        startCodeRunPolling(requestedAttemptId, requestedRun.runId);
       } else {
         setIsCodeRunLoading(false);
+        codeRunControllerRef.current = null;
       }
     } catch (error: unknown) {
+      if (isAbortError(error) || controller.signal.aborted) return;
+
       const errorInfo = getErrorInfo(error, '코드 실행을 요청하지 못했습니다.');
 
       if (errorInfo.code === API_ERROR_CODES.codeRunInProgress) {
         try {
-          const response = await getCodeRuns(attempt.id);
+          const response = await getCodeRuns(
+            requestedAttemptId,
+            controller.signal,
+          );
+          if (
+            controller.signal.aborted ||
+            routeAttemptIdRef.current !== requestedAttemptId
+          ) {
+            return;
+          }
+
           const queuedRun = response.runs.find((run) => run.status === 'QUEUED');
 
           if (queuedRun) {
             setCodeRunTally(queuedRun.tally);
-            startCodeRunPolling(attempt.id, queuedRun.runId);
+            startCodeRunPolling(requestedAttemptId, queuedRun.runId);
             return;
           }
         } catch (restoreError: unknown) {
+          if (isAbortError(restoreError) || controller.signal.aborted) return;
+
           setCodeRunError(
             getErrorInfo(
               restoreError,
@@ -638,6 +668,7 @@ export default function ProblemDetailPage() {
 
       setCodeRunError(errorInfo.message);
       setIsCodeRunLoading(false);
+      codeRunControllerRef.current = null;
     }
   };
 
