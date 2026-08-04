@@ -2,7 +2,9 @@ package com.promptstudio.attempt.service;
 
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.AttemptOwner;
+import com.promptstudio.attempt.domain.CodeRunCaseTally;
 import com.promptstudio.attempt.domain.CodeRunResult;
+import com.promptstudio.attempt.domain.CodeRunStatus;
 import com.promptstudio.attempt.domain.CodeRunSummary;
 import com.promptstudio.attempt.domain.CodeRunView;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
@@ -20,7 +22,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -146,7 +150,34 @@ public class CodeRunService {
         findAttempt(attemptId, owner)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
-        return codeRunRepository.findAllByAttemptId(attemptId);
+        List<CodeRunSummary> runs = codeRunRepository.findAllByAttemptId(attemptId);
+
+        return withTallies(runs);
+    }
+
+    /**
+     * 케이스 집계를 한 번의 쿼리로 붙인다. 실행마다 조회하면 목록 길이에 비례해 쿼리가 늘어난다.
+     * 케이스 기록이 없는 실행은 집계가 null로 남는다.
+     */
+    private List<CodeRunSummary> withTallies(List<CodeRunSummary> runs) {
+        if (runs.isEmpty()) {
+            return runs;
+        }
+
+        List<UUID> runIds = new ArrayList<>();
+
+        for (CodeRunSummary run : runs) {
+            runIds.add(run.id());
+        }
+
+        Map<UUID, CodeRunCaseTally> tallies = codeRunRepository.tallyCasesByRunIds(runIds);
+        List<CodeRunSummary> withTallies = new ArrayList<>();
+
+        for (CodeRunSummary run : runs) {
+            withTallies.add(run.withTally(tallies.get(run.id())));
+        }
+
+        return withTallies;
     }
 
     public CodeRunView getRun(Long attemptId, Long userId, UUID runId) {
@@ -159,8 +190,13 @@ public class CodeRunService {
         findAttempt(attemptId, owner)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
-        return codeRunRepository.findByIdAndAttemptId(runId, attemptId)
+        CodeRunView run = codeRunRepository.findByIdAndAttemptId(runId, attemptId)
                 .orElseThrow(() -> new CodeRunNotFoundException(attemptId, runId));
+
+        // 케이스는 별도 테이블이라 따로 읽는다. 진행 중(QUEUED)이면 아직 없으니 조회하지 않는다.
+        return run.status() == CodeRunStatus.QUEUED
+                ? run
+                : run.withCases(codeRunRepository.findCasesByRunId(runId));
     }
 
     /**

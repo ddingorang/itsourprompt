@@ -25,6 +25,15 @@ final class CodeRunTables {
     static final Field<Instant> CREATED_AT = field(name("code_run", "created_at"), SQLDataType.INSTANT);
     static final Field<Instant> FINISHED_AT = field(name("code_run", "finished_at"), SQLDataType.INSTANT);
 
+    static final Table<?> CODE_RUN_CASE = table(name("code_run_case"));
+    static final Field<UUID> CASE_RUN_ID = field(name("code_run_case", "run_id"), SQLDataType.UUID);
+    static final Field<Integer> CASE_ORDINAL = field(name("code_run_case", "ordinal"), SQLDataType.INTEGER);
+    static final Field<String> CASE_CLASS_NAME = field(name("code_run_case", "class_name"), SQLDataType.VARCHAR);
+    static final Field<String> CASE_NAME = field(name("code_run_case", "name"), SQLDataType.VARCHAR);
+    static final Field<String> CASE_STATUS = field(name("code_run_case", "status"), SQLDataType.VARCHAR);
+    static final Field<String> CASE_MESSAGE = field(name("code_run_case", "message"), SQLDataType.CLOB);
+    static final Field<Long> CASE_DURATION_MS = field(name("code_run_case", "duration_ms"), SQLDataType.BIGINT);
+
     private CodeRunTables() {
     }
 }

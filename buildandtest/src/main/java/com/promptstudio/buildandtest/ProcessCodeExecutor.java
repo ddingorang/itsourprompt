@@ -231,7 +231,9 @@ public class ProcessCodeExecutor implements CodeExecutor {
                         // 테마를 고정한다. 터미널 종류에 따라 ascii로 떨어지면 출력이 환경마다 달라진다.
                         "--details-theme=unicode",
                         // 테스트를 하나도 못 찾으면 조용히 통과하지 않고 2번으로 실패한다.
-                        "--fail-if-no-tests"
+                        "--fail-if-no-tests",
+                        // 케이스별 결과는 이 XML에서 읽는다. stdout의 트리는 사람용이고 출력 상한에 잘린다.
+                        "--reports-dir=" + workspace.reportsDir()
                 ),
                 testTimeoutSeconds,
                 // 런처는 터미널 폭을 알아내려 stty를 실행한다. tty가 없는 컨테이너에서 stderr에
@@ -240,12 +242,17 @@ public class ProcessCodeExecutor implements CodeExecutor {
         );
 
         if (execution.timedOut()) {
+            // 강제 종료된 런처의 리포트는 신뢰할 수 없다. 끝까지 돈 케이스만 담긴 목록을 내보내면
+            // "일부는 통과했다"로 읽히므로 케이스를 싣지 않는다.
             return new RunOutcome(RunStatus.TIMEOUT, null, execution.stdout(),
                     "테스트 실행이 " + testTimeoutSeconds + "초를 초과해 강제 종료했습니다.", elapsedMillis(startedAt));
         }
 
+        // 판정은 종료 코드가 진실이고 케이스 목록은 그것을 설명하는 보조 자료다.
+        // 리포트가 없거나 깨져도 status는 그대로 두고 목록만 비운다.
         return new RunOutcome(testStatus(execution.exitCode()), execution.exitCode(),
-                execution.stdout(), execution.stderr(), elapsedMillis(startedAt));
+                execution.stdout(), execution.stderr(), elapsedMillis(startedAt),
+                JUnitReportParser.parse(workspace.reportsDir()));
     }
 
     private RunStatus testStatus(int exitCode) {

@@ -37,7 +37,27 @@ public record CodeRunListResponse(
             @Schema(description = "실행을 접수한 시각", example = "2026-08-03T02:33:28Z")
             Instant createdAt,
             @Schema(description = "실행이 끝난 시각. 아직 QUEUED면 null", example = "2026-08-03T02:33:29Z")
-            Instant finishedAt
+            Instant finishedAt,
+            @Schema(
+                    description = "채점 케이스 집계. 케이스 기록이 없는 실행이면 null이며, 그것은 통과 0건이 "
+                            + "아니라 기록 없음이다. 케이스 배열 자체는 단건 조회에서 받는다."
+            )
+            CodeRunCaseTallyResponse tally
+    ) {
+    }
+
+    @Schema(description = "채점 케이스 집계. skipped는 total에 포함되지만 passed로 세지 않는다")
+    public record CodeRunCaseTallyResponse(
+            @Schema(description = "전체 케이스 수", example = "5")
+            int total,
+            @Schema(description = "통과한 케이스 수", example = "2")
+            int passed,
+            @Schema(description = "단정이 깨진 케이스 수", example = "3")
+            int failed,
+            @Schema(description = "예외로 죽어 실행되지 못한 케이스 수", example = "0")
+            int error,
+            @Schema(description = "건너뛴 케이스 수", example = "0")
+            int skipped
     ) {
     }
 }

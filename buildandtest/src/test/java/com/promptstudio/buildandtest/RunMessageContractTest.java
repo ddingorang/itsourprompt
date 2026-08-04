@@ -55,6 +55,44 @@ class RunMessageContractTest {
         assertThat(message.status()).isEqualTo("SUCCEEDED");
         assertThat(message.exitCode()).isZero();
         assertThat(message.durationMs()).isEqualTo(1840L);
+        assertThat(message.cases()).hasSize(2);
+        assertThat(message.cases().getFirst().className()).isEqualTo("MainTest");
+        assertThat(message.cases().getFirst().name()).isEqualTo("실행된다()");
+        assertThat(message.cases().getFirst().status()).isEqualTo("PASSED");
+        assertThat(message.cases().getFirst().durationMs()).isEqualTo(30L);
+    }
+
+    /**
+     * 백엔드가 아직 cases를 모르는 시점에도, 반대로 옛 워커가 cases 없이 보낸 메시지도 읽혀야 한다.
+     */
+    @Test
+    void cases가_없는_옛_메시지도_읽는다() throws IOException {
+        RunResultMessage message = objectMapper.readValue("""
+                {"runId":"3f2a1b4c-5d6e-7f80-9a1b-2c3d4e5f6071","status":"SUCCEEDED","exitCode":0,"durationMs":10}
+                """, RunResultMessage.class);
+
+        assertThat(message.cases()).isNull();
+    }
+
+    @Test
+    void 실패한_케이스는_사유를_싣는다() throws IOException {
+        RunResultMessage message = objectMapper.readValue("""
+                {"runId":"3f2a1b4c-5d6e-7f80-9a1b-2c3d4e5f6071","status":"TEST_FAILED","exitCode":1,
+                 "cases":[{"className":"MainTest","name":"출력을_검사한다()","status":"FAILED",
+                           "message":"expected: <Hello> but was: <Hi>","durationMs":17}]}
+                """, RunResultMessage.class);
+
+        assertThat(message.cases()).singleElement().satisfies(testCase -> {
+            assertThat(testCase.status()).isEqualTo("FAILED");
+            assertThat(testCase.message()).isEqualTo("expected: <Hello> but was: <Hi>");
+        });
+    }
+
+    @Test
+    void 워커가_내는_모든_케이스_상태값은_계약_문자열로_직렬화된다() {
+        for (RunCaseStatus status : RunCaseStatus.values()) {
+            assertThat(status.name()).isNotBlank();
+        }
     }
 
     @Test

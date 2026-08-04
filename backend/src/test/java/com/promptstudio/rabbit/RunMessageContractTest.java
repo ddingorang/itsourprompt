@@ -1,6 +1,7 @@
 package com.promptstudio.rabbit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.promptstudio.attempt.domain.CodeRunCaseStatus;
 import com.promptstudio.attempt.domain.CodeRunStatus;
 import org.junit.jupiter.api.Test;
 
@@ -56,6 +57,33 @@ class RunMessageContractTest {
         assertThat(message.status()).isEqualTo("SUCCEEDED");
         assertThat(message.exitCode()).isZero();
         assertThat(message.durationMs()).isEqualTo(1840L);
+        assertThat(message.cases()).hasSize(2);
+        assertThat(message.cases().getFirst().className()).isEqualTo("MainTest");
+        assertThat(message.cases().getFirst().name()).isEqualTo("실행된다()");
+        assertThat(message.cases().getFirst().status()).isEqualTo("PASSED");
+        assertThat(message.cases().getFirst().durationMs()).isEqualTo(30L);
+    }
+
+    /**
+     * fixture의 케이스 상태 문자열이 백엔드 enum으로 그대로 변환되어야 한다.
+     */
+    @Test
+    void fixture의_케이스_상태값이_도메인_enum과_일치한다() throws IOException {
+        RunResultMessage message = read("contract/run-result.json", RunResultMessage.class);
+
+        for (RunResultMessage.RunCaseMessage source : message.cases()) {
+            assertThat(CodeRunCaseStatus.valueOf(source.status())).isNotNull();
+        }
+    }
+
+    /** 케이스 기록 이전 버전의 워커가 보낸 메시지도 읽혀야 한다. */
+    @Test
+    void cases가_없는_옛_메시지도_읽는다() throws IOException {
+        RunResultMessage message = objectMapper.readValue("""
+                {"runId":"3f2a1b4c-5d6e-7f80-9a1b-2c3d4e5f6071","status":"SUCCEEDED","exitCode":0,"durationMs":10}
+                """, RunResultMessage.class);
+
+        assertThat(message.cases()).isNull();
     }
 
     /**
