@@ -6,16 +6,19 @@ import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.domain.LlmCallPurpose;
+import com.promptstudio.attempt.domain.PromptScopeDecision;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.CodeGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
+import com.promptstudio.attempt.exception.PromptScopeRejectedException;
 import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.attempt.port.LlmUsageCarrier;
+import com.promptstudio.attempt.port.PromptScopeValidator;
 import com.promptstudio.attempt.repository.AttemptQueryRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemView;
@@ -40,6 +43,7 @@ public class AttemptService {
     private final CodeGenerationGuard codeGenerationGuard;
     private final CodeGenerator codeGenerator;
     private final FeedbackGenerator feedbackGenerator;
+    private final PromptScopeValidator promptScopeValidator;
 
     public AttemptService(
             ProblemRepository problemRepository,
@@ -49,7 +53,8 @@ public class AttemptService {
             FeedbackGenerationGuard feedbackGenerationGuard,
             CodeGenerationGuard codeGenerationGuard,
             CodeGenerator codeGenerator,
-            FeedbackGenerator feedbackGenerator
+            FeedbackGenerator feedbackGenerator,
+            PromptScopeValidator promptScopeValidator
     ) {
         this.problemRepository = problemRepository;
         this.attemptQueryRepository = attemptQueryRepository;
@@ -59,6 +64,7 @@ public class AttemptService {
         this.codeGenerationGuard = codeGenerationGuard;
         this.codeGenerator = codeGenerator;
         this.feedbackGenerator = feedbackGenerator;
+        this.promptScopeValidator = promptScopeValidator;
     }
 
     public AttemptView startAttempt(Long problemId, Long userId, String idempotencyKey) {
@@ -151,11 +157,18 @@ public class AttemptService {
             throw new AttemptAlreadySubmittedException(attemptId);
         }
 
+        ProblemView problem = ProblemView.from(getProblem(attempt.problemId()));
+        PromptScopeDecision scopeDecision = promptScopeValidator.validate(problem, userPrompt);
+
+        if (scopeDecision.isRejected()) {
+            throw new PromptScopeRejectedException(scopeRejectionMessage(scopeDecision));
+        }
+
         GeneratedCode generated;
 
         try {
             generated = codeGenerator.generate(
-                    ProblemView.from(getProblem(attempt.problemId())), attempt, userPrompt);
+                    problem, attempt, userPrompt);
         } catch (RuntimeException exception) {
             recordFailedCalls(attemptId, LlmCallPurpose.CODE, exception, userPrompt);
 
@@ -264,6 +277,14 @@ public class AttemptService {
     private Problem getProblem(Long problemId) {
         return problemRepository.findById(problemId)
                 .orElseThrow(() -> new ProblemNotFoundException(problemId));
+    }
+
+    private String scopeRejectionMessage(PromptScopeDecision decision) {
+        if (decision.status() == PromptScopeDecision.Status.OUT_OF_SCOPE) {
+            return "현재 요청은 이 문제의 범위와 맞지 않아 실행할 수 없습니다.\n" + decision.message();
+        }
+
+        return "요청이 구체적이지 않아 실행할 수 없습니다.\n" + decision.message();
     }
 
     /**

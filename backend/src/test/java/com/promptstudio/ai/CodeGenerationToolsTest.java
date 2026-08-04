@@ -70,6 +70,21 @@ class CodeGenerationToolsTest {
     }
 
     @Test
+    void edit_file은_외부_import가_있으면_파일을_수정하지_않는다() {
+        String result = call("edit_file", "{\"path\":\"src/Main.java\",\"content\":\"import lombok.Getter;\\nclass Main {}\"}");
+
+        assertThat(result).contains("Java 표준 라이브러리");
+        assertThat(tools.currentFiles()).containsExactly(files.toArray(ProblemFile[]::new));
+    }
+
+    @Test
+    void edit_file은_java_import를_허용한다() {
+        String result = call("edit_file", "{\"path\":\"src/Main.java\",\"content\":\"import java.util.List;\\nclass Main {}\"}");
+
+        assertThat(result).contains("ok");
+    }
+
+    @Test
     void 모든_툴_호출은_실패해도_트레이스에_순서대로_기록된다() {
         call("list_files", "{}");
         call("read_file", "{\"path\":\"src/None.java\"}");

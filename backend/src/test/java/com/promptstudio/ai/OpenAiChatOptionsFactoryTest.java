@@ -10,7 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiChatOptionsFactoryTest {
 
-    private final OpenAiChatOptionsFactory factory = new OpenAiChatOptionsFactory("code-model", "feedback-model");
+    private final OpenAiChatOptionsFactory factory = new OpenAiChatOptionsFactory(
+            "code-model", "feedback-model", "scope-model");
 
     private final List<ToolCallback> toolCallbacks = new CodeGenerationTools(List.of()).callbacks();
 
@@ -28,6 +29,15 @@ class OpenAiChatOptionsFactoryTest {
 
         assertThat(options.getMaxTokens()).isNull();
         assertThat(options.getMaxCompletionTokens()).isPositive();
+    }
+
+    @Test
+    void 범위_판독_옵션은_작은_출력_예산과_전용_모델을_쓴다() {
+        OpenAiChatOptions options = factory.forScopeValidation();
+
+        assertThat(options.getModel()).isEqualTo("scope-model");
+        assertThat(options.getReasoningEffort()).isEqualTo("none");
+        assertThat(options.getMaxCompletionTokens()).isEqualTo(256);
     }
 
     /**

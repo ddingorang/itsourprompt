@@ -4,9 +4,11 @@ import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.attempt.domain.PromptScopeDecision;
 import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
+import com.promptstudio.attempt.port.PromptScopeValidator;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.domain.ProblemView;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -47,6 +49,12 @@ public class FakeAiConfiguration {
     @Primary
     public FakeFeedbackGenerator fakeFeedbackGenerator() {
         return new FakeFeedbackGenerator();
+    }
+
+    @Bean
+    @Primary
+    public PromptScopeValidator promptScopeValidator() {
+        return (problem, userPrompt) -> new PromptScopeDecision(PromptScopeDecision.Status.ALLOW, "");
     }
 
     public static class FakeCodeGenerator implements CodeGenerator {
