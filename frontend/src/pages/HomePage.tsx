@@ -26,7 +26,7 @@ const steps = [
     number: '03',
     title: '피드백을 확인하세요',
     description: '실행 결과와 항목별 피드백을 비교하며 더 좋은 프롬프트의 기준을 익힙니다.',
-    visual: 'TEST',
+    visual: 'FEEDBACK',
   },
 ];
 
