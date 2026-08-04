@@ -78,7 +78,7 @@ function useResetLandingScroll() {
 }
 
 export default function HomePage() {
-  const { colorMode, setColorMode } = useTheme();
+  const { colorMode } = useTheme();
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -118,20 +118,8 @@ export default function HomePage() {
       <main className="flex-1 overflow-clip">
         <section className="landing-hero mx-auto flex min-h-[calc(100svh-66px)] w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
           <div className="flex flex-1 flex-col justify-center">
-            <div className="flex items-center justify-between gap-4 font-mono text-[19px] font-bold tracking-[0.14em] text-[var(--acid)]">
+            <div className="flex items-center gap-4 font-mono text-[19px] font-bold tracking-[0.14em] text-[var(--acid)]">
               <span>PROMPT ENGINEERING PRACTICE</span>
-              <button
-                aria-label={`${colorMode === 'dark' ? 'Light' : 'Dark'} mode로 전환`}
-                aria-pressed={colorMode === 'light'}
-                className="landing-theme-toggle"
-                type="button"
-                onClick={() => setColorMode((currentMode) => currentMode === 'dark' ? 'light' : 'dark')}
-              >
-                <span className="landing-theme-toggle-track" aria-hidden="true">
-                  <span className="landing-theme-toggle-thumb" />
-                </span>
-                <span>{colorMode === 'dark' ? 'LIGHT' : 'DARK'}</span>
-              </button>
             </div>
             <div className="pt-7 pb-14">
               <h1 className="landing-display m-0 max-w-[1100px] text-[clamp(52px,9vw,110px)] leading-[1.0] font-black tracking-[-0.05em]">
