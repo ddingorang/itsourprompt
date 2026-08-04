@@ -10,6 +10,8 @@ import com.promptstudio.attempt.exception.DuplicateRequestException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
 import com.promptstudio.attempt.exception.TurnNotFoundException;
+import com.promptstudio.attempt.exception.PromptScopeRejectedException;
+import com.promptstudio.ai.PromptScopeValidationException;
 import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.attempt.port.CodeGenerationException;
@@ -131,6 +133,20 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(PromptScopeRejectedException.class)
+    public ResponseEntity<ApiErrorResponse> handlePromptScopeRejected(PromptScopeRejectedException exception) {
+        ApiErrorResponse response = new ApiErrorResponse("prompt-out-of-scope", exception.getMessage());
+
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+    }
+
+    @ExceptionHandler(PromptScopeValidationException.class)
+    public ResponseEntity<ApiErrorResponse> handlePromptScopeValidationFailure(PromptScopeValidationException exception) {
+        ApiErrorResponse response = new ApiErrorResponse("prompt-scope-validation-failed", exception.getMessage());
+
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
     }
 
     @ExceptionHandler(CodeRunNotFoundException.class)

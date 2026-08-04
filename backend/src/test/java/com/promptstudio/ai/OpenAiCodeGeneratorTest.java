@@ -39,7 +39,7 @@ class OpenAiCodeGeneratorTest {
             chatModel,
             ToolCallingManager.builder().build(),
             new AiCallExecutor(),
-            new OpenAiChatOptionsFactory("code-model", "feedback-model")
+            new OpenAiChatOptionsFactory("code-model", "feedback-model", "scope-model")
     );
 
     @Test

@@ -35,7 +35,7 @@ class OpenAiFeedbackGeneratorTest {
     private final OpenAiFeedbackGenerator feedbackGenerator = new OpenAiFeedbackGenerator(
             ChatClient.builder(chatModel),
             new AiCallExecutor(),
-            new OpenAiChatOptionsFactory("code-model", "feedback-model")
+            new OpenAiChatOptionsFactory("code-model", "feedback-model", "scope-model")
     );
 
     @Test

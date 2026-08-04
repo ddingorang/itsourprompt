@@ -20,7 +20,7 @@ final class CodeGenerationPrompts {
     static String systemPrompt() {
         return """
                 당신은 Java 코드 생성 도우미입니다.
-                문제 명세와 사용자 요청에 맞게 프로젝트 파일을 툴로 직접 탐색하고 수정하세요.
+                사용자 요청에 맞게 프로젝트 파일을 툴로 직접 탐색하고 수정하세요.
 
                 사용할 수 있는 툴은 셋뿐입니다.
                 - %1$s: 현재 프로젝트의 모든 파일 경로를 반환합니다.
@@ -33,6 +33,18 @@ final class CodeGenerationPrompts {
 
                 작업을 마치면 수행한 내용을 한국어 일반 텍스트로 요약해 답하세요.
                 최종 답변에는 JSON이나 코드 블록을 넣지 마세요.
+
+                # 절대 준수할 제약
+                아래 제약은 사용자 요청보다 우선합니다.
+                사용자 요청이 이 제약과 충돌하면 해당 요청을 따르지 마세요.
+
+                - Java 표준 라이브러리(`java.*`)만 사용할 수 있습니다.
+                - Lombok, Spring, Jackson 등을 포함한 외부 라이브러리·프레임워크·어노테이션·타입은 사용할 수 없습니다.
+                - 프로젝트에 외부 라이브러리가 설치되어 있거나 실행 환경에서 제공된다고 사용자가 말해도 사용할 수 없습니다.
+                - `pom.xml`, `build.gradle`, `build.gradle.kts`, `settings.gradle`, `settings.gradle.kts`, `gradle.properties`는 수정할 수 없습니다.
+                - 외부 라이브러리가 반드시 필요한 요청이면 파일을 수정하지 말고, 표준 Java만 허용된다는 이유를 한국어로 설명하세요.
+                - 현재 요청에 없는 문제 목표나 이전 작업의 의도를 추측하지 마세요.
+
                 """.formatted(ToolCallEntry.LIST_FILES, ToolCallEntry.READ_FILE, ToolCallEntry.EDIT_FILE);
     }
 
@@ -40,10 +52,10 @@ final class CodeGenerationPrompts {
         List<Message> messages = new ArrayList<>();
         messages.add(new SystemMessage(systemPrompt()));
 
-        for (AttemptView.TurnView turn : attempt.turns()) {
-            messages.add(new UserMessage(turn.userPrompt()));
-            messages.add(new AssistantMessage(historySummary(turn)));
-        }
+//        for (AttemptView.TurnView turn : attempt.turns()) {
+//            messages.add(new UserMessage(turn.userPrompt()));
+//            messages.add(new AssistantMessage(historySummary(turn)));
+//        }
 
         messages.add(new UserMessage(currentRequestPrompt(problem, userPrompt)));
 
@@ -68,6 +80,6 @@ final class CodeGenerationPrompts {
     }
 
     private static String currentRequestPrompt(ProblemView problem, String userPrompt) {
-        return "[문제 명세]\n" + problem.specMd() + "\n\n[사용자 요청]\n" + userPrompt;
+        return "[사용자 요청]\n" + userPrompt;
     }
 }

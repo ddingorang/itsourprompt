@@ -23,21 +23,26 @@ public class OpenAiChatOptionsFactory {
 
     private static final String CODE_GENERATION_REASONING_EFFORT = "none";
     private static final String FEEDBACK_REASONING_EFFORT = "low";
+    private static final String SCOPE_VALIDATION_REASONING_EFFORT = "none";
     private static final int CODE_GENERATION_MAX_COMPLETION_TOKENS = 32_768;
     private static final int FINALIZE_MAX_COMPLETION_TOKENS = 8_192;
     private static final int FEEDBACK_BASE_MAX_COMPLETION_TOKENS = 4_096;
     private static final int FEEDBACK_MAX_COMPLETION_TOKENS_PER_TURN = 2_048;
     private static final int FEEDBACK_MAX_COMPLETION_TOKENS_CAP = 32_768;
+    private static final int SCOPE_VALIDATION_MAX_COMPLETION_TOKENS = 256;
 
     private final String codeModel;
     private final String feedbackModel;
+    private final String scopeModel;
 
     public OpenAiChatOptionsFactory(
             @Value("${OPENAI_CODE_MODEL:gpt-5.6-luna}") String codeModel,
-            @Value("${OPENAI_FEEDBACK_MODEL:gpt-5.4-mini}") String feedbackModel
+            @Value("${OPENAI_FEEDBACK_MODEL:gpt-5.4-mini}") String feedbackModel,
+            @Value("${OPENAI_SCOPE_MODEL:gpt-5.4-mini}") String scopeModel
     ) {
         this.codeModel = codeModel;
         this.feedbackModel = feedbackModel;
+        this.scopeModel = scopeModel;
     }
 
     public OpenAiChatOptions forCodeGeneration(String promptCacheKey, List<ToolCallback> toolCallbacks) {
@@ -88,6 +93,14 @@ public class OpenAiChatOptionsFactory {
                 .responseFormat(OpenAiChatModel.ResponseFormat.builder()
                         .jsonSchema(FeedbackSchema.jsonSchema(turnCount))
                         .build())
+                .build();
+    }
+
+    public OpenAiChatOptions forScopeValidation() {
+        return OpenAiChatOptions.builder()
+                .model(scopeModel)
+                .reasoningEffort(SCOPE_VALIDATION_REASONING_EFFORT)
+                .maxCompletionTokens(SCOPE_VALIDATION_MAX_COMPLETION_TOKENS)
                 .build();
     }
 
