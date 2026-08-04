@@ -31,6 +31,7 @@ import type {
 } from '../features/attempt/types';
 import { getProblemDetail } from '../features/problem/api';
 import type { ProblemDetail, RepositoryFile } from '../features/problem/types';
+import { useTheme } from '../features/theme/ThemeContext';
 import {
   ApiError,
   API_ERROR_CODES,
@@ -66,15 +67,15 @@ interface FileTreeNode {
 }
 
 const labelClasses =
-  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
+  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[var(--problem-detail-acid)]';
 
 const pageStateClasses =
-  'grid min-h-dvh place-items-center bg-[#090909] p-10 ' +
-  'font-mono text-xs leading-[1.7] text-[#a3a3a3]';
+  'grid min-h-dvh place-items-center bg-[var(--problem-detail-bg)] p-10 ' +
+  'font-mono text-xs leading-[1.7] text-[var(--problem-detail-muted)]';
 
 const changeColorClasses: Record<ChangeType, string> = {
-  ADDED: 'text-[#d6ff50]',
-  MODIFIED: 'text-white',
+  ADDED: 'text-[var(--problem-detail-acid)]',
+  MODIFIED: 'text-[var(--problem-detail-text)]',
   DELETED: 'text-[#ff786b]',
 };
 
@@ -265,6 +266,7 @@ function getFolderPaths(nodes: FileTreeNode[]): string[] {
 }
 
 export default function ProblemDetailPage() {
+  const { colorMode } = useTheme();
   const navigate = useNavigate();
   /**
    * 이 화면은 두 주소에서 열린다 — /problems/{id}(어템프트 시작 전)와
@@ -939,15 +941,15 @@ export default function ProblemDetailPage() {
           <div key={item.path}>
             <button
               aria-expanded={isExpanded}
-              className="grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_14px_max-content] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-[#a3a3a3] hover:text-[#f5f5ef]"
+              className="grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_14px_max-content] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-[var(--problem-detail-muted)] hover:text-[var(--problem-detail-text)]"
               onClick={() => toggleFolder(item.path)}
               style={{ paddingLeft: `${7 + depth * 14}px` }}
               type="button"
             >
-              <span className="text-[10px] text-[#777]" aria-hidden="true">
+              <span className="text-[10px] text-[var(--problem-detail-subtle)]" aria-hidden="true">
                 {isExpanded ? '▼' : '▶'}
               </span>
-              <span className="text-[13px] text-[#d6ff50]" aria-hidden="true">
+              <span className="text-[13px] text-[var(--problem-detail-acid)]" aria-hidden="true">
                 {isExpanded ? '▱' : '□'}
               </span>
               <span className="whitespace-nowrap">{item.name}</span>
@@ -965,9 +967,9 @@ export default function ProblemDetailPage() {
         <button
           aria-current={isSelected ? 'true' : undefined}
           className={[
-            'grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_max-content_28px] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-inherit hover:text-[#f5f5ef]',
+            'grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_max-content_28px] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-inherit hover:text-[var(--problem-detail-text)]',
             isSelected
-              ? 'bg-[#d6ff50] text-[#090909] hover:text-[#090909]'
+              ? 'bg-[var(--problem-detail-acid)] text-[#090909] hover:text-[#090909]'
               : '',
             item.deleted ? 'opacity-60 line-through' : '',
           ]
@@ -979,7 +981,7 @@ export default function ProblemDetailPage() {
             paddingLeft: `${7 + depth * 14}px`,
             ...(isSelected
               ? {
-                  backgroundColor: '#d6ff50',
+                  backgroundColor: 'var(--problem-detail-acid)',
                   color: '#090909',
                 }
               : {}),
@@ -990,7 +992,7 @@ export default function ProblemDetailPage() {
           <span
             className={[
               'text-[11px]',
-              isSelected ? 'text-[#090909]' : 'text-[#777]',
+              isSelected ? 'text-[#090909]' : 'text-[var(--problem-detail-subtle)]',
             ].join(' ')}
             aria-hidden="true"
           >
@@ -1018,7 +1020,12 @@ export default function ProblemDetailPage() {
   // 로딩 문구만 보이게 된다.
   if (isLoading && !problem) {
     return (
-      <div className={pageStateClasses}>문제 상세를 불러오는 중입니다…</div>
+      <div
+        className={`problem-detail-page ${pageStateClasses}`}
+        data-color-mode={colorMode}
+      >
+        문제 상세를 불러오는 중입니다…
+      </div>
     );
   }
 
@@ -1026,10 +1033,13 @@ export default function ProblemDetailPage() {
     const notice = loadError ?? toProblemsError('문제를 찾을 수 없습니다.');
 
     return (
-      <div className={`${pageStateClasses} text-[#ff786b]`}>
+      <div
+        className={`problem-detail-page ${pageStateClasses} text-[#ff786b]`}
+        data-color-mode={colorMode}
+      >
         <div>
           <p>{notice.message}</p>
-          <Button className="mt-5" to={notice.actionTo}>
+          <Button className="problem-detail-primary-action mt-5" to={notice.actionTo}>
             <span className="text-[14px]">{notice.actionLabel}</span>
           </Button>
         </div>
@@ -1038,44 +1048,47 @@ export default function ProblemDetailPage() {
   }
 
   return (
-    <div className="flex h-screen min-w-80 flex-col overflow-hidden bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif] max-[700px]:h-auto max-[700px]:min-h-screen max-[700px]:overflow-visible">
+    <div
+      className="problem-detail-page flex h-screen min-w-80 flex-col overflow-hidden bg-[var(--problem-detail-bg)] text-[var(--problem-detail-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif] max-[700px]:h-auto max-[700px]:min-h-screen max-[700px]:overflow-visible"
+      data-color-mode={colorMode}
+    >
       <Header variant="workspace" />
 
       <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[230px_minmax(360px,1fr)_minmax(420px,480px)] max-[1080px]:grid-cols-[190px_minmax(0,1fr)] max-[700px]:block max-[700px]:overflow-visible">
-        <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[#343434] px-6 py-[22px] max-[700px]:overflow-visible max-[700px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:py-[18px]">
+        <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[var(--problem-detail-border)] px-6 py-[22px] max-[700px]:overflow-visible max-[700px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:py-[18px]">
           <div className={labelClasses}>FILE EXPLORER</div>
 
           <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-auto max-[700px]:flex-none max-[700px]:overflow-visible">
-            <div className="grid w-max min-w-full select-none gap-[3px] font-mono text-xs leading-[1.5] text-[#a3a3a3]">
+            <div className="grid w-max min-w-full select-none gap-[3px] font-mono text-xs leading-[1.5] text-[var(--problem-detail-muted)]">
               {renderFileTree(fileTree)}
             </div>
           </div>
 
-          <div className="mt-4 grid shrink-0 gap-2 border-t border-[#343434] pt-4 font-mono text-[9px] text-[#767676]">
+          <div className="mt-4 grid shrink-0 gap-2 border-t border-[var(--problem-detail-border)] pt-4 font-mono text-[9px] text-[var(--problem-detail-subtle)]">
             <span>A / ADDED</span>
             <span>M / MODIFIED</span>
             <span>D / DELETED</span>
           </div>
         </aside>
 
-        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[#343434] px-7 py-[22px] max-[1080px]:border-r-0 max-[700px]:block max-[700px]:overflow-visible max-[700px]:border-b max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
+        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[var(--problem-detail-border)] px-7 py-[22px] max-[1080px]:border-r-0 max-[700px]:block max-[700px]:overflow-visible max-[700px]:border-b max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
           <div className="mb-5 flex items-start justify-between gap-[18px]">
             <div>
               <div className={labelClasses}>
                 {selectedFile || 'FILE'}
               </div>
             </div>
-            <span className="shrink-0 border border-[#494949] px-2 py-1.5 font-mono text-[9px] text-[#a3a3a3]">
+            <span className="shrink-0 border border-[var(--problem-detail-border-strong)] px-2 py-1.5 font-mono text-[9px] text-[var(--problem-detail-muted)]">
               READ ONLY
             </span>
           </div>
 
-          <div className="workspace-scrollbar min-h-0 flex-1 overflow-auto border border-[#292929] bg-[#202020] max-[700px]:min-h-[360px]">
+          <div className="workspace-scrollbar min-h-0 flex-1 overflow-auto border border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-bg)] max-[700px]:min-h-[360px]">
             <div
               aria-hidden="true"
-              className="sticky top-0 z-[2] h-8 min-w-full border-b border-[#333] bg-[#151515]"
+              className="sticky top-0 z-[2] h-8 min-w-full border-b border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-header)]"
             />
-            <div className="min-w-max py-3 font-mono text-xs leading-[1.9] whitespace-pre text-[#e3e3dd] [tab-size:2]">
+            <div className="min-w-max py-3 font-mono text-xs leading-[1.9] whitespace-pre text-[var(--problem-detail-code-text)] [tab-size:2]">
               {selectedCode.split('\n').map((line, index) => (
                 <div
                   className="grid min-h-[1.9em] grid-cols-[2.0rem_max-content]"
@@ -1083,7 +1096,7 @@ export default function ProblemDetailPage() {
                 >
                   <span
                     aria-hidden="true"
-                    className="sticky left-0 border-r border-[#333] bg-[#202020] pr-3 text-right text-[#686868] select-none"
+                    className="sticky left-0 border-r border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-bg)] pr-3 text-right text-[var(--problem-detail-subtle)] select-none"
                   >
                     {index + 1}
                   </span>
@@ -1094,10 +1107,10 @@ export default function ProblemDetailPage() {
           </div>
         </section>
 
-        <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
-          <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[#343434] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
+        <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[var(--problem-detail-border)] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[var(--problem-detail-border)] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
             <div
-              className="grid shrink-0 grid-cols-3 border border-[#3f3f3f]"
+              className="grid shrink-0 grid-cols-3 border border-[var(--problem-detail-border)]"
               role="tablist"
               aria-label="문제 상세 정보"
             >
@@ -1107,10 +1120,10 @@ export default function ProblemDetailPage() {
                   aria-selected={activeTab === tab}
                   className={[
                     'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm leading-[1.5] font-bold tracking-[0.08em]',
-                    tab !== 'test' ? 'border-r border-[#3f3f3f]' : '',
+                    tab !== 'test' ? 'border-r border-[var(--problem-detail-border)]' : '',
                     activeTab === tab
-                      ? 'border-b-2 border-b-[#d6ff50] text-[#d6ff50]'
-                      : 'text-[#8b8b8b] hover:text-[#b8b8b8]',
+                      ? 'border-b-2 border-b-[var(--problem-detail-acid)] text-[var(--problem-detail-acid)]'
+                      : 'text-[var(--problem-detail-muted)] hover:text-[var(--problem-detail-text)]',
                   ].join(' ')}
                   id={`problem-detail-tab-${tab}`}
                   key={tab}
@@ -1137,19 +1150,19 @@ export default function ProblemDetailPage() {
             >
               {activeTab === 'problem' ? (
                 <>
-                  <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[#a3a3a3] [word-break:keep-all]">
+                  <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[var(--problem-detail-muted)] [word-break:keep-all]">
                     <ReactMarkdown
                       components={{
                         h1: ({ children }) => (
-                          <h1 className="my-3 mt-2.5 text-[24px] leading-[1.05] font-bold tracking-[-0.045em] text-[#f5f5ef]">
+                          <h1 className="my-3 mt-2.5 text-[24px] leading-[1.05] font-bold tracking-[-0.045em] text-[var(--problem-detail-text)]">
                             {children}
                           </h1>
                         ),
-                        h2: ({ children }) => <h2 className="font-bold text-[#f5f5ef]">{children}</h2>,
-                        h3: ({ children }) => <h3 className="font-bold text-[#f5f5ef]">{children}</h3>,
-                        h4: ({ children }) => <h4 className="font-bold text-[#f5f5ef]">{children}</h4>,
-                        h5: ({ children }) => <h5 className="font-bold text-[#f5f5ef]">{children}</h5>,
-                        h6: ({ children }) => <h6 className="font-bold text-[#f5f5ef]">{children}</h6>,
+                        h2: ({ children }) => <h2 className="font-bold text-[var(--problem-detail-text)]">{children}</h2>,
+                        h3: ({ children }) => <h3 className="font-bold text-[var(--problem-detail-text)]">{children}</h3>,
+                        h4: ({ children }) => <h4 className="font-bold text-[var(--problem-detail-text)]">{children}</h4>,
+                        h5: ({ children }) => <h5 className="font-bold text-[var(--problem-detail-text)]">{children}</h5>,
+                        h6: ({ children }) => <h6 className="font-bold text-[var(--problem-detail-text)]">{children}</h6>,
                       }}
                     >
                       {problem.specMd}
@@ -1158,48 +1171,48 @@ export default function ProblemDetailPage() {
                 </>
               ) : activeTab === 'logs' && turns.length ? (
                 <div className="grid gap-4">
-                  <div className="flex items-end justify-between border border-[#3f3f3f] bg-[#111] px-4 py-3">
+                  <div className="flex items-end justify-between border border-[var(--problem-detail-border)] bg-[var(--problem-detail-surface)] px-4 py-3">
                     <div>
-                      <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[#777]">
+                      <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[var(--problem-detail-subtle)]">
                         TOTAL TOKEN USAGE
                       </p>
-                      <p className="mt-1 mb-0 text-[12px] text-[#f5f5ef]">
+                      <p className="mt-1 mb-0 text-[12px] text-[var(--problem-detail-text)]">
                         전체 프롬프트 토큰 사용량
                       </p>
                     </div>
-                    <strong className="font-mono text-xl text-[#d6ff50]">
+                    <strong className="font-mono text-xl text-[var(--problem-detail-acid)]">
                       {formatUsageValue(hasTokenUsage ? totalTokenUsage : null)}
                     </strong>
                   </div>
 
                   {turns.map((turn, index) => (
                     <article
-                      className="border-l-2 border-[#d6ff50] pl-3"
+                      className="border-l-2 border-[var(--problem-detail-acid)] pl-3"
                       key={`turn-${index + 1}`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 font-mono text-[11px] font-bold">
-                        <span className="text-[#d6ff50]">
+                        <span className="text-[var(--problem-detail-acid)]">
                           TURN {String(index + 1).padStart(2, '0')}
                         </span>
-                        <span className="flex gap-3 text-[#777]">
+                        <span className="flex gap-3 text-[var(--problem-detail-subtle)]">
                           <span>
                             TOKENS{' '}
-                            <strong className="text-[#c7c7c2]">
+                            <strong className="text-[var(--problem-detail-text)]">
                               {formatUsageValue(turnTokenUsages[index])}
                             </strong>
                           </span>
                           <span>
                             LATENCY{' '}
-                            <strong className="text-[#c7c7c2]">
+                            <strong className="text-[var(--problem-detail-text)]">
                               {formatUsageValue(turn.usage?.latencyMs, 'ms')}
                             </strong>
                           </span>
                         </span>
                       </div>
-                      <p className="my-2 whitespace-pre-wrap text-[12px] leading-[1.6] text-[#f5f5ef]">
+                      <p className="my-2 whitespace-pre-wrap text-[12px] leading-[1.6] text-[var(--problem-detail-text)]">
                         {turn.prompt}
                       </p>
-                      <p className="m-0 whitespace-pre-wrap text-[11px] leading-[1.6] text-[#8f8f8f]">
+                      <p className="m-0 whitespace-pre-wrap text-[11px] leading-[1.6] text-[var(--problem-detail-muted)]">
                         {turn.aiResponse}
                       </p>
 
@@ -1219,7 +1232,7 @@ export default function ProblemDetailPage() {
                   ))}
                 </div>
               ) : activeTab === 'logs' ? (
-                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[var(--problem-detail-subtle)]">
                   실행한 프롬프트가 없습니다.
                 </div>
               ) : codeRunError ? (
@@ -1367,7 +1380,7 @@ export default function ProblemDetailPage() {
                   )}
                 </div>
               ) : (
-                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[var(--problem-detail-subtle)]">
                   테스트 결과가 없습니다.
                 </div>
               )}
@@ -1376,10 +1389,10 @@ export default function ProblemDetailPage() {
 
           <section className="flex min-h-0 flex-col overflow-hidden pt-2 max-[1080px]:overflow-visible max-[1080px]:pt-0 max-[700px]:pt-[22px]">
             <div className={labelClasses}>PROMPT / MAX 4,000</div>
-            <div className="relative mt-2 shrink-0 border border-[#555] bg-[#131313] focus-within:border-[#d6ff50]">
+            <div className="relative mt-2 shrink-0 border border-[var(--problem-detail-border-strong)] bg-[var(--problem-detail-input-bg)] focus-within:border-[var(--problem-detail-acid)]">
               <textarea
                 aria-keyshortcuts="Control+Enter Meta+Enter"
-                className="workspace-scrollbar block h-[108px] w-full resize-none overflow-y-auto border-0 bg-transparent py-3 pr-16 pl-3.5 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
+                className="workspace-scrollbar block h-[108px] w-full resize-none overflow-y-auto border-0 bg-transparent py-3 pr-16 pl-3.5 text-[13px] leading-[1.6] text-[var(--problem-detail-text)] outline-0 [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isRunning || isSubmitting || isSubmitted}
                 maxLength={4000}
                 onChange={(event) => setPrompt(event.target.value)}
@@ -1394,7 +1407,7 @@ export default function ProblemDetailPage() {
               />
               <button
                 aria-label="프롬프트 실행"
-                className="absolute right-4 bottom-2 grid size-7 cursor-pointer place-items-center rounded-full border border-[#d6ff50] bg-[#d6ff50] text-[#090909] transition-colors hover:bg-transparent hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-45"
+                className="absolute right-4 bottom-2 grid size-7 cursor-pointer place-items-center rounded-full border border-[var(--problem-detail-acid)] bg-[var(--problem-detail-acid)] text-[#090909] transition-colors hover:bg-transparent hover:text-[var(--problem-detail-acid)] disabled:cursor-not-allowed disabled:opacity-45"
                 disabled={isRunning || isSubmitting || isSubmitted || !prompt.trim()}
                 onClick={handleRun}
                 title="프롬프트 실행"
@@ -1420,7 +1433,7 @@ export default function ProblemDetailPage() {
                 )}
               </button>
             </div>
-            <div className="mt-1 flex items-center justify-between gap-3 px-3.5 font-mono text-[9px] text-[#777]">
+            <div className="mt-1 flex items-center justify-between gap-3 px-3.5 font-mono text-[9px] text-[var(--problem-detail-subtle)]">
               <span>Ctrl/Cmd + Enter 전송 · Enter 줄바꿈</span>
               <span>
                 <b>{prompt.length.toLocaleString('ko-KR')}</b> / 4,000
@@ -1431,7 +1444,7 @@ export default function ProblemDetailPage() {
               {status && (
                 <div
                   className={[
-                    'mb-2 border border-[#484848] p-2 font-mono text-[10px] leading-[1.5] text-[#a3a3a3]',
+                    'mb-2 border border-[var(--problem-detail-border-strong)] p-2 font-mono text-[10px] leading-[1.5] text-[var(--problem-detail-muted)]',
                     status.type === 'error'
                       ? 'border-[#ff786b] text-[#ff786b]'
                       : '',
@@ -1443,6 +1456,7 @@ export default function ProblemDetailPage() {
               )}
 
               <Button
+                className="problem-detail-primary-action"
                 disabled={isRunning || isSubmitting || !(canSubmit || isSubmitted)}
                 fullWidth
                 onClick={handleSubmit}
