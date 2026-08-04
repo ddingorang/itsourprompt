@@ -60,6 +60,18 @@ class ErrorHandlingApiTest extends DatabaseTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /**
+     * 경로 변수 타입이 안 맞는 요청. 이것도 ErrorResponse를 구현하지 않아 catch-all을 타고 500이 됐다 —
+     * 클라이언트가 잘못 부른 것을 서버 버그로 보고하던 셈이고, 타입 있는 경로 변수를 쓰는 12개 엔드포인트가
+     * 전부 같은 구멍을 갖고 있었다.
+     */
+    @Test
+    void 경로_변수_타입이_맞지_않으면_400을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/problems/{id}", "abc"))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
+    }
+
     @Test
     void 지원하지_않는_컨텐츠_타입이면_415를_반환한다() throws Exception {
         mockMvc.perform(post("/api/attempts")

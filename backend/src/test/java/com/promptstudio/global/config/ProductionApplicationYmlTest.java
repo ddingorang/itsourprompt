@@ -1,6 +1,6 @@
 package com.promptstudio.global.config;
 
-import com.promptstudio.attempt.service.LlmPricingProperties;
+import com.promptstudio.pricing.LlmPricingProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;

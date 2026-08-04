@@ -97,18 +97,24 @@ public class GuestSessionService {
         }
     }
 
+    /**
+     * 이미 있는 게스트만 확인한다. {@link #resolveOrCreate}와 달리 <b>세션을 만들지도 쿠키를 발급하지도
+     * 않는다</b> — 랭킹처럼 구경만 하는 공개 조회에서 방문자마다 DB 행이 생기면 안 되기 때문이다.
+     */
+    @Transactional(readOnly = true)
+    public Optional<UUID> findExistingSessionId(HttpServletRequest request) {
+        return findValid(request).map(GuestSession::id);
+    }
+
     private Optional<GuestSession> findValid(HttpServletRequest request) {
         String token = findCookieValue(request);
         if (token == null) {
             return Optional.empty();
         }
 
-        Optional<GuestSession> guestSession = guestSessionRepository
-                .findByTokenHashAndExpiresAtAfter(hash(token), Instant.now());
-        if (guestSession.isEmpty()) {
-            log.info("Guest session cookie was not valid; issuing a new session");
-        }
-        return guestSession;
+        // 여기서 "새로 발급한다"고 적지 않는다 — 이 메서드는 읽기만 하고, 발급 여부는 부르는 쪽이 정한다.
+        // 랭킹처럼 조회만 하는 경로도 이 메서드를 지나가므로, 발급을 단정하면 로그가 거짓이 된다.
+        return guestSessionRepository.findByTokenHashAndExpiresAtAfter(hash(token), Instant.now());
     }
 
     private String findCookieValue(HttpServletRequest request) {

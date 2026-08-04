@@ -34,6 +34,10 @@ public abstract class DatabaseTest {
 
     protected Long ownerId;
 
+    /**
+     * model_price는 이 목록에 넣지 않는다. 단가 동기화는 ApplicationRunner라 컨텍스트당 한 번만 도는데,
+     * 여기서 비우면 두 번째 테스트부터 단가가 사라져 랭킹의 모든 어템프트가 "비용을 모름"으로 걸러진다.
+     */
     @BeforeEach
     void 테이블을_비운다() {
         dsl.execute("TRUNCATE code_run_case, code_run, idempotency_record, attempt_llm_call, turn_tool_call, turn_file_change, attempt_turn, attempt_file, attempt, guest_session, problem_file, problem, sync_state, users RESTART IDENTITY CASCADE");

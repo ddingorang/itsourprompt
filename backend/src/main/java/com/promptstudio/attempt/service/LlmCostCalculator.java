@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.service;
 
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.pricing.LlmPricingProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -14,8 +15,8 @@ import java.math.RoundingMode;
 @Component
 public class LlmCostCalculator {
 
-    private static final BigDecimal TOKENS_PER_PRICE_UNIT = new BigDecimal("1000000");
-    private static final int COST_SCALE = 8;
+    private static final BigDecimal TOKENS_PER_PRICE_UNIT =
+            BigDecimal.valueOf(LlmPricingProperties.TOKENS_PER_PRICE_UNIT);
     private static final Logger log = LoggerFactory.getLogger(LlmCostCalculator.class);
 
     private final LlmPricingProperties pricing;
@@ -48,6 +49,6 @@ public class LlmCostCalculator {
                 .add(cachedRate.multiply(BigDecimal.valueOf(cachedInput)))
                 .add(rate.output().multiply(BigDecimal.valueOf(usage.outputTokens())));
 
-        return total.divide(TOKENS_PER_PRICE_UNIT, COST_SCALE, RoundingMode.HALF_UP);
+        return total.divide(TOKENS_PER_PRICE_UNIT, LlmPricingProperties.COST_SCALE, RoundingMode.HALF_UP);
     }
 }
