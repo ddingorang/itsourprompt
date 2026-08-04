@@ -58,6 +58,20 @@ llm:
 server:
   port: 9090
 
+# 릴레이 게임 설정.
+# turn-input-timeout: 주자가 이 시간 안에 프롬프트를 내지 않으면 차례가 스킵된다(ISO-8601).
+#   개발에서 스킵을 빨리 보고 싶으면 RELAY_TURN_INPUT_TIMEOUT=PT20S 처럼 줄인다.
+# webrtc: 클라이언트가 RTCPeerConnection에 그대로 넣는 ICE 설정.
+#   TURN을 비우면 STUN만 내려간다 — 로컬 개발은 같은 호스트끼리 직결이라 그걸로 충분하다.
+#   배포에서는 RELAY_TURN_URLS와 coturn 자격증명(docker-compose.yml의 TURN_*)을 채운다.
+relay:
+  turn-input-timeout: ${RELAY_TURN_INPUT_TIMEOUT:PT2M}
+  webrtc:
+    stun-urls: ${RELAY_STUN_URLS:stun:stun.l.google.com:19302}
+    turn-urls: ${RELAY_TURN_URLS:}
+    turn-username: ${TURN_USER:}
+    turn-password: ${TURN_PASSWORD:}
+
 guest:
   session:
     # 개발 단계에서는 게스트 풀이를 한 시간만 유지한다.

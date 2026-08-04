@@ -18,6 +18,7 @@ import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -48,17 +49,20 @@ public class CodeRunService {
     private final CodeRunRepository codeRunRepository;
     private final ProblemRepository problemRepository;
     private final CodeRunPublisher codeRunPublisher;
+    private final ApplicationEventPublisher eventPublisher;
 
     public CodeRunService(
             AttemptQueryRepository attemptQueryRepository,
             CodeRunRepository codeRunRepository,
             ProblemRepository problemRepository,
-            CodeRunPublisher codeRunPublisher
+            CodeRunPublisher codeRunPublisher,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.attemptQueryRepository = attemptQueryRepository;
         this.codeRunRepository = codeRunRepository;
         this.problemRepository = problemRepository;
         this.codeRunPublisher = codeRunPublisher;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -214,6 +218,10 @@ public class CodeRunService {
 
         log.info("[CODE RUN] finished | runId={} | status={} | exitCode={} | duration={} ms",
                 result.runId(), result.status(), result.exitCode(), result.durationMs());
+
+        // 반영된 결과만 알린다(applied == 0이면 위에서 반환). 무시된 재전달까지 알리면
+        // 구독자(릴레이 채점)가 같은 턴을 두 번 전진시킨다.
+        eventPublisher.publishEvent(new CodeRunFinishedEvent(result));
     }
 
     private void expireStaleRuns() {

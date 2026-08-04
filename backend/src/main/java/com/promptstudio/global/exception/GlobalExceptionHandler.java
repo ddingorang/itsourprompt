@@ -15,6 +15,15 @@ import com.promptstudio.ai.PromptScopeValidationException;
 import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.ranking.exception.RankingLimitOutOfRangeException;
+import com.promptstudio.relay.exception.NotRelayHostException;
+import com.promptstudio.relay.exception.NotRelayParticipantException;
+import com.promptstudio.relay.exception.RelayGameNotPlayingException;
+import com.promptstudio.relay.exception.RelayGameNotStartedException;
+import com.promptstudio.relay.exception.RelayNotEnoughParticipantsException;
+import com.promptstudio.relay.exception.RelayNotYourTurnException;
+import com.promptstudio.relay.exception.RelayRoomAlreadyStartedException;
+import com.promptstudio.relay.exception.RelayRoomFullException;
+import com.promptstudio.relay.exception.RelayRoomNotFoundException;
 import com.promptstudio.attempt.port.CodeGenerationException;
 import com.promptstudio.attempt.port.CodeGenerationTimeoutException;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
@@ -175,6 +184,101 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleDuplicateRequest(DuplicateRequestException exception) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "duplicate-request",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(RelayRoomNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleRelayRoomNotFound(RelayRoomNotFoundException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "relay-room-not-found",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(RelayRoomFullException.class)
+    public ResponseEntity<ApiErrorResponse> handleRelayRoomFull(RelayRoomFullException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "relay-room-full",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(RelayRoomAlreadyStartedException.class)
+    public ResponseEntity<ApiErrorResponse> handleRelayRoomAlreadyStarted(RelayRoomAlreadyStartedException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "relay-room-already-started",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    /**
+     * 방의 존재는 입장 전에도 조회할 수 있으므로 404로 숨기지 않고 403으로 거절한다.
+     */
+    @ExceptionHandler(NotRelayParticipantException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotRelayParticipant(NotRelayParticipantException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "relay-not-participant",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    @ExceptionHandler(NotRelayHostException.class)
+    public ResponseEntity<ApiErrorResponse> handleNotRelayHost(NotRelayHostException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "relay-not-host",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    @ExceptionHandler(RelayNotEnoughParticipantsException.class)
+    public ResponseEntity<ApiErrorResponse> handleRelayNotEnoughParticipants(
+            RelayNotEnoughParticipantsException exception
+    ) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "relay-not-enough-participants",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(RelayNotYourTurnException.class)
+    public ResponseEntity<ApiErrorResponse> handleRelayNotYourTurn(RelayNotYourTurnException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "relay-not-your-turn",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(RelayGameNotPlayingException.class)
+    public ResponseEntity<ApiErrorResponse> handleRelayGameNotPlaying(RelayGameNotPlayingException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "relay-not-playing",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(RelayGameNotStartedException.class)
+    public ResponseEntity<ApiErrorResponse> handleRelayGameNotStarted(RelayGameNotStartedException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "relay-not-started",
                 exception.getMessage()
         );
 
