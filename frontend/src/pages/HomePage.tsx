@@ -197,9 +197,9 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="landing-guest min-h-[calc(100svh-66px)] border-b border-[var(--landing-border)] bg-[var(--landing-guest-bg)] text-[var(--landing-guest-text)]">
-          <div className="mx-auto flex min-h-[calc(100svh-66px)] w-[80%] items-center pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
-            <div className="max-w-[850px]" data-reveal>
+        <section className="landing-guest min-h-[calc(100svh-66px)] overflow-hidden border-b border-[var(--landing-border)] bg-[var(--landing-guest-bg)] text-[var(--landing-guest-text)]">
+          <div className="mx-auto grid min-h-[calc(100svh-66px)] w-[80%] grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-[6vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[900px]:w-[calc(100%_-_32px)] max-[900px]:grid-cols-1 max-[900px]:gap-12 max-[900px]:py-16">
+            <div className="max-w-[560px]" data-reveal>
               <div className="mb-7 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--landing-guest-eyebrow)]">NO LOGIN NEEDED</div>
               <h2 className="m-0 text-[clamp(42px,5.4vw,76px)] leading-[1.1] font-black tracking-[-0.04em] [word-break:keep-all]">
                 로그인은
@@ -209,12 +209,42 @@ export default function HomePage() {
                 괜찮아요.
               </h2>
               <p className="mt-10 mb-0 max-w-[650px] text-[clamp(17px,1.5vw,21px)] leading-[1.7] text-[var(--landing-guest-copy)] [word-break:keep-all]">
-                회원가입 없이 문제를 고르고, 프롬프트를 실행하고,
-                <br />
-                피드백까지 확인할 수 있습니다.
+                회원가입 없이 문제를 고르고, 프롬프트를 실행하고, 피드백까지 확인할 수 있습니다.
                 <br />
                 먼저 경험한 뒤 기록을 남기고 싶을 때 로그인하세요.
               </p>
+            </div>
+
+            <div className="landing-detail-preview-frame" data-reveal style={{ '--reveal-delay': '140ms' } as CSSProperties}>
+              <div className="landing-detail-preview" aria-hidden="true">
+                <div className="landing-detail-preview-body">
+                  <div className="landing-detail-preview-problem">
+                    <span className="landing-detail-preview-label">PROBLEM</span>
+                    <strong>API 응답에서 필요한 값 찾기</strong>
+                    <p>주어진 응답 구조를 분석하고 원하는 결과를 얻는 프롬프트를 작성하세요.</p>
+                  </div>
+                  <div className="landing-detail-preview-editor">
+                    <div className="landing-detail-preview-tab">PROMPT</div>
+                    <div className="landing-detail-preview-code">
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                    </div>
+                    <div className="landing-detail-preview-run">RUN PROMPT ↗</div>
+                  </div>
+                  <div className="landing-detail-preview-result">
+                    <span className="landing-detail-preview-label">FEEDBACK</span>
+                    <strong>실행 결과</strong>
+                    <div className="landing-detail-preview-output">
+                      <i />
+                      <i />
+                      <i />
+                    </div>
+                    <p>요청이 명확하고 출력 형식이 구체적입니다.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
