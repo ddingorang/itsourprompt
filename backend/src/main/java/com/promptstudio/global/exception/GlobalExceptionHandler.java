@@ -14,6 +14,7 @@ import com.promptstudio.attempt.exception.PromptScopeRejectedException;
 import com.promptstudio.ai.PromptScopeValidationException;
 import com.promptstudio.problem.exception.InactiveProblemException;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
+import com.promptstudio.ranking.exception.RankingLimitOutOfRangeException;
 import com.promptstudio.attempt.port.CodeGenerationException;
 import com.promptstudio.attempt.port.CodeGenerationTimeoutException;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
@@ -30,6 +31,7 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -228,6 +230,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
+    /**
+     * 쿼리 파라미터 범위 검사는 컨트롤러가 직접 한다. {@code @Validated}+{@code @Min}을 쓰면
+     * ConstraintViolationException이 나는데 그 핸들러가 없어 catch-all을 타고 500이 된다.
+     */
+    @ExceptionHandler(RankingLimitOutOfRangeException.class)
+    public ResponseEntity<ApiErrorResponse> handleRankingLimitOutOfRange(RankingLimitOutOfRangeException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "invalid-request",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidRequest(MethodArgumentNotValidException exception) {
         ApiErrorResponse response = new ApiErrorResponse(
@@ -239,13 +255,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 본문을 읽지 못한 요청(깨진 JSON 등). 다른 표준 웹 예외와 달리 이 예외는 ErrorResponse를 구현하지 않아
-     * catch-all의 가드에 걸리지 않으므로 전용 핸들러가 필요하다.
+     * 읽지 못한 요청 값. 본문이 깨진 JSON이거나(HttpMessageNotReadable), 경로 변수·쿼리 파라미터가
+     * 선언한 타입으로 변환되지 않는 경우(MethodArgumentTypeMismatch)다.
+     *
+     * <p>둘 다 다른 표준 웹 예외와 달리 ErrorResponse를 구현하지 않아 catch-all의 가드에 걸리지 않는다.
+     * 전용 핸들러가 없으면 클라이언트가 잘못 부른 요청이 500 + ERROR 로그로 쌓여, 정작 진짜 에러를
+     * 찾을 수 없게 된다 — 타입 있는 경로 변수를 쓰는 엔드포인트가 이미 열두 곳이다.
      *
      * <p>예외 메시지는 문제가 된 입력 조각을 그대로 인용하므로 응답에도 로그에도 싣지 않는다.
      */
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiErrorResponse> handleUnreadableBody(HttpMessageNotReadableException exception) {
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ApiErrorResponse> handleUnreadableRequestValue(Exception exception) {
         ApiErrorResponse response = new ApiErrorResponse(
                 "invalid-request",
                 "요청 값이 올바르지 않습니다."

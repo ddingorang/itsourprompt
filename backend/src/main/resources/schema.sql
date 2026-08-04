@@ -238,3 +238,21 @@ CREATE TABLE IF NOT EXISTS sync_state (
 -- 테스트가 한 건이라도 들어오면 조건이 거짓이 되어 멈춘다(schema.sql은 부팅마다 실행된다).
 -- 문제 저장소에 테스트가 하나도 없으면 매 부팅 재동기화가 도는데, 무해하고 저장소를 고치면 끝난다.
 DELETE FROM sync_state WHERE NOT EXISTS (SELECT 1 FROM problem_test_file);
+
+-- 랭킹이 "모두를 같은 자로" 재려면 단가가 SQL 안에 있어야 한다. 진실은 여전히
+-- application.yml의 llm.pricing이고 이 테이블은 부팅 때 동기화되는 사본이다
+-- (problem을 GitLab에서 동기화해 두는 것과 같은 관계).
+-- 모델당 한 행이고 이력은 두지 않는다 — 과거 시점 재현은 attempt_llm_call.cost에 이미 박혀 있다.
+CREATE TABLE IF NOT EXISTS model_price (
+    model        VARCHAR(100) PRIMARY KEY,
+    input        DECIMAL(12,6) NOT NULL,  -- 100만 토큰당 USD
+    cached_input DECIMAL(12,6),           -- NULL이면 input 단가를 적용한다
+    output       DECIMAL(12,6) NOT NULL,
+    updated_at   TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+-- 랭킹은 문제 하나의 제출을 전부 훑는다. attempt.problem_id에는 FK만 있고 인덱스가 없었다
+-- (PostgreSQL은 FK에 인덱스를 자동 생성하지 않는다).
+CREATE INDEX IF NOT EXISTS idx_attempt_problem_status ON attempt (problem_id, status);
+-- 자격 판정이 (attempt_id, turn_ordinal, status)로 SUCCEEDED 실행을 찾는다.
+CREATE INDEX IF NOT EXISTS idx_code_run_attempt_turn_status ON code_run (attempt_id, turn_ordinal, status);

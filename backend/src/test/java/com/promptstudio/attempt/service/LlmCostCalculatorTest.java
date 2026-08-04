@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.service;
 
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.pricing.LlmPricingProperties;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;

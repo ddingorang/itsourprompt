@@ -16,6 +16,7 @@
 |---|---|---|---|
 | GET | `/api/problems` | 불필요 | 문제 |
 | GET | `/api/problems/{id}` | 불필요 | 문제 |
+| GET | `/api/problems/{id}/ranking` | 불필요 | 랭킹 |
 | POST | `/api/attempts` | 불필요 | 어템프트 |
 | GET | `/api/attempts/{id}` | 불필요 | 어템프트 |
 | POST | `/api/attempts/{id}/turns` | 불필요 | 어템프트 |
@@ -84,7 +85,7 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 
 | HTTP | code | 언제 발생 |
 |---|---|---|
-| 400 | `invalid-request` | 요청 바디 검증(`@Valid`) 실패 — 필수 누락·형식·길이 위반 |
+| 400 | `invalid-request` | 요청 바디 검증(`@Valid`) 실패 — 필수 누락·형식·길이 위반, 또는 `limit`이 허용 범위 밖 |
 | 400 | `attempt-has-no-turns` | 턴이 하나도 없는 어템프트를 제출 |
 | 401 | `bad-credentials` | 로그인 실패 (아이디 없음/비밀번호 불일치를 구분하지 않음) |
 | 401 | `unauthenticated` | 세션 없이 인증 필요 경로 접근 (Security 필터가 차단) |
@@ -190,6 +191,116 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 
 | HTTP | code | 언제 |
 |---|---|---|
+| 404 | `problem-not-found` | 해당 ID의 문제가 없음 |
+
+---
+
+# 랭킹 (Ranking)
+
+문제 하나를 **누가 가장 적은 비용으로 풀었는지** 보여준다. 조회만 있고 공개다.
+
+## 무엇을 재는가
+
+- **비용은 저장된 값이 아니다.** `attempt_llm_call`에 남는 비용은 쓰기 시점 단가로 박힌 지출 기록이라, 단가가 한 번 바뀌면 과거 제출과 새 제출이 서로 다른 자로 재어진다. 랭킹은 **현재 단가로 전원을 다시 잰다.**
+- **턴에 속한 LLM 호출만 센다.** 제출 시 도는 피드백 생성 호출은 사용자의 프롬프트 실력과 무관하므로 빠진다.
+- **단위는 어템프트 1건 = 1줄이다.** 한 사람이 여러 번 제출했으면 여러 줄을 차지한다. 로그인 사용자와 게스트를 함께 줄 세운다.
+
+## 랭킹에 드는 조건
+
+넷을 모두 만족해야 표에 든다.
+
+1. 제출이 완료된 어템프트(`SUBMITTED`)일 것.
+2. **마지막 턴의 코드가 채점을 통과**했을 것 — 그 턴을 대상으로 한 `SUCCEEDED` 코드 실행이 있어야 한다. 이 조건이 없으면 아무것도 만들지 않은 빈 프롬프트가 비용 0으로 1등을 한다.
+3. 턴에 속한 LLM 호출이 하나 이상일 것 — 사용량 기록 도입 이전 어템프트는 비용이 0인 게 아니라 **모르는** 것이라 뺀다.
+4. 그 호출이 **전부** 비용을 계산할 수 있을 것 — 하나라도 토큰이나 모델 단가를 모르면 합계가 거짓말이 되므로 그 어템프트를 통째로 뺀다.
+
+## 등수와 정렬
+
+- 등수는 비용만 본다. **동점은 같은 등수를 받고 다음 등수는 건너뛴다**(1, 1, 3).
+- 표에 찍히는 순서는 `비용 오름차순 → 제출 시각 빠른 순(모르면 맨 뒤) → 어템프트 ID 순`으로 완전히 결정적이다.
+
+### GET /api/problems/{id}/ranking
+
+- **인증**: 불필요. 다만 로그인 세션이나 게스트 쿠키를 함께 보내면 `myBest`가 채워진다. **이 경로는 게스트 세션을 새로 만들지 않는다** — 랭킹만 구경한 방문자에게 쿠키와 DB 행이 생기지 않는다.
+
+| 경로 파라미터 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `id` | number | 필수 | 문제 ID. 비활성 문제도 조회된다 |
+
+| 쿼리 파라미터 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `limit` | number | 선택 | 가져올 줄 수. 기본 10, 허용 범위 1~50 |
+
+**성공 응답 — 200**
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `problemId` | number | 문제 ID |
+| `totalCount` | number | 랭킹에 든 제출 **전체** 수. `entries`는 그중 상위 일부다 |
+| `entries` | array | 등수 순 상위 목록. 자격을 갖춘 제출이 없으면 `[]` |
+| `myBest` | object \| null | 요청자의 가장 좋은 줄. 자격을 갖춘 내 어템프트가 없으면 `null` |
+
+`entries[]`와 `myBest`는 같은 스키마다.
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `rank` | number | 등수. 동점은 같은 값 |
+| `attemptId` | number \| null | **내 줄일 때만** 채워진다. 남의 줄은 `null`이다 |
+| `mine` | boolean | 요청자 본인의 줄인지. 어템프트 1건이 1줄이라 **내 줄이 여럿일 수 있다** |
+| `ownerType` | string | `USER` \| `GUEST` |
+| `ownerLabel` | string | `USER`는 닉네임, `GUEST`는 세션 UUID 앞 네 자. `게스트` 같은 접두어는 클라이언트가 붙인다 |
+| `cost` | number | 현재 단가로 다시 잰 비용(USD, 소수점 8자리) |
+| `uncachedInputTokens` | number | 캐시에 걸리지 않은 입력 토큰 합 |
+| `cachedInputTokens` | number | 캐시에 걸린 입력 토큰 합 |
+| `outputTokens` | number | 출력 토큰 합 |
+| `turns` | number | 턴 수 |
+| `rounds` | number | LLM 호출 수. 턴 하나가 여러 라운드를 쓸 수 있다 |
+| `submittedAt` | string \| null | 제출 시각(ISO-8601). 오래된 기록은 null일 수 있다 |
+
+**`myBest`는 상위 목록에 이미 있어도 항상 채운다.** 중복해서 그릴지 여부는 `myBest.attemptId`와 같은 `attemptId`가 `entries`에 있는지로 클라이언트가 판단한다 — `mine`으로는 판단할 수 없다. 내 줄이 상위에 여럿 올라오면 그중 하나만 `myBest`이기 때문이다.
+
+```json
+{
+  "problemId": 3,
+  "totalCount": 37,
+  "entries": [
+    {
+      "rank": 1,
+      "attemptId": null,
+      "mine": false,
+      "ownerType": "USER",
+      "ownerLabel": "프롬프트왕",
+      "cost": 0.00300000,
+      "uncachedInputTokens": 1500,
+      "cachedInputTokens": 400,
+      "outputTokens": 500,
+      "turns": 1,
+      "rounds": 2,
+      "submittedAt": "2026-08-03T05:10:32Z"
+    }
+  ],
+  "myBest": {
+    "rank": 12,
+    "attemptId": 42,
+    "mine": true,
+    "ownerType": "GUEST",
+    "ownerLabel": "8f2a",
+    "cost": 0.00900000,
+    "uncachedInputTokens": 4500,
+    "cachedInputTokens": 1200,
+    "outputTokens": 1500,
+    "turns": 3,
+    "rounds": 6,
+    "submittedAt": "2026-08-03T06:22:10Z"
+  }
+}
+```
+
+**에러**
+
+| HTTP | code | 언제 |
+|---|---|---|
+| 400 | `invalid-request` | `limit`이 정수가 아니거나 1~50을 벗어남 |
 | 404 | `problem-not-found` | 해당 ID의 문제가 없음 |
 
 ---
