@@ -652,3 +652,26 @@ html { scroll-behavior: smooth; }
 .turn-tab-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* 공용 코드 뷰어(features/workspace/CodeViewer) 색 배선. 기본값은 릴레이 화면이
+ * 쓰던 하드코딩 색과 동일하다 — 릴레이는 다크 전용이라 페이지 변수가 없다. */
+.code-viewer {
+  --code-viewer-text: #e3e3dd;
+  --code-viewer-gutter-text: #686868;
+  --code-viewer-gutter-border: #333;
+  --code-viewer-gutter-bg: #202020;
+}
+
+.problem-detail-page .code-viewer {
+  --code-viewer-text: var(--problem-detail-code-text);
+  --code-viewer-gutter-text: var(--problem-detail-subtle);
+  --code-viewer-gutter-border: var(--problem-detail-border);
+  --code-viewer-gutter-bg: var(--problem-detail-code-bg);
+}
+
+.feedback-page .code-viewer {
+  --code-viewer-text: var(--feedback-code-text);
+  --code-viewer-gutter-text: var(--feedback-subtle);
+  --code-viewer-gutter-border: var(--feedback-border);
+  --code-viewer-gutter-bg: var(--feedback-code-bg);
+}
