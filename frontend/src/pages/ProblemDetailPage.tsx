@@ -12,12 +12,20 @@ import {
   addTurn,
   createAttempt,
   getAttempt,
+  getCodeRun,
+  getCodeRuns,
+  requestCodeRun,
   submitAttempt,
 } from '../features/attempt/api';
 import type {
   Attempt,
   ChangedFile,
   ChangeType,
+  CodeRun,
+  CodeRunCase,
+  CodeRunCaseStatus,
+  CodeRunStatus,
+  CodeRunTally,
   TokenUsage,
   Turn,
 } from '../features/attempt/types';
@@ -68,6 +76,33 @@ const changeColorClasses: Record<ChangeType, string> = {
   ADDED: 'text-[#d6ff50]',
   MODIFIED: 'text-white',
   DELETED: 'text-[#ff786b]',
+};
+
+const CODE_RUN_POLL_INTERVAL_MS = 1500;
+const CODE_RUN_MAX_WAIT_MS = 120_000;
+
+const codeRunStatusLabels: Record<CodeRunStatus, string> = {
+  QUEUED: '채점 중',
+  SUCCEEDED: '통과',
+  COMPILE_ERROR: '컴파일 오류',
+  TEST_FAILED: '테스트 실패',
+  RUNTIME_ERROR: '실행 오류',
+  TIMEOUT: '시간 초과',
+  RUNNER_ERROR: '채점기 오류',
+};
+
+const codeRunCaseLabels: Record<CodeRunCaseStatus, string> = {
+  PASSED: 'PASSED',
+  FAILED: 'FAILED',
+  ERROR: 'ERROR',
+  SKIPPED: 'SKIPPED',
+};
+
+const codeRunCaseColorClasses: Record<CodeRunCaseStatus, string> = {
+  PASSED: 'text-[#d6ff50]',
+  FAILED: 'text-[#ff786b]',
+  ERROR: 'text-[#ffb86b]',
+  SKIPPED: 'text-[#8b8b8b]',
 };
 
 interface ErrorInfo {
@@ -144,6 +179,22 @@ function formatUsageValue(value: unknown, suffix = ''): string {
   return typeof value === 'number' && Number.isFinite(value)
     ? `${value.toLocaleString('ko-KR')}${suffix}`
     : '—';
+}
+
+function tallyCodeRunCases(cases: CodeRunCase[]): CodeRunTally | null {
+  if (cases.length === 0) return null;
+
+  return cases.reduce<CodeRunTally>(
+    (tally, testCase) => {
+      tally.total += 1;
+      if (testCase.status === 'PASSED') tally.passed += 1;
+      else if (testCase.status === 'FAILED') tally.failed += 1;
+      else if (testCase.status === 'ERROR') tally.error += 1;
+      else tally.skipped += 1;
+      return tally;
+    },
+    { error: 0, failed: 0, passed: 0, skipped: 0, total: 0 },
+  );
 }
 
 function createFileTree(
@@ -239,10 +290,15 @@ export default function ProblemDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [codeRun, setCodeRun] = useState<CodeRun | null>(null);
+  const [codeRunTally, setCodeRunTally] = useState<CodeRunTally | null>(null);
+  const [codeRunError, setCodeRunError] = useState<string | null>(null);
+  const [isCodeRunLoading, setIsCodeRunLoading] = useState(false);
   const detailTabRefs = useRef<
     Partial<Record<DetailTab, HTMLButtonElement | null>>
   >({});
   const isRunPendingRef = useRef(false);
+  const isCodeRunPendingRef = useRef(false);
   /**
    * 실패한 턴 요청의 Idempotency-Key를 기억한다. 같은 프롬프트로 다시 실행하면
    * 같은 키가 나가므로, 백엔드가 이미 AI를 호출해 둔 경우 재호출 없이 그 결과를
@@ -251,6 +307,12 @@ export default function ProblemDetailPage() {
   const pendingRunRef = useRef<{ prompt: string; key: string } | null>(null);
   /** 진행 중인 로드. 새 로드가 시작되면 이전 것을 끊어 마지막 응답만 화면에 남긴다. */
   const loadControllerRef = useRef<AbortController | null>(null);
+  const codeRunControllerRef = useRef<AbortController | null>(null);
+  const codeRunPollTimeoutRef = useRef<number | null>(null);
+  const routeAttemptIdRef = useRef(routeAttemptId);
+  const routeProblemIdRef = useRef(routeProblemId);
+  routeAttemptIdRef.current = routeAttemptId;
+  routeProblemIdRef.current = routeProblemId;
   /** 마지막으로 정상 반영된 라우트. 다른 주소의 로드 실패 시 이전 문제를 지우는 기준이다. */
   const loadedResourceRef = useRef<string | null>(null);
   /**
@@ -270,6 +332,66 @@ export default function ProblemDetailPage() {
     turnTokenUsages.reduce<number>((total, usage) => total + (usage ?? 0), 0);
   const isSubmitted = attempt?.status === 'SUBMITTED';
   const canSubmit = turns.length > 0 && !isSubmitted;
+  const visibleCodeRunTally =
+    codeRunTally && codeRunTally.total > 0 ? codeRunTally : null;
+
+  const stopCodeRunPolling = () => {
+    codeRunControllerRef.current?.abort();
+    codeRunControllerRef.current = null;
+    if (codeRunPollTimeoutRef.current !== null) {
+      window.clearTimeout(codeRunPollTimeoutRef.current);
+      codeRunPollTimeoutRef.current = null;
+    }
+  };
+
+  const applyCodeRun = (nextRun: CodeRun) => {
+    setCodeRun(nextRun);
+    const caseTally = tallyCodeRunCases(nextRun.cases);
+    if (caseTally) setCodeRunTally(caseTally);
+  };
+
+  const startCodeRunPolling = (attemptId: number, runId: string) => {
+    stopCodeRunPolling();
+    const controller = new AbortController();
+    codeRunControllerRef.current = controller;
+    const startedAt = Date.now();
+    setIsCodeRunLoading(true);
+
+    const poll = async () => {
+      try {
+        const nextRun = await getCodeRun(attemptId, runId, controller.signal);
+        if (controller.signal.aborted) return;
+
+        applyCodeRun(nextRun);
+        if (nextRun.status !== 'QUEUED') {
+          setIsCodeRunLoading(false);
+          codeRunControllerRef.current = null;
+          return;
+        }
+
+        if (Date.now() - startedAt >= CODE_RUN_MAX_WAIT_MS) {
+          setCodeRunError('채점 대기 시간이 초과되었습니다. 다시 시도해주세요.');
+          setIsCodeRunLoading(false);
+          codeRunControllerRef.current = null;
+          return;
+        }
+
+        codeRunPollTimeoutRef.current = window.setTimeout(
+          () => void poll(),
+          CODE_RUN_POLL_INTERVAL_MS,
+        );
+      } catch (error: unknown) {
+        if (isAbortError(error)) return;
+        setCodeRunError(
+          getErrorInfo(error, '테스트 결과를 불러오지 못했습니다.').message,
+        );
+        setIsCodeRunLoading(false);
+        codeRunControllerRef.current = null;
+      }
+    };
+
+    void poll();
+  };
 
   /**
    * URL이 가리키는 리소스를 서버에서 읽어 화면에 반영한다.
@@ -407,6 +529,62 @@ export default function ProblemDetailPage() {
     };
   }, [isAttemptRoute, routeAttemptId, routeProblemId]);
 
+  useEffect(() => {
+    stopCodeRunPolling();
+    setCodeRun(null);
+    setCodeRunTally(null);
+    setCodeRunError(null);
+    setIsCodeRunLoading(false);
+
+    if (routeAttemptId === null) return stopCodeRunPolling;
+
+    const controller = new AbortController();
+    codeRunControllerRef.current = controller;
+
+    const restoreLatestCodeRun = async () => {
+      setIsCodeRunLoading(true);
+
+      try {
+        const response = await getCodeRuns(routeAttemptId, controller.signal);
+        if (controller.signal.aborted) return;
+
+        const latestRun = response.runs[0];
+        if (!latestRun) {
+          setIsCodeRunLoading(false);
+          codeRunControllerRef.current = null;
+          return;
+        }
+
+        setCodeRunTally(latestRun.tally);
+        if (latestRun.status === 'QUEUED') {
+          startCodeRunPolling(routeAttemptId, latestRun.runId);
+          return;
+        }
+
+        const restoredRun = await getCodeRun(
+          routeAttemptId,
+          latestRun.runId,
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+        applyCodeRun(restoredRun);
+        setIsCodeRunLoading(false);
+        codeRunControllerRef.current = null;
+      } catch (error: unknown) {
+        if (isAbortError(error)) return;
+        setCodeRunError(
+          getErrorInfo(error, '최근 테스트 결과를 불러오지 못했습니다.').message,
+        );
+        setIsCodeRunLoading(false);
+        codeRunControllerRef.current = null;
+      }
+    };
+
+    void restoreLatestCodeRun();
+
+    return stopCodeRunPolling;
+  }, [routeAttemptId, routeProblemId]);
+
   const fileTree = useMemo(
     () => createFileTree(files, getLatestChangedFiles(turns)),
     [files, turns],
@@ -419,6 +597,144 @@ export default function ProblemDetailPage() {
 
   const showStatus = (message: string, type: StatusType = 'normal') => {
     setStatus({ message, type });
+  };
+
+  const handleCodeRunRequest = async () => {
+    if (!problem || isCodeRunLoading || isCodeRunPendingRef.current) return;
+
+    isCodeRunPendingRef.current = true;
+    stopCodeRunPolling();
+    const controller = new AbortController();
+    codeRunControllerRef.current = controller;
+    const requestedProblemId = problem.id;
+    let requestedAttempt = attempt;
+    let requestedAttemptId = attempt?.id ?? null;
+    let createdForSkeleton = false;
+    setCodeRunError(null);
+    setCodeRunTally(null);
+    setIsCodeRunLoading(true);
+
+    const isCurrentTarget = () =>
+      !controller.signal.aborted &&
+      (createdForSkeleton
+        ? routeProblemIdRef.current === requestedProblemId
+        : routeAttemptIdRef.current === requestedAttemptId);
+
+    const moveToCreatedAttempt = () => {
+      if (!createdForSkeleton || !requestedAttempt || requestedAttemptId === null) {
+        return;
+      }
+
+      setAttempt(requestedAttempt);
+      routeAttemptIdRef.current = requestedAttemptId;
+      navigate(`/attempts/${requestedAttemptId}`, { replace: true });
+    };
+
+    try {
+      if (requestedAttemptId === null) {
+        requestedAttempt = await createAttempt(requestedProblemId);
+        if (
+          controller.signal.aborted ||
+          routeProblemIdRef.current !== requestedProblemId
+        ) {
+          return;
+        }
+
+        requestedAttemptId = requestedAttempt.id;
+        createdForSkeleton = true;
+      }
+
+      const requestedRun = await requestCodeRun(
+        requestedAttemptId,
+        controller.signal,
+      );
+      if (!isCurrentTarget()) return;
+
+      applyCodeRun(requestedRun);
+
+      if (createdForSkeleton) {
+        moveToCreatedAttempt();
+        return;
+      }
+
+      if (requestedRun.status === 'QUEUED') {
+        startCodeRunPolling(requestedAttemptId, requestedRun.runId);
+      } else {
+        setIsCodeRunLoading(false);
+        codeRunControllerRef.current = null;
+      }
+    } catch (error: unknown) {
+      if (isAbortError(error) || controller.signal.aborted) return;
+
+      const errorInfo = getErrorInfo(error, '코드 실행을 요청하지 못했습니다.');
+
+      if (errorInfo.code === API_ERROR_CODES.codeRunInProgress) {
+        try {
+          if (requestedAttemptId === null) return;
+
+          const response = await getCodeRuns(
+            requestedAttemptId,
+            controller.signal,
+          );
+          if (!isCurrentTarget()) return;
+
+          const queuedRun = response.runs.find((run) => run.status === 'QUEUED');
+
+          if (queuedRun) {
+            setCodeRunTally(queuedRun.tally);
+            if (createdForSkeleton) moveToCreatedAttempt();
+            else startCodeRunPolling(requestedAttemptId, queuedRun.runId);
+            return;
+          }
+
+          // 목록을 읽는 사이 실행이 끝났다면 409를 오류로 남기지 않고
+          // 최근 완료 실행의 상세 결과를 바로 복원한다.
+          const latestRun = response.runs[0];
+          if (latestRun) {
+            const restoredRun = await getCodeRun(
+              requestedAttemptId,
+              latestRun.runId,
+              controller.signal,
+            );
+            if (!isCurrentTarget()) return;
+
+            setCodeRunTally(latestRun.tally);
+            applyCodeRun(restoredRun);
+            if (createdForSkeleton) {
+              moveToCreatedAttempt();
+            } else if (restoredRun.status === 'QUEUED') {
+              startCodeRunPolling(requestedAttemptId, restoredRun.runId);
+            } else {
+              setIsCodeRunLoading(false);
+              codeRunControllerRef.current = null;
+            }
+            return;
+          }
+        } catch (restoreError: unknown) {
+          if (isAbortError(restoreError) || controller.signal.aborted) return;
+
+          setCodeRunError(
+            getErrorInfo(
+              restoreError,
+              '진행 중인 테스트 정보를 불러오지 못했습니다.',
+            ).message,
+          );
+          setIsCodeRunLoading(false);
+          return;
+        }
+      }
+
+      setCodeRunError(errorInfo.message);
+      setIsCodeRunLoading(false);
+      codeRunControllerRef.current = null;
+    } finally {
+      isCodeRunPendingRef.current = false;
+    }
+  };
+
+  const handleDetailTabClick = (tab: DetailTab) => {
+    setActiveTab(tab);
+    if (tab === 'test') void handleCodeRunRequest();
   };
 
   const handleRun = async () => {
@@ -548,6 +864,7 @@ export default function ProblemDetailPage() {
     const nextTab = detailTabs[nextIndex][0];
     setActiveTab(nextTab);
     detailTabRefs.current[nextTab]?.focus();
+    if (nextTab === 'test') void handleCodeRunRequest();
   };
 
   const handleSubmit = async () => {
@@ -797,7 +1114,7 @@ export default function ProblemDetailPage() {
                   ].join(' ')}
                   id={`problem-detail-tab-${tab}`}
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => handleDetailTabClick(tab)}
                   onKeyDown={(event) => handleDetailTabKeyDown(event, tab)}
                   ref={(element) => {
                     detailTabRefs.current[tab] = element;
@@ -904,6 +1221,150 @@ export default function ProblemDetailPage() {
               ) : activeTab === 'logs' ? (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
                   실행한 프롬프트가 없습니다.
+                </div>
+              ) : codeRunError ? (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#ff786b]">
+                  <div>
+                    <p className="m-0">{codeRunError}</p>
+                    <button
+                      className="mt-3 cursor-pointer border border-[#666] bg-transparent px-3 py-1.5 text-[10px] text-[#d0d0ca] hover:border-[#d6ff50] hover:text-[#d6ff50]"
+                      onClick={() => void handleCodeRunRequest()}
+                      type="button"
+                    >
+                      다시 채점하기
+                    </button>
+                  </div>
+                </div>
+              ) : isCodeRunLoading || codeRun?.status === 'QUEUED' ? (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#a3a3a3]">
+                  <div>
+                    <div className="text-[#d6ff50]">채점 중…</div>
+                    <div className="mt-2 text-[9px] text-[#666]">
+                      완료될 때까지 잠시 기다려주세요.
+                    </div>
+                  </div>
+                </div>
+              ) : codeRun ? (
+                <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif]">
+                  <div className="border border-[#3f3f3f] bg-[#111] px-4 py-3">
+                    <div className="flex items-end justify-between gap-4">
+                      <div>
+                        <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[#777]">
+                          TEST RESULT
+                        </p>
+                        <p className="mt-1 mb-0 text-[12px] text-[#f5f5ef]">
+                          테스트 케이스 채점 결과
+                        </p>
+                      </div>
+                      {visibleCodeRunTally ? (
+                        <div className="flex shrink-0 items-baseline gap-1 leading-none">
+                          <strong className="font-mono text-xl text-[#d6ff50]">
+                            {visibleCodeRunTally.passed}/{visibleCodeRunTally.total}
+                          </strong>
+                          <span className="text-[10px] leading-none text-[#8b8b8b]">
+                            개 통과
+                          </span>
+                        </div>
+                      ) : (
+                        <strong
+                          className={`font-mono text-[11px] ${
+                            codeRun.status === 'SUCCEEDED'
+                              ? 'text-[#d6ff50]'
+                              : 'text-[#ff786b]'
+                          }`}
+                        >
+                          {codeRunStatusLabels[codeRun.status]}
+                        </strong>
+                      )}
+                    </div>
+
+                    {visibleCodeRunTally && (
+                      <div
+                        aria-label={`테스트 케이스 ${visibleCodeRunTally.total}개 중 ${visibleCodeRunTally.passed}개 통과`}
+                        aria-valuemax={visibleCodeRunTally.total}
+                        aria-valuemin={0}
+                        aria-valuenow={visibleCodeRunTally.passed}
+                        className="mt-4 h-1.5 overflow-hidden bg-[#303030]"
+                        role="progressbar"
+                      >
+                        <div
+                          className="h-full bg-[#d6ff50]"
+                          style={{
+                            width: `${(visibleCodeRunTally.passed / visibleCodeRunTally.total) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] text-[#777]">
+                      <span>STATUS {codeRunStatusLabels[codeRun.status]}</span>
+                      {codeRun.turnOrdinal !== null && (
+                        <span>TURN {String(codeRun.turnOrdinal + 1).padStart(2, '0')}</span>
+                      )}
+                      {codeRun.durationMs !== null && (
+                        <span>{codeRun.durationMs.toLocaleString('ko-KR')}ms</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {codeRun.cases.length > 0 ? (
+                    <div className="mt-3 grid border-x border-t border-[#343434]">
+                      {codeRun.cases.map((testCase, index) => (
+                        <article
+                          className="border-b border-[#343434] px-3 py-2.5"
+                          key={`${testCase.className ?? 'case'}-${testCase.name}-${index}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="m-0 break-words text-[11px] leading-[1.5] text-[#d0d0ca]">
+                                {testCase.name}
+                              </p>
+                              <div className="mt-1 flex flex-wrap gap-2 font-mono text-[8px] text-[#666]">
+                                {testCase.className && <span>{testCase.className}</span>}
+                                {testCase.durationMs !== null && (
+                                  <span>{testCase.durationMs.toLocaleString('ko-KR')}ms</span>
+                                )}
+                              </div>
+                            </div>
+                            <strong
+                              className={`shrink-0 font-mono text-[10px] ${codeRunCaseColorClasses[testCase.status]}`}
+                            >
+                              {codeRunCaseLabels[testCase.status]}
+                            </strong>
+                          </div>
+                          {(testCase.status === 'FAILED' ||
+                            testCase.status === 'ERROR') &&
+                            testCase.message && (
+                              <p className="mt-2 mb-0 break-words border-l-2 border-[#555] pl-2 font-mono text-[9px] leading-[1.5] text-[#999]">
+                                {testCase.message}
+                              </p>
+                            )}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-3 border border-[#343434] px-3 py-4 text-center text-[11px] text-[#777]">
+                      테스트 케이스 기록이 없습니다.
+                    </div>
+                  )}
+
+                  {(codeRun.stdout || codeRun.stderr) && (
+                    <details className="mt-3 border border-[#343434] bg-[#111]">
+                      <summary className="cursor-pointer px-3 py-2 font-mono text-[10px] text-[#a3a3a3] hover:text-[#f5f5ef]">
+                        전체 실행 로그
+                      </summary>
+                      {codeRun.stderr && (
+                        <pre className="workspace-scrollbar m-0 max-h-48 overflow-auto border-t border-[#343434] p-3 font-mono text-[9px] leading-[1.6] whitespace-pre-wrap text-[#ff786b]">
+                          {codeRun.stderr}
+                        </pre>
+                      )}
+                      {codeRun.stdout && (
+                        <pre className="workspace-scrollbar m-0 max-h-48 overflow-auto border-t border-[#343434] p-3 font-mono text-[9px] leading-[1.6] whitespace-pre-wrap text-[#aaa]">
+                          {codeRun.stdout}
+                        </pre>
+                      )}
+                    </details>
+                  )}
                 </div>
               ) : (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">

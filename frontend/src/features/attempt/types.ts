@@ -90,3 +90,56 @@ export interface AttemptFeedback {
   turns: TurnFeedback[];
   overallMd: string;
 }
+
+export type CodeRunStatus =
+  | 'QUEUED'
+  | 'SUCCEEDED'
+  | 'COMPILE_ERROR'
+  | 'TEST_FAILED'
+  | 'RUNTIME_ERROR'
+  | 'TIMEOUT'
+  | 'RUNNER_ERROR';
+
+export type CodeRunCaseStatus = 'PASSED' | 'FAILED' | 'ERROR' | 'SKIPPED';
+
+export interface CodeRunCase {
+  className: string | null;
+  name: string;
+  status: CodeRunCaseStatus;
+  message: string | null;
+  durationMs: number | null;
+}
+
+export interface CodeRun {
+  runId: string;
+  turnOrdinal: number | null;
+  status: CodeRunStatus;
+  exitCode: number | null;
+  stdout: string | null;
+  stderr: string | null;
+  durationMs: number | null;
+  cases: CodeRunCase[];
+}
+
+export interface CodeRunTally {
+  total: number;
+  passed: number;
+  failed: number;
+  error: number;
+  skipped: number;
+}
+
+export interface CodeRunSummary {
+  runId: string;
+  turnOrdinal: number | null;
+  status: CodeRunStatus;
+  exitCode: number | null;
+  durationMs: number | null;
+  createdAt: string;
+  finishedAt: string | null;
+  tally: CodeRunTally | null;
+}
+
+export interface CodeRunListResponse {
+  runs: CodeRunSummary[];
+}

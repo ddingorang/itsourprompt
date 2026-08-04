@@ -8,6 +8,9 @@
 import type {
   Attempt,
   AttemptFeedback,
+  CodeRun,
+  CodeRunListResponse,
+  CodeRunTally,
   Turn,
 } from '../features/attempt/types';
 import type {
@@ -57,6 +60,14 @@ class AppTest {
 /** 목 환경에서 어템프트 상태를 메모리에 유지한다(새로고침하면 초기화된다). */
 const mockAttempts = new Map<number, Attempt>();
 let nextMockAttemptId = 1;
+
+interface MockCodeRunEntry {
+  createdAt: string;
+  readyAt: number;
+  run: CodeRun;
+}
+
+const mockCodeRuns = new Map<number, MockCodeRunEntry[]>();
 
 export async function getMockProblems(): Promise<ProblemListResponse> {
   await delay(250);
@@ -177,6 +188,128 @@ public record Post${turnNumber}(Long id, String title, String content) {}`,
 
   mockAttempts.set(attemptId, updated);
   return updated;
+}
+
+function completeMockCodeRun(entry: MockCodeRunEntry): CodeRun {
+  if (entry.run.status !== 'QUEUED' || Date.now() < entry.readyAt) {
+    return entry.run;
+  }
+
+  entry.run = {
+    ...entry.run,
+    cases: [
+      {
+        className: 'PostTest',
+        name: '게시글을_생성한다()',
+        status: 'PASSED',
+        message: null,
+        durationMs: 12,
+      },
+      {
+        className: 'PostTest',
+        name: '존재하지_않는_게시글은_예외를_반환한다()',
+        status: 'FAILED',
+        message: 'expected: <404> but was: <200>',
+        durationMs: 17,
+      },
+    ],
+    durationMs: 1224,
+    exitCode: 1,
+    status: 'TEST_FAILED',
+    stdout: 'JUnit Platform Suite\nPostTest: 1 passed, 1 failed',
+    stderr: null,
+  };
+  return entry.run;
+}
+
+function tallyMockCases(run: CodeRun): CodeRunTally | null {
+  if (run.cases.length === 0) return null;
+
+  return run.cases.reduce<CodeRunTally>(
+    (tally, testCase) => {
+      tally.total += 1;
+      if (testCase.status === 'PASSED') tally.passed += 1;
+      else if (testCase.status === 'FAILED') tally.failed += 1;
+      else if (testCase.status === 'ERROR') tally.error += 1;
+      else tally.skipped += 1;
+      return tally;
+    },
+    { error: 0, failed: 0, passed: 0, skipped: 0, total: 0 },
+  );
+}
+
+export async function requestMockCodeRun(
+  attemptId: number,
+  turnOrdinal?: number,
+): Promise<CodeRun> {
+  await delay(200);
+
+  const attempt = mockAttempts.get(attemptId);
+  if (!attempt) throw mockAttemptNotFound(attemptId);
+
+  const entries = mockCodeRuns.get(attemptId) ?? [];
+  if (entries.some((entry) => completeMockCodeRun(entry).status === 'QUEUED')) {
+    throw new ApiError(409, {
+      code: API_ERROR_CODES.codeRunInProgress,
+      message: '이미 진행 중인 코드 실행이 있습니다.',
+    });
+  }
+
+  const run: CodeRun = {
+    runId: crypto.randomUUID(),
+    turnOrdinal:
+      turnOrdinal ?? (attempt.turns.length > 0 ? attempt.turns.length - 1 : null),
+    status: 'QUEUED',
+    exitCode: null,
+    stdout: null,
+    stderr: null,
+    durationMs: null,
+    cases: [],
+  };
+  entries.unshift({ createdAt: new Date().toISOString(), readyAt: Date.now() + 1500, run });
+  mockCodeRuns.set(attemptId, entries);
+  return run;
+}
+
+export async function getMockCodeRuns(
+  attemptId: number,
+): Promise<CodeRunListResponse> {
+  await delay(150);
+  if (!mockAttempts.has(attemptId)) throw mockAttemptNotFound(attemptId);
+
+  const entries = mockCodeRuns.get(attemptId) ?? [];
+  return {
+    runs: entries.map((entry) => {
+      const run = completeMockCodeRun(entry);
+      return {
+        runId: run.runId,
+        turnOrdinal: run.turnOrdinal,
+        status: run.status,
+        exitCode: run.exitCode,
+        durationMs: run.durationMs,
+        createdAt: entry.createdAt,
+        finishedAt: run.status === 'QUEUED' ? null : new Date(entry.readyAt).toISOString(),
+        tally: tallyMockCases(run),
+      };
+    }),
+  };
+}
+
+export async function getMockCodeRun(
+  attemptId: number,
+  runId: string,
+): Promise<CodeRun> {
+  await delay(150);
+  const entry = (mockCodeRuns.get(attemptId) ?? []).find(
+    (candidate) => candidate.run.runId === runId,
+  );
+  if (!entry) {
+    throw new ApiError(404, {
+      code: API_ERROR_CODES.codeRunNotFound,
+      message: '코드 실행 기록을 찾을 수 없습니다.',
+    });
+  }
+  return completeMockCodeRun(entry);
 }
 
 export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedback> {
