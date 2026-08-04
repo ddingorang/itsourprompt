@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { getMySubmittedAttempts } from '../features/me/api';
 import type { SubmittedAttempt } from '../features/me/types';
+import { useTheme } from '../features/theme/ThemeContext';
 import {
   ApiError,
   API_ERROR_CODES,
@@ -49,6 +50,7 @@ function normalizePageParam(
 }
 
 export default function MyPage() {
+  const { colorMode } = useTheme();
   // 이 페이지는 ProtectedRoute로 감싸져 있어 user가 항상 존재한다(비로그인은 /login으로 이동됨).
   const { refresh, user } = useAuth();
   const location = useLocation();
@@ -211,26 +213,29 @@ export default function MyPage() {
   ];
 
   return (
-    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div
+      className="my-page flex min-h-screen min-w-80 flex-col bg-[var(--my-page-bg)] text-[var(--my-page-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
+      data-color-mode={colorMode}
+    >
       <Header />
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-24 max-[1200px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
-        <h1 className="pb-5 font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+        <h1 className="pb-5 font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--my-page-acid)]">
           USER PROFILE
         </h1>
 
-        <section className="grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[#f5f5ef] max-[1200px]:grid-cols-1">
-          <div className="flex min-h-[180px] flex-col justify-between border-r border-[#343434] p-[clamp(20px,3vw,32px)] max-[1200px]:min-h-[170px] max-[1200px]:border-r-0 max-[1200px]:border-b">
+        <section className="grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[var(--my-page-text)] max-[1200px]:grid-cols-1">
+          <div className="flex min-h-[180px] flex-col justify-between border-r border-[var(--my-page-border)] p-[clamp(20px,3vw,32px)] max-[1200px]:min-h-[170px] max-[1200px]:border-r-0 max-[1200px]:border-b">
             <div className="flex items-center gap-5">
               <div
-                className="grid size-16 shrink-0 place-items-center rounded-full bg-[#d6ff50] text-2xl font-black text-[#090909]"
+                className="grid size-16 shrink-0 place-items-center rounded-full bg-[var(--my-page-acid)] text-2xl font-black text-[#090909]"
                 aria-hidden="true"
               >
                 {/* 아바타 이니셜: 로그인 사용자 닉네임의 첫 글자 */}
                 {user.nickname.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className="mb-1 font-mono text-[13px] tracking-[0.12em] text-[#777]">
+                <p className="mb-1 font-mono text-[13px] tracking-[0.12em] text-[var(--my-page-subtle)]">
                   USER NAME
                 </p>
                 <h2 className="text-[clamp(28px,4vw,42px)] leading-none font-black tracking-[-0.05em]">
@@ -240,8 +245,8 @@ export default function MyPage() {
             </div>
 
             <div>
-              <span className="inline-flex items-center gap-2 font-mono text-[13px] tracking-[0.08em] text-[#777]">
-                <span className="size-1.5 rounded-full bg-[#d6ff50]" />
+              <span className="inline-flex items-center gap-2 font-mono text-[13px] tracking-[0.08em] text-[var(--my-page-subtle)]">
+                <span className="size-1.5 rounded-full bg-[var(--my-page-acid)]" />
                 MEMBER SINCE {formatMemberSince(user.createdAt)}
               </span>
             </div>
@@ -250,10 +255,10 @@ export default function MyPage() {
           <div className="grid grid-cols-2 max-[520px]:grid-cols-1">
             {stats.map((stat, index) => (
               <div
-                className="flex min-h-[130px] flex-col justify-between border-r border-[#343434] p-[clamp(16px,2vw,24px)] last:border-r-0 max-[520px]:min-h-[110px] max-[520px]:border-r-0 max-[520px]:border-b max-[520px]:last:border-b-0"
+                className="flex min-h-[130px] flex-col justify-between border-r border-[var(--my-page-border)] p-[clamp(16px,2vw,24px)] last:border-r-0 max-[520px]:min-h-[110px] max-[520px]:border-r-0 max-[520px]:border-b max-[520px]:last:border-b-0"
                 key={stat.label}
               >
-                <span className="font-mono text-[13px] tracking-[0.1em] text-[#777]">
+                <span className="font-mono text-[13px] tracking-[0.1em] text-[var(--my-page-subtle)]">
                   0{index + 1} / {stat.label}
                 </span>
                 <div className="flex items-baseline gap-2">
@@ -261,7 +266,7 @@ export default function MyPage() {
                     {stat.value}
                   </strong>
                   {stat.suffix && (
-                    <span className="font-mono text-[clamp(15px,2vw,22px)] leading-none tracking-[-0.04em] text-[#777]">
+                    <span className="font-mono text-[clamp(15px,2vw,22px)] leading-none tracking-[-0.04em] text-[var(--my-page-subtle)]">
                       {stat.suffix}
                     </span>
                   )}
@@ -276,7 +281,7 @@ export default function MyPage() {
           ref={submissionHistorySectionRef}
         >
           <div className="flex items-end justify-between gap-6 pb-5 max-[640px]:flex-col max-[640px]:items-start">
-            <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+            <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--my-page-acid)]">
               SUBMISSION HISTORY
             </div>
             <div
@@ -284,10 +289,10 @@ export default function MyPage() {
               aria-label="문제 정렬 기준"
             >
               <button
-                className={`cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none ${
+                className={`cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] transition-colors hover:text-[var(--my-page-acid)] focus-visible:text-[var(--my-page-acid)] focus-visible:outline-none ${
                   sortOrder === 'latest'
-                    ? 'text-[#d6ff50]'
-                    : 'text-[#a3a3a3]'
+                    ? 'text-[var(--my-page-acid)]'
+                    : 'text-[var(--my-page-muted)]'
                 }`}
                 type="button"
                 aria-pressed={sortOrder === 'latest'}
@@ -295,14 +300,14 @@ export default function MyPage() {
               >
                 최신순
               </button>
-              <span className="text-[#555]" aria-hidden="true">
+              <span className="text-[var(--my-page-border)]" aria-hidden="true">
                 |
               </span>
               <button
-                className={`cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none ${
+                className={`cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] transition-colors hover:text-[var(--my-page-acid)] focus-visible:text-[var(--my-page-acid)] focus-visible:outline-none ${
                   sortOrder === 'oldest'
-                    ? 'text-[#d6ff50]'
-                    : 'text-[#a3a3a3]'
+                    ? 'text-[var(--my-page-acid)]'
+                    : 'text-[var(--my-page-muted)]'
                 }`}
                 type="button"
                 aria-pressed={sortOrder === 'oldest'}
@@ -313,9 +318,9 @@ export default function MyPage() {
             </div>
           </div>
 
-          <div className="border-y border-[#f5f5ef]">
+          <div className="border-y border-[var(--my-page-text)]">
             {isLoadingAttempts && (
-              <div className="py-11 font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+              <div className="py-11 font-mono text-xs leading-[1.7] text-[var(--my-page-muted)]">
                 제출 내역을 불러오는 중입니다.
               </div>
             )}
@@ -333,10 +338,12 @@ export default function MyPage() {
               !attemptsError &&
               submittedAttempts.length === 0 && (
                 <div className="flex flex-col items-start gap-5 py-11">
-                  <p className="font-mono text-xs leading-[1.7] text-[#a3a3a3]">
+                  <p className="font-mono text-xs leading-[1.7] text-[var(--my-page-muted)]">
                     아직 제출한 문제가 없습니다.
                   </p>
-                  <Button to="/problems">문제 목록으로 이동 ↗</Button>
+                  <Button className="my-page-primary-action" to="/problems">
+                    문제 목록으로 이동 ↗
+                  </Button>
                 </div>
               )}
 
@@ -344,16 +351,16 @@ export default function MyPage() {
               !attemptsError &&
               visibleSubmittedAttempts.map((submittedAttempt, index) => (
               <div
-                className="grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[#343434] px-2 py-3 last:border-b-0 max-[680px]:grid-cols-[38px_minmax(0,1fr)] max-[680px]:gap-3"
+                className="grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[var(--my-page-border)] px-2 py-3 last:border-b-0 max-[680px]:grid-cols-[38px_minmax(0,1fr)] max-[680px]:gap-3"
                 key={submittedAttempt.attemptId}
               >
-                <span className="font-mono text-[17px] text-[#777]">
+                <span className="font-mono text-[17px] text-[var(--my-page-subtle)]">
                   {String(submissionPagination.pageStart + index + 1).padStart(
                     2,
                     '0',
                   )}
                 </span>
-                <span className="font-mono text-[13px] text-[#777] max-[680px]:hidden">
+                <span className="font-mono text-[13px] text-[var(--my-page-subtle)] max-[680px]:hidden">
                   {formatSubmittedAt(submittedAttempt.submittedAt)}
                 </span>
                 <strong className="truncate text-[clamp(15px,2vw,20px)] tracking-[-0.02em]">
@@ -361,7 +368,7 @@ export default function MyPage() {
                 </strong>
                 <div className="flex justify-self-end gap-2 max-[680px]:col-span-2 max-[680px]:justify-self-stretch">
                   <Button
-                    className="group hover:!border-[#d6ff50] hover:!bg-[#090909] hover:!text-[#d6ff50] focus-visible:!border-[#d6ff50] focus-visible:!bg-[#090909] focus-visible:!text-[#d6ff50] max-[680px]:flex-1"
+                    className="my-page-secondary-action group max-[680px]:flex-1"
                     to={`/problems/${submittedAttempt.problemId}`}
                     variant="secondary"
                   >
@@ -374,7 +381,7 @@ export default function MyPage() {
                     </span>
                   </Button>
                   <Button
-                    className="group max-[680px]:flex-1"
+                    className="my-page-primary-action group max-[680px]:flex-1"
                     to={`/attempts/${submittedAttempt.attemptId}/feedback`}
                   >
                     <span className="text-[14px]">피드백 보기</span>
