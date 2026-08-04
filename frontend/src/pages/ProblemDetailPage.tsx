@@ -303,9 +303,12 @@ export default function ProblemDetailPage() {
   const [codeRunTally, setCodeRunTally] = useState<CodeRunTally | null>(null);
   const [codeRunError, setCodeRunError] = useState<string | null>(null);
   const [isCodeRunLoading, setIsCodeRunLoading] = useState(false);
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
+  const [previewSession, setPreviewSession] = useState(0);
   const detailTabRefs = useRef<
     Partial<Record<DetailTab, HTMLButtonElement | null>>
   >({});
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const isRunPendingRef = useRef(false);
   const isCodeRunPendingRef = useRef(false);
   /**
@@ -332,6 +335,7 @@ export default function ProblemDetailPage() {
 
   const files = attempt?.files ?? problem?.files ?? [];
   const isGame = problem?.type === 'game';
+  const isPlaying = isGame && activeTab === 'test';
   const previewHtml = useMemo(
     () => findPreviewHtml(files)?.content ?? null,
     [files],
@@ -617,6 +621,31 @@ export default function ProblemDetailPage() {
   const showStatus = (message: string, type: StatusType = 'normal') => {
     setStatus({ message, type });
   };
+
+  const handlePreviewFullscreen = async () => {
+    const previewContainer = previewContainerRef.current;
+    if (!previewContainer) return;
+
+    try {
+      if (document.fullscreenElement === previewContainer) {
+        await document.exitFullscreen();
+      } else {
+        await previewContainer.requestFullscreen();
+        setPreviewSession((session) => session + 1);
+      }
+    } catch {
+      showStatus('전체 화면을 시작할 수 없습니다. 브라우저 설정을 확인해주세요.', 'error');
+    }
+  };
+
+  useEffect(() => {
+    const updatePreviewFullscreenState = () => {
+      setIsPreviewFullscreen(document.fullscreenElement === previewContainerRef.current);
+    };
+
+    document.addEventListener('fullscreenchange', updatePreviewFullscreenState);
+    return () => document.removeEventListener('fullscreenchange', updatePreviewFullscreenState);
+  }, []);
 
   const handleCodeRunRequest = async () => {
     if (isGame || !problem || isCodeRunLoading || isCodeRunPendingRef.current) return;
@@ -1124,8 +1153,11 @@ export default function ProblemDetailPage() {
           </div>
         </section>
 
-        <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[var(--problem-detail-border)] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
-          <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[var(--problem-detail-border)] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
+        <aside
+          className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]"
+          style={isPlaying ? { gridTemplateRows: 'minmax(0, 1fr)' } : undefined}
+        >
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[#343434] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
             <div
               className="grid shrink-0 grid-cols-3 border border-[var(--problem-detail-border)]"
               role="tablist"
@@ -1254,13 +1286,25 @@ export default function ProblemDetailPage() {
                 </div>
               ) : activeTab === 'test' && isGame ? (
                 previewHtml ? (
-                  <iframe
+                  <div
+                    className="relative h-full min-h-[320px] bg-[#090909] [&:fullscreen]:h-dvh [&:fullscreen]:w-dvw [&:fullscreen]:box-border [&:fullscreen]:bg-[#090909] [&:fullscreen]:p-6"
+                    ref={previewContainerRef}
+                  >
+                    <button
+                      className="absolute top-3 right-3 z-10 cursor-pointer border border-[#d6ff50] bg-[#090909]/90 px-3 py-1.5 font-mono text-[10px] font-bold tracking-[0.08em] text-[#d6ff50] hover:bg-[#d6ff50] hover:text-[#090909]"
+                      onClick={() => void handlePreviewFullscreen()}
+                      type="button"
+                    >
+                      {isPreviewFullscreen ? '전체 화면 닫기' : '확대 플레이'}
+                    </button>
+                    <iframe
                     className="h-full min-h-[320px] w-full border border-[#3f3f3f] bg-white"
-                    key={previewHtml}
+                    key={`${previewHtml}-${previewSession}`}
                     sandbox="allow-scripts"
                     srcDoc={previewHtml}
                     title="게임 미리보기"
-                  />
+                      />
+                  </div>
                 ) : (
                   <div className="grid min-h-[160px] place-items-center border border-[#343434] px-4 text-center font-mono text-[11px] leading-[1.7] text-[#777]">
                     실행할 index.html 파일이 없습니다.
@@ -1418,7 +1462,8 @@ export default function ProblemDetailPage() {
             </div>
           </section>
 
-          <section className="flex min-h-0 flex-col overflow-hidden pt-2 max-[1080px]:overflow-visible max-[1080px]:pt-0 max-[700px]:pt-[22px]">
+          {!isPlaying && (
+            <section className="flex min-h-0 flex-col overflow-hidden pt-2 max-[1080px]:overflow-visible max-[1080px]:pt-0 max-[700px]:pt-[22px]">
             <div className={labelClasses}>PROMPT / MAX 4,000</div>
             <div className="relative mt-2 shrink-0 border border-[var(--problem-detail-border-strong)] bg-[var(--problem-detail-input-bg)] focus-within:border-[var(--problem-detail-acid)]">
               <textarea
@@ -1498,7 +1543,8 @@ export default function ProblemDetailPage() {
               </Button>
             </div>
 
-          </section>
+            </section>
+          )}
         </aside>
       </main>
     </div>
