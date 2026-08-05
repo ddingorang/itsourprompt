@@ -11,6 +11,8 @@ public enum CodeRunStatus {
     QUEUED,
     SUCCEEDED,
     COMPILE_ERROR,
+    /** 컴파일도 실행도 됐지만 채점 테스트가 깨졌다. 사용자가 고쳐야 하는 유일한 실패다. */
+    TEST_FAILED,
     RUNTIME_ERROR,
     TIMEOUT,
     RUNNER_ERROR;

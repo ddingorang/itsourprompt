@@ -42,7 +42,7 @@ class ProblemRepositoryTest extends DatabaseTest {
                 new ProblemFile("src/Main.java", "class Main {}"),
                 new ProblemFile("src/Util.java", "class Util {}"),
                 new ProblemFile("README.md", "# 안내")
-        )));
+        ), List.of()));
 
         Problem found = problemRepository.findById(saved.id()).orElseThrow();
 
@@ -72,6 +72,6 @@ class ProblemRepositoryTest extends DatabaseTest {
     private Problem newProblem(String title) {
         return new Problem(null, title, "# " + title, List.of(
                 new ProblemFile("src/Main.java", "class Main {}")
-        ));
+        ), List.of());
     }
 }

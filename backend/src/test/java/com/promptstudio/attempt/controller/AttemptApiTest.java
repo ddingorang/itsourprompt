@@ -1,11 +1,18 @@
 package com.promptstudio.attempt.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import com.promptstudio.attempt.domain.Attempt;
+import com.promptstudio.attempt.domain.GeneratedCode;
+import com.promptstudio.attempt.port.FeedbackGenerationException;
+import com.promptstudio.attempt.repository.AttemptRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
+import com.promptstudio.global.security.AppUserDetails;
 import com.promptstudio.support.DatabaseTest;
 import com.promptstudio.support.FakeAiConfiguration;
+import com.promptstudio.user.domain.User;
+import com.promptstudio.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -17,11 +24,13 @@ import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @AutoConfigureMockMvc
-@Import(FakeAiConfiguration.class)
+@Import({FakeAiConfiguration.class, AttemptApiAuthenticationConfiguration.class})
 class AttemptApiTest extends DatabaseTest {
 
     @Autowired
@@ -29,6 +38,32 @@ class AttemptApiTest extends DatabaseTest {
 
     @Autowired
     private ProblemRepository problemRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void 로그인하지_않으면_어템프트_API를_호출할_수_없다() throws Exception {
+        mockMvc.perform(get("/api/attempts/1").with(anonymous()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 다른_사용자는_어템프트를_조회할_수_없다() throws Exception {
+        Long attemptId = createAttempt();
+        User otherUser = userRepository.save(User.create(
+                "other-user", "{noop}password", "other", "other@example.com"));
+
+        mockMvc.perform(get("/api/attempts/{id}", attemptId)
+                        .with(user(new AppUserDetails(otherUser))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Autowired
+    private AttemptRepository attemptRepository;
+
+    @Autowired
+    private FakeAiConfiguration.FakeFeedbackGenerator feedbackGenerator;
 
     @Test
     void 어템프트를_생성하면_문제_스켈레톤으로_초기화된다() throws Exception {
@@ -144,6 +179,33 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.turns[0].feedbackMd").value("턴 1 피드백"));
     }
 
+    /**
+     * 두 스타일을 한 화면에서 나란히 읽으므로 한 응답에 함께 싣는다.
+     */
+    @Test
+    void 제출하면_pattern_피드백도_함께_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.patternOverallMd").value("생성된 패턴 피드백"))
+                .andExpect(jsonPath("$.turns[0].patternMd").value("턴 1 패턴"));
+    }
+
+    @Test
+    void 제출된_어템프트의_pattern_피드백을_조회한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/attempts/{id}/feedback", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.patternOverallMd").value("생성된 패턴 피드백"))
+                .andExpect(jsonPath("$.turns[0].patternMd").value("턴 1 패턴"));
+    }
+
     @Test
     void 제출_전에는_피드백_조회가_404를_반환한다() throws Exception {
         Long attemptId = createAttempt();
@@ -172,6 +234,25 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.overallMd").value("생성된 피드백"))
                 .andExpect(jsonPath("$.turns[0].feedbackMd").value("턴 1 피드백"));
+    }
+
+    /**
+     * 502 본문은 사용자에게 그대로 보이므로 내부 진단 메시지를 싣지 않고 재시도 안내만 남긴다.
+     */
+    @Test
+    void 피드백_생성이_실패하면_502에_재시도_안내_메시지를_반환한다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        feedbackGenerator.failNextWith(new FeedbackGenerationException(
+                FeedbackGenerationException.TRUNCATED,
+                "AI feedback response was cut off at the completion token limit.",
+                null
+        ));
+
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.code").value("ai-provider-error"))
+                .andExpect(jsonPath("$.message").value("AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."));
     }
 
     @Test
@@ -210,6 +291,65 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.code").value("problem-inactive"));
     }
 
+    @Test
+    void 턴을_추가하면_사용량_요약이_봉투에_실린다() throws Exception {
+        Long attemptId = createAttempt();
+
+        mockMvc.perform(post("/api/attempts/{id}/turns", attemptId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\":\"Hello 출력해줘\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.turns[0].usage.inputTokens").value(2500))
+                .andExpect(jsonPath("$.turns[0].usage.uncachedInputTokens").value(1500))
+                .andExpect(jsonPath("$.turns[0].usage.cachedInputTokens").value(1000))
+                .andExpect(jsonPath("$.turns[0].usage.outputTokens").value(500))
+                .andExpect(jsonPath("$.turns[0].usage.reasoningTokens").value(120))
+                .andExpect(jsonPath("$.turns[0].usage.latencyMs").value(260))
+                .andExpect(jsonPath("$.turns[0].usage.model").value("test-model"))
+                .andExpect(jsonPath("$.turns[0].usage.rounds").value(2))
+                .andExpect(jsonPath("$.turns[0].usage.cost").value(0.003))
+                .andExpect(jsonPath("$.usage.cost").value(0.003));
+    }
+
+    @Test
+    void 제출한_뒤에도_총계는_턴_합계다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        mockMvc.perform(post("/api/attempts/{id}/submit", attemptId))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/attempts/{id}", attemptId))
+                .andExpect(status().isOk())
+                // 제출이 부른 피드백 생성 호출은 서비스 비용이라 총계에서 빠진다 — 턴 하나의 값과 같다.
+                .andExpect(jsonPath("$.usage.inputTokens").value(2500))
+                .andExpect(jsonPath("$.usage.uncachedInputTokens").value(1500))
+                .andExpect(jsonPath("$.usage.cachedInputTokens").value(1000))
+                .andExpect(jsonPath("$.usage.outputTokens").value(500))
+                .andExpect(jsonPath("$.usage.reasoningTokens").value(120))
+                .andExpect(jsonPath("$.usage.latencyMs").value(260))
+                .andExpect(jsonPath("$.usage.cost").value(0.003))
+                .andExpect(jsonPath("$.usage.rounds").value(2))
+                .andExpect(jsonPath("$.turns[0].usage.inputTokens").value(2500));
+    }
+
+    @Test
+    void 사용량_기록이_없는_턴은_usage가_null이다() throws Exception {
+        Attempt attempt = attemptRepository.save(Attempt.start(newProblem(), ownerId));
+        attempt.applyTurn("Hello 출력해줘", new GeneratedCode(
+                List.of(new ProblemFile("src/main/java/Main.java", "생성된 내용")),
+                "생성 요약",
+                List.of(),
+                List.of()
+        ));
+        attemptRepository.save(attempt);
+
+        mockMvc.perform(get("/api/attempts/{id}", attempt.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.turns.length()").value(1))
+                .andExpect(jsonPath("$.turns[0].usage").doesNotExist())
+                .andExpect(jsonPath("$.usage").doesNotExist());
+    }
+
     private void addTurn(Long attemptId) throws Exception {
         mockMvc.perform(post("/api/attempts/{id}/turns", attemptId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -232,6 +372,6 @@ class AttemptApiTest extends DatabaseTest {
     private Problem newProblem() {
         return problemRepository.save(new Problem("hello-world", "Hello World 출력", "# Hello World 출력", List.of(
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
-        )));
+        ), List.of()));
     }
 }

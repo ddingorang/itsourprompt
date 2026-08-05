@@ -6,6 +6,7 @@ import com.promptstudio.attempt.domain.ToolCallEntry;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
+import com.promptstudio.attempt.exception.CodeGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
 import com.promptstudio.problem.exception.InactiveProblemException;
@@ -51,18 +52,18 @@ class AttemptServiceTest extends DatabaseTest {
     void 어템프트를_시작하면_문제_스켈레톤으로_초기화해_저장한다() {
         Problem problem = newProblem();
 
-        AttemptView started = attemptService.startAttempt(problem.id());
+        AttemptView started = attemptService.startAttempt(problem.id(), ownerId, null);
 
         assertThat(started.id()).isNotNull();
         assertThat(started.problemId()).isEqualTo(problem.id());
         assertThat(started.files()).containsExactly(SKELETON);
         assertThat(started.turns()).isEmpty();
-        assertThat(attemptService.getAttempt(started.id())).isEqualTo(started);
+        assertThat(attemptService.getAttempt(started.id(), ownerId)).isEqualTo(started);
     }
 
     @Test
     void 없는_문제로_시작하면_예외를_던진다() {
-        assertThatThrownBy(() -> attemptService.startAttempt(999L))
+        assertThatThrownBy(() -> attemptService.startAttempt(999L, ownerId, null))
                 .isInstanceOf(ProblemNotFoundException.class)
                 .hasMessage("문제 ID 999를 찾을 수 없습니다.");
     }
@@ -73,30 +74,30 @@ class AttemptServiceTest extends DatabaseTest {
         problem.deactivate();
         problemRepository.save(problem);
 
-        assertThatThrownBy(() -> attemptService.startAttempt(problem.id()))
+        assertThatThrownBy(() -> attemptService.startAttempt(problem.id(), ownerId, null))
                 .isInstanceOf(InactiveProblemException.class)
                 .hasMessage("문제 ID " + problem.id() + "는 비활성 상태여서 새로 시작할 수 없습니다.");
     }
 
     @Test
     void 저장된_어템프트를_ID로_조회한다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
 
-        assertThat(attemptService.getAttempt(started.id())).isEqualTo(started);
+        assertThat(attemptService.getAttempt(started.id(), ownerId)).isEqualTo(started);
     }
 
     @Test
     void 없는_어템프트를_조회하면_예외를_던진다() {
-        assertThatThrownBy(() -> attemptService.getAttempt(999L))
+        assertThatThrownBy(() -> attemptService.getAttempt(999L, ownerId))
                 .isInstanceOf(AttemptNotFoundException.class)
                 .hasMessage("어템프트 ID 999를 찾을 수 없습니다.");
     }
 
     @Test
     void 턴을_추가하면_생성_결과로_어템프트를_갱신해_저장한다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
 
-        AttemptView updated = attemptService.addTurn(started.id(), "Hello 출력해줘");
+        AttemptView updated = attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
 
         assertThat(updated.id()).isEqualTo(started.id());
         assertThat(updated.files())
@@ -106,15 +107,15 @@ class AttemptServiceTest extends DatabaseTest {
         assertThat(updated.turns().getFirst().aiSummary()).isEqualTo("생성 요약");
         assertThat(updated.turns().getFirst().toolCalls())
                 .containsExactly(new ToolCallEntry("edit_file", "src/main/java/Main.java"));
-        assertThat(attemptService.getAttempt(started.id())).isEqualTo(updated);
+        assertThat(attemptService.getAttempt(started.id(), ownerId)).isEqualTo(updated);
     }
 
     @Test
     void 턴을_추가할_때_문제와_현재_어템프트와_새_프롬프트를_코드_생성기에_전달한다() {
         Problem problem = newProblem();
-        AttemptView started = attemptService.startAttempt(problem.id());
+        AttemptView started = attemptService.startAttempt(problem.id(), ownerId, null);
 
-        attemptService.addTurn(started.id(), "Hello 출력해줘");
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
 
         assertThat(codeGenerator.receivedProblem().id()).isEqualTo(problem.id());
         assertThat(codeGenerator.receivedProblem().specMd()).isEqualTo("명세");
@@ -124,7 +125,7 @@ class AttemptServiceTest extends DatabaseTest {
 
     @Test
     void 없는_어템프트에_턴을_추가하면_예외를_던진다() {
-        assertThatThrownBy(() -> attemptService.addTurn(999L, "Hello 출력해줘"))
+        assertThatThrownBy(() -> attemptService.addTurn(999L, ownerId, "Hello 출력해줘"))
                 .isInstanceOf(AttemptNotFoundException.class)
                 .hasMessage("어템프트 ID 999를 찾을 수 없습니다.");
     }
@@ -132,56 +133,70 @@ class AttemptServiceTest extends DatabaseTest {
     @Test
     void 제출하면_피드백을_생성해_저장하고_반환한다() {
         Problem problem = newProblem();
-        AttemptView started = attemptService.startAttempt(problem.id());
-        AttemptView withTurn = attemptService.addTurn(started.id(), "Hello 출력해줘");
+        AttemptView started = attemptService.startAttempt(problem.id(), ownerId, null);
+        AttemptView withTurn = attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
 
-        AttemptView submitted = attemptService.submit(started.id());
+        AttemptView submitted = attemptService.submit(started.id(), ownerId);
 
         assertThat(submitted.feedback()).isEqualTo("생성된 피드백");
         assertThat(submitted.turns()).extracting(AttemptView.TurnView::feedback).containsExactly("턴 1 피드백");
         assertThat(feedbackGenerator.receivedProblem().id()).isEqualTo(problem.id());
         assertThat(feedbackGenerator.receivedAttempt()).isEqualTo(withTurn);
-        assertThat(attemptService.getAttempt(started.id()).status()).isEqualTo(AttemptStatus.SUBMITTED);
-        assertThat(attemptService.getAttempt(started.id()).feedback()).isEqualTo("생성된 피드백");
+        assertThat(attemptService.getAttempt(started.id(), ownerId).status()).isEqualTo(AttemptStatus.SUBMITTED);
+        assertThat(attemptService.getAttempt(started.id(), ownerId).feedback()).isEqualTo("생성된 피드백");
     }
 
     @Test
     void 제출된_어템프트의_피드백을_조회하면_저장된_피드백을_반환한다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
-        attemptService.addTurn(started.id(), "Hello 출력해줘");
-        attemptService.submit(started.id());
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
+        attemptService.submit(started.id(), ownerId);
 
-        AttemptView feedback = attemptService.getFeedback(started.id());
+        AttemptView feedback = attemptService.getFeedback(started.id(), ownerId);
 
         assertThat(feedback.feedback()).isEqualTo("생성된 피드백");
         assertThat(feedback.turns()).extracting(AttemptView.TurnView::feedback).containsExactly("턴 1 피드백");
     }
 
     @Test
-    void 제출_전에_피드백을_조회하면_예외를_던진다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
-        attemptService.addTurn(started.id(), "Hello 출력해줘");
+    void 제출된_어템프트의_피드백을_조회하면_패턴_피드백도_함께_반환한다() {
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
+        attemptService.submit(started.id(), ownerId);
 
-        assertThatThrownBy(() -> attemptService.getFeedback(started.id()))
+        AttemptView feedback = attemptService.getFeedback(started.id(), ownerId);
+
+        assertThat(feedback.patternFeedback()).isEqualTo("생성된 패턴 피드백");
+        assertThat(feedback.turns())
+                .extracting(AttemptView.TurnView::patternFeedback)
+                .containsExactly("턴 1 패턴");
+    }
+
+    @Test
+    void 제출_전에_피드백을_조회하면_예외를_던진다() {
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
+
+        assertThatThrownBy(() -> attemptService.getFeedback(started.id(), ownerId))
                 .isInstanceOf(FeedbackNotFoundException.class)
                 .hasMessage("어템프트 ID " + started.id() + "의 피드백이 아직 없습니다. 제출 후 조회할 수 있습니다.");
     }
 
     @Test
     void 없는_어템프트의_피드백을_조회하면_예외를_던진다() {
-        assertThatThrownBy(() -> attemptService.getFeedback(999L))
+        assertThatThrownBy(() -> attemptService.getFeedback(999L, ownerId))
                 .isInstanceOf(AttemptNotFoundException.class)
                 .hasMessage("어템프트 ID 999를 찾을 수 없습니다.");
     }
 
     @Test
     void 제출된_어템프트에_턴을_추가하면_AI를_호출하지_않고_예외를_던진다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
-        attemptService.addTurn(started.id(), "Hello 출력해줘");
-        attemptService.submit(started.id());
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
+        attemptService.submit(started.id(), ownerId);
         codeGenerator.reset();
 
-        assertThatThrownBy(() -> attemptService.addTurn(started.id(), "한 번 더 고쳐줘"))
+        assertThatThrownBy(() -> attemptService.addTurn(started.id(), ownerId, "한 번 더 고쳐줘"))
                 .isInstanceOf(AttemptAlreadySubmittedException.class)
                 .hasMessage("어템프트 ID " + started.id() + "는 이미 제출되었습니다.");
         assertThat(codeGenerator.invocationCount()).isZero();
@@ -189,12 +204,12 @@ class AttemptServiceTest extends DatabaseTest {
 
     @Test
     void 이미_제출된_어템프트를_다시_제출하면_AI를_재호출하지_않고_저장된_피드백을_반환한다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
-        attemptService.addTurn(started.id(), "Hello 출력해줘");
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
         feedbackGenerator.reset();
 
-        AttemptView first = attemptService.submit(started.id());
-        AttemptView second = attemptService.submit(started.id());
+        AttemptView first = attemptService.submit(started.id(), ownerId);
+        AttemptView second = attemptService.submit(started.id(), ownerId);
 
         assertThat(first.feedback()).isEqualTo("생성된 피드백");
         assertThat(second.feedback()).isEqualTo("생성된 피드백");
@@ -204,8 +219,8 @@ class AttemptServiceTest extends DatabaseTest {
 
     @Test
     void 피드백_생성_중에는_제출과_턴_추가가_모두_거부된다() throws Exception {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
-        attemptService.addTurn(started.id(), "Hello 출력해줘");
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
         codeGenerator.reset();
         feedbackGenerator.reset();
         CountDownLatch entered = new CountDownLatch(1);
@@ -214,13 +229,13 @@ class AttemptServiceTest extends DatabaseTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
 
         try {
-            Future<AttemptView> inFlight = executor.submit(() -> attemptService.submit(started.id()));
+            Future<AttemptView> inFlight = executor.submit(() -> attemptService.submit(started.id(), ownerId));
             assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
 
-            assertThatThrownBy(() -> attemptService.submit(started.id()))
+            assertThatThrownBy(() -> attemptService.submit(started.id(), ownerId))
                     .isInstanceOf(FeedbackGenerationInProgressException.class)
                     .hasMessage("어템프트 ID " + started.id() + "는 피드백 생성이 진행 중입니다.");
-            assertThatThrownBy(() -> attemptService.addTurn(started.id(), "한 번 더 고쳐줘"))
+            assertThatThrownBy(() -> attemptService.addTurn(started.id(), ownerId, "한 번 더 고쳐줘"))
                     .isInstanceOf(FeedbackGenerationInProgressException.class)
                     .hasMessage("어템프트 ID " + started.id() + "는 피드백 생성이 진행 중입니다.");
             assertThat(codeGenerator.invocationCount()).isZero();
@@ -228,7 +243,7 @@ class AttemptServiceTest extends DatabaseTest {
             gate.countDown();
 
             assertThat(inFlight.get(5, TimeUnit.SECONDS).feedback()).isEqualTo("생성된 피드백");
-            assertThat(attemptService.submit(started.id()).feedback()).isEqualTo("생성된 피드백");
+            assertThat(attemptService.submit(started.id(), ownerId).feedback()).isEqualTo("생성된 피드백");
         } finally {
             executor.shutdown();
         }
@@ -236,34 +251,61 @@ class AttemptServiceTest extends DatabaseTest {
 
     @Test
     void 피드백_생성이_실패하면_상태가_유지되고_재시도할_수_있다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
-        attemptService.addTurn(started.id(), "Hello 출력해줘");
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        attemptService.addTurn(started.id(), ownerId, "Hello 출력해줘");
         feedbackGenerator.failNextWith(new FeedbackGenerationException("AI 호출 실패"));
 
-        assertThatThrownBy(() -> attemptService.submit(started.id()))
+        assertThatThrownBy(() -> attemptService.submit(started.id(), ownerId))
                 .isInstanceOf(FeedbackGenerationException.class);
-        assertThat(attemptService.getAttempt(started.id()).status()).isEqualTo(AttemptStatus.IN_PROGRESS);
-        assertThat(attemptService.getAttempt(started.id()).feedback()).isNull();
-        assertThat(attemptService.submit(started.id()).feedback()).isEqualTo("생성된 피드백");
+        assertThat(attemptService.getAttempt(started.id(), ownerId).status()).isEqualTo(AttemptStatus.IN_PROGRESS);
+        assertThat(attemptService.getAttempt(started.id(), ownerId).feedback()).isNull();
+        assertThat(attemptService.submit(started.id(), ownerId).feedback()).isEqualTo("생성된 피드백");
     }
 
     @Test
     void 턴이_없는_어템프트를_제출하면_예외를_던진다() {
-        AttemptView started = attemptService.startAttempt(newProblem().id());
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
 
-        assertThatThrownBy(() -> attemptService.submit(started.id()))
+        assertThatThrownBy(() -> attemptService.submit(started.id(), ownerId))
                 .isInstanceOf(AttemptHasNoTurnsException.class)
                 .hasMessage("어템프트 ID " + started.id() + "에 턴이 없어 피드백을 생성할 수 없습니다.");
     }
 
     @Test
     void 없는_어템프트를_제출하면_예외를_던진다() {
-        assertThatThrownBy(() -> attemptService.submit(999L))
+        assertThatThrownBy(() -> attemptService.submit(999L, ownerId))
                 .isInstanceOf(AttemptNotFoundException.class)
                 .hasMessage("어템프트 ID 999를 찾을 수 없습니다.");
     }
 
+    @Test
+    void blocks_a_second_code_generation_for_the_same_attempt_until_the_first_finishes() throws Exception {
+        AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch gate = new CountDownLatch(1);
+        codeGenerator.blockNextWith(entered, gate);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        try {
+            Future<AttemptView> first = executor.submit(
+                    () -> attemptService.addTurn(started.id(), ownerId, "first request"));
+            assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
+
+            assertThatThrownBy(() -> attemptService.addTurn(started.id(), ownerId, "second request"))
+                    .isInstanceOf(CodeGenerationInProgressException.class)
+                    .hasMessage("다른 창에서 이 문제의 AI 요청을 처리하고 있습니다. 잠시 후 새로고침 후 다시 시도해 주시기 바랍니다.");
+            assertThat(codeGenerator.invocationCount()).isEqualTo(1);
+
+            gate.countDown();
+
+            assertThat(first.get(5, TimeUnit.SECONDS).turns()).hasSize(1);
+            assertThat(attemptService.addTurn(started.id(), ownerId, "second request").turns()).hasSize(2);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
     private Problem newProblem() {
-        return problemRepository.save(new Problem("hello-world", "제목", "명세", List.of(SKELETON)));
+        return problemRepository.save(new Problem("hello-world", "제목", "명세", List.of(SKELETON), List.of()));
     }
 }

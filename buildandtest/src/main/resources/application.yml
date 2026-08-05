@@ -17,15 +17,19 @@ spring:
         # 백엔드가 큐를 선언하기 전에 떠도 죽지 않고 재시도한다. compose depends_on은
         # RabbitMQ 기동만 보장하고 백엔드의 토폴로지 선언 시점은 보장하지 못한다.
         missing-queues-fatal: false
-  # 진행 중인 실행을 끝내고 ack한 뒤 종료한다(컴파일 30초 + 실행 10초 + 여유).
+  # 진행 중인 실행을 끝내고 ack한 뒤 종료한다(컴파일 30초 + 테스트 30초 + 여유).
   lifecycle:
-    timeout-per-shutdown-phase: 60s
+    timeout-per-shutdown-phase: 90s
 
 worker:
   compile-timeout-seconds: 30
   run-timeout-seconds: 10
+  # 테스트는 JUnit 런처 부팅이 얹혀서 단순 실행보다 오래 걸린다.
+  test-timeout-seconds: 30
   max-output-bytes: 65536
   heap-limit: 256m
+  # 이미지에 구워 둔 JUnit 콘솔 런처(Dockerfile 참고). 로컬 테스트는 build.gradle이 덮어쓴다.
+  junit-console-jar: /opt/junit/junit-platform-console-standalone.jar
 
 logging:
   level:

@@ -15,6 +15,7 @@ import java.util.stream.Stream;
 final class Workspace implements AutoCloseable {
 
     private static final String OUTPUT_DIR = "out";
+    private static final String REPORTS_DIR = "reports";
     private static final String SOURCE_LIST = "sources.txt";
 
     private final Path root;
@@ -36,16 +37,40 @@ final class Workspace implements AutoCloseable {
     }
 
     /**
-     * 파일을 기록하고 컴파일 대상 .java 목록을 반환한다.
+     * JUnit 콘솔 런처가 XML 리포트를 남길 곳. 런처가 직접 만들므로 미리 생성하지 않는다 —
+     * 테스트를 돌리지 않는 실행에서는 이 디렉터리가 아예 없고, 파서는 그것을 빈 결과로 다룬다.
+     */
+    Path reportsDir() {
+        return root.resolve(REPORTS_DIR);
+    }
+
+    /**
+     * 제출 파일과 채점용 테스트를 기록하고 컴파일 대상 .java 목록을 반환한다.
      *
      * <p>경로는 와이어로 받은 값이라 반드시 여기서 다시 검증한다. 백엔드 {@code GeneratedCodeParser}의
      * 검증은 다른 프로세스에 있어 이 워커를 보호해주지 않는다.
      *
+     * <p>테스트를 나중에 쓴다. 경로가 겹치면 테스트가 남아야 채점이 성립하기 때문이다.
+     * 테스트가 skeleton 안에 있던 시절에 시작된 어템프트는 실제로 같은 경로를 제출 파일로 갖고 있다.
+     */
+    Sources writeFiles(
+            List<RunRequestMessage.RunFileMessage> files,
+            List<RunRequestMessage.RunFileMessage> testFiles
+    ) throws IOException {
+        Files.createDirectories(outputDir());
+
+        return new Sources(write(files), write(testFiles));
+    }
+
+    /**
      * @return 작업 디렉토리 기준 상대 경로로 표현한 .java 파일 목록
      */
-    List<String> writeFiles(List<RunRequestMessage.RunFileMessage> files) throws IOException {
-        Files.createDirectories(outputDir());
+    private List<String> write(List<RunRequestMessage.RunFileMessage> files) throws IOException {
         List<String> javaSources = new ArrayList<>();
+
+        if (files == null) {
+            return javaSources;
+        }
 
         for (RunRequestMessage.RunFileMessage file : files) {
             String relativePath = validated(file.path());
@@ -89,6 +114,24 @@ final class Workspace implements AutoCloseable {
         }
 
         return path;
+    }
+
+    /**
+     * 한 번의 실행에서 컴파일할 소스 목록. 둘을 나눠 두는 이유는 실행 방식이 갈리기 때문이다 —
+     * 테스트가 있으면 JUnit으로 돌리고, 없으면 main을 찾아 돌린다.
+     */
+    record Sources(List<String> main, List<String> test) {
+
+        boolean hasTests() {
+            return !test.isEmpty();
+        }
+
+        List<String> all() {
+            List<String> merged = new ArrayList<>(main);
+            merged.addAll(test);
+
+            return merged;
+        }
     }
 
     @Override

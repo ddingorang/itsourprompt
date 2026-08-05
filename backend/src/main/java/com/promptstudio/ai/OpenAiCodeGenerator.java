@@ -62,12 +62,17 @@ public class OpenAiCodeGenerator implements CodeGenerator {
         this.chatOptionsFactory = chatOptionsFactory;
     }
 
+    /**
+     * 사용량 누적은 루프 밖에서 만든다 — 타임아웃으로 루프를 버려도 그때까지 쓴 토큰을 예외에 실어 보낸다.
+     */
     @Override
     public GeneratedCode generate(ProblemView problem, AttemptView attempt, String userPrompt) {
         long startedAt = System.nanoTime();
+        LlmUsageTracker tracker = new LlmUsageTracker();
 
         try {
-            return aiCallExecutor.call(() -> runLoop(problem, attempt, userPrompt), AI_REQUEST_TIMEOUT_MINUTES);
+            return aiCallExecutor.call(
+                    () -> runLoop(problem, attempt, userPrompt, tracker), AI_REQUEST_TIMEOUT_MINUTES);
         } catch (TimeoutException exception) {
             log.error(
                     "[OPENAI RUN] timed out | attemptId={} | duration={} ms | timeout={} min",
@@ -75,17 +80,20 @@ public class OpenAiCodeGenerator implements CodeGenerator {
                     elapsedMillis(startedAt),
                     AI_REQUEST_TIMEOUT_MINUTES
             );
-            throw new CodeGenerationTimeoutException();
+            throw new CodeGenerationTimeoutException(tracker.snapshot());
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new CodeGenerationException("AI 코드 생성 요청이 중단되었습니다.", exception);
+            throw new CodeGenerationException(
+                    "AI 코드 생성 요청이 중단되었습니다.", exception, "interrupted", tracker.snapshot());
         } catch (ExecutionException exception) {
             logProviderFailure(exception.getCause());
-            throw new CodeGenerationException("AI 코드 생성 요청에 실패했습니다.", exception.getCause());
+            throw new CodeGenerationException(
+                    "AI 코드 생성 요청에 실패했습니다.", exception.getCause(), "provider-error", tracker.snapshot());
         }
     }
 
-    private GeneratedCode runLoop(ProblemView problem, AttemptView attempt, String userPrompt) {
+    private GeneratedCode runLoop(
+            ProblemView problem, AttemptView attempt, String userPrompt, LlmUsageTracker tracker) {
         CodeGenerationTools tools = new CodeGenerationTools(attempt.files());
         String promptCacheKey = "attempt-" + attempt.id();
         OpenAiChatOptions toolOptions = chatOptionsFactory.forCodeGeneration(promptCacheKey, tools.callbacks());
@@ -100,10 +108,11 @@ public class OpenAiCodeGenerator implements CodeGenerator {
         );
 
         for (int round = 1; round <= MAX_TOOL_ROUNDS; round++) {
-            ChatResponse response = callRound(prompt, round);
+            ChatResponse response = callRound(prompt, round, toolOptions.getModel(), tracker);
 
             if (!response.hasToolCalls()) {
-                return new GeneratedCode(tools.currentFiles(), summaryOf(response), tools.trace());
+                return new GeneratedCode(
+                        tools.currentFiles(), summaryOf(response), tools.trace(), tracker.snapshot());
             }
 
             ToolExecutionResult executed = toolCallingManager.executeToolCalls(prompt, response);
@@ -118,17 +127,20 @@ public class OpenAiCodeGenerator implements CodeGenerator {
                 tools.editedFileCount()
         );
 
-        return finalizeWithoutTools(prompt.getInstructions(), tools, promptCacheKey);
+        return finalizeWithoutTools(prompt.getInstructions(), tools, promptCacheKey, tracker);
     }
 
-    private ChatResponse callRound(Prompt prompt, int round) {
+    private ChatResponse callRound(Prompt prompt, int round, String model, LlmUsageTracker tracker) {
         long startedAt = System.nanoTime();
         ChatResponse response = chatModel.call(prompt);
+        long durationMillis = elapsedMillis(startedAt);
+
+        tracker.record(model, response, durationMillis);
 
         log.info(
                 "[OPENAI RUN] round finished | round={} | duration={} ms | toolCalls={}",
                 round,
-                elapsedMillis(startedAt),
+                durationMillis,
                 toolCallNames(response)
         );
 
@@ -138,19 +150,28 @@ public class OpenAiCodeGenerator implements CodeGenerator {
     /**
      * 상한 경로의 요약 호출이 실패해도 이미 반영된 편집을 버리지 않는다 — 대체 요약으로 턴을 저장한다.
      */
-    private GeneratedCode finalizeWithoutTools(List<Message> history, CodeGenerationTools tools, String promptCacheKey) {
+    private GeneratedCode finalizeWithoutTools(
+            List<Message> history,
+            CodeGenerationTools tools,
+            String promptCacheKey,
+            LlmUsageTracker tracker
+    ) {
         List<Message> messages = new ArrayList<>(history);
         messages.add(new UserMessage(FORCED_FINALIZE_PROMPT));
+        OpenAiChatOptions finalizeOptions = chatOptionsFactory.forCodeGenerationFinalize(promptCacheKey);
 
         try {
-            ChatResponse response = chatModel.call(
-                    new Prompt(messages, chatOptionsFactory.forCodeGenerationFinalize(promptCacheKey)));
+            long startedAt = System.nanoTime();
+            ChatResponse response = chatModel.call(new Prompt(messages, finalizeOptions));
 
-            return new GeneratedCode(tools.currentFiles(), summaryOf(response), tools.trace());
+            tracker.record(finalizeOptions.getModel(), response, elapsedMillis(startedAt));
+
+            return new GeneratedCode(
+                    tools.currentFiles(), summaryOf(response), tools.trace(), tracker.snapshot());
         } catch (RuntimeException exception) {
             log.warn("[OPENAI RUN] finalize call failed | 편집을 대체 요약으로 보존합니다.", exception);
 
-            return new GeneratedCode(tools.currentFiles(), FALLBACK_SUMMARY, tools.trace());
+            return new GeneratedCode(tools.currentFiles(), FALLBACK_SUMMARY, tools.trace(), tracker.snapshot());
         }
     }
 

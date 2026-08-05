@@ -11,5 +11,12 @@ import java.util.List;
  */
 public interface CodeExecutor {
 
-    RunOutcome execute(List<RunRequestMessage.RunFileMessage> files);
+    /**
+     * @param files     제출된 코드. 신뢰할 수 없다.
+     * @param testFiles 채점용 테스트. 비어 있거나 null이면 테스트 없이 main만 실행한다.
+     */
+    RunOutcome execute(
+            List<RunRequestMessage.RunFileMessage> files,
+            List<RunRequestMessage.RunFileMessage> testFiles
+    );
 }

@@ -39,6 +39,7 @@ public class ProblemWebMapper {
                 problem.id(),
                 problem.title(),
                 problem.specMd(),
+                problem.type(),
                 files
         );
     }
