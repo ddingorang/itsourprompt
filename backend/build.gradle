@@ -58,5 +58,36 @@ dependencyManagement {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    // 실호출 하네스는 과금되므로 일반 테스트에서 뺀다.
+    useJUnitPlatform {
+        excludeTags 'llm'
+    }
+}
+
+/**
+ * 실제 모델을 부르는 측정 하네스만 돌린다. 통과·실패를 판정하지 않고 숫자를 stdout과
+ * build/llm-harness/<phase>.jsonl에 남기므로 출력을 그대로 흘려보내고 캐시도 쓰지 않는다.
+ *
+ *   set -a; . ../.env; set +a
+ *   sh gradlew llmTest -PllmPhase=A -PllmReps=3
+ */
+tasks.register('llmTest', Test) {
+    group = 'verification'
+    description = '실제 LLM을 불러 피드백 응답 지표를 잰다. OPENAI_API_KEY가 없으면 스킵된다.'
+
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+
+    useJUnitPlatform {
+        includeTags 'llm'
+    }
+
+    systemProperty 'llmPhase', project.findProperty('llmPhase') ?: '0'
+    systemProperty 'llmReps', project.findProperty('llmReps') ?: '1'
+
+    testLogging {
+        showStandardStreams = true
+    }
+
+    outputs.upToDateWhen { false }
 }

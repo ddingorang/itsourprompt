@@ -48,8 +48,8 @@ class FeedbackGeneratorsTest {
 
     @Test
     void 두_렌즈의_피드백을_한_봉투에_합친다() {
-        chatModel.queueFor(PROMPT_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 프롬프트\"],\"overall\":\"프롬프트 총평\"}"));
-        chatModel.queueFor(PATTERN_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"));
+        chatModel.queueFor(PROMPT_LENS, textResponse(response("프롬프트 총평", "턴 1 프롬프트")));
+        chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
         AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1));
 
@@ -63,8 +63,8 @@ class FeedbackGeneratorsTest {
      */
     @Test
     void 패턴_총평_뒤에_출처_한_줄을_붙인다() {
-        chatModel.queueFor(PROMPT_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 프롬프트\"],\"overall\":\"프롬프트 총평\"}"));
-        chatModel.queueFor(PATTERN_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"));
+        chatModel.queueFor(PROMPT_LENS, textResponse(response("프롬프트 총평", "턴 1 프롬프트")));
+        chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
         AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1));
 
@@ -77,9 +77,9 @@ class FeedbackGeneratorsTest {
     @Test
     void 두_렌즈의_사용량을_따로_싣는다() {
         chatModel.queueFor(PROMPT_LENS, withUsage(
-                textResponse("{\"turnFeedbacks\":[\"턴 1 프롬프트\"],\"overall\":\"프롬프트 총평\"}"), 500, 120));
+                textResponse(response("프롬프트 총평", "턴 1 프롬프트")), 500, 120));
         chatModel.queueFor(PATTERN_LENS, withUsage(
-                textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"), 300, 60));
+                textResponse(response("패턴 총평", "턴 1 패턴")), 300, 60));
 
         AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1));
 
@@ -93,8 +93,8 @@ class FeedbackGeneratorsTest {
      */
     @Test
     void 두_렌즈에_각각_자기_시스템_프롬프트를_보낸다() {
-        chatModel.queueFor(PROMPT_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 프롬프트\"],\"overall\":\"프롬프트 총평\"}"));
-        chatModel.queueFor(PATTERN_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"));
+        chatModel.queueFor(PROMPT_LENS, textResponse(response("프롬프트 총평", "턴 1 프롬프트")));
+        chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
         feedbackGenerators.generate(problem, attempt(1));
 
@@ -115,7 +115,7 @@ class FeedbackGeneratorsTest {
         chatModel.queueFor(PROMPT_LENS, withUsage(textResponse("피드백을 드릴 수 없습니다."), 500, 120));
         chatModel.queueFor(PROMPT_LENS, withUsage(textResponse("피드백을 드릴 수 없습니다."), 500, 120));
         chatModel.queueFor(PATTERN_LENS, withUsage(
-                textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"), 300, 60));
+                textResponse(response("패턴 총평", "턴 1 패턴")), 300, 60));
 
         assertThatThrownBy(() -> feedbackGenerators.generate(problem, attempt(1)))
                 .isInstanceOfSatisfying(FeedbackGenerationException.class, exception -> {
@@ -136,7 +136,7 @@ class FeedbackGeneratorsTest {
     void 합친_실패는_재시도_대상_표식으로_던지지_않는다() {
         chatModel.queueFor(PROMPT_LENS, textResponse("피드백을 드릴 수 없습니다."));
         chatModel.queueFor(PROMPT_LENS, textResponse("피드백을 드릴 수 없습니다."));
-        chatModel.queueFor(PATTERN_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"));
+        chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
         assertThatThrownBy(() -> feedbackGenerators.generate(problem, attempt(1)))
                 .isInstanceOf(FeedbackGenerationException.class)
@@ -191,6 +191,23 @@ class FeedbackGeneratorsTest {
                 throw failure;
             });
         }
+    }
+
+    /**
+     * 턴 항목이 인용 배열과 피드백 문자열을 함께 갖는 새 응답 모양. 인용은 대조용이라 여기서는 비워 둔다.
+     */
+    private String response(String overall, String... turnFeedbacks) {
+        StringBuilder entries = new StringBuilder();
+
+        for (String turnFeedback : turnFeedbacks) {
+            if (!entries.isEmpty()) {
+                entries.append(",");
+            }
+
+            entries.append("{\"quotes\":[],\"feedback\":\"").append(turnFeedback).append("\"}");
+        }
+
+        return "{\"turnFeedbacks\":[" + entries + "],\"overall\":\"" + overall + "\"}";
     }
 
     private AttemptView attempt(int turnCount) {

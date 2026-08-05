@@ -16,6 +16,7 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.openai.OpenAiChatOptions;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -47,7 +48,8 @@ class OpenAiFeedbackGenerator {
             FeedbackGenerationException.EMPTY_CONTENT,
             FeedbackGenerationException.INVALID_JSON,
             FeedbackGenerationException.TURN_COUNT_MISMATCH,
-            FeedbackGenerationException.EMPTY_OVERALL
+            FeedbackGenerationException.EMPTY_OVERALL,
+            FeedbackGenerationException.QUOTE_NOT_FOUND
     );
 
     private static final Logger log = LoggerFactory.getLogger(OpenAiFeedbackGenerator.class);
@@ -76,7 +78,23 @@ class OpenAiFeedbackGenerator {
         this.chatOptions = chatOptions;
     }
 
-    private record FeedbackPayload(List<String> turnFeedbacks, String overall) {
+    private record FeedbackPayload(List<TurnEntry> turnFeedbacks, String overall) {
+    }
+
+    /**
+     * 턴 하나의 응답. 인용은 대조에만 쓰고 저장 봉투로 넘기지 않는다 — {@link FeedbackDraft}와
+     * {@link com.promptstudio.attempt.domain.AttemptFeedback}, DB, FE 응답은 그대로다.
+     *
+     * @param quotes 이 턴의 판정을 뒷받침한다고 모델이 주장하는 입력 문장들
+     */
+    record TurnEntry(List<String> quotes, String feedback) {
+    }
+
+    /**
+     * 파싱이 끝난 응답. 인용 대조는 조립한 유저 프롬프트를 들고 있는 {@link #callAndParse}에서 하므로
+     * 원본 턴 항목을 draft와 함께 돌려준다.
+     */
+    private record ParsedFeedback(List<TurnEntry> turns, FeedbackDraft draft) {
     }
 
     /**
@@ -154,7 +172,20 @@ class OpenAiFeedbackGenerator {
 
             CallTrace trace = traceOf(attemptId, turnCount, options, response);
             String content = contentOf(response);
-            FeedbackDraft draft = parse(content, trace, tracker.snapshot());
+            ParsedFeedback parsed = parse(content, trace, tracker.snapshot());
+            QuoteVerifier.Result quotes = QuoteVerifier.verify(userMessage, parsed.turns());
+            logQuoteCheck(quotes, attemptId, turnCount);
+
+            if (!quotes.grounded()) {
+                throw failure(
+                        FeedbackGenerationException.QUOTE_NOT_FOUND,
+                        "AI feedback quoted %d line(s) that are not in the input."
+                                .formatted(quotes.normalizedMisses().size()),
+                        content,
+                        trace,
+                        tracker.snapshot()
+                );
+            }
 
             log.info(
                     "[{}] response received | duration={} ms | finishReason={} | completionTokens={}"
@@ -165,7 +196,7 @@ class OpenAiFeedbackGenerator {
                     trace.completionTokens(),
                     content.length()
             );
-            return draft;
+            return parsed.draft();
         } catch (TimeoutException exception) {
             log.error(
                     "[{}] timed out | duration={} ms | timeout={} min",
@@ -208,7 +239,7 @@ class OpenAiFeedbackGenerator {
      *
      * <p>여기까지 왔다면 호출은 이미 성공해 토큰을 썼다 — 실패로 끝나도 그 사용량을 예외에 실어 보낸다.
      */
-    private FeedbackDraft parse(String content, CallTrace trace, List<LlmCallUsage> llmCalls) {
+    private ParsedFeedback parse(String content, CallTrace trace, List<LlmCallUsage> llmCalls) {
         if (trace.truncated()) {
             throw failure(
                     FeedbackGenerationException.TRUNCATED,
@@ -244,13 +275,13 @@ class OpenAiFeedbackGenerator {
             );
         }
 
-        List<String> turnFeedbacks = payload.turnFeedbacks();
+        List<TurnEntry> turnEntries = payload.turnFeedbacks();
 
-        if (turnFeedbacks == null || turnFeedbacks.size() != trace.turnCount()) {
+        if (turnEntries == null || turnEntries.size() != trace.turnCount()) {
             throw failure(
                     FeedbackGenerationException.TURN_COUNT_MISMATCH,
                     "AI feedback response covered %s of %d turns."
-                            .formatted(turnFeedbacks == null ? "none" : turnFeedbacks.size(), trace.turnCount()),
+                            .formatted(turnEntries == null ? "none" : turnEntries.size(), trace.turnCount()),
                     content,
                     trace,
                     llmCalls
@@ -267,7 +298,54 @@ class OpenAiFeedbackGenerator {
             );
         }
 
-        return new FeedbackDraft(turnFeedbacks, payload.overall().trim(), llmCalls);
+        return new ParsedFeedback(
+                turnEntries,
+                new FeedbackDraft(feedbacksOf(turnEntries), payload.overall().trim(), llmCalls));
+    }
+
+    /**
+     * 저장으로 넘기는 것은 {@code feedback} 문자열뿐이다. 인용은 대조를 마치면 버린다 — 화면에 나갈 것이
+     * 아니라 응답이 입력에 붙어 있는지 재는 계량기다.
+     */
+    private List<String> feedbacksOf(List<TurnEntry> turnEntries) {
+        List<String> feedbacks = new ArrayList<>();
+
+        for (TurnEntry entry : turnEntries) {
+            feedbacks.add(entry == null ? null : entry.feedback());
+        }
+
+        return feedbacks;
+    }
+
+    /**
+     * 인용 대조 결과를 로그로 남긴다. 승격 뒤에도 남기는 이유는 운영에서 수치를 계속 쌓기 위해서다 —
+     * raw·턴스코프 불일치는 계약이 아니라 진단이라 로그에만 있다.
+     *
+     * <p>인용 문장 자체는 남기지 않는다. 그것은 모델이 지어낸 자유 텍스트이고, 자유 텍스트는 로그가 아니라
+     * DB로 간다(observability-plan §7). 로그에는 어느 턴에서 몇 자짜리가 어긋났는지만 남겨 수치를 쌓는다.
+     */
+    private void logQuoteCheck(QuoteVerifier.Result result, Long attemptId, int turnCount) {
+        log.info(
+                "[{}] quote check | attemptId={} | turns={} | quotes={} | rawMiss={} | normMiss={}"
+                        + " | turnScopedMiss={}",
+                logTag,
+                attemptId,
+                turnCount,
+                result.total(),
+                result.rawMisses().size(),
+                result.normalizedMisses().size(),
+                result.turnScopedMisses().size()
+        );
+
+        for (QuoteVerifier.Miss miss : result.normalizedMisses()) {
+            log.warn(
+                    "[{}] quote not found in input | attemptId={} | turn={} | quoteLength={}",
+                    logTag,
+                    attemptId,
+                    miss.turn(),
+                    miss.quote() == null ? 0 : miss.quote().length()
+            );
+        }
     }
 
     private CallTrace traceOf(Long attemptId, int turnCount, OpenAiChatOptions options, ChatResponse response) {

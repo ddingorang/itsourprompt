@@ -18,11 +18,26 @@ final class PatternSchema {
               "properties": {
                 "turnFeedbacks": {
                   "type": "array",
-                  "description": "정확히 %1$d개. 턴 순서대로의 피드백이며, 각 항목은 이 턴의 패턴·쓸 기법 두 절의 한국어 Markdown.",
+                  "description": "정확히 %1$d개. 턴 순서대로의 피드백.",
                   "minItems": %1$d,
                   "maxItems": %1$d,
                   "items": {
-                    "type": "string"
+                    "type": "object",
+                    "properties": {
+                      "quotes": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": 5,
+                        "items": { "type": "string" },
+                        "description": "이 턴의 판정을 뒷받침하는 근거. 이 턴의 입력 태그 안 문장을 한 글자도 바꾸지 말고 그대로 복사한다. 짚을 것이 없는 턴은 빈 배열."
+                      },
+                      "feedback": {
+                        "type": "string",
+                        "description": "이 턴의 패턴·쓸 기법 두 절의 한국어 Markdown."
+                      }
+                    },
+                    "required": ["quotes", "feedback"],
+                    "additionalProperties": false
                   }
                 },
                 "overall": {

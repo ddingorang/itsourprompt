@@ -123,9 +123,15 @@ final class PatternPrompts {
 
                 # Output
                 Return JSON with two fields.
-                - turnFeedbacks: one Korean Markdown string per turn, in turn order. Its length must equal the number of turns in the session.
+                - turnFeedbacks: one object per turn, in turn order. Its length must equal the number of turns in the session. Each object carries `quotes` and `feedback`.
                 - overall: one Korean Markdown string about the session as a whole.
-                Inside each string use `###` headings. Do not wrap the JSON in code fences.
+                Inside each `feedback` string use `###` headings. Do not wrap the JSON in code fences.
+
+                ## quotes
+                The lines from this turn's own input tags that the name you gave rests on, at most five.
+                Copy each one character for character out of the user message. Never paraphrase it, never translate it, never join two lines into one, never add or drop a space or a punctuation mark.
+                A line you cannot copy exactly is not a quote — leave it out rather than reconstructing it from memory.
+                Write an empty array when this turn gives you nothing to point at. An empty array is a correct answer; an invented line is not.
 
                 # Each turn's feedback
                 Write these two sections in this order, with the Korean headings `### 이 턴의 패턴` and `### 쓸 기법`.
