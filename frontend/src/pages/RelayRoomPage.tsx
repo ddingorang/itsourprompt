@@ -33,6 +33,7 @@ import { useTheme } from '../features/theme/ThemeContext';
 import CodeViewer from '../features/workspace/CodeViewer';
 import { ApiError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
+import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
 const labelClasses =
@@ -262,6 +263,7 @@ function RelayRoomScreen({
           rtc={rtc}
         />
       )}
+      <Footer />
       <PeerAudios peers={rtc.peers} />
     </div>
   );

@@ -8,6 +8,7 @@ import type { RelayRoomSummary } from '../features/relay/types';
 import { useTheme } from '../features/theme/ThemeContext';
 import { ApiError, isAbortError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
+import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
 const labelClasses =
@@ -334,6 +335,7 @@ export default function RelayLobbyPage() {
           </div>
         </section>
       </main>
+      <Footer />
     </div>
   );
 }
