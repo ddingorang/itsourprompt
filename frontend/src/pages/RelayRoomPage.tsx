@@ -83,6 +83,13 @@ function totalScores(turns: RelayTurnRecord[]): Map<number, number> {
   return scores;
 }
 
+/** 문제 목록 페이지가 현재 뷰포트에서 사용하는 본문 너비와 같은 값. */
+function problemListContentWidth(viewportWidth: number): number {
+  if (viewportWidth <= 640) return Math.max(0, viewportWidth - 32);
+  if (viewportWidth <= 900) return Math.max(0, viewportWidth - 64);
+  return Math.min(viewportWidth * 0.9 - 360, 1040);
+}
+
 type RelayFileTreeNode = {
   children: RelayFileTreeNode[];
   name: string;
@@ -1017,6 +1024,21 @@ function FinishedView({
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [selectedTurnIndex, setSelectedTurnIndex] = useState<number | null>(null);
   const turnNavRef = useRef<HTMLDivElement>(null);
+  const widestViewportRef = useRef(window.innerWidth);
+  const [contentWidth, setContentWidth] = useState(() =>
+    problemListContentWidth(window.innerWidth),
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= widestViewportRef.current) return;
+      widestViewportRef.current = window.innerWidth;
+      setContentWidth(problemListContentWidth(window.innerWidth));
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1053,7 +1075,11 @@ function FinishedView({
   };
 
   return (
-    <main className="mx-auto grid w-[min(calc(90%_-_360px),1040px)] flex-1 content-start gap-7 py-10 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)]">
+    // 최초 최대 여백은 문제 목록과 정확히 같고, 축소 중에는 본문 너비를 유지한다.
+    <main
+      className="mx-auto grid max-w-[calc(100%_-_32px)] flex-1 content-start gap-7 py-10"
+      style={{ width: contentWidth }}
+    >
       <header className="flex items-baseline justify-between gap-6 max-[640px]:gap-4">
         <div className="min-w-0">
           <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
