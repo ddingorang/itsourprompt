@@ -427,9 +427,6 @@ function GameView({
     me?.seatOrder !== undefined &&
     me.seatOrder === room.currentSeat;
 
-  const currentRunner = room.participants.find(
-    (participant) => participant.seatOrder === room.currentSeat,
-  );
   const scores = useMemo(() => totalScores(turns), [turns]);
 
   const seated = useMemo(
@@ -524,7 +521,7 @@ function GameView({
           ))}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto max-[900px]:min-h-[220px]">
+        <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto max-[900px]:min-h-[220px]">
           {panelTab === 'problem' ? (
             problem ? (
               <ProblemSpec specMd={problem.specMd} />
@@ -565,10 +562,6 @@ function GameView({
             </div>
           )}
         </div>
-
-        {!isMyTurn && currentRunner && room.status === 'PLAYING' && (
-          <TypingPreview peer={rtc.peers.get(currentRunner.userId)} runner={currentRunner} />
-        )}
 
         <ReactionBar rtc={rtc} />
 
@@ -751,25 +744,6 @@ function GradingCard({
   );
 }
 
-function TypingPreview({
-  peer,
-  runner,
-}: {
-  peer: RelayPeerView | undefined;
-  runner: RelayParticipant;
-}) {
-  return (
-    <section className="border border-[#2c2c2c] bg-[#111] px-4 py-3">
-      <p className={`m-0 ${smallLabelClasses}`}>
-        {runner.nickname} 님이 입력 중 (실시간 P2P)
-      </p>
-      <p className="mt-2 mb-0 min-h-[1.6em] text-[12px] leading-[1.6] text-[#a3a3a3] italic">
-        {peer?.typing || '…'}
-      </p>
-    </section>
-  );
-}
-
 const REACTIONS = ['👍', '🔥', '😱', '🤔', '👏'] as const;
 
 function ReactionBar({ rtc }: { rtc: ReturnType<typeof useRelayRtc> }) {
@@ -872,7 +846,7 @@ function PromptForm({
 /** 문제 명세 마크다운. ProblemDetailPage의 PROBLEM 탭과 같은 시각 규칙을 따른다. */
 function ProblemSpec({ specMd }: { specMd: string }) {
   return (
-    <div className="text-[13px] leading-[1.7] text-[#a3a3a3] [word-break:keep-all]">
+    <div className="max-w-full text-[13px] leading-[1.7] text-[#a3a3a3] [overflow-wrap:anywhere] [&_pre]:max-w-full [&_pre]:whitespace-pre-wrap">
       <ReactMarkdown
         components={{
           h1: ({ children }) => (
