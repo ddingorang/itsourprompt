@@ -250,7 +250,7 @@ function WaitingView({
       <div>
         <div className="flex items-end justify-between gap-6 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-3">
           <div className={waitingTitleClasses}>ROOM #{room.roomId}</div>
-          <div className="shrink-0 text-right font-mono text-[12px] leading-[1.6] font-bold tracking-[0.04em] text-[#a3a3a3] max-[640px]:text-left">
+          <div className="shrink-0 text-right font-mono text-[12px] leading-[1.6] tracking-[0.04em] text-[#a3a3a3] max-[640px]:text-left">
             {problem ? `「${problem.title}」` : `문제 ${room.problemId}번`} ·{' '}
             {room.totalLaps}바퀴 · 정원 {room.maxParticipants}명
           </div>
