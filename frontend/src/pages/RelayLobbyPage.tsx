@@ -99,12 +99,14 @@ export default function RelayLobbyPage() {
 
       <main className="mx-auto grid w-full max-w-[880px] gap-8 px-6 py-12">
         <div>
-          <h1 className="m-0 text-[28px] font-black tracking-[-0.03em]">
-            RELAY<i className="not-italic text-[#d6ff50]">.</i>MODE
+          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+            RELAY MODE
           </h1>
           <p className="mt-2 mb-0 text-[13px] leading-[1.7] text-[#a3a3a3]">
             여러 명이 한 문제를 정해진 순서대로 이어 풉니다. 각자 프롬프트 한 번씩 —
-            앞사람이 만든 코드 위에서 다음 사람이 이어갑니다. 턴이 끝날 때마다
+            앞사람이 만든 코드 위에서 다음 사람이 이어갑니다.
+            <br />
+            턴이 끝날 때마다
             자동 채점되고, 직전 대비 통과 증가분이 그 사람의 기여도가 됩니다.
           </p>
         </div>
