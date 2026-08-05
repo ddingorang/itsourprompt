@@ -50,6 +50,47 @@ class ProblemArchiveParserTest {
         assertThat(problem.type()).isEqualTo("game");
     }
 
+    /** language 도입 전에 만들어진 문제는 표기가 없다 — 전부 java 문제였다. */
+    @Test
+    void language가_없으면_java로_해석한다() {
+        byte[] archive = ProblemZips.archive(Map.of(
+                "hello-world/problem.yml", "title: Hello World 출력\n",
+                "hello-world/spec.md", "# 명세",
+                "hello-world/skeleton/src/main/java/Main.java", "class Main {}"
+        ));
+
+        ParsedProblem problem = ProblemArchiveParser.parse(archive).getFirst();
+
+        assertThat(problem.language()).isEqualTo("java");
+    }
+
+    @Test
+    void problem_yml의_language를_읽는다() {
+        byte[] archive = ProblemZips.archive(Map.of(
+                "word-frequency/problem.yml", "title: 단어 빈도\nlanguage: python\n",
+                "word-frequency/spec.md", "# 명세",
+                "word-frequency/skeleton/src/main/python/report.py", "def top_words(text): ..."
+        ));
+
+        ParsedProblem problem = ProblemArchiveParser.parse(archive).getFirst();
+
+        assertThat(problem.language()).isEqualTo("python");
+    }
+
+    /** 지원하지 않는 언어는 조용히 java로 채점되는 것보다 동기화 실패로 드러나는 편이 낫다. */
+    @Test
+    void 지원하지_않는_language는_예외를_던진다() {
+        byte[] archive = ProblemZips.archive(Map.of(
+                "weird/problem.yml", "title: 이상한 문제\nlanguage: cobol\n",
+                "weird/spec.md", "# 명세",
+                "weird/skeleton/main.cbl", "..."
+        ));
+
+        assertThatThrownBy(() -> ProblemArchiveParser.parse(archive))
+                .isInstanceOf(ProblemSyncFormatException.class)
+                .hasMessageContaining("language");
+    }
+
     /**
      * 저장소는 Gradle 표준 레이아웃이라 테스트가 skeleton 안에 함께 들어 있다.
      * 여기서 갈라내지 않으면 채점 기준이 어템프트의 시작 파일이 되어 AI가 고칠 수 있다.

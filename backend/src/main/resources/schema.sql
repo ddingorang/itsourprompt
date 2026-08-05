@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS problem (
     title   VARCHAR(255) NOT NULL,
     spec_md TEXT         NOT NULL,
     problem_type VARCHAR(20) NOT NULL DEFAULT 'coding',
+    -- 채점 언어. 언어별 워커 라우팅과 AI 생성 프롬프트가 이 값을 본다.
+    language VARCHAR(20) NOT NULL DEFAULT 'java',
     slug    VARCHAR(255),
     active  BOOLEAN      NOT NULL DEFAULT TRUE
 );
@@ -10,6 +12,8 @@ CREATE TABLE IF NOT EXISTS problem (
 ALTER TABLE problem ADD COLUMN IF NOT EXISTS slug VARCHAR(255);
 ALTER TABLE problem ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE problem ADD COLUMN IF NOT EXISTS problem_type VARCHAR(20) NOT NULL DEFAULT 'coding';
+-- 언어 도입 전에 만들어진 DB를 위한 마이그레이션. 그때의 문제는 전부 java였다.
+ALTER TABLE problem ADD COLUMN IF NOT EXISTS language VARCHAR(20) NOT NULL DEFAULT 'java';
 -- 시더 시절 하드코딩 문제를 GitLab 디렉토리명으로 백필한다(신규 DB에선 no-op).
 UPDATE problem SET slug = 'hello-world'     WHERE slug IS NULL AND title = 'Hello World 출력';
 UPDATE problem SET slug = 'print-ssafy'     WHERE slug IS NULL AND title = 'SSAFY 출력';

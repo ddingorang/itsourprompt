@@ -5,6 +5,7 @@ import com.promptstudio.problem.domain.ProblemFile;
 import java.util.List;
 
 /**
+ * @param language  채점 언어. problem.yml에 없으면 java다.
  * @param files     사용자에게 주는 스켈레톤. 어템프트의 시작 파일이 된다.
  * @param testFiles 채점용 테스트. 사용자와 AI 어디에도 노출하지 않고 워커로만 보낸다.
  */
@@ -13,6 +14,7 @@ record ParsedProblem(
         String title,
         String specMd,
         String type,
+        String language,
         List<ProblemFile> files,
         List<ProblemFile> testFiles
 ) {

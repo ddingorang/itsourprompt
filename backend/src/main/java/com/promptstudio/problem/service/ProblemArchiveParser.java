@@ -38,6 +38,9 @@ final class ProblemArchiveParser {
     private static final String TITLE_KEY = "title";
     private static final String TYPE_KEY = "type";
     private static final String DEFAULT_TYPE = "coding";
+    private static final String LANGUAGE_KEY = "language";
+    /** 언어 표기가 없는 문제는 전부 language 도입 전의 java 문제다. */
+    private static final String DEFAULT_LANGUAGE = "java";
 
     private ProblemArchiveParser() {
     }
@@ -98,6 +101,7 @@ final class ProblemArchiveParser {
     private static ParsedProblem toProblem(String slug, Map<String, String> entries) {
         String title = readTitle(slug, entries.get(PROBLEM_YML));
         String type = readType(slug, entries.get(PROBLEM_YML));
+        String language = readLanguage(slug, entries.get(PROBLEM_YML));
         String specMd = entries.get(SPEC_MD);
 
         if (specMd == null) {
@@ -126,7 +130,7 @@ final class ProblemArchiveParser {
             throw new ProblemSyncFormatException(slug, SKELETON_PREFIX + " 아래에 스켈레톤 파일이 없습니다.");
         }
 
-        return new ParsedProblem(slug, title, specMd, type, files, testFiles);
+        return new ParsedProblem(slug, title, specMd, type, language, files, testFiles);
     }
 
     private static String readTitle(String slug, String problemYml) {
@@ -165,5 +169,25 @@ final class ProblemArchiveParser {
         }
 
         throw new ProblemSyncFormatException(slug, "problem.yml type must be coding or game.");
+    }
+
+    private static String readLanguage(String slug, String problemYml) {
+        if (!(new Yaml().load(problemYml) instanceof Map<?, ?> document)) {
+            throw new ProblemSyncFormatException(slug, "problem.yml must be a map.");
+        }
+
+        Object value = document.get(LANGUAGE_KEY);
+
+        if (value == null) {
+            return DEFAULT_LANGUAGE;
+        }
+
+        String language = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
+
+        if (language.equals("java") || language.equals("python")) {
+            return language;
+        }
+
+        throw new ProblemSyncFormatException(slug, "problem.yml language must be java or python.");
     }
 }

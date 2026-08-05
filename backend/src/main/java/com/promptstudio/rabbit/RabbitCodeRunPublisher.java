@@ -19,11 +19,13 @@ public class RabbitCodeRunPublisher implements CodeRunPublisher {
     }
 
     @Override
-    public void publish(UUID runId, Long attemptId, List<ProblemFile> files, List<ProblemFile> testFiles) {
+    public void publish(UUID runId, Long attemptId, String language, List<ProblemFile> files, List<ProblemFile> testFiles) {
+        // 언어가 라우팅 키를 정한다. 메시지에도 language를 계속 싣는다 — DLQ에 빠진 메시지를
+        // 조사할 때 어느 언어였는지가 메시지 자체에 남아야 하고, 워커의 구성 오류 방어에도 쓰인다.
         rabbitTemplate.convertAndSend(
                 RunQueues.EXCHANGE,
-                RunQueues.REQUEST_ROUTING_KEY,
-                new RunRequestMessage(runId, attemptId, toPayload(files), toPayload(testFiles))
+                RunQueues.requestRoutingKey(language),
+                new RunRequestMessage(runId, attemptId, language, toPayload(files), toPayload(testFiles))
         );
     }
 
