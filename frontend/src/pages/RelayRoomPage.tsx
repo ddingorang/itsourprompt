@@ -37,6 +37,10 @@ import Header from '../shared/components/Header';
 const labelClasses =
   'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
 
+const waitingTitleClasses =
+  'font-mono text-[clamp(32px,4vw,44px)] leading-[0.9] font-bold ' +
+  'tracking-[-0.04em] whitespace-nowrap text-[#d6ff50]';
+
 const smallLabelClasses = 'font-mono text-[10px] tracking-[0.12em] text-[#777]';
 
 const pageClasses =
@@ -235,18 +239,23 @@ function WaitingView({
   return (
     <main className="mx-auto grid w-full max-w-[720px] flex-1 content-start gap-7 overflow-y-auto px-6 py-10">
       <div>
-        <div className={labelClasses}>ROOM #{room.roomId} — WAITING</div>
-        {/* 이름 도입 전에 만들어진 방은 name이 없다 — 그때는 방 번호 라벨만으로 충분하다. */}
+        <div className="flex items-end justify-between gap-6 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-3">
+          <div className={waitingTitleClasses}>ROOM #{room.roomId}</div>
+          <div className="shrink-0 text-right font-mono text-[12px] leading-[1.6] font-bold tracking-[0.04em] text-[#a3a3a3] max-[640px]:text-left">
+            {problem ? `「${problem.title}」` : `문제 ${room.problemId}번`} ·{' '}
+            {room.totalLaps}바퀴 · 정원 {room.maxParticipants}명
+          </div>
+        </div>
+        {/* 이름 도입 전에 만들어진 방은 name이 없다 — 그때는 방 번호 제목만으로 충분하다. */}
         {room.name && (
           <h1 className="mt-2 mb-0 text-[22px] font-black tracking-[-0.03em]">
             {room.name}
           </h1>
         )}
         <p className="mt-2 mb-0 text-[13px] leading-[1.7] text-[#a3a3a3]">
-          {problem ? `「${problem.title}」` : `문제 ${room.problemId}번`} ·{' '}
-          {room.totalLaps}바퀴 · 정원 {room.maxParticipants}명. 이 방 번호를
-          공유하면 다른 사람이 입장할 수 있습니다. 입장한 순서가 곧 풀이 순서가
-          됩니다.
+          이 방 번호를 공유하면 다른 사람이 입장할 수 있습니다.
+          <br />
+          입장한 순서가 곧 풀이 순서가 됩니다.
         </p>
       </div>
 
