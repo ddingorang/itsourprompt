@@ -10,7 +10,7 @@ import Button from '../shared/components/Button';
 import Header from '../shared/components/Header';
 
 const labelClasses =
-  'font-mono text-base leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
+  'font-mono text-[20px] leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
 
 const fieldClasses =
   'w-full border border-[#3f3f3f] bg-[#151515] px-3 py-2.5 font-mono text-sm ' +
@@ -118,7 +118,7 @@ export default function RelayLobbyPage() {
         )}
 
         <section className="border border-[#343434]">
-          <div className="flex items-center justify-between border-b border-[#343434] px-4 py-3">
+          <div className="flex items-center justify-between border-b border-[#343434] px-6 py-3">
             <span className={labelClasses}>OPEN ROOMS</span>
             <button
               className="cursor-pointer border border-[#3f3f3f] bg-transparent px-2.5 py-1 font-mono text-[10px] text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]"
@@ -144,14 +144,14 @@ export default function RelayLobbyPage() {
 
                 return (
                   <li
-                    className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[#222] px-4 py-3 last:border-b-0"
+                    className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[#222] px-6 py-3 last:border-b-0"
                     key={room.roomId}
                   >
-                    <span className="font-mono text-[17px] text-[#666]">
+                    <span className="font-mono text-[13px] text-[#666]">
                       {String(room.roomId).padStart(2, '0')}
                     </span>
                     {/* 이름 도입 전에 만들어진 방은 name이 없다 — 문제 제목이 그 자리를 대신한다. */}
-                    <span className="min-w-0 flex-1 text-[13px] font-bold">
+                    <span className="min-w-0 flex-1 text-[17px] font-bold">
                       {room.name ?? room.problemTitle ?? `문제 ${room.problemId}번`}
                     </span>
                     {room.name && (
@@ -217,7 +217,7 @@ export default function RelayLobbyPage() {
 
           <div className="mt-5 grid gap-4">
             <label className="grid gap-1.5">
-              <span className="font-mono text-[10px] tracking-[0.12em] text-[#777]">
+              <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
                 ROOM NAME — 로비 목록에 그대로 보입니다
               </span>
               <input
@@ -231,7 +231,7 @@ export default function RelayLobbyPage() {
             </label>
 
             <label className="grid gap-1.5">
-              <span className="font-mono text-[10px] tracking-[0.12em] text-[#777]">
+              <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
                 PROBLEM
               </span>
               <select
@@ -249,7 +249,7 @@ export default function RelayLobbyPage() {
 
             <div className="grid grid-cols-2 gap-4 max-[480px]:grid-cols-1">
               <label className="grid gap-1.5">
-                <span className="font-mono text-[10px] tracking-[0.12em] text-[#777]">
+                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
                   LAPS — 인원 × 바퀴 = 총 턴 수
                 </span>
                 <select
@@ -266,7 +266,7 @@ export default function RelayLobbyPage() {
               </label>
 
               <label className="grid gap-1.5">
-                <span className="font-mono text-[10px] tracking-[0.12em] text-[#777]">
+                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
                   MAX PLAYERS
                 </span>
                 <select
