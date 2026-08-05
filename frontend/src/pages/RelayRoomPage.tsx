@@ -969,9 +969,12 @@ function CodePanel({
     <section className="flex min-h-0 flex-col overflow-hidden border-r border-[#343434] px-6 py-[22px] max-[900px]:min-h-[420px] max-[900px]:border-r-0 max-[900px]:border-b">
       <div className="mb-5 flex items-start justify-between gap-[18px]">
         <div className={labelClasses}>{selected?.path ?? 'FILE'}</div>
-        <span className="shrink-0 border border-[#494949] px-2 py-1.5 font-mono text-[9px] text-[#a3a3a3]">
-          READ ONLY · {code ? `${code.appliedTurns}턴 반영` : '로딩 중'}
-        </span>
+        <div className="flex shrink-0 gap-2 font-mono text-[9px] text-[#a3a3a3]">
+          <span className="border border-[#494949] px-2 py-1.5">READ ONLY</span>
+          <span className="border border-[#494949] px-2 py-1.5">
+            {code ? `${code.appliedTurns}턴 반영` : '로딩 중'}
+          </span>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto border border-[#292929] bg-[#202020]">
