@@ -172,13 +172,39 @@ export default function RelayLobbyPage() {
                     >
                       {room.participantCount}/{room.maxParticipants}
                     </span>
-                    <Button
-                      disabled={full}
-                      to={`/relay/rooms/${room.roomId}`}
-                      variant="secondary"
-                    >
-                      {full ? '만원' : '입장'}
-                    </Button>
+                    {full ? (
+                      <span
+                        className="inline-flex min-h-11 min-w-[128px] cursor-not-allowed items-center justify-center gap-2 border border-[#3f3f3f] bg-[#171717] px-[18px] text-[14px] leading-none font-extrabold tracking-[-0.01em] text-[#666]"
+                        role="status"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          className="size-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <rect height="10" rx="1" stroke="currentColor" strokeWidth="2" width="14" x="5" y="11" />
+                          <path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+                        </svg>
+                        정원 마감
+                      </span>
+                    ) : (
+                      <Button
+                        className="min-w-[128px]"
+                        to={`/relay/rooms/${room.roomId}`}
+                      >
+                        <svg
+                          aria-hidden="true"
+                          className="size-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <rect height="10" rx="1" stroke="currentColor" strokeWidth="2" width="14" x="5" y="11" />
+                          <path d="M16 11V8a4 4 0 0 0-7.5-2" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+                        </svg>
+                        입장 가능
+                      </Button>
+                    )}
                   </li>
                 );
               })}
