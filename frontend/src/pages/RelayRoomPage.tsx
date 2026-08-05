@@ -225,11 +225,12 @@ function RelayRoomScreen({
   }
 
   const isWaiting = room.status === 'WAITING';
+  const usesPageScroll = isWaiting || room.status === 'FINISHED';
 
   return (
     <div
       className={`${pageClasses} ${
-        isWaiting ? '!overflow-x-hidden !overflow-y-auto' : ''
+        usesPageScroll ? '!overflow-x-hidden !overflow-y-auto' : ''
       }`}
     >
       <Header variant={isWaiting ? 'default' : 'workspace'} />
@@ -1024,7 +1025,7 @@ function FinishedView({
   const scores = useMemo(() => totalScores(turns), [turns]);
 
   return (
-    <main className="mx-auto grid w-full max-w-[820px] flex-1 content-start gap-7 overflow-y-auto px-6 py-10">
+    <main className="mx-auto grid w-full max-w-[820px] flex-1 content-start gap-7 px-6 py-10">
       <div>
         <div className={labelClasses}>ROOM #{room.roomId} — FINISHED</div>
         <h1 className="mt-2 mb-0 text-[26px] font-black tracking-[-0.03em]">
