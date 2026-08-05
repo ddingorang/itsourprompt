@@ -41,6 +41,21 @@ export default function PromptFeedback({
               {children}
             </pre>
           ),
+          // Tailwind preflight가 a의 색과 밑줄을 지워 링크가 본문과 구분되지 않는다.
+          a: ({ children, href }) => (
+            <a
+              className="text-[var(--feedback-acid)] underline"
+              href={href}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {children}
+            </a>
+          ),
+          // preflight의 hr은 색이 currentColor라 페이지의 다른 구분선보다 진하다.
+          hr: () => (
+            <hr className="my-6 border-[var(--feedback-border)]" />
+          ),
         }}
         remarkPlugins={[remarkGfm]}
       >
