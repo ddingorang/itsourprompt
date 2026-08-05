@@ -35,10 +35,22 @@ public class Problem {
     @Column(name = "spec_md", nullable = false, columnDefinition = "text")
     private String specMd;
 
+    @Column(name = "problem_type", nullable = false, length = 20)
+    private String type = "coding";
+
     @ElementCollection
     @CollectionTable(name = "problem_file", joinColumns = @JoinColumn(name = "problem_id"))
     @OrderColumn(name = "ordinal")
     private List<ProblemFile> files = new ArrayList<>();
+
+    /**
+     * 채점용 테스트. 사용자와 AI에게 노출하면 안 되므로 스켈레톤과 별도 컬렉션으로 둔다.
+     * 노출 경로({@link ProblemView})가 이 필드를 읽지 않는 것이 격리의 전부다.
+     */
+    @ElementCollection
+    @CollectionTable(name = "problem_test_file", joinColumns = @JoinColumn(name = "problem_id"))
+    @OrderColumn(name = "ordinal")
+    private List<ProblemFile> testFiles = new ArrayList<>();
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
@@ -46,26 +58,71 @@ public class Problem {
     protected Problem() {
     }
 
-    public Problem(String slug, String title, String specMd, List<ProblemFile> files) {
-        this(null, slug, title, specMd, files);
+    public Problem(String slug, String title, String specMd, List<ProblemFile> files, List<ProblemFile> testFiles) {
+        this(null, slug, title, specMd, "coding", files, testFiles);
     }
 
-    public Problem(Long id, String slug, String title, String specMd, List<ProblemFile> files) {
+    public Problem(
+            Long id,
+            String slug,
+            String title,
+            String specMd,
+            List<ProblemFile> files,
+            List<ProblemFile> testFiles
+    ) {
+        this(id, slug, title, specMd, "coding", files, testFiles);
+    }
+
+    public Problem(
+            String slug,
+            String title,
+            String specMd,
+            String type,
+            List<ProblemFile> files,
+            List<ProblemFile> testFiles
+    ) {
+        this(null, slug, title, specMd, type, files, testFiles);
+    }
+
+    public Problem(
+            Long id,
+            String slug,
+            String title,
+            String specMd,
+            String type,
+            List<ProblemFile> files,
+            List<ProblemFile> testFiles
+    ) {
         this.id = id;
         this.slug = slug;
         this.title = title;
         this.specMd = specMd;
+        this.type = type;
         this.files = new ArrayList<>(files);
+        this.testFiles = new ArrayList<>(testFiles);
     }
 
     /**
      * 저장소에서 다시 읽어온 내용으로 갈아끼운다. slug는 문제의 식별자라 바뀌지 않는다.
      */
-    public void updateFrom(String title, String specMd, List<ProblemFile> files) {
+    public void updateFrom(String title, String specMd, List<ProblemFile> files, List<ProblemFile> testFiles) {
+        updateFrom(title, specMd, "coding", files, testFiles);
+    }
+
+    public void updateFrom(
+            String title,
+            String specMd,
+            String type,
+            List<ProblemFile> files,
+            List<ProblemFile> testFiles
+    ) {
         this.title = title;
         this.specMd = specMd;
+        this.type = type;
         this.files.clear();
         this.files.addAll(files);
+        this.testFiles.clear();
+        this.testFiles.addAll(testFiles);
     }
 
     public void activate() {
@@ -92,8 +149,16 @@ public class Problem {
         return specMd;
     }
 
+    public String type() {
+        return type;
+    }
+
     public List<ProblemFile> files() {
         return List.copyOf(files);
+    }
+
+    public List<ProblemFile> testFiles() {
+        return List.copyOf(testFiles);
     }
 
     public boolean active() {

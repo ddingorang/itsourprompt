@@ -12,6 +12,8 @@ public record ProblemDetailResponse(
         String title,
         @Schema(description = "Markdown 형식의 문제 명세")
         String specMd,
+        @Schema(description = "Problem type: coding or game", example = "game")
+        String type,
         @Schema(description = "문제에서 제공하는 스켈레톤 파일 목록")
         List<ProblemFileResponse> files
 ) {

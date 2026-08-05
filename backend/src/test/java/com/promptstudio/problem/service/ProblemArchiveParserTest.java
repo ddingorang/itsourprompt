@@ -26,6 +26,7 @@ class ProblemArchiveParserTest {
 
         assertThat(problems).hasSize(1);
         ParsedProblem problem = problems.getFirst();
+        assertThat(problem.type()).isEqualTo("coding");
         assertThat(problem.slug()).isEqualTo("hello-world");
         assertThat(problem.title()).isEqualTo("Hello World 출력");
         assertThat(problem.specMd()).isEqualTo("# Hello World 출력\n\n표준 출력으로 인사하세요.");
@@ -33,6 +34,58 @@ class ProblemArchiveParserTest {
                 new ProblemFile("README.md", "# 안내"),
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
         );
+        assertThat(problem.testFiles()).isEmpty();
+    }
+
+    @Test
+    void reads_game_type_from_problem_yml() {
+        byte[] archive = ProblemZips.archive(Map.of(
+                "block-dodge/problem.yml", "title: block dodge\ntype: game\n",
+                "block-dodge/spec.md", "# specification",
+                "block-dodge/skeleton/index.html", "<!doctype html>"
+        ));
+
+        ParsedProblem problem = ProblemArchiveParser.parse(archive).getFirst();
+
+        assertThat(problem.type()).isEqualTo("game");
+    }
+
+    /**
+     * 저장소는 Gradle 표준 레이아웃이라 테스트가 skeleton 안에 함께 들어 있다.
+     * 여기서 갈라내지 않으면 채점 기준이 어템프트의 시작 파일이 되어 AI가 고칠 수 있다.
+     */
+    @Test
+    void skeleton_안의_테스트_경로는_별도_목록으로_갈라낸다() {
+        byte[] archive = ProblemZips.archive(Map.of(
+                "hello-world/problem.yml", "title: Hello World 출력\n",
+                "hello-world/spec.md", "# 명세",
+                "hello-world/skeleton/src/main/java/Main.java", "class Main {}",
+                "hello-world/skeleton/src/test/java/MainTest.java", "class MainTest {}",
+                "hello-world/skeleton/src/test/resources/expected.txt", "Hello, World!"
+        ));
+
+        ParsedProblem problem = ProblemArchiveParser.parse(archive).getFirst();
+
+        assertThat(problem.files()).containsExactly(
+                new ProblemFile("src/main/java/Main.java", "class Main {}")
+        );
+        assertThat(problem.testFiles()).containsExactly(
+                new ProblemFile("src/test/java/MainTest.java", "class MainTest {}"),
+                new ProblemFile("src/test/resources/expected.txt", "Hello, World!")
+        );
+    }
+
+    @Test
+    void 테스트만_있고_스켈레톤이_없으면_예외를_던진다() {
+        byte[] archive = ProblemZips.archive(Map.of(
+                "hello-world/problem.yml", "title: Hello World 출력\n",
+                "hello-world/spec.md", "# 명세",
+                "hello-world/skeleton/src/test/java/MainTest.java", "class MainTest {}"
+        ));
+
+        assertThatThrownBy(() -> ProblemArchiveParser.parse(archive))
+                .isInstanceOf(ProblemSyncFormatException.class)
+                .hasMessageContaining("skeleton");
     }
 
     @Test

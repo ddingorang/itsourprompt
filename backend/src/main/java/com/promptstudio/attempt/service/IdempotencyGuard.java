@@ -1,6 +1,7 @@
 package com.promptstudio.attempt.service;
 
 import com.promptstudio.attempt.domain.IdempotencyRecord;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.exception.DuplicateRequestException;
 import com.promptstudio.attempt.repository.IdempotencyRepository;
 import org.springframework.stereotype.Component;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Objects;
 
 /**
  * Idempotency-Key 선점을 담당한다. 선점은 AI 호출 전에 커밋되어야 다른 요청에 보이므로 별도 트랜잭션에서 처리한다.
@@ -29,10 +31,10 @@ class IdempotencyGuard {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    Reservation reserve(String key) {
+    Reservation reserve(String key, AttemptOwner owner) {
         Instant now = Instant.now();
 
-        if (idempotencyRepository.tryInsertPending(key, now)) {
+        if (idempotencyRepository.tryInsertPending(key, owner.userId(), owner.guestSessionId(), now)) {
             return new Reservation.Acquired();
         }
 
@@ -40,7 +42,7 @@ class IdempotencyGuard {
 
         // 실패한 요청이 그 사이에 행을 지웠다면 한 번만 다시 선점해 본다.
         if (existing.isEmpty()) {
-            return retryInsert(key, now);
+            return retryInsert(key, owner, now);
         }
 
         IdempotencyRecord record = existing.get();
@@ -56,8 +58,8 @@ class IdempotencyGuard {
         throw new DuplicateRequestException(key);
     }
 
-    private Reservation retryInsert(String key, Instant now) {
-        if (idempotencyRepository.tryInsertPending(key, now)) {
+    private Reservation retryInsert(String key, AttemptOwner owner, Instant now) {
+        if (idempotencyRepository.tryInsertPending(key, owner.userId(), owner.guestSessionId(), now)) {
             return new Reservation.Acquired();
         }
 
@@ -70,6 +72,15 @@ class IdempotencyGuard {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     void release(String key) {
         idempotencyRepository.delete(key);
+    }
+
+    static String scopedKey(AttemptOwner owner, String key) {
+        Objects.requireNonNull(owner, "owner must not be null");
+        String scopedKey = owner.idempotencyScope() + ":" + key;
+        if (scopedKey.length() > 128) {
+            throw new IllegalArgumentException("Idempotency-Key is too long");
+        }
+        return scopedKey;
     }
 
     sealed interface Reservation {
