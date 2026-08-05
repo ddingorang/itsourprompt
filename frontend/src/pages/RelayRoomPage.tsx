@@ -861,7 +861,7 @@ function PromptForm({
         <p className="m-0 font-mono text-xs text-[#ff786b]">{submitError}</p>
       )}
       <Button disabled={disabled || !prompt.trim()} type="submit">
-        {submitting ? 'AI가 생성하는 중…' : '턴 전송'}
+        {submitting ? 'AI가 생성하는 중…' : '프롬프트 전송'}
       </Button>
     </form>
   );
