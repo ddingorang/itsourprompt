@@ -650,8 +650,12 @@ function SeatCard({
         {participant.left && <span className="text-[9px] text-[#ff786b]">이탈</span>}
         <VoiceDot peer={peer} self={me} />
         {peer?.reaction && <span className="text-base">{peer.reaction}</span>}
-        <span className="ml-auto font-bold text-[#c7c7c2]">
-          {score === null ? '—' : score > 0 ? `+${score}` : `${score}`}
+        <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] text-[#777]">
+          <span>기여도:</span>
+          <strong className="text-xs text-[#c7c7c2]">
+            {score === null ? '—' : score > 0 ? `+${score}` : `${score}`}
+          </strong>
+          <span>점</span>
         </span>
         <span className="inline-flex w-[62px] shrink-0 justify-end">
           {current && deadline ? (
