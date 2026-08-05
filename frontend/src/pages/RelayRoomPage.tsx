@@ -41,7 +41,7 @@ const waitingTitleClasses =
   'font-mono text-[clamp(32px,4vw,44px)] leading-[0.9] font-bold ' +
   'tracking-[-0.04em] whitespace-nowrap text-[#d6ff50]';
 
-const smallLabelClasses = 'font-mono text-[10px] tracking-[0.12em] text-[#777]';
+const smallLabelClasses = 'font-mono text-[14px] font-bold tracking-[0.12em] text-[#777]';
 
 const pageClasses =
   'flex h-screen min-w-80 flex-col overflow-hidden bg-[#090909] text-[#f5f5ef] ' +
@@ -268,7 +268,7 @@ function WaitingView({
       {problem && (
         <section className="border border-[#343434]">
           <div className="border-b border-[#343434] px-4 py-3">
-            <span className={smallLabelClasses}>PROBLEM — 기다리는 동안 읽어 두세요</span>
+            <span className={smallLabelClasses}>PROBLEM</span>
           </div>
           <div className="max-h-[320px] overflow-y-auto px-5 py-4">
             <ProblemSpec specMd={problem.specMd} />
@@ -279,7 +279,7 @@ function WaitingView({
       <section className="border border-[#343434]">
         <div className="border-b border-[#343434] px-4 py-3">
           <span className={smallLabelClasses}>
-            PLAYERS {room.participants.length} / {room.maxParticipants}
+            PLAYERS: {room.participants.length} / {room.maxParticipants}
           </span>
         </div>
         <ul className="m-0 grid list-none gap-0 p-0">
