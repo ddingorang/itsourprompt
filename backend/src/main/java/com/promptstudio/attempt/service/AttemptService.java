@@ -7,6 +7,7 @@ import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.domain.LlmCallPurpose;
 import com.promptstudio.attempt.domain.PromptScopeDecision;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
 import com.promptstudio.attempt.exception.AttemptNotFoundException;
@@ -43,6 +44,7 @@ public class AttemptService {
     private final CodeGenerationGuard codeGenerationGuard;
     private final CodeGenerator codeGenerator;
     private final FeedbackGenerator feedbackGenerator;
+    private final TurnTestResultLoader turnTestResultLoader;
     private final PromptScopeValidator promptScopeValidator;
 
     public AttemptService(
@@ -54,6 +56,7 @@ public class AttemptService {
             CodeGenerationGuard codeGenerationGuard,
             CodeGenerator codeGenerator,
             FeedbackGenerator feedbackGenerator,
+            TurnTestResultLoader turnTestResultLoader,
             PromptScopeValidator promptScopeValidator
     ) {
         this.problemRepository = problemRepository;
@@ -64,6 +67,7 @@ public class AttemptService {
         this.codeGenerationGuard = codeGenerationGuard;
         this.codeGenerator = codeGenerator;
         this.feedbackGenerator = feedbackGenerator;
+        this.turnTestResultLoader = turnTestResultLoader;
         this.promptScopeValidator = promptScopeValidator;
     }
 
@@ -257,9 +261,12 @@ public class AttemptService {
             }
 
             AttemptFeedback feedback;
+            // 채점 결과는 이미 code_run에 쌓여 있다. 없는 턴은 태그가 붙지 않고, 그것이 곧 솔로 판본이다.
+            TurnTestResults testResults = turnTestResultLoader.load(attemptId, attempt.turns().size());
 
             try {
-                feedback = feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
+                feedback = feedbackGenerator.generate(
+                        ProblemView.from(getProblem(attempt.problemId())), attempt, testResults);
             } catch (RuntimeException exception) {
                 // 피드백 프롬프트는 사용자 입력이 아니라 어댑터 산출물이고, 제출이 되지 않아
                 // 그 입력(problem·turns·baseFiles)은 어템프트에 그대로 남는다.

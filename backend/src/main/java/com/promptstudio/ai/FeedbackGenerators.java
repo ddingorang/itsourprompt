@@ -3,6 +3,7 @@ package com.promptstudio.ai;
 import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.attempt.port.FeedbackTimeoutException;
@@ -47,15 +48,17 @@ public class FeedbackGenerators implements FeedbackGenerator {
                 aiCallExecutor,
                 "OPENAI PATTERN",
                 PatternPrompts.systemPrompt(),
-                PatternPrompts::userPrompt,
+                (problem, attempt, testResults) -> PatternPrompts.userPrompt(problem, attempt),
                 chatOptionsFactory::forPatternFeedback
         );
     }
 
     @Override
-    public AttemptFeedback generate(ProblemView problem, AttemptView attempt) {
-        Future<FeedbackDraft> promptCall = aiCallExecutor.submit(() -> prompt.generate(problem, attempt));
-        Future<FeedbackDraft> patternCall = aiCallExecutor.submit(() -> pattern.generate(problem, attempt));
+    public AttemptFeedback generate(ProblemView problem, AttemptView attempt, TurnTestResults testResults) {
+        Future<FeedbackDraft> promptCall =
+                aiCallExecutor.submit(() -> prompt.generate(problem, attempt, testResults));
+        Future<FeedbackDraft> patternCall =
+                aiCallExecutor.submit(() -> pattern.generate(problem, attempt, testResults));
 
         Settled promptResult = await(promptCall);
         Settled patternResult = await(patternCall);

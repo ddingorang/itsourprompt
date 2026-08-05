@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.promptstudio.ai.LiveSessions.Expected;
 import com.promptstudio.ai.LiveSessions.Session;
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 실제 모델을 불러 피드백 응답의 성능을 재는 하네스. 유닛 테스트가 아니라 측정 도구다 —
@@ -58,6 +61,13 @@ class LiveFeedbackHarnessTest {
     private static final Duration CALL_TIMEOUT = Duration.ofMinutes(6);
     private static final int MAX_RETRIES = 2;
 
+    /**
+     * 채점 문장 누출을 잡는 그물. 통과 개수·비율·정답 여부가 사용자 문장으로 나가면 안 된다 —
+     * 사용자는 실행 화면에서 이미 그 숫자를 본다.
+     */
+    private static final Pattern SCORE_LEAK =
+            Pattern.compile("\\d+\\s*개[^\\n]{0,8}통과|\\d+\\s*/\\s*\\d+|정답");
+
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final AiCallExecutor executor = new AiCallExecutor();
@@ -74,6 +84,7 @@ class LiveFeedbackHarnessTest {
 
         List<CallRecord> records = switch (phase) {
             case "0", "A" -> runBothLenses(phase, reps);
+            case "B" -> runSignalPhase(reps);
             default -> throw new IllegalArgumentException("알 수 없는 페이즈입니다: " + phase);
         };
 
@@ -105,6 +116,36 @@ class LiveFeedbackHarnessTest {
         return records;
     }
 
+    /**
+     * B 페이즈는 프롬프트 렌즈만 반복한다 — 채점 결과를 싣는 것은 그 렌즈뿐이다. pattern 렌즈는 첫 회에
+     * 다섯 세션만 무신호로 돌려 어휘와 계약이 무너지지 않았는지 회귀로 확인한다.
+     */
+    private List<CallRecord> runSignalPhase(int reps) {
+        OpenAiChatModel chatModel = chatModel();
+        List<CallRecord> records = new ArrayList<>();
+
+        for (int rep = 1; rep <= reps; rep++) {
+            for (Session session : LiveSessions.all()) {
+                int currentRep = rep;
+                Future<CallRecord> promptCall = executor.submit(
+                        () -> call("B", currentRep, session, Lens.PROMPT, session.testResults(), chatModel));
+
+                if (rep > 1) {
+                    records.add(await(promptCall));
+                    continue;
+                }
+
+                Future<CallRecord> patternCall = executor.submit(
+                        () -> call("B", currentRep, session, Lens.PATTERN, TurnTestResults.EMPTY, chatModel));
+
+                records.add(await(promptCall));
+                records.add(await(patternCall));
+            }
+        }
+
+        return records;
+    }
+
     private CallRecord await(Future<CallRecord> call) {
         try {
             return call.get();
@@ -117,14 +158,32 @@ class LiveFeedbackHarnessTest {
      * 호출 하나의 결과. 생성기가 던진 실패도 계약 실패 한 줄로 남기고 계속 돈다 — 실패율 자체가 지표다.
      */
     private CallRecord call(String phase, int rep, Session session, Lens lens, OpenAiChatModel chatModel) {
+        return call(phase, rep, session, lens, TurnTestResults.EMPTY, chatModel);
+    }
+
+    private CallRecord call(
+            String phase,
+            int rep,
+            Session session,
+            Lens lens,
+            TurnTestResults testResults,
+            OpenAiChatModel chatModel
+    ) {
         RecordingChatModel recorder = new RecordingChatModel(chatModel);
         OpenAiFeedbackGenerator generator = generatorFor(lens, ChatClient.builder(recorder));
         long startedAt = System.nanoTime();
 
         try {
-            FeedbackDraft draft = generator.generate(session.problem(), session.attempt());
+            FeedbackDraft draft = generator.generate(session.problem(), session.attempt(), testResults);
 
-            return succeeded(phase, rep, session, lens, draft, quotesOf(lens, session, recorder), startedAt);
+            return succeeded(
+                    phase,
+                    rep,
+                    session,
+                    lens,
+                    draft,
+                    quotesOf(lens, session, testResults, recorder),
+                    startedAt);
         } catch (FeedbackGenerationException exception) {
             return failed(phase, rep, session, lens, exception.reason(), exception.llmCalls(), startedAt);
         } catch (RuntimeException exception) {
@@ -196,6 +255,7 @@ class LiveFeedbackHarnessTest {
                 decisiveScored,
                 decisiveHits,
                 lens == Lens.PROMPT && lastTurnSentencePresent(draft.turnFeedbacks()),
+                lens == Lens.PROMPT ? scoreLeaks(draft) : 0,
                 quotes.total(),
                 quotes.rawMiss(),
                 quotes.normalizedMiss(),
@@ -231,6 +291,7 @@ class LiveFeedbackHarnessTest {
                 0,
                 0,
                 false,
+                0,
                 0,
                 0,
                 0,
@@ -272,6 +333,30 @@ class LiveFeedbackHarnessTest {
         return null;
     }
 
+    /**
+     * 사용자에게 나가는 문장에 채점 숫자가 섞였는지 센다. 총평까지 함께 본다.
+     */
+    private int scoreLeaks(FeedbackDraft draft) {
+        int leaks = 0;
+        List<String> texts = new ArrayList<>(draft.turnFeedbacks());
+        texts.add(draft.overall());
+
+        for (String text : texts) {
+            if (text == null) {
+                continue;
+            }
+
+            Matcher matcher = SCORE_LEAK.matcher(text);
+
+            while (matcher.find()) {
+                System.out.printf("[harness] 채점 문장 누출 | match=%s%n", matcher.group());
+                leaks++;
+            }
+        }
+
+        return leaks;
+    }
+
     private boolean lastTurnSentencePresent(List<String> turnFeedbacks) {
         if (turnFeedbacks.isEmpty()) {
             return false;
@@ -302,7 +387,12 @@ class LiveFeedbackHarnessTest {
      *
      * <p>페이즈 0의 응답에는 quotes 필드가 없다 — 그때는 총 개수가 0이고 지표도 0이다.
      */
-    private QuoteMetrics quotesOf(Lens lens, Session session, RecordingChatModel recorder) {
+    private QuoteMetrics quotesOf(
+            Lens lens,
+            Session session,
+            TurnTestResults testResults,
+            RecordingChatModel recorder
+    ) {
         String content = recorder.last();
 
         if (content == null || content.isBlank()) {
@@ -327,7 +417,8 @@ class LiveFeedbackHarnessTest {
             return QuoteMetrics.NONE;
         }
 
-        QuoteVerifier.Result result = QuoteVerifier.verify(userMessageOf(lens, session), entries);
+        QuoteVerifier.Result result =
+                QuoteVerifier.verify(userMessageOf(lens, session, testResults), entries);
 
         for (QuoteVerifier.Miss miss : result.normalizedMisses()) {
             System.out.printf(
@@ -342,9 +433,9 @@ class LiveFeedbackHarnessTest {
                 result.turnScopedMisses().size());
     }
 
-    private String userMessageOf(Lens lens, Session session) {
+    private String userMessageOf(Lens lens, Session session, TurnTestResults testResults) {
         if (lens == Lens.PROMPT) {
-            return FeedbackPrompts.userPrompt(session.problem(), session.attempt());
+            return FeedbackPrompts.userPrompt(session.problem(), session.attempt(), testResults);
         }
 
         return PatternPrompts.userPrompt(session.problem(), session.attempt());
@@ -366,7 +457,7 @@ class LiveFeedbackHarnessTest {
                 executor,
                 "OPENAI PATTERN",
                 PatternPrompts.systemPrompt(),
-                PatternPrompts::userPrompt,
+                (problem, attempt, testResults) -> PatternPrompts.userPrompt(problem, attempt),
                 optionsFactory::forPatternFeedback);
     }
 
@@ -424,6 +515,9 @@ class LiveFeedbackHarnessTest {
         int normalizedMiss = 0;
         int turnScopedMiss = 0;
         int callsWithMiss = 0;
+        int leaks = 0;
+        int callsWithLeak = 0;
+        int promptCalls = 0;
 
         for (CallRecord record : records) {
             if (record.ok()) {
@@ -443,6 +537,15 @@ class LiveFeedbackHarnessTest {
             if (record.normalizedMiss() > 0) {
                 callsWithMiss++;
             }
+
+            if ("prompt".equals(record.lens())) {
+                promptCalls++;
+                leaks += record.scoreLeaks();
+
+                if (record.scoreLeaks() > 0) {
+                    callsWithLeak++;
+                }
+            }
         }
 
         System.out.println("[harness] ===== phase " + phase + " =====");
@@ -453,6 +556,9 @@ class LiveFeedbackHarnessTest {
                 "[harness] 인용 %d개 | raw 불일치 %d | 정규화 불일치 %d (일치율 %.1f%%) | 턴스코프 불일치 %d%n",
                 quotes, rawMiss, normalizedMiss, percent(quotes - normalizedMiss, quotes), turnScopedMiss);
         System.out.printf("[harness] 불일치 포함 호출 %d/%d%n", callsWithMiss, calls);
+        System.out.printf(
+                "[harness] 채점 문장 누출 %d건 | 누출 포함 호출 %d/%d (프롬프트 렌즈)%n",
+                leaks, callsWithLeak, promptCalls);
         System.out.printf("[harness] 완성 토큰 합계 %d%n", tokens);
     }
 
@@ -549,6 +655,7 @@ class LiveFeedbackHarnessTest {
             int decisiveScored,
             int decisiveHits,
             boolean lastTurnSentence,
+            int scoreLeaks,
             int quoteTotal,
             int rawMiss,
             int normalizedMiss,

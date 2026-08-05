@@ -5,6 +5,7 @@ import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.attempt.port.FeedbackTimeoutException;
 import com.promptstudio.problem.domain.ProblemFile;
@@ -51,7 +52,7 @@ class FeedbackGeneratorsTest {
         chatModel.queueFor(PROMPT_LENS, textResponse(response("프롬프트 총평", "턴 1 프롬프트")));
         chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
-        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1));
+        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.turnFeedbacks()).containsExactly("턴 1 프롬프트");
         assertThat(feedback.overall()).isEqualTo("프롬프트 총평");
@@ -66,7 +67,7 @@ class FeedbackGeneratorsTest {
         chatModel.queueFor(PROMPT_LENS, textResponse(response("프롬프트 총평", "턴 1 프롬프트")));
         chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
-        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1));
+        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.patternOverall()).isEqualTo("패턴 총평" + PatternPrompts.SOURCE_NOTE);
     }
@@ -81,7 +82,7 @@ class FeedbackGeneratorsTest {
         chatModel.queueFor(PATTERN_LENS, withUsage(
                 textResponse(response("패턴 총평", "턴 1 패턴")), 300, 60));
 
-        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1));
+        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.llmCalls()).extracting(LlmCallUsage::inputTokens).containsExactly(500L);
         assertThat(feedback.patternLlmCalls()).extracting(LlmCallUsage::inputTokens).containsExactly(300L);
@@ -96,7 +97,7 @@ class FeedbackGeneratorsTest {
         chatModel.queueFor(PROMPT_LENS, textResponse(response("프롬프트 총평", "턴 1 프롬프트")));
         chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
-        feedbackGenerators.generate(problem, attempt(1));
+        feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(chatModel.receivedPrompts())
                 .hasSize(2)
@@ -117,7 +118,7 @@ class FeedbackGeneratorsTest {
         chatModel.queueFor(PATTERN_LENS, withUsage(
                 textResponse(response("패턴 총평", "턴 1 패턴")), 300, 60));
 
-        assertThatThrownBy(() -> feedbackGenerators.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOfSatisfying(FeedbackGenerationException.class, exception -> {
                     assertThat(exception.reason()).isEqualTo("invalid-json");
                     assertThat(exception.llmCalls())
@@ -138,7 +139,7 @@ class FeedbackGeneratorsTest {
         chatModel.queueFor(PROMPT_LENS, textResponse("피드백을 드릴 수 없습니다."));
         chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
-        assertThatThrownBy(() -> feedbackGenerators.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .isNotInstanceOf(FeedbackResponseException.class);
     }
@@ -158,7 +159,7 @@ class FeedbackGeneratorsTest {
                 new OpenAiChatOptionsFactory("code-model", "feedback-model", "scope-model")
         );
 
-        assertThatThrownBy(() -> generators.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> generators.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOfSatisfying(FeedbackTimeoutException.class, exception ->
                         assertThat(exception.llmCalls())
                                 .extracting(LlmCallUsage::seq, LlmCallUsage::inputTokens)
