@@ -30,13 +30,15 @@ RUN apt-get update \
 RUN python3 -m venv /opt/grader \
     && /opt/grader/bin/pip install --no-cache-dir pytest==8.3.3
 
-# 제출된 코드를 루트로 실행하지 않는다.
-RUN useradd --create-home --uid 1000 worker
+# 제출된 코드를 루트로 실행하지 않는다. noble 베이스에는 UID 1000의 ubuntu 계정이
+# 기본 탑재라(우분투 23.10+) 그대로 useradd 하면 충돌한다 — 지우고 워커 계정으로 대체한다.
+RUN userdel -r ubuntu && useradd --create-home --uid 1000 worker
 COPY --from=build /app/build/libs/*.jar app.jar
 RUN chown worker:worker /app/app.jar
 USER worker
 
 ENV WORKER_LANGUAGE=python
 ENV WORKER_PYTHON_BINARY=/opt/grader/bin/python
+ENV WORKER_REQUEST_QUEUES=run.request.python
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

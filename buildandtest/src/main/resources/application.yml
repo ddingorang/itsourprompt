@@ -25,6 +25,10 @@ worker:
   # 이 워커 인스턴스가 처리하는 언어(java|python). 언어별 실행기 빈 선택에 쓰인다 —
   # 워커 하나는 언어 하나만 맡는다(이미지에 해당 언어 툴체인만 굽는다).
   language: ${WORKER_LANGUAGE:java}
+  # 구독할 요청 큐(콤마 구분). java 워커는 이행기 동안 언어 도입 전의 큐(run.request)도 함께
+  # 비운다 — 관리 UI에서 빈 것을 확인하면 목록에서 뺀다. python 이미지는 자기 큐만 준다
+  # (Dockerfile.python의 WORKER_REQUEST_QUEUES 참고).
+  request-queues: ${WORKER_REQUEST_QUEUES:run.request.java,run.request}
   compile-timeout-seconds: 30
   run-timeout-seconds: 10
   # 테스트는 러너(JUnit 런처·pytest) 부팅이 얹혀서 단순 실행보다 오래 걸린다.

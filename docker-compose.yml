@@ -88,6 +88,29 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  # Python 문제의 채점 워커. 워커 애플리케이션은 buildandtest와 같고 실행기·큐만 python이다
+  # (Dockerfile.python의 WORKER_* 환경변수). DB 자격증명을 주지 않는 원칙도 같다.
+  buildandtest-python:
+    build:
+      context: ./buildandtest
+      dockerfile: Dockerfile.python
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+    # 파이썬에는 자바의 -Xmx에 해당하는 스위치가 없어 메모리 상한은 컨테이너가 진다
+    # (PythonCodeExecutor 주석 참고). 제출 코드가 메모리를 삼키면 워커째 OOM으로 죽고
+    # restart로 되살아난다 — 처리 중이던 run은 백엔드의 좌초 회수(STALE_RUN_TTL)가 정리한다.
+    mem_limit: 512m
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    networks:
+      - shared-net
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
   # 릴레이 게임 WebRTC의 TURN 서버. STUN만으로는 모바일 NAT·사내망에서 P2P 직결 실패율이
   # 무시할 수 없다 — 배포 환경에서 "왜 소리가 안 나요"의 대부분이 이것이다.
   #
