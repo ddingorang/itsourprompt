@@ -750,7 +750,7 @@ function GradingCard({
   );
 }
 
-const REACTIONS = ['👍', '🔥', '😱', '🤔', '👏'] as const;
+const REACTIONS = ['😮', '🤔', '👍', '🔥', '👏'] as const;
 
 function ReactionBar({ rtc }: { rtc: ReturnType<typeof useRelayRtc> }) {
   return (
