@@ -1025,7 +1025,7 @@ function FinishedView({
   const scores = useMemo(() => totalScores(turns), [turns]);
 
   return (
-    <main className="mx-auto grid w-full max-w-[820px] flex-1 content-start gap-7 px-6 py-10">
+    <main className="mx-auto grid w-[min(calc(90%_-_360px),1040px)] flex-1 content-start gap-7 py-10 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)]">
       <div>
         <div className={labelClasses}>ROOM #{room.roomId} — FINISHED</div>
         <h1 className="mt-2 mb-0 text-[26px] font-black tracking-[-0.03em]">
@@ -1033,30 +1033,61 @@ function FinishedView({
         </h1>
       </div>
 
-      <section className="grid gap-2">
-        <span className={smallLabelClasses}>SCOREBOARD — 기여도 합계</span>
-        {[...room.participants]
-          .sort((a, b) => (a.seatOrder ?? 0) - (b.seatOrder ?? 0))
-          .map((participant) => {
-            const score = scores.get(participant.userId) ?? null;
-            return (
-              <div
-                className="flex items-center gap-3 border border-[#2c2c2c] px-4 py-2.5 font-mono text-sm"
-                key={participant.userId}
-              >
-                <span className="text-[#666]">#{(participant.seatOrder ?? 0) + 1}</span>
-                <span>{participant.nickname}</span>
-                <span
-                  className={`ml-auto font-bold ${
-                    score !== null && score < 0 ? 'text-[#ff786b]' : 'text-[#d6ff50]'
-                  }`}
-                >
-                  {score === null ? '—' : score > 0 ? `+${score}` : `${score}`}
-                </span>
-              </div>
-            );
-          })}
-      </section>
+      <div
+        className={`grid gap-4 ${
+          feedback
+            ? 'grid-cols-[clamp(280px,22vw,380px)_minmax(0,1fr)] max-[760px]:grid-cols-1'
+            : 'grid-cols-1'
+        }`}
+      >
+        <section className="border border-[#d6ff50] bg-transparent">
+          <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
+            <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
+              SCOREBOARD
+            </h2>
+          </div>
+          <div className="px-6 py-5 max-[760px]:px-5">
+            {[...room.participants]
+              .sort((a, b) => (a.seatOrder ?? 0) - (b.seatOrder ?? 0))
+              .map((participant) => {
+                const score = scores.get(participant.userId) ?? null;
+                return (
+                  <div
+                    className="flex items-center gap-3 border-b border-[#393939] px-2 py-3 font-mono text-sm last:border-b-0"
+                    key={participant.userId}
+                  >
+                    <span className="text-[#666]">
+                      #{(participant.seatOrder ?? 0) + 1}
+                    </span>
+                    <span>{participant.nickname}</span>
+                    <span
+                      className={`ml-auto font-bold ${
+                        score !== null && score < 0
+                          ? 'text-[#ff786b]'
+                          : 'text-[#d6ff50]'
+                      }`}
+                    >
+                      {score === null ? '—' : score > 0 ? `+${score}` : `${score}`}
+                    </span>
+                  </div>
+                );
+              })}
+          </div>
+        </section>
+
+        {feedback && (
+          <section className="border border-[#d6ff50] bg-transparent [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]">
+            <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
+              <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
+                OVERALL.MD
+              </h2>
+            </div>
+            <div className="px-6 pb-7 [&>div>h2:first-child]:border-t-0 [&>div>h2:first-child]:pt-0 max-[760px]:px-5 max-[760px]:pb-5">
+              <PromptFeedback feedback={feedback.overall} />
+            </div>
+          </section>
+        )}
+      </div>
 
       {feedbackFailed && (
         <section className="border border-[#5a2c28] bg-[#1c0f0e] px-4 py-3">
@@ -1079,17 +1110,6 @@ function FinishedView({
 
       {feedback && (
         <>
-          <section className="border border-[#d6ff50] bg-transparent [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]">
-            <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
-              <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
-                OVERALL.MD
-              </h2>
-            </div>
-            <div className="px-6 pb-7 [&>div>h2:first-child]:border-t-0 [&>div>h2:first-child]:pt-0 max-[760px]:px-5 max-[760px]:pb-5">
-              <PromptFeedback feedback={feedback.overall} />
-            </div>
-          </section>
-
           <section className="grid gap-4">
             <span className={smallLabelClasses}>턴별(주자별) 피드백</span>
             {feedback.turns.map((turn) => {
