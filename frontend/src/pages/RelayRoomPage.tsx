@@ -662,10 +662,10 @@ function SeatCard({
         {participant.left && <span className="text-[9px] text-[#ff786b]">이탈</span>}
         <VoiceDot peer={peer} self={me} />
         {peer?.reaction && <span className="text-base">{peer.reaction}</span>}
-        {current && deadline && <TurnCountdown deadline={deadline} />}
         <span className="ml-auto font-bold text-[#c7c7c2]">
           {score === null ? '—' : score > 0 ? `+${score}` : `${score}`}
         </span>
+        {current && deadline && <TurnCountdown deadline={deadline} />}
       </div>
     </div>
   );
