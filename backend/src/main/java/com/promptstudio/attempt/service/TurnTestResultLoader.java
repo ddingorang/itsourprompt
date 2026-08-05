@@ -3,6 +3,7 @@ package com.promptstudio.attempt.service;
 import com.promptstudio.attempt.domain.CodeRunCase;
 import com.promptstudio.attempt.domain.CodeRunCaseStatus;
 import com.promptstudio.attempt.domain.CodeRunCaseTally;
+import com.promptstudio.attempt.domain.CodeRunStatus;
 import com.promptstudio.attempt.domain.CodeRunSummary;
 import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.repository.CodeRunRepository;
@@ -81,7 +82,7 @@ public class TurnTestResultLoader {
             }
 
             graded.add(new TurnTestResults.Graded(
-                    turnOrdinal, run.status(), tallies.get(run.id()), failedTestNames(run.id())));
+                    turnOrdinal, run.status(), tallies.get(run.id()), failedTestNames(run)));
         }
 
         return TurnTestResults.of(graded, gradedBaseline(baseline, tallies));
@@ -99,11 +100,19 @@ public class TurnTestResultLoader {
     /**
      * 실패한 테스트 이름. FAILED와 ERROR를 함께 센다 — 사용자가 봐야 할 곳은 다르지만 둘 다
      * "이 요구사항이 아직 안 됐다"는 같은 신호다. message는 싣지 않는다.
+     *
+     * <p>RUNNER_ERROR면 이름도 싣지 않는다. 워커가 모르는 상태값을 보내면 케이스는 저장된 채 실행만
+     * RUNNER_ERROR로 낮춰지므로 행이 남아 있을 수 있는데, 그것을 실으면 "코드에 대한 정보 없음" 밑에
+     * 실패 이름이 딸려 나가 인프라 사고가 다시 사용자에 대한 정보가 된다.
      */
-    private List<String> failedTestNames(UUID runId) {
+    private List<String> failedTestNames(CodeRunSummary run) {
+        if (run.status() == CodeRunStatus.RUNNER_ERROR) {
+            return List.of();
+        }
+
         List<String> names = new ArrayList<>();
 
-        for (CodeRunCase testCase : codeRunRepository.findCasesByRunId(runId)) {
+        for (CodeRunCase testCase : codeRunRepository.findCasesByRunId(run.id())) {
             if (testCase.status() == CodeRunCaseStatus.FAILED || testCase.status() == CodeRunCaseStatus.ERROR) {
                 names.add(testCase.name());
             }

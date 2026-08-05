@@ -91,6 +91,25 @@ class TurnTestResultLoaderTest {
     }
 
     /**
+     * 워커가 모르는 상태값을 보내면 케이스는 저장된 채 실행만 RUNNER_ERROR로 낮춰진다. 그 이름을
+     * 실으면 "코드에 대한 정보 없음" 밑에 실패 이름이 딸려 나가 인프라 사고가 다시 사용자 정보가 된다.
+     */
+    @Test
+    void RUNNER_ERROR는_케이스가_남아_있어도_실패_이름을_싣지_않는다() {
+        codeRunRepository.add(
+                run(0, CodeRunStatus.RUNNER_ERROR, 1),
+                new CodeRunCaseTally(2, 1, 1, 0, 0),
+                List.of(
+                        testCase("취소하면_상태가_CANCELED가_된다", CodeRunCaseStatus.PASSED),
+                        testCase("배송_시작된_주문은_취소할_수_없다", CodeRunCaseStatus.FAILED)));
+
+        TurnTestResult turn = loader.load(1L, 1).forTurn(0);
+
+        assertThat(turn.failedTestNames()).isEmpty();
+        assertThat(turn.passed()).isNull();
+    }
+
+    /**
      * 턴이 지워진 뒤 남은 실행 행이 프롬프트의 없는 턴을 가리키면 안 된다.
      */
     @Test
