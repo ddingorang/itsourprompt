@@ -820,28 +820,43 @@ function PromptForm({
   const disabled = !isMyTurn || submitting;
 
   return (
-    <form className="mt-auto grid gap-2" onSubmit={handleSubmit}>
-      <label className={smallLabelClasses} htmlFor="relay-prompt">
-        PROMPT {isMyTurn ? '— 내 차례!' : ''}
+    <form
+      className="mt-auto grid gap-2 border-t border-[#343434] pt-4"
+      onSubmit={handleSubmit}
+    >
+      <label className={labelClasses} htmlFor="relay-prompt">
+        PROMPT / MAX 4,000
       </label>
       <textarea
-        className="min-h-[110px] w-full resize-y border border-[#3f3f3f] bg-[#151515] p-3 text-[13px] leading-[1.6] text-[#f5f5ef] placeholder:text-[#555] focus:border-[#d6ff50] focus:outline-none disabled:opacity-40"
+        aria-keyshortcuts="Control+Enter Meta+Enter"
+        className="h-[108px] w-full resize-none overflow-y-auto border border-[#3f3f3f] bg-[#151515] p-3 text-[13px] leading-[1.6] text-[#f5f5ef] placeholder:text-[#555] focus:border-[#d6ff50] focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
         disabled={disabled}
         id="relay-prompt"
+        maxLength={4000}
         onChange={(event) => {
           setPrompt(event.target.value);
           // 대기자들의 화면에 실시간으로 보이는 미리보기. 서버를 지나지 않는다(P2P).
           if (isMyTurn) onTyping(event.target.value);
         }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            event.currentTarget.form?.requestSubmit();
+          }
+        }}
         placeholder={
           isMyTurn
-            ? '앞사람의 코드를 이어받아 AI에게 시킬 작업을 적으세요'
+            ? '문제를 해결할 프롬프트를 입력하세요.'
             : roomStatus === 'PLAYING'
               ? '내 차례가 되면 입력할 수 있습니다'
               : statusBanners[roomStatus]
         }
         value={prompt}
       />
+      <div className="flex items-center justify-between gap-3 px-1 font-mono text-[10px] text-[#666]">
+        <span>Ctrl/Cmd + Enter 전송 · Enter 줄바꿈</span>
+        <span>{prompt.length.toLocaleString('ko-KR')} / 4,000</span>
+      </div>
       {submitError && (
         <p className="m-0 font-mono text-xs text-[#ff786b]">{submitError}</p>
       )}
