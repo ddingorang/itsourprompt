@@ -456,6 +456,11 @@ function GameView({
           {seated.map((participant) => (
             <SeatCard
               current={participant.seatOrder === room.currentSeat}
+              deadline={
+                participant.seatOrder === room.currentSeat && room.status === 'PLAYING'
+                  ? room.turnDeadline
+                  : null
+              }
               key={participant.userId}
               me={participant.userId === myUserId}
               participant={participant}
@@ -493,8 +498,6 @@ function GameView({
       {/* 우: 문제/진행 패널. 프롬프트 폼은 탭과 무관하게 아래 고정 —
           주자는 명세를 읽으면서 동시에 프롬프트를 써야 한다. */}
       <aside className="flex min-h-0 flex-col gap-4 overflow-hidden px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-t max-[900px]:border-[#343434]">
-        <StatusBanner room={room} runnerNickname={currentRunner?.nickname ?? null} />
-
         <div className="grid shrink-0 grid-cols-2 border border-[#3f3f3f]" role="tablist">
           {(
             [
@@ -629,12 +632,14 @@ function LeaveGameButton({ roomId }: { roomId: number }) {
 
 function SeatCard({
   current,
+  deadline,
   me,
   participant,
   peer,
   score,
 }: {
   current: boolean;
+  deadline: string | null;
   me: boolean;
   participant: RelayParticipant;
   peer: RelayPeerView | undefined;
@@ -657,34 +662,11 @@ function SeatCard({
         {participant.left && <span className="text-[9px] text-[#ff786b]">이탈</span>}
         <VoiceDot peer={peer} self={me} />
         {peer?.reaction && <span className="text-base">{peer.reaction}</span>}
+        {current && deadline && <TurnCountdown deadline={deadline} />}
         <span className="ml-auto font-bold text-[#c7c7c2]">
           {score === null ? '—' : score > 0 ? `+${score}` : `${score}`}
         </span>
       </div>
-    </div>
-  );
-}
-
-function StatusBanner({
-  room,
-  runnerNickname,
-}: {
-  room: RelayRoom;
-  runnerNickname: string | null;
-}) {
-  return (
-    <div className="border border-[#3f3f3f] bg-[#111] px-4 py-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className={`m-0 ${smallLabelClasses}`}>STATUS</p>
-        {room.status === 'PLAYING' && room.turnDeadline && (
-          <TurnCountdown deadline={room.turnDeadline} />
-        )}
-      </div>
-      <p className="mt-1 mb-0 text-[13px] text-[#f5f5ef]">
-        {room.status === 'PLAYING' && runnerNickname
-          ? `${runnerNickname} 님의 차례`
-          : statusBanners[room.status]}
-      </p>
     </div>
   );
 }
