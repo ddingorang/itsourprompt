@@ -954,11 +954,9 @@ function RelayFileExplorer({
     });
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col border border-[#2c2c2c] max-[900px]:max-h-[320px] max-[900px]:min-h-[180px]">
-      <div className="shrink-0 border-b border-[#2c2c2c] px-4 py-3 font-mono text-[14px] font-bold tracking-[0.12em] text-[#d6ff50]">
-        FILE EXPLORER
-      </div>
-      <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-2">
+    <section className="flex min-h-0 flex-1 flex-col border-t border-[#343434] pt-4 max-[900px]:max-h-[320px] max-[900px]:min-h-[180px]">
+      <div className={labelClasses}>FILE EXPLORER</div>
+      <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         {fileTree.length > 0 ? (
           renderNodes(fileTree)
         ) : (
