@@ -27,13 +27,15 @@ public class FakeCodeRunConfiguration {
 
         private Long receivedAttemptId;
         private List<ProblemFile> receivedFiles;
+        private List<ProblemFile> receivedTestFiles;
         private RuntimeException nextFailure;
 
         @Override
-        public void publish(UUID runId, Long attemptId, List<ProblemFile> files) {
+        public void publish(UUID runId, Long attemptId, List<ProblemFile> files, List<ProblemFile> testFiles) {
             invocationCount.incrementAndGet();
             this.receivedAttemptId = attemptId;
             this.receivedFiles = files;
+            this.receivedTestFiles = testFiles;
             publishedRunIds.add(runId);
 
             if (nextFailure != null) {
@@ -59,6 +61,10 @@ public class FakeCodeRunConfiguration {
             return receivedFiles;
         }
 
+        public List<ProblemFile> receivedTestFiles() {
+            return receivedTestFiles;
+        }
+
         public List<UUID> publishedRunIds() {
             return List.copyOf(publishedRunIds);
         }
@@ -75,6 +81,7 @@ public class FakeCodeRunConfiguration {
             publishedRunIds.clear();
             receivedAttemptId = null;
             receivedFiles = null;
+            receivedTestFiles = null;
             nextFailure = null;
         }
     }

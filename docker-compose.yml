@@ -88,6 +88,39 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  # 릴레이 게임 WebRTC의 TURN 서버. STUN만으로는 모바일 NAT·사내망에서 P2P 직결 실패율이
+  # 무시할 수 없다 — 배포 환경에서 "왜 소리가 안 나요"의 대부분이 이것이다.
+  #
+  # 로컬 개발에서는 없어도 된다. 같은 호스트의 브라우저끼리는 host 후보로 바로 붙는다.
+  # 배포에서는 TURN_EXTERNAL_IP에 서버 공인 IP를 넣어야 한다 — 컨테이너는 자기 사설 IP만
+  # 알기 때문에, 이 값이 없으면 relay 후보에 사설 IP가 실려 외부 피어가 도달하지 못한다.
+  #
+  # 자격증명은 정적 계정(lt-cred-mech) 하나다. 규모가 커지면 시간제한 HMAC 자격증명
+  # (use-auth-secret)으로 바꾸고 백엔드가 만료 있는 크리덴셜을 발급하게 한다.
+  coturn:
+    image: coturn/coturn:4.6-alpine
+    container_name: promptstudio-coturn
+    restart: unless-stopped
+    command: >
+      --listening-port=3478
+      --min-port=49160 --max-port=49200
+      --user=${TURN_USER}:${TURN_PASSWORD}
+      --realm=promptstudio
+      --lt-cred-mech
+      --fingerprint
+      --no-cli
+      --external-ip=${TURN_EXTERNAL_IP:-127.0.0.1}
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      # relay 포트 범위. 넓히면 동시 수용량이 늘지만 Docker 포트 매핑이 무거워진다 —
+      # 방 6명 mesh 기준 이 범위(41포트)로 충분하다.
+      - "49160-49200:49160-49200/udp"
+    # 일부러 shared-net에 넣지 않는다. coturn은 다른 컨테이너와 통신할 일이 없고
+    # (브라우저가 published 포트로 직접 붙는다), 인터넷에 가장 넓게 노출된 컨테이너라
+    # 뚫려도 postgres·rabbitmq로 가는 네트워크 경로가 없어야 한다 — 워커에 DB 자격증명을
+    # 주지 않는 것과 같은 최소 권한 판단이다.
+
 volumes:
   postgres-data:
   redis-data:

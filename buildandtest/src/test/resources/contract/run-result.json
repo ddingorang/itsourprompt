@@ -5,5 +5,22 @@
   "stdout": "Hello World\n",
   "stderr": "",
   "durationMs": 1840,
+  "cases": [
+    {
+      "className": "MainTest",
+      "name": "실행된다()",
+      "status": "PASSED",
+      "message": null,
+      "durationMs": 30
+    },
+    {
+      "className": "MainTest",
+      "name": "출력이_비어_있지_않다()",
+      "status": "PASSED",
+      "message": null,
+      "durationMs": 12,
+      "unknownCaseField": "케이스 안에서도 모르는 필드는 무시되어야 한다"
+    }
+  ],
   "unknownFutureField": "한쪽만 먼저 배포된 상황을 가정한 필드 — 조용히 무시되어야 한다"
 }

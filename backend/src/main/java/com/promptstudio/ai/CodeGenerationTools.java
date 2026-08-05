@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 코드 생성 요청 하나가 쓰는 파일 작업본과 툴 3종.
@@ -29,6 +31,10 @@ final class CodeGenerationTools {
     private static final String EDIT_FILE = ToolCallEntry.EDIT_FILE;
     private static final String FILE_NOT_FOUND = "파일을 찾을 수 없습니다: %s. " + LIST_FILES + "로 파일 목록을 확인하세요.";
     private static final String EDIT_SUCCESS = "ok";
+    private static final Set<String> PROTECTED_BUILD_FILE_NAMES = Set.of(
+            "pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts", "gradle.properties"
+    );
+    private static final Pattern IMPORT_PATTERN = Pattern.compile("(?m)^\\s*import\\s+(?:static\\s+)?([^;]+);");
 
     /**
      * turn_tool_call.path 컬럼(VARCHAR(500)) 한도. 모델이 지어낸 긴 경로가 트레이스에 그대로 실리면
@@ -92,10 +98,46 @@ final class CodeGenerationTools {
             return FILE_NOT_FOUND.formatted(request.path());
         }
 
+        String violation = policyViolation(request);
+
+        if (violation != null) {
+            return violation;
+        }
+
         workingCopy.put(request.path(), request.content());
         editedPaths.add(request.path());
 
         return EDIT_SUCCESS;
+    }
+
+    private String policyViolation(EditFileRequest request) {
+        if (isProtectedBuildFile(request.path())) {
+            return "이 수정은 적용하지 않았어요. " + request.path()
+                    + "은(는) 의존성·빌드 설정 파일이라 변경할 수 없습니다. "
+                    + "현재 문제에서 수정해야 하는 Java 소스 파일을 선택해 다시 작성해 주세요.";
+        }
+
+        Matcher matcher = IMPORT_PATTERN.matcher(request.content());
+
+        while (matcher.find()) {
+            String importedType = matcher.group(1).trim();
+
+            if (!importedType.startsWith("java.")) {
+                return "이 수정은 적용하지 않았어요. " + importedType
+                        + "은(는) 외부 라이브러리 import입니다. 이 문제에서는 Java 표준 라이브러리(java.*)만 사용할 수 있습니다. "
+                        + "외부 라이브러리 없이 표준 Java 코드로 다시 작성해 주세요.";
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isProtectedBuildFile(String path) {
+        String normalizedPath = path.replace('\\', '/');
+        int lastSlash = normalizedPath.lastIndexOf('/');
+        String fileName = lastSlash >= 0 ? normalizedPath.substring(lastSlash + 1) : normalizedPath;
+
+        return PROTECTED_BUILD_FILE_NAMES.contains(fileName);
     }
 
     private static String truncateForTrace(String path) {

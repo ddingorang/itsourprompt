@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Idempotency-Key HTTP 심. 처리 중인 요청(PENDING)은 사전 행 삽입으로 시뮬레이션한다 — MockMvc는 동기다.
  */
 @AutoConfigureMockMvc
-@Import(FakeAiConfiguration.class)
+@Import({FakeAiConfiguration.class, AttemptApiAuthenticationConfiguration.class})
 class IdempotencyApiTest extends DatabaseTest {
 
     @Autowired
@@ -142,16 +142,16 @@ class IdempotencyApiTest extends DatabaseTest {
 
     private void insertStalePendingRow(String idempotencyKey) {
         dsl.execute(
-                "INSERT INTO idempotency_record (idempotency_key, status, created_at)"
-                        + " VALUES (?, 'PENDING', now() - interval '10 minutes')",
-                idempotencyKey
+                "INSERT INTO idempotency_record (idempotency_key, user_id, status, created_at)"
+                        + " VALUES (?, ?, 'PENDING', now() - interval '10 minutes')",
+                scopedKey(idempotencyKey), ownerId
         );
     }
 
     private void insertPendingRow(String idempotencyKey) {
         dsl.execute(
-                "INSERT INTO idempotency_record (idempotency_key, status, created_at) VALUES (?, 'PENDING', now())",
-                idempotencyKey
+                "INSERT INTO idempotency_record (idempotency_key, user_id, status, created_at) VALUES (?, ?, 'PENDING', now())",
+                scopedKey(idempotencyKey), ownerId
         );
     }
 
@@ -169,11 +169,15 @@ class IdempotencyApiTest extends DatabaseTest {
     }
 
     private Result<Record> findRecords(String idempotencyKey) {
-        return dsl.fetch("SELECT status, attempt_id FROM idempotency_record WHERE idempotency_key = ?", idempotencyKey);
+        return dsl.fetch("SELECT status, attempt_id FROM idempotency_record WHERE idempotency_key = ?", scopedKey(idempotencyKey));
     }
 
     private Result<Record> findAllRecords() {
         return dsl.fetch("SELECT idempotency_key FROM idempotency_record");
+    }
+
+    private String scopedKey(String idempotencyKey) {
+        return "user:" + ownerId + ":" + idempotencyKey;
     }
 
     private Long createAttempt() throws Exception {
@@ -201,6 +205,6 @@ class IdempotencyApiTest extends DatabaseTest {
     private Problem newProblem() {
         return problemRepository.save(new Problem(null, "Hello World 출력", "# Hello World 출력", List.of(
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
-        )));
+        ), List.of()));
     }
 }

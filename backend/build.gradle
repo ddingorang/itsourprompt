@@ -29,6 +29,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-jooq'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
+    // 릴레이 게임의 서버 권위 채널. 게임 상태(턴 순서·진행 단계·채점 결과)를 밀어주고,
+    // WebRTC 시그널링(SDP·ICE) 중계도 같은 소켓을 쓴다.
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 

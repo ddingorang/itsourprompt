@@ -7,5 +7,11 @@
       "content": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello World\");\n    }\n}\n"
     }
   ],
+  "testFiles": [
+    {
+      "path": "src/test/java/MainTest.java",
+      "content": "import org.junit.jupiter.api.Test;\n\nclass MainTest {\n    @Test\n    void 실행된다() {\n        Main.main(new String[0]);\n    }\n}\n"
+    }
+  ],
   "unknownFutureField": "한쪽만 먼저 배포된 상황을 가정한 필드 — 조용히 무시되어야 한다"
 }

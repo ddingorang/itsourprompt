@@ -6,6 +6,9 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Component
 public class RunRequestListener {
 
@@ -27,9 +30,9 @@ public class RunRequestListener {
             return;
         }
 
-        log.info("[RUN] started | runId={} | attemptId={} | files={}",
+        log.info("[RUN] started | runId={} | attemptId={} | files={} | testFiles={}",
                 request.runId(), request.attemptId(),
-                request.files() == null ? 0 : request.files().size());
+                count(request.files()), count(request.testFiles()));
 
         RunOutcome outcome = executeSafely(request);
 
@@ -43,9 +46,13 @@ public class RunRequestListener {
      * 어떤 실패든 결과 메시지 한 건으로 귀결시킨다. 예외를 그대로 던지면 메시지가 재전달·DLQ로 가고
      * 백엔드의 run은 QUEUED로 남아 TTL 회수를 기다리게 되므로, 사용자가 원인을 볼 수 없다.
      */
+    private int count(List<RunRequestMessage.RunFileMessage> files) {
+        return files == null ? 0 : files.size();
+    }
+
     private RunOutcome executeSafely(RunRequestMessage request) {
         try {
-            return codeExecutor.execute(request.files());
+            return codeExecutor.execute(request.files(), request.testFiles());
         } catch (RuntimeException exception) {
             log.error("[RUN] 실행 중 예상치 못한 오류 | runId={}", request.runId(), exception);
 
@@ -64,8 +71,25 @@ public class RunRequestListener {
                         outcome.exitCode(),
                         outcome.stdout(),
                         outcome.stderr(),
-                        outcome.durationMs()
+                        outcome.durationMs(),
+                        toCaseMessages(outcome.cases())
                 )
         );
+    }
+
+    private List<RunResultMessage.RunCaseMessage> toCaseMessages(List<RunCase> cases) {
+        List<RunResultMessage.RunCaseMessage> messages = new ArrayList<>();
+
+        for (RunCase testCase : cases) {
+            messages.add(new RunResultMessage.RunCaseMessage(
+                    testCase.className(),
+                    testCase.name(),
+                    testCase.status().name(),
+                    testCase.message(),
+                    testCase.durationMs()
+            ));
+        }
+
+        return messages;
     }
 }

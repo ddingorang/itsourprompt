@@ -48,9 +48,24 @@ class ProblemApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.id").value(saved.id()))
                 .andExpect(jsonPath("$.title").value("Hello World 출력"))
                 .andExpect(jsonPath("$.specMd").value("# Hello World 출력"))
+                .andExpect(jsonPath("$.type").value("coding"))
                 .andExpect(jsonPath("$.files.length()").value(1))
                 .andExpect(jsonPath("$.files[0].path").value("src/main/java/Main.java"))
                 .andExpect(jsonPath("$.files[0].content").value("class Main {}"));
+    }
+
+    /**
+     * 채점용 테스트가 응답에 섞이면 사용자가 정답 조건을 그대로 보게 되고, 프롬프트로 옮겨 적으면
+     * AI도 보게 된다. 노출 차단은 ProblemView가 testFiles를 읽지 않는 것뿐이라 여기서 못박아 둔다.
+     */
+    @Test
+    void 문제_상세에_채점용_테스트는_포함하지_않는다() throws Exception {
+        Problem saved = problemRepository.save(newProblem("hello-world", "Hello World 출력"));
+
+        mockMvc.perform(get("/api/problems/{id}", saved.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.files.length()").value(1))
+                .andExpect(jsonPath("$.files[?(@.path =~ /.*test.*/)]").isEmpty());
     }
 
     @Test
@@ -81,6 +96,22 @@ class ProblemApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.title").value("SSAFY 출력"));
     }
 
+    @Test
+    void game_problem_type_is_included_in_detail_response() throws Exception {
+        Problem saved = problemRepository.save(new Problem(
+                "block-dodge",
+                "block dodge",
+                "# block dodge",
+                "game",
+                List.of(new ProblemFile("index.html", "<!doctype html>")),
+                List.of()
+        ));
+
+        mockMvc.perform(get("/api/problems/{id}", saved.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("game"));
+    }
+
     private Problem deactivated(String slug, String title) {
         Problem problem = problemRepository.save(newProblem(slug, title));
         problem.deactivate();
@@ -91,6 +122,8 @@ class ProblemApiTest extends DatabaseTest {
     private Problem newProblem(String slug, String title) {
         return new Problem(slug, title, "# " + title, List.of(
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
+        ), List.of(
+                new ProblemFile("src/test/java/MainTest.java", "class MainTest {}")
         ));
     }
 }

@@ -5,6 +5,7 @@ import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.attempt.domain.ToolCallEntry;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Schema(description = "어템프트 상태")
@@ -20,7 +21,9 @@ public record AttemptResponse(
         @Schema(description = "지금까지 진행한 턴 목록")
         List<TurnResponse> turns,
         @Schema(description = "어템프트 상태", example = "IN_PROGRESS")
-        AttemptStatus status
+        AttemptStatus status,
+        @Schema(description = "어템프트의 LLM 사용량 총계(= 턴별 합계의 합). 기록이 없으면 null")
+        AttemptUsageResponse usage
 ) {
 
     @Schema(description = "어템프트의 현재 파일")
@@ -41,7 +44,61 @@ public record AttemptResponse(
             @Schema(description = "직전 상태 대비 변경 파일 목록")
             List<ChangedFileResponse> changedFiles,
             @Schema(description = "AI가 호출한 툴 기록")
-            List<ToolCallResponse> toolCalls
+            List<ToolCallResponse> toolCalls,
+            @Schema(description = "이 턴의 LLM 사용량 합계. 사용량 기록 도입 전 턴은 null")
+            TurnUsageResponse usage
+    ) {
+    }
+
+    @Schema(description = "턴 하나가 쓴 LLM 사용량 합계")
+    public record TurnUsageResponse(
+            @Schema(description = "입력 토큰 합계. 캐시 적중분을 포함한 전체다", example = "2500")
+            Long inputTokens,
+            @Schema(
+                    description = "캐시가 안 먹은 입력 토큰 합계. 호출마다 입력에서 캐시 적중분을 뺀 값을 더한 것이라,"
+                            + " 입력 토큰을 모르는 호출이 섞이면 cachedInputTokens와 더해도 inputTokens가 되지 않는다",
+                    example = "1500"
+            )
+            Long uncachedInputTokens,
+            @Schema(description = "캐시 적중 입력 토큰 합계. inputTokens에 포함된 값이다", example = "1000")
+            Long cachedInputTokens,
+            @Schema(description = "출력 토큰 합계", example = "500")
+            Long outputTokens,
+            @Schema(description = "추론 토큰 합계. outputTokens에 포함된 값이다", example = "120")
+            Long reasoningTokens,
+            @Schema(description = "LLM 호출 왕복 시간 합(ms). 툴 실행·파싱 시간은 빠진다", example = "300")
+            Long latencyMs,
+            @Schema(description = "USD 비용. 단가가 등록되지 않은 모델은 null", example = "0.00300000")
+            BigDecimal cost,
+            @Schema(description = "호출에 쓴 모델", example = "gpt-5.6-luna")
+            String model,
+            @Schema(description = "이 턴의 LLM 호출 횟수", example = "2")
+            int rounds
+    ) {
+    }
+
+    @Schema(description = "어템프트의 LLM 사용량 총계. 턴에 속하지 않는 피드백 생성·실패 호출은 빠진다")
+    public record AttemptUsageResponse(
+            @Schema(description = "입력 토큰 합계. 캐시 적중분을 포함한 전체다", example = "2500")
+            Long inputTokens,
+            @Schema(
+                    description = "캐시가 안 먹은 입력 토큰 합계. 호출마다 입력에서 캐시 적중분을 뺀 값을 더한 것이라,"
+                            + " 입력 토큰을 모르는 호출이 섞이면 cachedInputTokens와 더해도 inputTokens가 되지 않는다",
+                    example = "1500"
+            )
+            Long uncachedInputTokens,
+            @Schema(description = "캐시 적중 입력 토큰 합계. inputTokens에 포함된 값이다", example = "1000")
+            Long cachedInputTokens,
+            @Schema(description = "출력 토큰 합계", example = "500")
+            Long outputTokens,
+            @Schema(description = "추론 토큰 합계. outputTokens에 포함된 값이다", example = "120")
+            Long reasoningTokens,
+            @Schema(description = "LLM 호출 왕복 시간 합(ms). 툴 실행·파싱 시간은 빠진다", example = "260")
+            Long latencyMs,
+            @Schema(description = "USD 비용 합계. 단가가 등록되지 않은 모델은 빠진다", example = "0.00300000")
+            BigDecimal cost,
+            @Schema(description = "어템프트의 턴들이 낸 LLM 호출 횟수 합", example = "2")
+            int rounds
     ) {
     }
 
