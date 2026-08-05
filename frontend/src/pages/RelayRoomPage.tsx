@@ -687,7 +687,11 @@ function TurnCountdown({ deadline }: { deadline: string }) {
   // 마감을 지나면 다음 스케줄러 주기(최대 15초)에 스킵된다. 0:00으로 굳는 것보다
   // 무슨 일이 일어날지 말해주는 편이 낫다.
   if (remainingMs <= 0) {
-    return <span className="font-mono text-[11px] text-[#ff786b]">곧 건너뜁니다…</span>;
+    return (
+      <span className="font-mono text-[11px] whitespace-nowrap text-[#ff786b]">
+        ⏱ 시간 초과
+      </span>
+    );
   }
 
   const totalSeconds = Math.floor(remainingMs / 1000);
@@ -695,7 +699,7 @@ function TurnCountdown({ deadline }: { deadline: string }) {
 
   return (
     <span
-      className={`font-mono text-[11px] font-bold ${urgent ? 'text-[#ff786b]' : 'text-[#d6ff50]'}`}
+      className={`font-mono text-[11px] font-bold whitespace-nowrap ${urgent ? 'text-[#ff786b]' : 'text-[#d6ff50]'}`}
     >
       ⏱ {Math.floor(totalSeconds / 60)}:{String(totalSeconds % 60).padStart(2, '0')}
     </span>
