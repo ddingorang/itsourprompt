@@ -1052,7 +1052,7 @@ function FinishedView({
             : 'grid-cols-1'
         }`}
       >
-        <section className="border border-[#d6ff50] bg-transparent">
+        <section className="border border-[#393939] bg-transparent">
           <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
             <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
               SCOREBOARD
@@ -1088,7 +1088,7 @@ function FinishedView({
         </section>
 
         {feedback && (
-          <section className="border border-[#d6ff50] bg-transparent [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]">
+          <section className="border border-[#393939] bg-transparent [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]">
             <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
               <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
                 OVERALL.MD
@@ -1123,7 +1123,7 @@ function FinishedView({
       {feedback && (
         <section
           aria-label="턴별 피드백"
-          className="border border-[#d6ff50] bg-[#121212] [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]"
+          className="border border-[#393939] bg-[#121212] [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]"
         >
           <div className="grid min-h-[58px] grid-cols-[220px_40px_minmax(0,1fr)_40px] border-b border-[#393939] max-[760px]:grid-cols-[40px_minmax(0,1fr)_40px]">
             <span className="grid place-items-center border-r border-[#393939] bg-[#121212] px-[22px] text-center font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] max-[760px]:hidden">
