@@ -918,7 +918,7 @@ function RelayFileExplorer({
       const selected = node.path === activePath;
       return (
         <button
-          className={`grid min-h-8 w-full cursor-pointer grid-cols-[14px_minmax(0,1fr)_14px] items-center gap-2 border-0 px-2 text-left font-mono text-[12px] ${
+          className={`grid min-h-8 w-full cursor-pointer grid-cols-[14px_max-content_14px] items-center gap-2 border-0 px-2 text-left font-mono text-[12px] ${
             selected
               ? 'bg-[#d6ff50] text-[#090909]'
               : 'bg-transparent text-[#a3a3a3] hover:text-[#d6ff50]'
@@ -930,7 +930,7 @@ function RelayFileExplorer({
           type="button"
         >
           <span aria-hidden="true">◇</span>
-          <span className="truncate">{node.name}</span>
+          <span className="whitespace-nowrap">{node.name}</span>
           <span className="text-right font-black">
             {changedPaths.includes(node.path) ? 'M' : ''}
           </span>
@@ -941,9 +941,9 @@ function RelayFileExplorer({
   return (
     <section className="flex min-h-0 flex-1 flex-col border-t border-[#343434] pt-4 max-[900px]:max-h-[320px] max-[900px]:min-h-[180px]">
       <div className={labelClasses}>FILE EXPLORER</div>
-      <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-auto">
         {fileTree.length > 0 ? (
-          renderNodes(fileTree)
+          <div className="w-max min-w-full">{renderNodes(fileTree)}</div>
         ) : (
           <p className="m-0 px-4 py-3 font-mono text-[11px] text-[#666]">
             파일을 불러오는 중…
