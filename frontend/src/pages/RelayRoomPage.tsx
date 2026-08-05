@@ -44,7 +44,7 @@ const waitingTitleClasses =
 const smallLabelClasses = 'font-mono text-[14px] font-bold tracking-[0.12em] text-[#777]';
 
 const waitingSectionLabelClasses =
-  'font-mono text-[14px] font-bold tracking-[0.12em] text-[#d6ff50]';
+  'font-mono text-[16px] font-bold tracking-[0.12em] text-[#d6ff50]';
 
 const pageClasses =
   'flex h-screen min-w-80 flex-col overflow-hidden bg-[#090909] text-[#f5f5ef] ' +
