@@ -40,7 +40,7 @@ class OpenAiFeedbackGeneratorTest {
             new AiCallExecutor(),
             "OPENAI FEEDBACK",
             FeedbackPrompts.systemPrompt(),
-            (problem, attempt, testResults) -> FeedbackPrompts.userPrompt(problem, attempt),
+            FeedbackPrompts::userPrompt,
             chatOptionsFactory::forFeedback
     );
 

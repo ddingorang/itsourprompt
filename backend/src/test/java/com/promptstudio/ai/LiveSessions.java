@@ -2,8 +2,12 @@ package com.promptstudio.ai;
 
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.CodeRunCaseTally;
+import com.promptstudio.attempt.domain.CodeRunStatus;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.attempt.domain.ToolCallEntry;
+import com.promptstudio.attempt.domain.TurnTestResults;
+import com.promptstudio.attempt.domain.TurnTestResults.Graded;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.domain.ProblemView;
 
@@ -59,7 +63,16 @@ final class LiveSessions {
         }
     }
 
-    record Session(String name, ProblemView problem, AttemptView attempt, List<Expected> turns) {
+    /**
+     * @param testResults B 페이즈에서만 프롬프트에 실린다. 0·A 페이즈는 {@link TurnTestResults#EMPTY}로 부른다
+     */
+    record Session(
+            String name,
+            ProblemView problem,
+            AttemptView attempt,
+            List<Expected> turns,
+            TurnTestResults testResults
+    ) {
     }
 
     static List<Session> all() {
@@ -125,10 +138,14 @@ final class LiveSessions {
                                 new ToolCallEntry(ToolCallEntry.EDIT_FILE, INVENTORY),
                                 new ToolCallEntry(ToolCallEntry.EDIT_FILE, ORDER_SERVICE))));
 
-        return session("S1-정석", turns, List.of(
-                Expected.same(AS_ASKED),
-                Expected.same(AS_ASKED),
-                Expected.same(AS_ASKED)));
+        return session(
+                "S1-정석",
+                turns,
+                List.of(Expected.same(AS_ASKED), Expected.same(AS_ASKED), Expected.same(AS_ASKED)),
+                TurnTestResults.of(List.of(
+                        graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
+                        graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
+                        graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()));
     }
 
     /**
@@ -190,10 +207,15 @@ final class LiveSessions {
                                 new ToolCallEntry(ToolCallEntry.EDIT_FILE, INVENTORY),
                                 new ToolCallEntry(ToolCallEntry.EDIT_FILE, ORDER_SERVICE))));
 
-        return session("S2-범위초과", turns, List.of(
-                Expected.same(AS_ASKED),
-                Expected.same(PARTIAL),
-                Expected.same(AS_ASKED)));
+        // 채점만 보면 정석과 같은 궤적이다. 범위 초과는 테스트가 잡지 못하므로 판정은 파일이 갈라야 한다.
+        return session(
+                "S2-범위초과",
+                turns,
+                List.of(Expected.same(AS_ASKED), Expected.same(PARTIAL), Expected.same(AS_ASKED)),
+                TurnTestResults.of(List.of(
+                        graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
+                        graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
+                        graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()));
     }
 
     /**
@@ -255,11 +277,20 @@ final class LiveSessions {
                         List.of(modified(ORDER_SERVICE, orderService(CANCEL_WITH_GUARD))),
                         readEdit(ORDER_SERVICE)));
 
-        return session("S3-결정적턴", turns, List.of(
-                Expected.same(AS_ASKED),
-                new Expected(AS_ASKED, PARTIAL),
-                new Expected(AS_ASKED, PARTIAL),
-                Expected.same(AS_ASKED)));
+        // 턴 2·3은 요청을 가르는 배송_시작된_주문은_취소할_수_없다가 계속 실패로 남는다.
+        return session(
+                "S3-결정적턴",
+                turns,
+                List.of(
+                        Expected.same(AS_ASKED),
+                        new Expected(AS_ASKED, PARTIAL),
+                        new Expected(AS_ASKED, PARTIAL),
+                        Expected.same(AS_ASKED)),
+                TurnTestResults.of(List.of(
+                        graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
+                        graded(1, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, RESTORED),
+                        graded(2, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, RESTORED),
+                        graded(3, CodeRunStatus.TEST_FAILED, 5, RESTORED)), baseline()));
     }
 
     /**
@@ -315,10 +346,14 @@ final class LiveSessions {
                                 new ToolCallEntry(ToolCallEntry.EDIT_FILE, INVENTORY),
                                 new ToolCallEntry(ToolCallEntry.EDIT_FILE, ORDER_SERVICE))));
 
-        return session("S4-인프라사고", turns, List.of(
-                Expected.same(AS_ASKED),
-                Expected.same(AS_ASKED),
-                Expected.same(AS_ASKED)));
+        // 턴 2는 채점 인프라가 죽었고 턴 3은 실행 자체가 없다. 둘 다 판정을 바꿔서는 안 된다.
+        return session(
+                "S4-인프라사고",
+                turns,
+                List.of(Expected.same(AS_ASKED), Expected.same(AS_ASKED), Expected.same(AS_ASKED)),
+                TurnTestResults.of(List.of(
+                        graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
+                        new Graded(1, CodeRunStatus.RUNNER_ERROR, null, List.of())), baseline()));
     }
 
     /**
@@ -384,19 +419,58 @@ final class LiveSessions {
                         List.of(modified(ORDER_SERVICE, orderService(CANCEL_WITH_GUARD_AND_RESTORE))),
                         readEdit(ORDER_SERVICE)));
 
-        return session("S5-퇴보", turns, List.of(
-                Expected.same(AS_ASKED),
-                Expected.same(AS_ASKED),
-                new Expected(AS_ASKED, PARTIAL),
-                Expected.same(AS_ASKED)));
+        // 턴 3에서 재고 복구는 들어왔지만 앞 턴이 통과시킨 배송 검사 둘이 깨져 델타가 음수다.
+        return session(
+                "S5-퇴보",
+                turns,
+                List.of(
+                        Expected.same(AS_ASKED),
+                        Expected.same(AS_ASKED),
+                        new Expected(AS_ASKED, PARTIAL),
+                        Expected.same(AS_ASKED)),
+                TurnTestResults.of(List.of(
+                        graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
+                        graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
+                        graded(2, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, DELIVERED_BLOCKED),
+                        graded(3, CodeRunStatus.SUCCEEDED, 6)), baseline()));
     }
 
-    private static Session session(String name, List<AttemptView.TurnView> turns, List<Expected> expected) {
+    private static Session session(
+            String name,
+            List<AttemptView.TurnView> turns,
+            List<Expected> expected,
+            TurnTestResults testResults
+    ) {
         ProblemView problem = new ProblemView(1L, "주문 취소와 재고 복구", SPEC_MD, skeleton());
         AttemptView attempt = AttemptView.reconstruct(
                 1L, 1L, skeleton(), turns, AttemptStatus.IN_PROGRESS, null, null, null);
 
-        return new Session(name, problem, attempt, expected);
+        return new Session(name, problem, attempt, expected, testResults);
+    }
+
+    /**
+     * 채점 테스트 여섯 개. 앞의 둘은 스켈레톤에서 이미 통과하고, 나머지 넷이 이 문제의 요구사항이다.
+     */
+    private static final String LOOKUP = "주문을_조회할_수_있다";
+    private static final String REDUCE = "재고를_차감할_수_있다";
+    private static final String CANCELED = "취소하면_상태가_CANCELED가_된다";
+    private static final String SHIPPED_BLOCKED = "배송_시작된_주문은_취소할_수_없다";
+    private static final String DELIVERED_BLOCKED = "배송이_끝난_주문은_취소할_수_없다";
+    private static final String RESTORED = "취소하면_재고가_복구된다";
+
+    private static final int TOTAL_CASES = 6;
+
+    /** 스켈레톤 원본은 조회와 차감만 통과한다. 다섯 세션이 같은 베이스라인을 쓴다. */
+    private static Graded baseline() {
+        return graded(null, CodeRunStatus.TEST_FAILED, 2, CANCELED, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED);
+    }
+
+    private static Graded graded(Integer turnOrdinal, CodeRunStatus status, int passed, String... failed) {
+        return new Graded(
+                turnOrdinal,
+                status,
+                new CodeRunCaseTally(TOTAL_CASES, passed, failed.length, 0, 0),
+                List.of(failed));
     }
 
     private static AttemptView.TurnView turn(

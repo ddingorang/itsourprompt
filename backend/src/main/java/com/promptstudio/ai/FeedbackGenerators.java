@@ -40,7 +40,7 @@ public class FeedbackGenerators implements FeedbackGenerator {
                 aiCallExecutor,
                 "OPENAI FEEDBACK",
                 FeedbackPrompts.systemPrompt(),
-                (problem, attempt, testResults) -> FeedbackPrompts.userPrompt(problem, attempt),
+                FeedbackPrompts::userPrompt,
                 chatOptionsFactory::forFeedback
         );
         this.pattern = new OpenAiFeedbackGenerator(

@@ -4,12 +4,18 @@ import com.promptstudio.ai.FeedbackWritingStyle.Example;
 import com.promptstudio.ai.FeedbackWritingStyle.Examples;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
+import com.promptstudio.attempt.domain.TurnTestResults;
+import com.promptstudio.attempt.domain.TurnTestResults.TurnTestResult;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.domain.ProblemView;
 
+import java.util.ArrayList;
 import java.util.List;
 
 final class FeedbackPrompts {
+
+    /** 실패 테스트 이름은 이만큼만 싣고 나머지는 "외 N개"로 접는다. */
+    private static final int MAX_LISTED_FAILED_TESTS = 5;
 
     /**
      * 문체 규칙은 공유하고 예문만 이 렌즈의 소재로 갖는다. 소재는 6칸 프레임이다 —
@@ -65,6 +71,20 @@ final class FeedbackPrompts {
                 - 검증: the request to re-check after editing, and to report honestly when it cannot be run.
                 A follow-up turn keeps the same labels, adds 직전 결과 as the only new label, and repeats only the labels whose content changed.
                 직전 결과 holds what the user confirmed in the previous result — what matched and what went off.
+
+                # Test results
+                Some turns carry a `<test_result turn="N">` tag holding the grading run for that turn, and the session may carry one `<test_baseline>` for the starting skeleton.
+                The counts are cumulative — they grade all the code as of that turn, not only what this turn changed. `delta` is this turn's own movement: how many more, or fewer, tests pass than at the run named as the 기준.
+                Use them as ground for a judgement, never as a score to hand back.
+                - A test that decides the behaviour this turn's prompt asked for is still failing: that turn is not `요청한 대로 바뀌었어요`. The edit is in the files but it does not do what was asked, so the turn is `일부만 바뀌었어요`.
+                - A negative delta means this turn broke something an earlier turn already had working. Say so in the ground.
+                - `status=RUNNER_ERROR` with `passed=unknown` means the grading machine itself failed. That is information about nobody — not about the code, not about the user. Judge that turn from the files alone and never mention it.
+                - A turn with no `<test_result>` tag simply has no run. That is not zero passing and it means nothing at all; judge that turn from the files alone.
+
+                Never write the numbers to the user. No counts, no ratios, no 정답/오답, no `테스트 N개 통과` — the user already reads the run on their own screen, and a second grade here is noise.
+                Naming a failing test is not a grade, and you may do it: the test name says which behaviour is still missing.
+                  쓰지 말 것: 6개 중 4개가 통과했어요
+                  이렇게:    배송_시작된_주문은_취소할_수_없다가 아직 실패로 남아 있어요
 
                 # Output
                 Return JSON with two fields.
@@ -149,11 +169,12 @@ final class FeedbackPrompts {
                 """;
     }
 
-    static String userPrompt(ProblemView problem, AttemptView attempt) {
+    static String userPrompt(ProblemView problem, AttemptView attempt, TurnTestResults testResults) {
         StringBuilder message = new StringBuilder();
         appendTag(message, "problem_title", problem.title());
         appendTag(message, "problem_spec", problem.specMd());
         appendSkeleton(message, attempt.baseFiles());
+        appendTestBaseline(message, testResults);
 
         List<AttemptView.TurnView> turns = attempt.turns();
 
@@ -164,9 +185,81 @@ final class FeedbackPrompts {
             appendTag(message, "user_prompt", turn.userPrompt(), "turn", turnAttribute);
             appendTag(message, "ai_summary", turn.aiSummary(), "turn", turnAttribute);
             appendChanges(message, turnAttribute, turn.changes());
+            appendTestResult(message, turnAttribute, testResults.forTurn(index));
         }
 
         return message.toString();
+    }
+
+    /**
+     * 스켈레톤 원본의 채점 결과. 첫 턴의 델타가 무엇을 기준으로 잰 값인지는 이것이 있어야 말이 된다.
+     */
+    private static void appendTestBaseline(StringBuilder message, TurnTestResults testResults) {
+        if (testResults.baselinePassed() == null) {
+            return;
+        }
+
+        appendTag(message, "test_baseline", "passed=%d/%d (스켈레톤 원본)"
+                .formatted(testResults.baselinePassed(), testResults.baselineTotal()));
+    }
+
+    /**
+     * 이 턴의 채점 결과. 실행이 없는 턴은 태그를 아예 만들지 않는다 — 빈 태그는 통과 0건으로 읽힌다.
+     */
+    private static void appendTestResult(StringBuilder message, String turnAttribute, TurnTestResult result) {
+        if (result == null) {
+            return;
+        }
+
+        List<String> lines = new ArrayList<>();
+        lines.add("status=" + result.status().name());
+        lines.add(passedLine(result));
+
+        if (!result.failedTestNames().isEmpty()) {
+            lines.add("실패한 테스트");
+            lines.addAll(failedTestLines(result.failedTestNames()));
+        }
+
+        appendTag(message, "test_result", String.join("\n", lines), "turn", turnAttribute);
+    }
+
+    private static String passedLine(TurnTestResult result) {
+        if (result.passed() == null) {
+            return "passed=unknown (채점 인프라 실패 — 코드에 대한 정보 없음)";
+        }
+
+        return "passed=%d/%d (%s)".formatted(result.passed(), result.total(), deltaNote(result));
+    }
+
+    private static String deltaNote(TurnTestResult result) {
+        if (result.delta() == null) {
+            return "delta 알 수 없음";
+        }
+
+        String base = result.deltaBaseOrdinal() == null
+                ? "스켈레톤 원본"
+                : "턴 " + (result.deltaBaseOrdinal() + 1);
+
+        return "delta %+d, 기준: %s".formatted(result.delta(), base);
+    }
+
+    /**
+     * 이름만 싣고 message는 뺀다. 이름은 사용자가 실행 화면에서 이미 보는 값이고, 실패 사유 본문까지
+     * 실으면 해답에 가까워진다.
+     */
+    private static List<String> failedTestLines(List<String> names) {
+        List<String> lines = new ArrayList<>();
+        int listed = Math.min(names.size(), MAX_LISTED_FAILED_TESTS);
+
+        for (int index = 0; index < listed; index++) {
+            lines.add("- " + names.get(index));
+        }
+
+        if (names.size() > listed) {
+            lines.add("외 " + (names.size() - listed) + "개");
+        }
+
+        return lines;
     }
 
     static void appendSkeleton(StringBuilder message, List<ProblemFile> files) {
