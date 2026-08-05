@@ -15,6 +15,9 @@ html { scroll-behavior: smooth; }
 ::selection { background: #d6ff50; color: #090909; }
 .landing-page {
   --acid: #d6ff50;
+  /* 헤더 실제 높이. 섹션이 "화면 한 장"을 차지하려면 이만큼 빼야 한다.
+     480px 이하에서 헤더가 세로로 쌓이며 커지므로 아래 미디어쿼리에서 덮는다. */
+  --landing-header-h: 66px;
   --landing-bg: #090909;
   --landing-surface: #111;
   --landing-surface-hover: #171717;
@@ -57,12 +60,13 @@ html { scroll-behavior: smooth; }
 .landing-page > header i { color: var(--acid); }
 .landing-display { text-wrap: balance; }
 .landing-hero { position: relative; }
-.landing-hero-actions a:first-child { border-color: var(--acid); background: var(--acid); color: #090909; }
-.landing-hero-actions a:first-child:hover,
-.landing-hero-actions a:first-child:focus-visible { background: transparent; color: var(--acid); }
-.landing-hero-actions a:last-child { border-color: var(--landing-border); color: var(--landing-text); }
-.landing-hero-actions a:last-child:hover,
-.landing-hero-actions a:last-child:focus-visible { border-color: var(--acid); background: var(--landing-bg); color: var(--acid); }
+/* primary는 Button이 var(--acid)를 직접 읽으므로 여기서 덮을 것이 없다.
+   secondary만 랜딩 고유의 hover(배경을 채우지 않고 글자만 강조색)를 쓴다.
+   버튼 순서가 아니라 variant로 건다 — 순서로 걸면 두 버튼을 맞바꾸는 순간
+   생김새가 조용히 뒤바뀐다. */
+.landing-hero-actions a[data-variant='secondary'] { border-color: var(--landing-border); color: var(--landing-text); }
+.landing-hero-actions a[data-variant='secondary']:hover,
+.landing-hero-actions a[data-variant='secondary']:focus-visible { border-color: var(--acid); background: var(--landing-bg); color: var(--acid); }
 .landing-scroll-cue { display: flex; flex-direction: column; align-items: center; gap: 24px; justify-self: center; color: var(--landing-text); font: 400 12px/1 Arial, 'Noto Sans KR', sans-serif; letter-spacing: .08em; white-space: nowrap; }
 .landing-scroll-arrows { display: flex; height: 31px; flex-direction: column; align-items: center; }
 .landing-scroll-arrows i { display: block; width: 22px; height: 22px; margin-bottom: -10px; transform: rotate(45deg); border-right: 3px solid #777; border-bottom: 3px solid #777; animation: landing-scroll-pulse 1.6s ease-in-out infinite; }
@@ -99,9 +103,6 @@ html { scroll-behavior: smooth; }
 .landing-problem:hover span:last-child, .landing-problem:focus-visible span:last-child { transform: translate(3px, -3px); }
 .landing-final { background: radial-gradient(circle at 50% 50%, var(--landing-surface) 0, var(--landing-bg) 58%); }
 .landing-final-grid { position: absolute; inset: -50%; opacity: var(--landing-grid-opacity); transform: perspective(600px) rotateX(62deg); background-image: linear-gradient(var(--acid) 1px, transparent 1px), linear-gradient(90deg, var(--acid) 1px, transparent 1px); background-size: 64px 64px; mask-image: radial-gradient(circle, #000 5%, transparent 58%); }
-.landing-page .landing-final a { border-color: var(--acid); background: var(--acid); color: #090909; }
-.landing-page .landing-final a:hover,
-.landing-page .landing-final a:focus-visible { background: transparent; color: var(--acid); }
 .landing-page footer { border-color: var(--landing-border); color: var(--landing-muted); }
 .problem-list-page {
   --problem-list-bg: #090909;
@@ -596,6 +597,10 @@ html { scroll-behavior: smooth; }
   html { scroll-snap-type: y mandatory; scroll-padding-top: 66px; }
   .landing-page main > section,
   .landing-ending { scroll-snap-align: start; scroll-snap-stop: always; }
+}
+@media (max-width: 480px) {
+  /* Header가 flex-col + py-4로 바뀌는 지점(Header.tsx의 max-[480px])과 같은 값이어야 한다. */
+  .landing-page { --landing-header-h: 81px; }
 }
 @media (max-width: 760px) {
   .landing-scroll-cue { margin-top: 12px; justify-self: center; }

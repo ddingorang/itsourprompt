@@ -30,6 +30,18 @@ const steps = [
   },
 ];
 
+/** 부모 Button의 `group` hover·focus를 따라 살짝 밀려나는 화살표. 마이페이지 버튼과 같은 동작. */
+function ButtonArrow() {
+  return (
+    <span
+      className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
+      aria-hidden="true"
+    >
+      ↗
+    </span>
+  );
+}
+
 function useRevealOnScroll() {
   useEffect(() => {
     const elements = document.querySelectorAll<HTMLElement>('[data-reveal]');
@@ -116,7 +128,9 @@ export default function HomePage() {
       />
 
       <main className="flex-1 overflow-clip">
-        <section className="landing-hero mx-auto flex h-[calc(100svh-66px)] min-h-0 w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-4 max-[1100px]:w-[90%] max-[760px]:h-[calc(100svh-81px)] max-[760px]:w-[calc(100%_-_32px)]">
+        {/* min-h로 둔다 — h로 고정하면 main의 overflow-clip과 만나 화면이 낮을 때
+            스크롤 안내가 스크롤되지 못하고 잘려 나간다. */}
+        <section className="landing-hero mx-auto flex min-h-[calc(100svh_-_var(--landing-header-h))] w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-4 max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
           <div className="flex flex-1 flex-col justify-center">
             <div className="flex items-center gap-4 font-mono text-[19px] font-bold tracking-[0.14em] text-[var(--acid)]">
               <span>PROMPT ENGINEERING PRACTICE</span>
@@ -138,25 +152,16 @@ export default function HomePage() {
           <div className="landing-hero-actions mb-5 ml-auto flex flex-wrap justify-end gap-3 max-[680px]:ml-0 max-[680px]:grid max-[680px]:grid-cols-1">
             <Button className="group min-h-14 px-7" to="/problems">
               <span>혼자 시작하기</span>
-              <span
-                className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
-                aria-hidden="true"
-              >
-                ↗
-              </span>
+              <ButtonArrow />
             </Button>
+            {/* mode=together를 읽는 쪽은 아직 없다 — 향후 함께 풀기 연동을 위한 자리표시자다. */}
             <Button
               className="group min-h-14 px-7"
               to="/relay"
               variant="secondary"
             >
               <span>친구와 함께 풀기</span>
-              <span
-                className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:translate-x-0.5 group-focus-visible:-translate-y-0.5"
-                aria-hidden="true"
-              >
-                ↗
-              </span>
+              <ButtonArrow />
             </Button>
           </div>
 
@@ -173,7 +178,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="landing-how flex h-[calc(100svh-66px)] min-h-[640px] items-start border-y border-[var(--landing-border)] bg-[var(--landing-surface)] pt-[clamp(34px,5vw,64px)] pb-8 max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:pb-16">
+        <section className="landing-how flex h-[calc(100svh_-_var(--landing-header-h))] min-h-[640px] items-start border-y border-[var(--landing-border)] bg-[var(--landing-surface)] pt-[clamp(34px,5vw,64px)] pb-8 max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:pb-16">
           <div className="mx-auto w-[80%] max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
             <div className="mb-[clamp(36px,5vh,52px)] flex items-end justify-between gap-8 max-[680px]:items-start">
               <div data-reveal>
@@ -197,8 +202,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="landing-guest min-h-[calc(100svh-66px)] overflow-hidden border-b border-[var(--landing-border)] bg-[var(--landing-guest-bg)] text-[var(--landing-guest-text)]">
-          <div className="mx-auto grid min-h-[calc(100svh-66px)] w-[80%] grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-[6vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[900px]:w-[calc(100%_-_32px)] max-[900px]:grid-cols-1 max-[900px]:gap-12 max-[900px]:py-16">
+        <section className="landing-guest min-h-[calc(100svh_-_var(--landing-header-h))] overflow-hidden border-b border-[var(--landing-border)] bg-[var(--landing-guest-bg)] text-[var(--landing-guest-text)]">
+          <div className="mx-auto grid min-h-[calc(100svh_-_var(--landing-header-h))] w-[80%] grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-[6vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[900px]:w-[calc(100%_-_32px)] max-[900px]:grid-cols-1 max-[900px]:gap-12 max-[900px]:py-16">
             <div className="max-w-[560px]" data-reveal>
               <div className="mb-7 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--landing-guest-eyebrow)]">NO LOGIN NEEDED</div>
               <h2 className="m-0 text-[clamp(42px,5.4vw,76px)] leading-[1.1] font-black tracking-[-0.04em] [word-break:keep-all]">
@@ -249,7 +254,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="mx-auto flex h-[calc(100svh-66px)] min-h-[620px] w-[80%] flex-col pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:w-[calc(100%_-_32px)] max-[760px]:pb-20">
+        <section className="mx-auto flex h-[calc(100svh_-_var(--landing-header-h))] min-h-[620px] w-[80%] flex-col pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:w-[calc(100%_-_32px)] max-[760px]:pb-20">
           <div className="relative mb-8 flex items-end justify-between gap-8 pb-6" data-reveal>
             <div>
               <div className="mb-5 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--acid)]">PRACTICE NOW</div>
@@ -284,7 +289,7 @@ export default function HomePage() {
           )}
         </section>
 
-        <div className="landing-ending flex min-h-[calc(100svh-66px)] flex-col">
+        <div className="landing-ending flex min-h-[calc(100svh_-_var(--landing-header-h))] flex-col">
           <section className="landing-final relative flex flex-1 items-center justify-center overflow-hidden border-t border-[var(--landing-border)] px-[5vw] py-[clamp(64px,8vh,100px)] text-center">
             <div className="landing-final-grid" aria-hidden="true" />
             <div className="relative z-[1]" data-reveal>
@@ -294,9 +299,9 @@ export default function HomePage() {
                 <br />
                 프롬프트가 달라집니다.
               </h2>
-              <Button className="min-h-14 gap-2.5 px-7" to="/problems">
+              <Button className="group min-h-14 gap-2.5 px-7" to="/problems">
                 <span>문제 풀어보기</span>
-                <span aria-hidden="true">↗</span>
+                <ButtonArrow />
               </Button>
             </div>
           </section>
