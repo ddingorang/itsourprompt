@@ -210,6 +210,24 @@ public class RelayGameWriter {
     }
 
     /**
+     * 프롬프트 반려. 좌석은 생성 실패처럼 되돌리지만 마감은 새로 주지 않는다 — 새 마감은
+     * 생성이 주자의 시간을 잡아먹은 502를 보상하는 장치인데, 반려는 주자 입력의 문제라
+     * 보상하면 무관한 프롬프트 반복 전송으로 시간을 무한정 벌 수 있다.
+     */
+    @Transactional
+    public void recordTurnRejection(Long roomId, int turnIndex, Long authorUserId) {
+        RelayRoom room = getRoom(roomId);
+
+        room.rejectTurn();
+        roomRepository.save(room);
+
+        eventPublisher.publishEvent(new RelayTurnFailed(viewFactory.toView(room), turnIndex, authorUserId));
+
+        log.info("[RELAY] turn rejected, deadline kept | roomId={} | turnIndex={} | authorUserId={}",
+                roomId, turnIndex, authorUserId);
+    }
+
+    /**
      * 이번 턴의 채점 run을 방과 턴 양쪽에 기록한다. 방의 current_run_id는 결과 이벤트가 방을
      * 되찾는 열쇠고, 턴의 run_id는 지난 채점을 되짚는 기록이다.
      */

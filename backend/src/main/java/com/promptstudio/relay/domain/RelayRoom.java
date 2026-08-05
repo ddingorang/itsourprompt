@@ -182,6 +182,17 @@ public class RelayRoom {
         }
     }
 
+    /**
+     * 프롬프트 반려. 좌석을 되돌리는 것은 생성 실패와 같지만 마감은 그대로 둔다 — 반려는
+     * 주자 본인의 입력이 문제라, 마감을 새로 주면 무관한 프롬프트를 반복 전송하는 것만으로
+     * 자기 차례를 무한정 붙들 수 있다. 남은 시간 안에 고쳐 내지 못하면 스킵이 맞다.
+     */
+    public void rejectTurn() {
+        if (status == RelayRoomStatus.TURN_GENERATING) {
+            this.status = RelayRoomStatus.PLAYING;
+        }
+    }
+
     /** 이번 턴의 채점 run. 결과 이벤트가 이 값으로 방을 되찾는다. */
     public void attachGradingRun(UUID runId) {
         if (status != RelayRoomStatus.TURN_GRADING) {
