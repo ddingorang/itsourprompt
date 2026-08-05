@@ -87,7 +87,7 @@ function OverallPanel({
   title: string;
 }) {
   return (
-    <section className="mt-4 border border-[var(--feedback-acid)] bg-transparent">
+    <section className="mt-4 border border-[var(--feedback-border)] bg-transparent">
       <div className="flex min-h-[58px] items-center border-b border-[var(--feedback-border)] px-6 max-[760px]:px-5">
         <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
           {title}
@@ -314,7 +314,7 @@ export default function FeedbackPage() {
 
             {selectedSection && (
               <section
-                className="mt-4 border border-[var(--feedback-acid)] bg-[var(--feedback-surface)]"
+                className="mt-4 border border-[var(--feedback-border)] bg-[var(--feedback-surface)]"
                 aria-label="턴별 프롬프트 피드백"
               >
                 <div className="relative border-b border-[var(--feedback-border)]">
