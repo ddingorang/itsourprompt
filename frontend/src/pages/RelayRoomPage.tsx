@@ -1016,6 +1016,7 @@ function FinishedView({
   const [feedback, setFeedback] = useState<RelayFeedback | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [selectedTurnIndex, setSelectedTurnIndex] = useState<number | null>(null);
+  const turnNavRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1039,6 +1040,17 @@ function FinishedView({
     feedback?.turns.findIndex((turn) => turn.turnIndex === selectedTurnIndex) ?? -1;
   const selectedFeedbackTurn =
     selectedTurnPosition >= 0 ? feedback?.turns[selectedTurnPosition] ?? null : null;
+  const moveSelectedTurn = (direction: -1 | 1) => {
+    if (!feedback) return;
+    const nextTurn = feedback.turns[selectedTurnPosition + direction];
+    if (!nextTurn) return;
+
+    setSelectedTurnIndex(nextTurn.turnIndex);
+    turnNavRef.current?.scrollBy({
+      left: direction * turnNavRef.current.clientWidth * 0.7,
+      behavior: 'smooth',
+    });
+  };
 
   return (
     <main className="mx-auto grid w-[min(calc(90%_-_360px),1040px)] flex-1 content-start gap-7 py-10 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)]">
@@ -1147,15 +1159,14 @@ function FinishedView({
               aria-label="이전 턴 피드백 보기"
               className="cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
               disabled={selectedTurnPosition <= 0}
-              onClick={() =>
-                setSelectedTurnIndex(feedback.turns[selectedTurnPosition - 1]?.turnIndex ?? null)
-              }
+              onClick={() => moveSelectedTurn(-1)}
               type="button"
             >
               ‹
             </button>
             <div
-              className="flex min-w-0 flex-wrap items-stretch"
+              className="turn-tab-scrollbar flex min-w-0 flex-nowrap items-stretch overflow-x-auto scroll-smooth"
+              ref={turnNavRef}
               role="tablist"
             >
               {feedback.turns.map((turn) => {
@@ -1163,7 +1174,7 @@ function FinishedView({
                 return (
                   <button
                     aria-selected={selected}
-                    className={`relative min-h-[58px] min-w-[100px] flex-1 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm font-bold tracking-[0.06em] hover:text-[#f5f5ef] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:h-[3px] ${
+                    className={`relative min-h-[58px] min-w-[100px] shrink-0 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm font-bold tracking-[0.06em] whitespace-nowrap hover:text-[#f5f5ef] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:h-[3px] ${
                       selected
                         ? 'text-[#d6ff50] after:bg-[#d6ff50]'
                         : 'text-[#a3a3a3] after:bg-transparent'
@@ -1183,9 +1194,7 @@ function FinishedView({
               aria-label="다음 턴 피드백 보기"
               className="cursor-pointer border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
               disabled={selectedTurnPosition >= feedback.turns.length - 1}
-              onClick={() =>
-                setSelectedTurnIndex(feedback.turns[selectedTurnPosition + 1]?.turnIndex ?? null)
-              }
+              onClick={() => moveSelectedTurn(1)}
               type="button"
             >
               ›
