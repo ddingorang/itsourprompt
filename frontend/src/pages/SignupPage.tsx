@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { signup } from '../features/auth/api';
 import { useAuth } from '../features/auth/AuthContext';
+import { useTheme } from '../features/theme/ThemeContext';
 import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
@@ -19,10 +20,10 @@ import Header from '../shared/components/Header';
  */
 
 const labelClasses =
-  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
+  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[var(--auth-page-acid)]';
 
 const inputClasses =
-  'mt-2.5 w-full border border-[#555] bg-[#131313] p-3.5 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 focus:border-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-60';
+  'mt-2.5 w-full border border-[var(--auth-page-border-strong)] bg-[var(--auth-page-input-bg)] p-3.5 text-[13px] leading-[1.6] text-[var(--auth-page-text)] outline-0 focus:border-[var(--auth-page-acid)] disabled:cursor-not-allowed disabled:opacity-60';
 
 const fieldErrorClasses = 'mt-2 text-[11px] leading-[1.6] text-[#ff786b]';
 
@@ -50,6 +51,7 @@ function toSignupErrorMessage(error: unknown): string {
 }
 
 export default function SignupPage() {
+  const { colorMode } = useTheme();
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -103,11 +105,14 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div
+      className="auth-page flex min-h-screen min-w-80 flex-col bg-[var(--auth-page-bg)] text-[var(--auth-page-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
+      data-color-mode={colorMode}
+    >
       <Header />
 
       <main className="mx-auto flex w-[calc(100%_-_10vw)] flex-1 items-center justify-center py-16 max-[640px]:w-[calc(100%_-_40px)]">
-        <section className="w-full max-w-2xl border-y border-[#343434] py-8">
+        <section className="w-full max-w-2xl border-y border-[var(--auth-page-border)] py-8">
           <h1 className="text-center font-mono text-[clamp(44px,8vw,72px)] leading-none font-bold tracking-[-0.05em]">
             SIGN UP
           </h1>
@@ -243,13 +248,18 @@ export default function SignupPage() {
               </div>
             )}
 
-            <Button className="mt-6" disabled={!canSubmit} fullWidth type="submit">
+            <Button
+              className="auth-page-primary-action mt-6"
+              disabled={!canSubmit}
+              fullWidth
+              type="submit"
+            >
               {submitting ? 'CREATING…' : 'CREATE ACCOUNT ↗'}
             </Button>
 
-            <p className="mt-6 text-center text-xs text-[#a3a3a3]">
+            <p className="mt-6 text-center text-xs text-[var(--auth-page-muted)]">
               이미 계정이 있나요?{' '}
-              <Link className="ml-2 text-[#d6ff50] hover:underline" to="/login">
+              <Link className="ml-2 text-[var(--auth-page-acid)] hover:underline" to="/login">
                 로그인 ↗
               </Link>
             </p>

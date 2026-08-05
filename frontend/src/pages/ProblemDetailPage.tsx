@@ -12,16 +12,30 @@ import {
   addTurn,
   createAttempt,
   getAttempt,
+  getCodeRun,
+  getCodeRuns,
+  requestCodeRun,
   submitAttempt,
 } from '../features/attempt/api';
+import { replayFiles } from '../features/attempt/replay';
 import type {
   Attempt,
   ChangedFile,
   ChangeType,
+  CodeRun,
+  CodeRunCase,
+  CodeRunCaseStatus,
+  CodeRunStatus,
+  CodeRunTally,
+  TokenUsage,
   Turn,
 } from '../features/attempt/types';
 import { getProblemDetail } from '../features/problem/api';
 import type { ProblemDetail, RepositoryFile } from '../features/problem/types';
+import { useTheme } from '../features/theme/ThemeContext';
+import CodeViewer from '../features/workspace/CodeViewer';
+import { diffLines } from '../features/workspace/diff';
+import { nextTabIndex } from '../shared/a11y/tabKeyboard';
 import {
   ApiError,
   API_ERROR_CODES,
@@ -39,7 +53,13 @@ interface StatusMessage {
   type: StatusType;
 }
 
-type DetailTab = 'problem' | 'logs';
+type DetailTab = 'problem' | 'logs' | 'test';
+
+const detailTabs: ReadonlyArray<readonly [DetailTab, string]> = [
+  ['problem', 'PROBLEM'],
+  ['logs', 'PROMPT LOG'],
+  ['test', 'TEST'],
+];
 
 interface FileTreeNode {
   name: string;
@@ -51,22 +71,43 @@ interface FileTreeNode {
 }
 
 const labelClasses =
-  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
+  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[var(--problem-detail-acid)]';
 
 const pageStateClasses =
-  'grid min-h-dvh place-items-center bg-[#090909] p-10 ' +
-  'font-mono text-xs leading-[1.7] text-[#a3a3a3]';
+  'grid min-h-dvh place-items-center bg-[var(--problem-detail-bg)] p-10 ' +
+  'font-mono text-xs leading-[1.7] text-[var(--problem-detail-muted)]';
 
 const changeColorClasses: Record<ChangeType, string> = {
-  ADDED: 'text-[#d6ff50]',
-  MODIFIED: 'text-white',
+  ADDED: 'text-[var(--problem-detail-acid)]',
+  MODIFIED: 'text-[var(--problem-detail-text)]',
   DELETED: 'text-[#ff786b]',
 };
 
-const toolLabels: Record<string, string> = {
-  edit_file: 'EDIT',
-  list_files: 'LIST',
-  read_file: 'READ',
+const CODE_RUN_POLL_INTERVAL_MS = 1500;
+const CODE_RUN_MAX_WAIT_MS = 120_000;
+
+const codeRunStatusLabels: Record<CodeRunStatus, string> = {
+  QUEUED: '채점 중',
+  SUCCEEDED: '통과',
+  COMPILE_ERROR: '컴파일 오류',
+  TEST_FAILED: '테스트 실패',
+  RUNTIME_ERROR: '실행 오류',
+  TIMEOUT: '시간 초과',
+  RUNNER_ERROR: '채점기 오류',
+};
+
+const codeRunCaseLabels: Record<CodeRunCaseStatus, string> = {
+  PASSED: 'PASSED',
+  FAILED: 'FAILED',
+  ERROR: 'ERROR',
+  SKIPPED: 'SKIPPED',
+};
+
+const codeRunCaseColorClasses: Record<CodeRunCaseStatus, string> = {
+  PASSED: 'text-[#d6ff50]',
+  FAILED: 'text-[#ff786b]',
+  ERROR: 'text-[#ffb86b]',
+  SKIPPED: 'text-[#8b8b8b]',
 };
 
 interface ErrorInfo {
@@ -121,11 +162,51 @@ function findFile(files: RepositoryFile[], path: string): RepositoryFile | undef
   );
 }
 
+function findPreviewHtml(files: RepositoryFile[]): RepositoryFile | undefined {
+  return (
+    findFile(files, 'index.html') ??
+    files.find((file) => normalizeRepositoryPath(file.path).endsWith('/index.html'))
+  );
+}
+
 function normalizeRepositoryPath(path: string): string {
   return path
     .replaceAll('\\', '/')
     .replace(/\/+/g, '/')
     .replace(/^\/+|\/+$/g, '');
+}
+
+function getTokenUsageTotal(usage?: TokenUsage | null): number | null {
+  if (
+    typeof usage?.inputTokens !== 'number' ||
+    typeof usage.outputTokens !== 'number'
+  ) {
+    return null;
+  }
+
+  return usage.inputTokens + usage.outputTokens;
+}
+
+function formatUsageValue(value: unknown, suffix = ''): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? `${value.toLocaleString('ko-KR')}${suffix}`
+    : '—';
+}
+
+function tallyCodeRunCases(cases: CodeRunCase[]): CodeRunTally | null {
+  if (cases.length === 0) return null;
+
+  return cases.reduce<CodeRunTally>(
+    (tally, testCase) => {
+      tally.total += 1;
+      if (testCase.status === 'PASSED') tally.passed += 1;
+      else if (testCase.status === 'FAILED') tally.failed += 1;
+      else if (testCase.status === 'ERROR') tally.error += 1;
+      else tally.skipped += 1;
+      return tally;
+    },
+    { error: 0, failed: 0, passed: 0, skipped: 0, total: 0 },
+  );
 }
 
 function createFileTree(
@@ -196,6 +277,7 @@ function getFolderPaths(nodes: FileTreeNode[]): string[] {
 }
 
 export default function ProblemDetailPage() {
+  const { colorMode } = useTheme();
   const navigate = useNavigate();
   /**
    * 이 화면은 두 주소에서 열린다 — /problems/{id}(어템프트 시작 전)와
@@ -221,7 +303,18 @@ export default function ProblemDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [codeRun, setCodeRun] = useState<CodeRun | null>(null);
+  const [codeRunTally, setCodeRunTally] = useState<CodeRunTally | null>(null);
+  const [codeRunError, setCodeRunError] = useState<string | null>(null);
+  const [isCodeRunLoading, setIsCodeRunLoading] = useState(false);
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
+  const [previewSession, setPreviewSession] = useState(0);
+  const detailTabRefs = useRef<
+    Partial<Record<DetailTab, HTMLButtonElement | null>>
+  >({});
+  const previewContainerRef = useRef<HTMLDivElement | null>(null);
   const isRunPendingRef = useRef(false);
+  const isCodeRunPendingRef = useRef(false);
   /**
    * 실패한 턴 요청의 Idempotency-Key를 기억한다. 같은 프롬프트로 다시 실행하면
    * 같은 키가 나가므로, 백엔드가 이미 AI를 호출해 둔 경우 재호출 없이 그 결과를
@@ -230,6 +323,14 @@ export default function ProblemDetailPage() {
   const pendingRunRef = useRef<{ prompt: string; key: string } | null>(null);
   /** 진행 중인 로드. 새 로드가 시작되면 이전 것을 끊어 마지막 응답만 화면에 남긴다. */
   const loadControllerRef = useRef<AbortController | null>(null);
+  const codeRunControllerRef = useRef<AbortController | null>(null);
+  const codeRunPollTimeoutRef = useRef<number | null>(null);
+  const routeAttemptIdRef = useRef(routeAttemptId);
+  const routeProblemIdRef = useRef(routeProblemId);
+  routeAttemptIdRef.current = routeAttemptId;
+  routeProblemIdRef.current = routeProblemId;
+  /** 마지막으로 정상 반영된 라우트. 다른 주소의 로드 실패 시 이전 문제를 지우는 기준이다. */
+  const loadedResourceRef = useRef<string | null>(null);
   /**
    * 지금 화면에 올라와 있는 문제. problem state와 같은 값이지만, loadFromRoute가
    * 렌더마다 새로 만들어져 낡은 state를 붙들 수 있어 ref로 따로 들고 읽는다.
@@ -237,9 +338,82 @@ export default function ProblemDetailPage() {
   const problemRef = useRef<ProblemDetail | null>(null);
 
   const files = attempt?.files ?? problem?.files ?? [];
+  const isGame = problem?.type === 'game';
+  const isPlaying = isGame && activeTab === 'test';
+  const previewHtml = useMemo(
+    () => findPreviewHtml(files)?.content ?? null,
+    [files],
+  );
   const turns = attempt?.turns ?? [];
+  const attemptTokenUsage = getTokenUsageTotal(attempt?.usage);
+  const turnTokenUsages = turns.map((turn) => getTokenUsageTotal(turn.usage));
+  const hasTokenUsage =
+    attemptTokenUsage !== null || turnTokenUsages.some((usage) => usage !== null);
+  const totalTokenUsage =
+    attemptTokenUsage ??
+    turnTokenUsages.reduce<number>((total, usage) => total + (usage ?? 0), 0);
   const isSubmitted = attempt?.status === 'SUBMITTED';
   const canSubmit = turns.length > 0 && !isSubmitted;
+  const visibleCodeRunTally =
+    codeRunTally && codeRunTally.total > 0 ? codeRunTally : null;
+
+  const stopCodeRunPolling = () => {
+    codeRunControllerRef.current?.abort();
+    codeRunControllerRef.current = null;
+    if (codeRunPollTimeoutRef.current !== null) {
+      window.clearTimeout(codeRunPollTimeoutRef.current);
+      codeRunPollTimeoutRef.current = null;
+    }
+  };
+
+  const applyCodeRun = (nextRun: CodeRun) => {
+    setCodeRun(nextRun);
+    const caseTally = tallyCodeRunCases(nextRun.cases);
+    if (caseTally) setCodeRunTally(caseTally);
+  };
+
+  const startCodeRunPolling = (attemptId: number, runId: string) => {
+    stopCodeRunPolling();
+    const controller = new AbortController();
+    codeRunControllerRef.current = controller;
+    const startedAt = Date.now();
+    setIsCodeRunLoading(true);
+
+    const poll = async () => {
+      try {
+        const nextRun = await getCodeRun(attemptId, runId, controller.signal);
+        if (controller.signal.aborted) return;
+
+        applyCodeRun(nextRun);
+        if (nextRun.status !== 'QUEUED') {
+          setIsCodeRunLoading(false);
+          codeRunControllerRef.current = null;
+          return;
+        }
+
+        if (Date.now() - startedAt >= CODE_RUN_MAX_WAIT_MS) {
+          setCodeRunError('채점 대기 시간이 초과되었습니다. 다시 시도해주세요.');
+          setIsCodeRunLoading(false);
+          codeRunControllerRef.current = null;
+          return;
+        }
+
+        codeRunPollTimeoutRef.current = window.setTimeout(
+          () => void poll(),
+          CODE_RUN_POLL_INTERVAL_MS,
+        );
+      } catch (error: unknown) {
+        if (isAbortError(error)) return;
+        setCodeRunError(
+          getErrorInfo(error, '테스트 결과를 불러오지 못했습니다.').message,
+        );
+        setIsCodeRunLoading(false);
+        codeRunControllerRef.current = null;
+      }
+    };
+
+    void poll();
+  };
 
   /**
    * URL이 가리키는 리소스를 서버에서 읽어 화면에 반영한다.
@@ -252,6 +426,8 @@ export default function ProblemDetailPage() {
     attemptId: number | null,
     problemId: number | null,
   ) => {
+    const requestedResource =
+      attemptId === null ? `problem:${problemId}` : `attempt:${attemptId}`;
     loadControllerRef.current?.abort();
     const controller = new AbortController();
     loadControllerRef.current = controller;
@@ -288,6 +464,7 @@ export default function ProblemDetailPage() {
         : [];
 
       problemRef.current = loadedProblem;
+      loadedResourceRef.current = requestedResource;
       setProblem(loadedProblem);
       setAttempt(loadedAttempt);
       // 사용자가 펼쳐 둔 폴더는 유지한 채 새로 생긴 폴더만 더한다.
@@ -325,7 +502,15 @@ export default function ProblemDetailPage() {
       // 잘못됐다는 사실과 갈 곳을 같이 줘야 사용자가 막히지 않는다. 반대로 작업장이
       // 이미 떠 있으면(턴 실행 뒤 reload 등) 화면을 통째로 덮는 대신 상태줄에만
       // 남긴다. 보고 있던 파일과 턴 기록을 오류 하나로 걷어낼 이유가 없다.
-      if (problemRef.current === null) {
+      if (
+        problemRef.current === null ||
+        loadedResourceRef.current !== requestedResource
+      ) {
+        problemRef.current = null;
+        loadedResourceRef.current = null;
+        setProblem(null);
+        setAttempt(null);
+
         if (errorInfo.code === API_ERROR_CODES.attemptNotFound) {
           setLoadError(toProblemsError('어템프트를 찾을 수 없습니다.'));
         } else if (errorInfo.code === API_ERROR_CODES.problemNotFound) {
@@ -366,6 +551,67 @@ export default function ProblemDetailPage() {
     };
   }, [isAttemptRoute, routeAttemptId, routeProblemId]);
 
+  useEffect(() => {
+    stopCodeRunPolling();
+    setCodeRun(null);
+    setCodeRunTally(null);
+    setCodeRunError(null);
+    setIsCodeRunLoading(false);
+
+    const isCurrentAttempt =
+      attempt?.id === routeAttemptId && attempt.problemId === problem?.id;
+
+    if (routeAttemptId === null || !isCurrentAttempt || isGame) {
+      return stopCodeRunPolling;
+    }
+
+    const controller = new AbortController();
+    codeRunControllerRef.current = controller;
+
+    const restoreLatestCodeRun = async () => {
+      setIsCodeRunLoading(true);
+
+      try {
+        const response = await getCodeRuns(routeAttemptId, controller.signal);
+        if (controller.signal.aborted) return;
+
+        const latestRun = response.runs[0];
+        if (!latestRun) {
+          setIsCodeRunLoading(false);
+          codeRunControllerRef.current = null;
+          return;
+        }
+
+        setCodeRunTally(latestRun.tally);
+        if (latestRun.status === 'QUEUED') {
+          startCodeRunPolling(routeAttemptId, latestRun.runId);
+          return;
+        }
+
+        const restoredRun = await getCodeRun(
+          routeAttemptId,
+          latestRun.runId,
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+        applyCodeRun(restoredRun);
+        setIsCodeRunLoading(false);
+        codeRunControllerRef.current = null;
+      } catch (error: unknown) {
+        if (isAbortError(error)) return;
+        setCodeRunError(
+          getErrorInfo(error, '최근 테스트 결과를 불러오지 못했습니다.').message,
+        );
+        setIsCodeRunLoading(false);
+        codeRunControllerRef.current = null;
+      }
+    };
+
+    void restoreLatestCodeRun();
+
+    return stopCodeRunPolling;
+  }, [attempt?.id, attempt?.problemId, isGame, problem?.id, routeAttemptId, routeProblemId]);
+
   const fileTree = useMemo(
     () => createFileTree(files, getLatestChangedFiles(turns)),
     [files, turns],
@@ -376,8 +622,206 @@ export default function ProblemDetailPage() {
     return findFile(files, selectedFile)?.content ?? '// 이 턴에서 삭제된 파일입니다.';
   }, [files, selectedFile]);
 
+  /** 직전 턴 직후의 파일 상태. 마지막 턴 diff의 기준선이다. 턴이 없으면 null. */
+  const previousFiles = useMemo(() => {
+    if (!attempt || attempt.turns.length === 0) return null;
+    return replayFiles(attempt.baseFiles, attempt.turns.slice(0, -1));
+  }, [attempt]);
+
+  /** 선택 파일의 직전 턴 대비 diff. 마지막 턴이 안 건드린 파일은 강조가 없다. */
+  const selectedDiff = useMemo(() => {
+    if (!attempt || !previousFiles || !selectedFile) return undefined;
+    const lastTurn = attempt.turns[attempt.turns.length - 1];
+    const normalizedSelected = normalizeRepositoryPath(selectedFile);
+    const touched = lastTurn.changedFiles.some(
+      (file) =>
+        normalizeRepositoryPath(file.path) === normalizedSelected &&
+        file.changeType !== 'DELETED',
+    );
+    if (!touched) return undefined;
+    const afterContent = findFile(files, selectedFile)?.content;
+    if (afterContent === undefined) return undefined;
+    return diffLines(findFile(previousFiles, selectedFile)?.content ?? null, afterContent);
+  }, [attempt, files, previousFiles, selectedFile]);
+
   const showStatus = (message: string, type: StatusType = 'normal') => {
     setStatus({ message, type });
+  };
+
+  /**
+   * PLAY 탭과 전체 화면 전환 뒤에도 게임이 바로 키보드 입력을 받게 한다.
+   * iframe이 문서를 모두 붙인 다음 한 프레임을 기다려야 전체 화면 전환과
+   * 포커스가 경합하지 않는다.
+   */
+  const focusGamePreview = (iframe: HTMLIFrameElement) => {
+    window.requestAnimationFrame(() => {
+      if (iframe.isConnected) {
+        iframe.focus({ preventScroll: true });
+      }
+    });
+  };
+
+  const handlePreviewFullscreen = async () => {
+    const previewContainer = previewContainerRef.current;
+    if (!previewContainer) return;
+
+    try {
+      if (document.fullscreenElement === previewContainer) {
+        await document.exitFullscreen();
+      } else {
+        await previewContainer.requestFullscreen();
+        setPreviewSession((session) => session + 1);
+      }
+    } catch {
+      showStatus('전체 화면을 시작할 수 없습니다. 브라우저 설정을 확인해주세요.', 'error');
+    }
+  };
+
+  useEffect(() => {
+    const updatePreviewFullscreenState = () => {
+      setIsPreviewFullscreen(document.fullscreenElement === previewContainerRef.current);
+    };
+
+    document.addEventListener('fullscreenchange', updatePreviewFullscreenState);
+    return () => document.removeEventListener('fullscreenchange', updatePreviewFullscreenState);
+  }, []);
+
+  const handleCodeRunRequest = async () => {
+    if (isGame || !problem || isCodeRunLoading || isCodeRunPendingRef.current) return;
+
+    isCodeRunPendingRef.current = true;
+    stopCodeRunPolling();
+    const controller = new AbortController();
+    codeRunControllerRef.current = controller;
+    const requestedProblemId = problem.id;
+    let requestedAttempt = attempt;
+    let requestedAttemptId = attempt?.id ?? null;
+    let createdForSkeleton = false;
+    setCodeRunError(null);
+    setCodeRunTally(null);
+    setIsCodeRunLoading(true);
+
+    const isCurrentTarget = () =>
+      !controller.signal.aborted &&
+      (createdForSkeleton
+        ? routeProblemIdRef.current === requestedProblemId
+        : routeAttemptIdRef.current === requestedAttemptId);
+
+    const moveToCreatedAttempt = () => {
+      if (!createdForSkeleton || !requestedAttempt || requestedAttemptId === null) {
+        return;
+      }
+
+      setAttempt(requestedAttempt);
+      routeAttemptIdRef.current = requestedAttemptId;
+      navigate(`/attempts/${requestedAttemptId}`, { replace: true });
+    };
+
+    try {
+      if (requestedAttemptId === null) {
+        requestedAttempt = await createAttempt(requestedProblemId);
+        if (
+          controller.signal.aborted ||
+          routeProblemIdRef.current !== requestedProblemId
+        ) {
+          return;
+        }
+
+        requestedAttemptId = requestedAttempt.id;
+        createdForSkeleton = true;
+      }
+
+      const requestedRun = await requestCodeRun(
+        requestedAttemptId,
+        controller.signal,
+      );
+      if (!isCurrentTarget()) return;
+
+      applyCodeRun(requestedRun);
+
+      if (createdForSkeleton) {
+        moveToCreatedAttempt();
+        return;
+      }
+
+      if (requestedRun.status === 'QUEUED') {
+        startCodeRunPolling(requestedAttemptId, requestedRun.runId);
+      } else {
+        setIsCodeRunLoading(false);
+        codeRunControllerRef.current = null;
+      }
+    } catch (error: unknown) {
+      if (isAbortError(error) || controller.signal.aborted) return;
+
+      const errorInfo = getErrorInfo(error, '코드 실행을 요청하지 못했습니다.');
+
+      if (errorInfo.code === API_ERROR_CODES.codeRunInProgress) {
+        try {
+          if (requestedAttemptId === null) return;
+
+          const response = await getCodeRuns(
+            requestedAttemptId,
+            controller.signal,
+          );
+          if (!isCurrentTarget()) return;
+
+          const queuedRun = response.runs.find((run) => run.status === 'QUEUED');
+
+          if (queuedRun) {
+            setCodeRunTally(queuedRun.tally);
+            if (createdForSkeleton) moveToCreatedAttempt();
+            else startCodeRunPolling(requestedAttemptId, queuedRun.runId);
+            return;
+          }
+
+          // 목록을 읽는 사이 실행이 끝났다면 409를 오류로 남기지 않고
+          // 최근 완료 실행의 상세 결과를 바로 복원한다.
+          const latestRun = response.runs[0];
+          if (latestRun) {
+            const restoredRun = await getCodeRun(
+              requestedAttemptId,
+              latestRun.runId,
+              controller.signal,
+            );
+            if (!isCurrentTarget()) return;
+
+            setCodeRunTally(latestRun.tally);
+            applyCodeRun(restoredRun);
+            if (createdForSkeleton) {
+              moveToCreatedAttempt();
+            } else if (restoredRun.status === 'QUEUED') {
+              startCodeRunPolling(requestedAttemptId, restoredRun.runId);
+            } else {
+              setIsCodeRunLoading(false);
+              codeRunControllerRef.current = null;
+            }
+            return;
+          }
+        } catch (restoreError: unknown) {
+          if (isAbortError(restoreError) || controller.signal.aborted) return;
+
+          setCodeRunError(
+            getErrorInfo(
+              restoreError,
+              '진행 중인 테스트 정보를 불러오지 못했습니다.',
+            ).message,
+          );
+          setIsCodeRunLoading(false);
+          return;
+        }
+      }
+
+      setCodeRunError(errorInfo.message);
+      setIsCodeRunLoading(false);
+      codeRunControllerRef.current = null;
+    } finally {
+      isCodeRunPendingRef.current = false;
+    }
+  };
+
+  const handleDetailTabClick = (tab: DetailTab) => {
+    setActiveTab(tab);
+    if (tab === 'test' && !isGame) void handleCodeRunRequest();
   };
 
   const handleRun = async () => {
@@ -484,6 +928,22 @@ export default function ProblemDetailPage() {
     void handleRun();
   };
 
+  const handleDetailTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentTab: DetailTab,
+  ) => {
+    const currentIndex = detailTabs.findIndex(([tab]) => tab === currentTab);
+    const nextIndex = nextTabIndex(event.key, currentIndex, detailTabs.length);
+
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextTab = detailTabs[nextIndex][0];
+    setActiveTab(nextTab);
+    detailTabRefs.current[nextTab]?.focus();
+    if (nextTab === 'test' && !isGame) void handleCodeRunRequest();
+  };
+
   const handleSubmit = async () => {
     if (!problem || !attempt) return;
 
@@ -556,15 +1016,15 @@ export default function ProblemDetailPage() {
           <div key={item.path}>
             <button
               aria-expanded={isExpanded}
-              className="grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_14px_max-content] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-[#a3a3a3] hover:text-[#f5f5ef]"
+              className="grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_14px_max-content] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-[var(--problem-detail-muted)] hover:text-[var(--problem-detail-text)]"
               onClick={() => toggleFolder(item.path)}
               style={{ paddingLeft: `${7 + depth * 14}px` }}
               type="button"
             >
-              <span className="text-[10px] text-[#777]" aria-hidden="true">
+              <span className="text-[10px] text-[var(--problem-detail-subtle)]" aria-hidden="true">
                 {isExpanded ? '▼' : '▶'}
               </span>
-              <span className="text-[13px] text-[#d6ff50]" aria-hidden="true">
+              <span className="text-[13px] text-[var(--problem-detail-acid)]" aria-hidden="true">
                 {isExpanded ? '▱' : '□'}
               </span>
               <span className="whitespace-nowrap">{item.name}</span>
@@ -582,9 +1042,9 @@ export default function ProblemDetailPage() {
         <button
           aria-current={isSelected ? 'true' : undefined}
           className={[
-            'grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_max-content_28px] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-inherit hover:text-[#f5f5ef]',
+            'grid min-h-[30px] w-full cursor-pointer grid-cols-[14px_max-content_28px] items-center gap-1 border-0 bg-transparent pr-2 text-left font-inherit text-inherit hover:text-[var(--problem-detail-text)]',
             isSelected
-              ? 'bg-[#d6ff50] text-[#090909] hover:text-[#090909]'
+              ? 'bg-[var(--problem-detail-acid)] text-[#090909] hover:text-[#090909]'
               : '',
             item.deleted ? 'opacity-60 line-through' : '',
           ]
@@ -596,7 +1056,7 @@ export default function ProblemDetailPage() {
             paddingLeft: `${7 + depth * 14}px`,
             ...(isSelected
               ? {
-                  backgroundColor: '#d6ff50',
+                  backgroundColor: 'var(--problem-detail-acid)',
                   color: '#090909',
                 }
               : {}),
@@ -607,7 +1067,7 @@ export default function ProblemDetailPage() {
           <span
             className={[
               'text-[11px]',
-              isSelected ? 'text-[#090909]' : 'text-[#777]',
+              isSelected ? 'text-[#090909]' : 'text-[var(--problem-detail-subtle)]',
             ].join(' ')}
             aria-hidden="true"
           >
@@ -635,7 +1095,12 @@ export default function ProblemDetailPage() {
   // 로딩 문구만 보이게 된다.
   if (isLoading && !problem) {
     return (
-      <div className={pageStateClasses}>문제 상세를 불러오는 중입니다…</div>
+      <div
+        className={`problem-detail-page ${pageStateClasses}`}
+        data-color-mode={colorMode}
+      >
+        문제 상세를 불러오는 중입니다…
+      </div>
     );
   }
 
@@ -643,10 +1108,13 @@ export default function ProblemDetailPage() {
     const notice = loadError ?? toProblemsError('문제를 찾을 수 없습니다.');
 
     return (
-      <div className={`${pageStateClasses} text-[#ff786b]`}>
+      <div
+        className={`problem-detail-page ${pageStateClasses} text-[#ff786b]`}
+        data-color-mode={colorMode}
+      >
         <div>
           <p>{notice.message}</p>
-          <Button className="mt-5" to={notice.actionTo}>
+          <Button className="problem-detail-primary-action mt-5" to={notice.actionTo}>
             <span className="text-[14px]">{notice.actionLabel}</span>
           </Button>
         </div>
@@ -655,147 +1123,166 @@ export default function ProblemDetailPage() {
   }
 
   return (
-    <div className="flex h-screen min-w-80 flex-col overflow-hidden bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif] max-[700px]:h-auto max-[700px]:min-h-screen max-[700px]:overflow-visible">
+    <div
+      className="problem-detail-page flex h-screen min-w-80 flex-col overflow-hidden bg-[var(--problem-detail-bg)] text-[var(--problem-detail-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif] max-[700px]:h-auto max-[700px]:min-h-screen max-[700px]:overflow-visible"
+      data-color-mode={colorMode}
+    >
       <Header variant="workspace" />
 
       <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[230px_minmax(360px,1fr)_minmax(420px,480px)] max-[1080px]:grid-cols-[190px_minmax(0,1fr)] max-[700px]:block max-[700px]:overflow-visible">
-        <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[#343434] px-6 py-[22px] max-[700px]:overflow-visible max-[700px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:py-[18px]">
+        <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[var(--problem-detail-border)] px-6 py-[22px] max-[700px]:overflow-visible max-[700px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:py-[18px]">
           <div className={labelClasses}>FILE EXPLORER</div>
 
           <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-auto max-[700px]:flex-none max-[700px]:overflow-visible">
-            <div className="grid w-max min-w-full select-none gap-[3px] font-mono text-xs leading-[1.5] text-[#a3a3a3]">
+            <div className="grid w-max min-w-full select-none gap-[3px] font-mono text-xs leading-[1.5] text-[var(--problem-detail-muted)]">
               {renderFileTree(fileTree)}
             </div>
           </div>
 
-          <div className="mt-4 grid shrink-0 gap-2 border-t border-[#343434] pt-4 font-mono text-[9px] text-[#767676]">
+          <div className="mt-4 grid shrink-0 gap-2 border-t border-[var(--problem-detail-border)] pt-4 font-mono text-[9px] text-[var(--problem-detail-subtle)]">
             <span>A / ADDED</span>
             <span>M / MODIFIED</span>
             <span>D / DELETED</span>
           </div>
         </aside>
 
-        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[#343434] px-7 py-[22px] max-[1080px]:border-r-0 max-[700px]:block max-[700px]:overflow-visible max-[700px]:border-b max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
+        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[var(--problem-detail-border)] px-7 py-[22px] max-[1080px]:border-r-0 max-[700px]:block max-[700px]:overflow-visible max-[700px]:border-b max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
           <div className="mb-5 flex items-start justify-between gap-[18px]">
             <div>
               <div className={labelClasses}>
                 {selectedFile || 'FILE'}
               </div>
             </div>
-            <span className="shrink-0 border border-[#494949] px-2 py-1.5 font-mono text-[9px] text-[#a3a3a3]">
+            <span className="shrink-0 border border-[var(--problem-detail-border-strong)] px-2 py-1.5 font-mono text-[9px] text-[var(--problem-detail-muted)]">
               READ ONLY
             </span>
           </div>
 
-          <div className="workspace-scrollbar min-h-0 flex-1 overflow-auto border border-[#292929] bg-[#202020] max-[700px]:min-h-[360px]">
+          <div className="workspace-scrollbar min-h-0 flex-1 overflow-auto border border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-bg)] max-[700px]:min-h-[360px]">
             <div
               aria-hidden="true"
-              className="sticky top-0 z-[2] h-8 min-w-full border-b border-[#333] bg-[#151515]"
+              className="sticky top-0 z-[2] h-8 min-w-full border-b border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-header)]"
             />
-            <div className="min-w-max py-3 font-mono text-xs leading-[1.9] whitespace-pre text-[#e3e3dd] [tab-size:2]">
-              {selectedCode.split('\n').map((line, index) => (
-                <div
-                  className="grid min-h-[1.9em] grid-cols-[2.0rem_max-content]"
-                  key={`${index}-${line}`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="sticky left-0 border-r border-[#333] bg-[#202020] pr-3 text-right text-[#686868] select-none"
-                  >
-                    {index + 1}
-                  </span>
-                  <code className="px-5">{line || ' '}</code>
-                </div>
-              ))}
-            </div>
+            <CodeViewer
+              code={selectedCode}
+              diff={selectedDiff}
+              key={`${selectedFile}::${turns.length}`}
+              path={selectedFile}
+            />
           </div>
         </section>
 
-        <aside className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
+        <aside
+          className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]"
+          style={isPlaying ? { gridTemplateRows: 'minmax(0, 1fr)' } : undefined}
+        >
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[#343434] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
             <div
-              className="grid shrink-0 grid-cols-2 border border-[#3f3f3f]"
+              className="grid shrink-0 grid-cols-3 border border-[var(--problem-detail-border)]"
               role="tablist"
               aria-label="문제 상세 정보"
             >
-              {([
-                ['problem', 'PROBLEM'],
-                ['logs', `PROMPT LOG ${turns.length ? `(${turns.length})` : ''}`],
-              ] as const).map(([tab, label]) => (
+              {detailTabs.map(([tab, label]) => (
                 <button
+                  aria-controls="problem-detail-tabpanel"
                   aria-selected={activeTab === tab}
                   className={[
                     'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm leading-[1.5] font-bold tracking-[0.08em]',
-                    tab === 'problem' ? 'border-r border-[#3f3f3f]' : '',
+                    tab !== 'test' ? 'border-r border-[var(--problem-detail-border)]' : '',
                     activeTab === tab
-                      ? 'border-b-2 border-b-[#d6ff50] text-[#d6ff50]'
-                      : 'text-[#8b8b8b] hover:text-[#b8b8b8]',
+                      ? 'border-b-2 border-b-[var(--problem-detail-acid)] text-[var(--problem-detail-acid)]'
+                      : 'text-[var(--problem-detail-muted)] hover:text-[var(--problem-detail-text)]',
                   ].join(' ')}
+                  id={`problem-detail-tab-${tab}`}
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => handleDetailTabClick(tab)}
+                  onKeyDown={(event) => handleDetailTabKeyDown(event, tab)}
+                  ref={(element) => {
+                    detailTabRefs.current[tab] = element;
+                  }}
                   role="tab"
+                  tabIndex={activeTab === tab ? 0 : -1}
                   type="button"
                 >
-                  {label}
+                  {isGame && tab === 'test' ? 'PLAY' : label}
                 </button>
               ))}
             </div>
 
-            <div className="workspace-scrollbar mt-[18px] min-h-[210px] flex-1 overflow-y-auto overflow-x-hidden max-[700px]:overflow-visible" role="tabpanel">
+            <div
+              aria-labelledby={`problem-detail-tab-${activeTab}`}
+              className="workspace-scrollbar mt-[18px] min-h-[210px] flex-1 overflow-y-auto overflow-x-hidden max-[700px]:overflow-visible"
+              id="problem-detail-tabpanel"
+              role="tabpanel"
+              tabIndex={0}
+            >
               {activeTab === 'problem' ? (
                 <>
-                  <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[#a3a3a3] [word-break:keep-all]">
+                  <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[var(--problem-detail-muted)] [word-break:keep-all]">
                     <ReactMarkdown
                       components={{
                         h1: ({ children }) => (
-                          <h1 className="my-3 mt-2.5 text-[24px] leading-[1.05] font-bold tracking-[-0.045em] text-[#f5f5ef]">
+                          <h1 className="my-3 mt-2.5 text-[24px] leading-[1.05] font-bold tracking-[-0.045em] text-[var(--problem-detail-text)]">
                             {children}
                           </h1>
                         ),
-                        h2: ({ children }) => <h2 className="font-bold text-[#f5f5ef]">{children}</h2>,
-                        h3: ({ children }) => <h3 className="font-bold text-[#f5f5ef]">{children}</h3>,
-                        h4: ({ children }) => <h4 className="font-bold text-[#f5f5ef]">{children}</h4>,
-                        h5: ({ children }) => <h5 className="font-bold text-[#f5f5ef]">{children}</h5>,
-                        h6: ({ children }) => <h6 className="font-bold text-[#f5f5ef]">{children}</h6>,
+                        h2: ({ children }) => <h2 className="font-bold text-[var(--problem-detail-text)]">{children}</h2>,
+                        h3: ({ children }) => <h3 className="font-bold text-[var(--problem-detail-text)]">{children}</h3>,
+                        h4: ({ children }) => <h4 className="font-bold text-[var(--problem-detail-text)]">{children}</h4>,
+                        h5: ({ children }) => <h5 className="font-bold text-[var(--problem-detail-text)]">{children}</h5>,
+                        h6: ({ children }) => <h6 className="font-bold text-[var(--problem-detail-text)]">{children}</h6>,
                       }}
                     >
                       {problem.specMd}
                     </ReactMarkdown>
                   </div>
                 </>
-              ) : turns.length ? (
+              ) : activeTab === 'logs' && turns.length ? (
                 <div className="grid gap-4">
+                  <div className="flex items-end justify-between border border-[var(--problem-detail-border)] bg-[var(--problem-detail-surface)] px-4 py-3">
+                    <div>
+                      <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[var(--problem-detail-subtle)]">
+                        TOTAL TOKEN USAGE
+                      </p>
+                      <p className="mt-1 mb-0 text-[12px] text-[var(--problem-detail-text)]">
+                        전체 프롬프트 토큰 사용량
+                      </p>
+                    </div>
+                    <strong className="font-mono text-xl text-[var(--problem-detail-acid)]">
+                      {formatUsageValue(hasTokenUsage ? totalTokenUsage : null)}
+                    </strong>
+                  </div>
+
                   {turns.map((turn, index) => (
                     <article
-                      className="border-l-2 border-[#d6ff50] pl-3"
+                      className="border-l-2 border-[var(--problem-detail-acid)] pl-3"
                       key={`turn-${index + 1}`}
                     >
-                      <div className="font-mono text-[9px] font-bold text-[#d6ff50]">
-                        TURN {String(index + 1).padStart(2, '0')}
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 font-mono text-[11px] font-bold">
+                        <span className="text-[var(--problem-detail-acid)]">
+                          TURN {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <span className="flex gap-3 text-[var(--problem-detail-subtle)]">
+                          <span>
+                            TOKENS{' '}
+                            <strong className="text-[var(--problem-detail-text)]">
+                              {formatUsageValue(turnTokenUsages[index])}
+                            </strong>
+                          </span>
+                          <span>
+                            LATENCY{' '}
+                            <strong className="text-[var(--problem-detail-text)]">
+                              {formatUsageValue(turn.usage?.latencyMs, 'ms')}
+                            </strong>
+                          </span>
+                        </span>
                       </div>
-                      <p className="my-2 whitespace-pre-wrap text-[12px] leading-[1.6] text-[#f5f5ef]">
+                      <p className="my-2 whitespace-pre-wrap text-[12px] leading-[1.6] text-[var(--problem-detail-text)]">
                         {turn.prompt}
                       </p>
-                      <p className="m-0 whitespace-pre-wrap text-[11px] leading-[1.6] text-[#8f8f8f]">
+                      <p className="m-0 whitespace-pre-wrap text-[11px] leading-[1.6] text-[var(--problem-detail-muted)]">
                         {turn.aiResponse}
                       </p>
-
-                      {turn.toolCalls.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1.5 font-mono text-[9px] text-[#767676]">
-                          {turn.toolCalls.map((toolCall, toolIndex) => (
-                            <span
-                              className="border border-[#3f3f3f] px-1.5 py-0.5"
-                              key={`tool-${index}-${toolIndex}`}
-                              title={toolCall.path ?? toolCall.tool}
-                            >
-                              {toolLabels[toolCall.tool] ?? toolCall.tool}
-                              {toolCall.path
-                                ? ` ${toolCall.path.split('/').pop()}`
-                                : ''}
-                            </span>
-                          ))}
-                        </div>
-                      )}
 
                       {turn.changedFiles.length > 0 && (
                         <div className="mt-1.5 grid gap-0.5 font-mono text-[9px]">
@@ -812,20 +1299,196 @@ export default function ProblemDetailPage() {
                     </article>
                   ))}
                 </div>
-              ) : (
-                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#666]">
+              ) : activeTab === 'logs' ? (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[var(--problem-detail-subtle)]">
                   실행한 프롬프트가 없습니다.
+                </div>
+              ) : activeTab === 'test' && isGame ? (
+                previewHtml ? (
+                  <div
+                    className="relative h-full min-h-[320px] bg-[#090909] [&:fullscreen]:h-dvh [&:fullscreen]:w-dvw [&:fullscreen]:box-border [&:fullscreen]:bg-[#090909] [&:fullscreen]:p-6"
+                    ref={previewContainerRef}
+                  >
+                    <button
+                      className="absolute top-3 right-3 z-10 cursor-pointer border border-[#d6ff50] bg-[#090909]/90 px-3 py-1.5 font-mono text-[10px] font-bold tracking-[0.08em] text-[#d6ff50] hover:bg-[#d6ff50] hover:text-[#090909]"
+                      onClick={() => void handlePreviewFullscreen()}
+                      type="button"
+                    >
+                      {isPreviewFullscreen ? '전체 화면 닫기' : '확대 플레이'}
+                    </button>
+                    <iframe
+                      className="h-full min-h-[320px] w-full border border-[#3f3f3f] bg-white"
+                      key={`${previewHtml}-${previewSession}`}
+                      onLoad={(event) => focusGamePreview(event.currentTarget)}
+                      sandbox="allow-scripts"
+                      srcDoc={previewHtml}
+                      title="게임 미리보기"
+                      />
+                  </div>
+                ) : (
+                  <div className="grid min-h-[160px] place-items-center border border-[#343434] px-4 text-center font-mono text-[11px] leading-[1.7] text-[#777]">
+                    실행할 index.html 파일이 없습니다.
+                  </div>
+                )
+              ) : codeRunError ? (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#ff786b]">
+                  <div>
+                    <p className="m-0">{codeRunError}</p>
+                    <button
+                      className="mt-3 cursor-pointer border border-[#666] bg-transparent px-3 py-1.5 text-[10px] text-[#d0d0ca] hover:border-[#d6ff50] hover:text-[#d6ff50]"
+                      onClick={() => void handleCodeRunRequest()}
+                      type="button"
+                    >
+                      다시 채점하기
+                    </button>
+                  </div>
+                </div>
+              ) : isCodeRunLoading || codeRun?.status === 'QUEUED' ? (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#a3a3a3]">
+                  <div>
+                    <div className="text-[#d6ff50]">채점 중…</div>
+                    <div className="mt-2 text-[9px] text-[#666]">
+                      완료될 때까지 잠시 기다려주세요.
+                    </div>
+                  </div>
+                </div>
+              ) : codeRun ? (
+                <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif]">
+                  <div className="border border-[#3f3f3f] bg-[#111] px-4 py-3">
+                    <div className="flex items-end justify-between gap-4">
+                      <div>
+                        <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[#777]">
+                          TEST RESULT
+                        </p>
+                        <p className="mt-1 mb-0 text-[12px] text-[#f5f5ef]">
+                          테스트 케이스 채점 결과
+                        </p>
+                      </div>
+                      {visibleCodeRunTally ? (
+                        <div className="flex shrink-0 items-baseline gap-1 leading-none">
+                          <strong className="font-mono text-xl text-[#d6ff50]">
+                            {visibleCodeRunTally.passed}/{visibleCodeRunTally.total}
+                          </strong>
+                          <span className="text-[10px] leading-none text-[#8b8b8b]">
+                            개 통과
+                          </span>
+                        </div>
+                      ) : (
+                        <strong
+                          className={`font-mono text-[11px] ${
+                            codeRun.status === 'SUCCEEDED'
+                              ? 'text-[#d6ff50]'
+                              : 'text-[#ff786b]'
+                          }`}
+                        >
+                          {codeRunStatusLabels[codeRun.status]}
+                        </strong>
+                      )}
+                    </div>
+
+                    {visibleCodeRunTally && (
+                      <div
+                        aria-label={`테스트 케이스 ${visibleCodeRunTally.total}개 중 ${visibleCodeRunTally.passed}개 통과`}
+                        aria-valuemax={visibleCodeRunTally.total}
+                        aria-valuemin={0}
+                        aria-valuenow={visibleCodeRunTally.passed}
+                        className="mt-4 h-1.5 overflow-hidden bg-[#303030]"
+                        role="progressbar"
+                      >
+                        <div
+                          className="h-full bg-[#d6ff50]"
+                          style={{
+                            width: `${(visibleCodeRunTally.passed / visibleCodeRunTally.total) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] text-[#777]">
+                      <span>STATUS {codeRunStatusLabels[codeRun.status]}</span>
+                      {codeRun.turnOrdinal !== null && (
+                        <span>TURN {String(codeRun.turnOrdinal + 1).padStart(2, '0')}</span>
+                      )}
+                      {codeRun.durationMs !== null && (
+                        <span>{codeRun.durationMs.toLocaleString('ko-KR')}ms</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {codeRun.cases.length > 0 ? (
+                    <div className="mt-3 grid border-x border-t border-[#343434]">
+                      {codeRun.cases.map((testCase, index) => (
+                        <article
+                          className="border-b border-[#343434] px-3 py-2.5"
+                          key={`${testCase.className ?? 'case'}-${testCase.name}-${index}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="m-0 break-words text-[11px] leading-[1.5] text-[#d0d0ca]">
+                                {testCase.name}
+                              </p>
+                              <div className="mt-1 flex flex-wrap gap-2 font-mono text-[8px] text-[#666]">
+                                {testCase.className && <span>{testCase.className}</span>}
+                                {testCase.durationMs !== null && (
+                                  <span>{testCase.durationMs.toLocaleString('ko-KR')}ms</span>
+                                )}
+                              </div>
+                            </div>
+                            <strong
+                              className={`shrink-0 font-mono text-[10px] ${codeRunCaseColorClasses[testCase.status]}`}
+                            >
+                              {codeRunCaseLabels[testCase.status]}
+                            </strong>
+                          </div>
+                          {(testCase.status === 'FAILED' ||
+                            testCase.status === 'ERROR') &&
+                            testCase.message && (
+                              <p className="mt-2 mb-0 break-words border-l-2 border-[#555] pl-2 font-mono text-[9px] leading-[1.5] text-[#999]">
+                                {testCase.message}
+                              </p>
+                            )}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-3 border border-[#343434] px-3 py-4 text-center text-[11px] text-[#777]">
+                      테스트 케이스 기록이 없습니다.
+                    </div>
+                  )}
+
+                  {(codeRun.stdout || codeRun.stderr) && (
+                    <details className="mt-3 border border-[#343434] bg-[#111]">
+                      <summary className="cursor-pointer px-3 py-2 font-mono text-[10px] text-[#a3a3a3] hover:text-[#f5f5ef]">
+                        전체 실행 로그
+                      </summary>
+                      {codeRun.stderr && (
+                        <pre className="workspace-scrollbar m-0 max-h-48 overflow-auto border-t border-[#343434] p-3 font-mono text-[9px] leading-[1.6] whitespace-pre-wrap text-[#ff786b]">
+                          {codeRun.stderr}
+                        </pre>
+                      )}
+                      {codeRun.stdout && (
+                        <pre className="workspace-scrollbar m-0 max-h-48 overflow-auto border-t border-[#343434] p-3 font-mono text-[9px] leading-[1.6] whitespace-pre-wrap text-[#aaa]">
+                          {codeRun.stdout}
+                        </pre>
+                      )}
+                    </details>
+                  )}
+                </div>
+              ) : (
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[var(--problem-detail-subtle)]">
+                  테스트 결과가 없습니다.
                 </div>
               )}
             </div>
           </section>
 
-          <section className="flex min-h-0 flex-col overflow-hidden pt-2 max-[1080px]:overflow-visible max-[1080px]:pt-0 max-[700px]:pt-[22px]">
+          {!isPlaying && (
+            <section className="flex min-h-0 flex-col overflow-hidden pt-2 max-[1080px]:overflow-visible max-[1080px]:pt-0 max-[700px]:pt-[22px]">
             <div className={labelClasses}>PROMPT / MAX 4,000</div>
-            <div className="relative mt-2 shrink-0 border border-[#555] bg-[#131313] focus-within:border-[#d6ff50]">
+            <div className="relative mt-2 shrink-0 border border-[var(--problem-detail-border-strong)] bg-[var(--problem-detail-input-bg)] focus-within:border-[var(--problem-detail-acid)]">
               <textarea
                 aria-keyshortcuts="Control+Enter Meta+Enter"
-                className="workspace-scrollbar block h-[108px] w-full resize-none overflow-y-auto border-0 bg-transparent py-3 pr-16 pl-3.5 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
+                className="workspace-scrollbar block h-[108px] w-full resize-none overflow-y-auto border-0 bg-transparent py-3 pr-16 pl-3.5 text-[13px] leading-[1.6] text-[var(--problem-detail-text)] outline-0 [scrollbar-gutter:stable] disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isRunning || isSubmitting || isSubmitted}
                 maxLength={4000}
                 onChange={(event) => setPrompt(event.target.value)}
@@ -840,7 +1503,7 @@ export default function ProblemDetailPage() {
               />
               <button
                 aria-label="프롬프트 실행"
-                className="absolute right-4 bottom-2 grid size-7 cursor-pointer place-items-center rounded-full border border-[#d6ff50] bg-[#d6ff50] text-[#090909] transition-colors hover:bg-transparent hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-45"
+                className="absolute right-4 bottom-2 grid size-7 cursor-pointer place-items-center rounded-full border border-[var(--problem-detail-acid)] bg-[var(--problem-detail-acid)] text-[#090909] transition-colors hover:bg-transparent hover:text-[var(--problem-detail-acid)] disabled:cursor-not-allowed disabled:opacity-45"
                 disabled={isRunning || isSubmitting || isSubmitted || !prompt.trim()}
                 onClick={handleRun}
                 title="프롬프트 실행"
@@ -866,7 +1529,7 @@ export default function ProblemDetailPage() {
                 )}
               </button>
             </div>
-            <div className="mt-1 flex items-center justify-between gap-3 px-3.5 font-mono text-[9px] text-[#777]">
+            <div className="mt-1 flex items-center justify-between gap-3 px-3.5 font-mono text-[9px] text-[var(--problem-detail-subtle)]">
               <span>Ctrl/Cmd + Enter 전송 · Enter 줄바꿈</span>
               <span>
                 <b>{prompt.length.toLocaleString('ko-KR')}</b> / 4,000
@@ -877,7 +1540,7 @@ export default function ProblemDetailPage() {
               {status && (
                 <div
                   className={[
-                    'mb-2 border border-[#484848] p-2 font-mono text-[10px] leading-[1.5] text-[#a3a3a3]',
+                    'mb-2 border border-[var(--problem-detail-border-strong)] p-2 font-mono text-[10px] leading-[1.5] text-[var(--problem-detail-muted)]',
                     status.type === 'error'
                       ? 'border-[#ff786b] text-[#ff786b]'
                       : '',
@@ -889,6 +1552,7 @@ export default function ProblemDetailPage() {
               )}
 
               <Button
+                className="problem-detail-primary-action"
                 disabled={isRunning || isSubmitting || !(canSubmit || isSubmitted)}
                 fullWidth
                 onClick={handleSubmit}
@@ -899,7 +1563,8 @@ export default function ProblemDetailPage() {
               </Button>
             </div>
 
-          </section>
+            </section>
+          )}
         </aside>
       </main>
     </div>
