@@ -6,6 +6,7 @@ import type { Attempt, AttemptFeedback } from '../features/attempt/types';
 import { useAuth } from '../features/auth/AuthContext';
 import PromptFeedback from '../features/feedback/PromptFeedback';
 import { useTheme } from '../features/theme/ThemeContext';
+import CodeViewer from '../features/workspace/CodeViewer';
 import { nextTabIndex } from '../shared/a11y/tabKeyboard';
 import { ApiError, API_ERROR_CODES, isAbortError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
@@ -401,9 +402,12 @@ export default function FeedbackPage() {
                             <div className="border-b border-[var(--feedback-border)] px-4 py-3 font-mono text-xs font-bold text-[var(--feedback-muted)]">
                               {file.path}
                             </div>
-                            <pre className="workspace-scrollbar m-0 min-h-[280px] max-w-full overflow-auto p-[18px] font-mono text-[13px] leading-[1.7] text-[var(--feedback-code-text)] max-[760px]:min-h-[220px]">
-                              <code>{file.content ?? '(deleted)'}</code>
-                            </pre>
+                            <div className="workspace-scrollbar min-h-[280px] max-w-full overflow-auto max-[760px]:min-h-[220px]">
+                              <CodeViewer
+                                code={file.content ?? '(deleted)'}
+                                path={file.path}
+                              />
+                            </div>
                           </div>
                         ))}
                       </div>

@@ -29,6 +29,7 @@ import type {
 } from '../features/relay/types';
 import { useRelayRoom } from '../features/relay/useRelayRoom';
 import { useRelayRtc, type RelayPeerView } from '../features/relay/useRelayRtc';
+import CodeViewer from '../features/workspace/CodeViewer';
 import { ApiError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Header from '../shared/components/Header';
@@ -799,22 +800,11 @@ function CodePanel({
 
       <div className="min-h-0 flex-1 overflow-auto border border-[#292929] bg-[#202020]">
         {selected ? (
-          <div className="min-w-max py-3 font-mono text-xs leading-[1.9] whitespace-pre text-[#e3e3dd] [tab-size:2]">
-            {selected.content.split('\n').map((line, index) => (
-              <div
-                className="grid min-h-[1.9em] grid-cols-[2.5rem_max-content]"
-                key={`${index}-${line.slice(0, 20)}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="sticky left-0 border-r border-[#333] bg-[#202020] pr-3 text-right text-[#686868] select-none"
-                >
-                  {index + 1}
-                </span>
-                <code className="px-5">{line || ' '}</code>
-              </div>
-            ))}
-          </div>
+          <CodeViewer
+            code={selected.content}
+            gutterWidth="2.5rem"
+            path={selected.path}
+          />
         ) : (
           <div className="grid h-full place-items-center font-mono text-[11px] text-[#666]">
             코드를 불러오는 중…

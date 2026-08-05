@@ -32,6 +32,7 @@ import type {
 import { getProblemDetail } from '../features/problem/api';
 import type { ProblemDetail, RepositoryFile } from '../features/problem/types';
 import { useTheme } from '../features/theme/ThemeContext';
+import CodeViewer from '../features/workspace/CodeViewer';
 import { nextTabIndex } from '../shared/a11y/tabKeyboard';
 import {
   ApiError,
@@ -1125,22 +1126,7 @@ export default function ProblemDetailPage() {
               aria-hidden="true"
               className="sticky top-0 z-[2] h-8 min-w-full border-b border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-header)]"
             />
-            <div className="min-w-max py-3 font-mono text-xs leading-[1.9] whitespace-pre text-[var(--problem-detail-code-text)] [tab-size:2]">
-              {selectedCode.split('\n').map((line, index) => (
-                <div
-                  className="grid min-h-[1.9em] grid-cols-[2.0rem_max-content]"
-                  key={`${index}-${line}`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="sticky left-0 border-r border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-bg)] pr-3 text-right text-[var(--problem-detail-subtle)] select-none"
-                  >
-                    {index + 1}
-                  </span>
-                  <code className="px-5">{line || ' '}</code>
-                </div>
-              ))}
-            </div>
+            <CodeViewer code={selectedCode} path={selectedFile} />
           </div>
         </section>
 
