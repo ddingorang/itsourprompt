@@ -278,8 +278,23 @@ export function useRelayRtc(
   );
 
   const sendReaction = useCallback(
-    (emoji: string) => broadcastData({ emoji, kind: 'reaction' }),
-    [broadcastData],
+    (emoji: string) => {
+      broadcastData({ emoji, kind: 'reaction' });
+
+      if (myUserId === null) return;
+      patchPeer(myUserId, { reaction: emoji });
+
+      const previous = reactionTimersRef.current.get(myUserId);
+      if (previous !== undefined) window.clearTimeout(previous);
+      reactionTimersRef.current.set(
+        myUserId,
+        window.setTimeout(
+          () => patchPeer(myUserId, { reaction: null }),
+          REACTION_VISIBLE_MS,
+        ),
+      );
+    },
+    [broadcastData, myUserId, patchPeer],
   );
 
   const toggleAudio = useCallback(async () => {

@@ -438,7 +438,7 @@ function GameView({
   );
 
   return (
-    <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[250px_minmax(320px,1fr)_minmax(380px,440px)] max-[900px]:block max-[900px]:overflow-visible">
+    <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[290px_minmax(320px,1fr)_minmax(380px,440px)] max-[900px]:block max-[900px]:overflow-visible">
       {/* 좌: 좌석과 점수 */}
       <aside className="flex min-h-0 flex-col gap-5 overflow-hidden border-r border-[#343434] px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-r-0 max-[900px]:border-b">
         <div>
@@ -475,6 +475,8 @@ function GameView({
         )}
 
         <VoicePanel compact rtc={rtc} />
+
+        <ReactionBar rtc={rtc} />
 
         <RelayFileExplorer
           changedPaths={lastTurn?.changedPaths ?? []}
@@ -562,8 +564,6 @@ function GameView({
             </div>
           )}
         </div>
-
-        <ReactionBar rtc={rtc} />
 
         <PromptForm
           isMyTurn={isMyTurn}
@@ -748,10 +748,10 @@ const REACTIONS = ['👍', '🔥', '😱', '🤔', '👏'] as const;
 
 function ReactionBar({ rtc }: { rtc: ReturnType<typeof useRelayRtc> }) {
   return (
-    <div className="flex gap-2">
+    <div className="grid grid-cols-5 gap-2">
       {REACTIONS.map((emoji) => (
         <button
-          className="cursor-pointer border border-[#3f3f3f] bg-transparent px-2.5 py-1.5 text-base hover:border-[#d6ff50]"
+          className="cursor-pointer border border-[#3f3f3f] bg-transparent px-1 py-1.5 text-base hover:border-[#d6ff50]"
           key={emoji}
           onClick={() => rtc.sendReaction(emoji)}
           type="button"
