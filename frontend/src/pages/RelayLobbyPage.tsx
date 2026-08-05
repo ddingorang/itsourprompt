@@ -10,7 +10,7 @@ import Button from '../shared/components/Button';
 import Header from '../shared/components/Header';
 
 const labelClasses =
-  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
+  'font-mono text-base leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
 
 const fieldClasses =
   'w-full border border-[#3f3f3f] bg-[#151515] px-3 py-2.5 font-mono text-sm ' +
@@ -147,8 +147,8 @@ export default function RelayLobbyPage() {
                     className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[#222] px-4 py-3 last:border-b-0"
                     key={room.roomId}
                   >
-                    <span className="font-mono text-[11px] text-[#666]">
-                      #{room.roomId}
+                    <span className="font-mono text-[17px] text-[#666]">
+                      {String(room.roomId).padStart(2, '0')}
                     </span>
                     {/* 이름 도입 전에 만들어진 방은 name이 없다 — 문제 제목이 그 자리를 대신한다. */}
                     <span className="min-w-0 flex-1 text-[13px] font-bold">
