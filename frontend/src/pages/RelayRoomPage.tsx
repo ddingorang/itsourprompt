@@ -311,21 +311,29 @@ function WaitingView({
       )}
 
       <div className="flex gap-3">
-        {isHost && (
-          <Button disabled={!enough || starting} onClick={() => void handleStart()}>
-            {starting
-              ? '시작하는 중…'
-              : enough
-                ? '게임 시작'
-                : '2명 이상 모여야 시작할 수 있습니다'}
-          </Button>
-        )}
+        {isHost &&
+          (enough ? (
+            <Button disabled={starting} onClick={() => void handleStart()}>
+              {starting ? '시작하는 중…' : '게임 시작'}
+            </Button>
+          ) : (
+            <span
+              aria-disabled="true"
+              className="inline-flex min-h-11 cursor-not-allowed items-center justify-center border border-[#3f3f3f] bg-[#171717] px-[18px] text-[14px] leading-none font-extrabold tracking-[-0.01em] text-[#666]"
+            >
+              2명 이상 모여야 시작할 수 있습니다
+            </span>
+          ))}
         {!isHost && (
           <p className="m-0 self-center font-mono text-xs text-[#a3a3a3]">
             방장이 시작하면 자동으로 게임 화면으로 넘어갑니다.
           </p>
         )}
-        <Button onClick={() => void handleLeave()} variant="ghost">
+        <Button
+          className="hover:!border-[#d6ff50] hover:!bg-transparent hover:!text-[#d6ff50] focus-visible:!border-[#d6ff50] focus-visible:!bg-transparent focus-visible:!text-[#d6ff50]"
+          onClick={() => void handleLeave()}
+          variant="ghost"
+        >
           나가기
         </Button>
       </div>
