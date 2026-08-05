@@ -775,69 +775,30 @@ html { scroll-behavior: smooth; }
   display: none;
 }
 
-/* 공용 코드 뷰어(features/workspace/CodeViewer) 색 배선. 기본값은 릴레이 화면이
- * 쓰던 하드코딩 색과 동일하다 — 릴레이는 다크 전용이라 페이지 변수가 없다. */
-.code-viewer {
-  --code-viewer-text: #e3e3dd;
-  --code-viewer-gutter-text: #686868;
-  --code-viewer-gutter-border: #333;
-  --code-viewer-gutter-bg: #202020;
-
-  /* 구문 강조 팔레트(VS Code 다크 계열). acid(#d6ff50)는 이 화면들에서 UI 강조
-   * 전용으로 이미 포화 상태라 코드 토큰에는 절대 쓰지 않는다. */
-  --code-keyword: #c586c0;
-  --code-type: #4ec9b0;
-  --code-string: #ce9178;
-  --code-number: #b5cea8;
-  --code-comment: #6a9955;
-  --code-function: #dcdcaa;
-  --code-punct: #808080;
-  --code-tag: #569cd6;
-  --code-attr: #9cdcfe;
-
-  /* diff 강조(어템프트 화면 전용). 막대·기호는 진하게, 배경은 토큰 색이
-   * 살도록 8% 수준으로 옅게. 삭제 빨강은 화면의 에러 색 #ff786b와 맞춘다. */
-  --code-diff-added-bar: #3fb950;
-  --code-diff-added-bg: #3fb95014;
-  --code-diff-changed-bar: #d29922;
-  --code-diff-changed-bg: #d2992214;
-  --code-diff-deleted-bar: #ff786b;
-  --code-diff-deleted-bg: #ff786b12;
-}
-
-/* 라이트 팔레트는 라이트 모드를 가진 페이지에만 건다. ThemeProvider가 html에도
- * data-color-mode를 심으므로, 페이지를 명시하지 않으면 다크 전용인 릴레이 화면까지
- * 라이트 색으로 칠해진다. */
-.problem-detail-page[data-color-mode='light'] .code-viewer,
-.feedback-page[data-color-mode='light'] .code-viewer {
-  --code-keyword: #0000ff;
-  --code-type: #267f99;
-  --code-string: #a31515;
-  --code-number: #098658;
-  --code-comment: #008000;
-  --code-function: #795e26;
-  --code-punct: #6a6a6a;
-  --code-tag: #800000;
-  --code-attr: #e50000;
-
-  --code-diff-added-bar: #1a7f37;
-  --code-diff-added-bg: #1a7f371f;
-  --code-diff-changed-bar: #9a6700;
-  --code-diff-changed-bg: #9a67001f;
-  --code-diff-deleted-bar: #cf222e;
-  --code-diff-deleted-bg: #cf222e1a;
-}
-
-.problem-detail-page .code-viewer {
-  --code-viewer-text: var(--problem-detail-code-text);
-  --code-viewer-gutter-text: var(--problem-detail-subtle);
-  --code-viewer-gutter-border: var(--problem-detail-border);
-  --code-viewer-gutter-bg: var(--problem-detail-code-bg);
-}
-
 .feedback-page .code-viewer {
   --code-viewer-text: var(--feedback-code-text);
   --code-viewer-gutter-text: var(--feedback-subtle);
   --code-viewer-gutter-border: var(--feedback-border);
   --code-viewer-gutter-bg: var(--feedback-code-bg);
+}
+
+@media (max-width: 760px) {
+  .header-menu-toggle {
+    display: block !important;
+  }
+
+  .header-navigation {
+    position: absolute;
+    top: 100%;
+    right: 1rem;
+    left: auto;
+    z-index: 20;
+    display: none !important;
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+  }
+
+  .header-navigation[data-open='true'] {
+    display: flex !important;
+  }
 }
