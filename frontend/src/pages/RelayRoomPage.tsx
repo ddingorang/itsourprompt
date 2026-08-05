@@ -225,12 +225,16 @@ function RelayRoomScreen({
   }
 
   const isWaiting = room.status === 'WAITING';
-  const usesPageScroll = isWaiting || room.status === 'FINISHED';
+  const isFinished = room.status === 'FINISHED';
 
   return (
     <div
       className={`${pageClasses} ${
-        usesPageScroll ? '!overflow-x-hidden !overflow-y-auto' : ''
+        isWaiting
+          ? '!overflow-x-hidden !overflow-y-auto'
+          : isFinished
+            ? '!overflow-x-hidden !overflow-y-auto'
+            : ''
       }`}
     >
       <Header variant={isWaiting ? 'default' : 'workspace'} />
@@ -1007,11 +1011,15 @@ function FinishedView({
   const { feedbackFailed, turns } = roomState;
   const [feedback, setFeedback] = useState<RelayFeedback | null>(null);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [selectedTurnIndex, setSelectedTurnIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     void getRelayFeedback(room.roomId, controller.signal)
-      .then(setFeedback)
+      .then((result) => {
+        setFeedback(result);
+        setSelectedTurnIndex(result.turns[0]?.turnIndex ?? null);
+      })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
           setFeedbackError(
@@ -1023,6 +1031,10 @@ function FinishedView({
   }, [room.roomId]);
 
   const scores = useMemo(() => totalScores(turns), [turns]);
+  const selectedTurnPosition =
+    feedback?.turns.findIndex((turn) => turn.turnIndex === selectedTurnIndex) ?? -1;
+  const selectedFeedbackTurn =
+    selectedTurnPosition >= 0 ? feedback?.turns[selectedTurnPosition] ?? null : null;
 
   return (
     <main className="mx-auto grid w-[min(calc(90%_-_360px),1040px)] flex-1 content-start gap-7 py-10 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)]">
@@ -1109,50 +1121,116 @@ function FinishedView({
       )}
 
       {feedback && (
-        <>
-          <section className="grid gap-4">
-            <span className={smallLabelClasses}>턴별(주자별) 피드백</span>
-            {feedback.turns.map((turn) => {
-              // 피드백 응답에는 스킵 여부가 없다 — 턴 이력에서 찾아 배지를 단다.
-              const skipped = turns.find(
-                (record) => record.turnIndex === turn.turnIndex,
-              )?.skipped;
-
-              return (
-              <article
-                className={`border-l-2 pl-4 ${skipped ? 'border-[#4a3a1e] opacity-70' : 'border-[#d6ff50]'}`}
-                key={turn.turnIndex}
-              >
-                <div className="flex flex-wrap items-baseline gap-3 font-mono text-[11px] font-bold">
-                  <span className={skipped ? 'text-[#ffb86b]' : 'text-[#d6ff50]'}>
+        <section
+          aria-label="턴별 피드백"
+          className="border border-[#d6ff50] bg-[#121212] [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]"
+        >
+          <div className="grid min-h-[58px] grid-cols-[220px_40px_minmax(0,1fr)_40px] border-b border-[#393939] max-[760px]:grid-cols-[40px_minmax(0,1fr)_40px]">
+            <span className="grid place-items-center border-r border-[#393939] bg-[#121212] px-[22px] text-center font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] max-[760px]:hidden">
+              TURN FEEDBACK
+            </span>
+            <button
+              aria-label="이전 턴 피드백 보기"
+              className="cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
+              disabled={selectedTurnPosition <= 0}
+              onClick={() =>
+                setSelectedTurnIndex(feedback.turns[selectedTurnPosition - 1]?.turnIndex ?? null)
+              }
+              type="button"
+            >
+              ‹
+            </button>
+            <div
+              className="flex min-w-0 flex-wrap items-stretch"
+              role="tablist"
+            >
+              {feedback.turns.map((turn) => {
+                const selected = turn.turnIndex === selectedTurnIndex;
+                return (
+                  <button
+                    aria-selected={selected}
+                    className={`relative min-h-[58px] min-w-[100px] flex-1 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm font-bold tracking-[0.06em] hover:text-[#f5f5ef] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:h-[3px] ${
+                      selected
+                        ? 'text-[#d6ff50] after:bg-[#d6ff50]'
+                        : 'text-[#a3a3a3] after:bg-transparent'
+                    }`}
+                    key={turn.turnIndex}
+                    onClick={() => setSelectedTurnIndex(turn.turnIndex)}
+                    role="tab"
+                    tabIndex={selected ? 0 : -1}
+                    type="button"
+                  >
                     TURN {String(turn.turnIndex + 1).padStart(2, '0')}
-                  </span>
-                  <span className="text-[#f5f5ef]">{turn.nickname}</span>
-                  <span className="text-[#777]">
-                    {skipped
-                      ? '건너뜀 (이탈 또는 시간 초과)'
-                      : turn.passedCount === null
-                        ? '채점 없음'
-                        : `${turn.passedCount}/${turn.totalCount} 통과`}
-                  </span>
-                  {turn.delta !== null && (
-                    <span
-                      className={turn.delta < 0 ? 'text-[#ff786b]' : 'text-[#d6ff50]'}
-                    >
-                      기여도 {turn.delta > 0 ? `+${turn.delta}` : turn.delta}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              aria-label="다음 턴 피드백 보기"
+              className="cursor-pointer border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
+              disabled={selectedTurnPosition >= feedback.turns.length - 1}
+              onClick={() =>
+                setSelectedTurnIndex(feedback.turns[selectedTurnPosition + 1]?.turnIndex ?? null)
+              }
+              type="button"
+            >
+              ›
+            </button>
+          </div>
+
+          {selectedFeedbackTurn && (() => {
+            const skipped = turns.find(
+              (record) => record.turnIndex === selectedFeedbackTurn.turnIndex,
+            )?.skipped;
+
+            return (
+              <article
+                className="min-w-0 px-[28px] py-[22px] max-[640px]:px-[22px]"
+                role="tabpanel"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
+                  <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
+                    TURN {String(selectedFeedbackTurn.turnIndex + 1).padStart(2, '0')}{' '}
+                    FEEDBACK
+                  </h2>
+                  <div className="ml-auto flex flex-wrap items-baseline justify-end gap-3 font-mono text-[13px] font-bold">
+                    <span className="text-[#f5f5ef]">{selectedFeedbackTurn.nickname}</span>
+                    <span className="text-[#777]">
+                      {skipped
+                        ? '건너뜀 (이탈 또는 시간 초과)'
+                        : selectedFeedbackTurn.passedCount === null
+                          ? '채점 없음'
+                          : `${selectedFeedbackTurn.passedCount}/${selectedFeedbackTurn.totalCount} 통과`}
                     </span>
+                    {selectedFeedbackTurn.delta !== null && (
+                      <span
+                        className={
+                          selectedFeedbackTurn.delta < 0
+                            ? 'text-[#ff786b]'
+                            : 'text-[#d6ff50]'
+                        }
+                      >
+                        기여도{' '}
+                        {selectedFeedbackTurn.delta > 0
+                          ? `+${selectedFeedbackTurn.delta}`
+                          : selectedFeedbackTurn.delta}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-[18px] w-full [&>div]:[word-break:normal]">
+                  {selectedFeedbackTurn.feedback ? (
+                    <PromptFeedback feedback={selectedFeedbackTurn.feedback} />
+                  ) : (
+                    <p className="m-0 font-mono text-xs text-[#777]">
+                      제공된 피드백이 없습니다.
+                    </p>
                   )}
                 </div>
-                {turn.feedback && (
-                  <p className="mt-2 mb-0 text-[13px] leading-[1.7] text-[#c7c7c2] [word-break:keep-all]">
-                    {turn.feedback}
-                  </p>
-                )}
               </article>
-              );
-            })}
-          </section>
-        </>
+            );
+          })()}
+        </section>
       )}
 
       <div>
