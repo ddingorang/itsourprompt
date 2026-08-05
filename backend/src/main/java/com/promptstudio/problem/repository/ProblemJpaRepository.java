@@ -28,4 +28,8 @@ interface ProblemJpaRepository extends JpaRepository<Problem, Long>, ProblemRepo
     @Override
     @Query("select f from Problem p join p.testFiles f where p.id = :problemId order by index(f)")
     List<ProblemFile> findTestFiles(@Param("problemId") Long problemId);
+
+    @Override
+    @Query("select p.language from Problem p where p.id = :problemId")
+    Optional<String> findLanguageById(@Param("problemId") Long problemId);
 }

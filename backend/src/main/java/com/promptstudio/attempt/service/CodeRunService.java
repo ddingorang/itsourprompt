@@ -111,6 +111,7 @@ public class CodeRunService {
 
         // 문제가 아니라 어템프트에서 problemId를 얻는다. 실행 시점의 테스트로 채점된다.
         List<ProblemFile> testFiles = problemRepository.findTestFiles(attempt.problemId());
+        String language = problemRepository.findLanguageById(attempt.problemId()).orElse("java");
         List<ProblemFile> files = attempt.filesAsOf(turnOrdinal);
         UUID runId = UUID.randomUUID();
 
@@ -120,9 +121,9 @@ public class CodeRunService {
         }
 
         // QUEUED 행이 커밋된 뒤에 발행한다.
-        codeRunPublisher.publish(runId, attemptId, files, testFiles);
-        log.info("[CODE RUN] queued | runId={} | attemptId={} | turnOrdinal={} | files={} | testFiles={}",
-                runId, attemptId, turnOrdinal, files.size(), testFiles.size());
+        codeRunPublisher.publish(runId, attemptId, language, files, testFiles);
+        log.info("[CODE RUN] queued | runId={} | attemptId={} | turnOrdinal={} | language={} | files={} | testFiles={}",
+                runId, attemptId, turnOrdinal, language, files.size(), testFiles.size());
 
         return CodeRunView.queued(runId, attemptId, turnOrdinal);
     }

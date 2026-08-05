@@ -27,6 +27,7 @@ class RunMessageContractTest {
 
         assertThat(message.runId()).isEqualTo(RUN_ID);
         assertThat(message.attemptId()).isEqualTo(7L);
+        assertThat(message.language()).isEqualTo("java");
         assertThat(message.files()).hasSize(1);
         assertThat(message.files().getFirst().path()).isEqualTo("src/main/java/Main.java");
         assertThat(message.files().getFirst().content()).contains("Hello World");
@@ -45,6 +46,16 @@ class RunMessageContractTest {
                 """, RunRequestMessage.class);
 
         assertThat(message.testFiles()).isNull();
+    }
+
+    /** language 도입 전의 백엔드가 보낸 메시지는 null로 읽히고, 워커는 java로 해석한다. */
+    @Test
+    void language가_없는_옛_메시지도_읽는다() throws IOException {
+        RunRequestMessage message = objectMapper.readValue("""
+                {"runId":"3f2a1b4c-5d6e-7f80-9a1b-2c3d4e5f6071","attemptId":7,"files":[]}
+                """, RunRequestMessage.class);
+
+        assertThat(message.language()).isNull();
     }
 
     @Test

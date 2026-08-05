@@ -103,6 +103,7 @@ class ProblemApiTest extends DatabaseTest {
                 "block dodge",
                 "# block dodge",
                 "game",
+                "java",
                 List.of(new ProblemFile("index.html", "<!doctype html>")),
                 List.of()
         ));

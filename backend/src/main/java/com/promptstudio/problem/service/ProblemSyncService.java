@@ -87,12 +87,14 @@ public class ProblemSyncService {
 
             if (problem == null) {
                 problemRepository.save(new Problem(
-                        source.slug(), source.title(), source.specMd(), source.type(), source.files(), source.testFiles()));
+                        source.slug(), source.title(), source.specMd(), source.type(), source.language(),
+                        source.files(), source.testFiles()));
                 created++;
                 continue;
             }
 
-            problem.updateFrom(source.title(), source.specMd(), source.type(), source.files(), source.testFiles());
+            problem.updateFrom(source.title(), source.specMd(), source.type(), source.language(),
+                    source.files(), source.testFiles());
             problem.activate();
             problemRepository.save(problem);
             updated++;

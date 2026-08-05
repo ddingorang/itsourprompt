@@ -19,11 +19,11 @@ public class RabbitCodeRunPublisher implements CodeRunPublisher {
     }
 
     @Override
-    public void publish(UUID runId, Long attemptId, List<ProblemFile> files, List<ProblemFile> testFiles) {
+    public void publish(UUID runId, Long attemptId, String language, List<ProblemFile> files, List<ProblemFile> testFiles) {
         rabbitTemplate.convertAndSend(
                 RunQueues.EXCHANGE,
                 RunQueues.REQUEST_ROUTING_KEY,
-                new RunRequestMessage(runId, attemptId, toPayload(files), toPayload(testFiles))
+                new RunRequestMessage(runId, attemptId, language, toPayload(files), toPayload(testFiles))
         );
     }
 

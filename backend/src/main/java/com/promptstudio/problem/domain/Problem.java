@@ -38,6 +38,13 @@ public class Problem {
     @Column(name = "problem_type", nullable = false, length = 20)
     private String type = "coding";
 
+    /**
+     * 채점 언어. 언어별 워커 라우팅과 AI 생성 프롬프트가 이 값을 본다.
+     * game 문제는 채점을 하지 않아 이 값을 쓰지 않는다(기본값 java가 그대로 남는다).
+     */
+    @Column(name = "language", nullable = false, length = 20)
+    private String language = "java";
+
     @ElementCollection
     @CollectionTable(name = "problem_file", joinColumns = @JoinColumn(name = "problem_id"))
     @OrderColumn(name = "ordinal")
@@ -59,7 +66,7 @@ public class Problem {
     }
 
     public Problem(String slug, String title, String specMd, List<ProblemFile> files, List<ProblemFile> testFiles) {
-        this(null, slug, title, specMd, "coding", files, testFiles);
+        this(null, slug, title, specMd, "coding", "java", files, testFiles);
     }
 
     public Problem(
@@ -70,7 +77,7 @@ public class Problem {
             List<ProblemFile> files,
             List<ProblemFile> testFiles
     ) {
-        this(id, slug, title, specMd, "coding", files, testFiles);
+        this(id, slug, title, specMd, "coding", "java", files, testFiles);
     }
 
     public Problem(
@@ -78,10 +85,11 @@ public class Problem {
             String title,
             String specMd,
             String type,
+            String language,
             List<ProblemFile> files,
             List<ProblemFile> testFiles
     ) {
-        this(null, slug, title, specMd, type, files, testFiles);
+        this(null, slug, title, specMd, type, language, files, testFiles);
     }
 
     public Problem(
@@ -90,6 +98,7 @@ public class Problem {
             String title,
             String specMd,
             String type,
+            String language,
             List<ProblemFile> files,
             List<ProblemFile> testFiles
     ) {
@@ -98,6 +107,7 @@ public class Problem {
         this.title = title;
         this.specMd = specMd;
         this.type = type;
+        this.language = language;
         this.files = new ArrayList<>(files);
         this.testFiles = new ArrayList<>(testFiles);
     }
@@ -116,9 +126,21 @@ public class Problem {
             List<ProblemFile> files,
             List<ProblemFile> testFiles
     ) {
+        updateFrom(title, specMd, type, "java", files, testFiles);
+    }
+
+    public void updateFrom(
+            String title,
+            String specMd,
+            String type,
+            String language,
+            List<ProblemFile> files,
+            List<ProblemFile> testFiles
+    ) {
         this.title = title;
         this.specMd = specMd;
         this.type = type;
+        this.language = language;
         this.files.clear();
         this.files.addAll(files);
         this.testFiles.clear();
@@ -151,6 +173,10 @@ public class Problem {
 
     public String type() {
         return type;
+    }
+
+    public String language() {
+        return language;
     }
 
     public List<ProblemFile> files() {
