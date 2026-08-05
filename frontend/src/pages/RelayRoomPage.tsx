@@ -82,6 +82,54 @@ function totalScores(turns: RelayTurnRecord[]): Map<number, number> {
   return scores;
 }
 
+type RelayFileTreeNode = {
+  children: RelayFileTreeNode[];
+  name: string;
+  path: string;
+  type: 'file' | 'folder';
+};
+
+function createRelayFileTree(paths: string[]): RelayFileTreeNode[] {
+  const root: RelayFileTreeNode[] = [];
+
+  [...paths].sort((a, b) => a.localeCompare(b)).forEach((path) => {
+    const normalizedPath = path.replaceAll('\\', '/').replace(/^\/+|\/+$/g, '');
+    const segments = normalizedPath.split('/').filter(Boolean);
+    let children = root;
+
+    segments.forEach((segment, index) => {
+      const isFile = index === segments.length - 1;
+      const nodePath = segments.slice(0, index + 1).join('/');
+      let node = children.find(
+        (item) => item.name === segment && item.type === (isFile ? 'file' : 'folder'),
+      );
+
+      if (!node) {
+        node = {
+          children: [],
+          name: segment,
+          path: isFile ? path : nodePath,
+          type: isFile ? 'file' : 'folder',
+        };
+        children.push(node);
+      }
+
+      children = node.children;
+    });
+  });
+
+  const sortNodes = (nodes: RelayFileTreeNode[]) => {
+    nodes.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    nodes.forEach((node) => sortNodes(node.children));
+  };
+
+  sortNodes(root);
+  return root;
+}
+
 export default function RelayRoomPage() {
   const roomId = parseRouteId(useParams().roomId);
   const { user } = useAuth();
@@ -370,6 +418,7 @@ function GameView({
     turns,
   } = roomState;
   const [panelTab, setPanelTab] = useState<'problem' | 'live'>('problem');
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
 
   const me = room.participants.find((participant) => participant.userId === myUserId);
   const isMyTurn =
@@ -394,7 +443,7 @@ function GameView({
   return (
     <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[250px_minmax(320px,1fr)_minmax(380px,440px)] max-[900px]:block max-[900px]:overflow-visible">
       {/* 좌: 좌석과 점수 */}
-      <aside className="flex min-h-0 flex-col gap-5 overflow-y-auto border-r border-[#343434] px-5 py-[22px] max-[900px]:border-r-0 max-[900px]:border-b">
+      <aside className="flex min-h-0 flex-col gap-5 overflow-hidden border-r border-[#343434] px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-r-0 max-[900px]:border-b">
         <div>
           <div className={labelClasses}>{room.name ?? `ROOM #${room.roomId}`}</div>
           <p className="mt-1 mb-0 font-mono text-[10px] text-[#777]">
@@ -425,11 +474,23 @@ function GameView({
 
         <VoicePanel rtc={rtc} />
 
+        <RelayFileExplorer
+          changedPaths={lastTurn?.changedPaths ?? []}
+          files={code?.files ?? []}
+          onSelect={setSelectedPath}
+          selectedPath={selectedPath}
+        />
+
         <LeaveGameButton roomId={room.roomId} />
       </aside>
 
       {/* 중: 코드 */}
-      <CodePanel changedPaths={lastTurn?.changedPaths ?? []} code={code} />
+      <CodePanel
+        changedPaths={lastTurn?.changedPaths ?? []}
+        code={code}
+        onSelect={setSelectedPath}
+        selectedPath={selectedPath}
+      />
 
       {/* 우: 문제/진행 패널. 프롬프트 폼은 탭과 무관하게 아래 고정 —
           주자는 명세를 읽으면서 동시에 프롬프트를 써야 한다. */}
@@ -839,15 +900,93 @@ function ProblemSpec({ specMd }: { specMd: string }) {
 
 /* ---------- 코드 패널 ---------- */
 
+function RelayFileExplorer({
+  changedPaths,
+  files,
+  onSelect,
+  selectedPath,
+}: {
+  changedPaths: string[];
+  files: NonNullable<ReturnType<typeof useRelayRoom>['code']>['files'];
+  onSelect: (path: string) => void;
+  selectedPath: string | null;
+}) {
+  const fileTree = useMemo(
+    () => createRelayFileTree(files.map((file) => file.path)),
+    [files],
+  );
+  const activePath = selectedPath ?? files[0]?.path ?? null;
+
+  const renderNodes = (nodes: RelayFileTreeNode[], depth = 0): React.ReactNode =>
+    nodes.map((node) => {
+      if (node.type === 'folder') {
+        return (
+          <div key={node.path}>
+            <div
+              className="flex min-h-7 items-center gap-2 whitespace-nowrap font-mono text-[12px] text-[#a3a3a3]"
+              style={{ paddingLeft: `${8 + depth * 14}px` }}
+            >
+              <span aria-hidden="true" className="text-[10px] text-[#777]">▼</span>
+              <span aria-hidden="true" className="text-[#d6ff50]">▱</span>
+              <span>{node.name}</span>
+            </div>
+            {renderNodes(node.children, depth + 1)}
+          </div>
+        );
+      }
+
+      const selected = node.path === activePath;
+      return (
+        <button
+          className={`grid min-h-8 w-full cursor-pointer grid-cols-[14px_minmax(0,1fr)_14px] items-center gap-2 border-0 px-2 text-left font-mono text-[12px] ${
+            selected
+              ? 'bg-[#d6ff50] text-[#090909]'
+              : 'bg-transparent text-[#a3a3a3] hover:text-[#d6ff50]'
+          }`}
+          key={node.path}
+          onClick={() => onSelect(node.path)}
+          style={{ paddingLeft: `${8 + depth * 14}px` }}
+          title={node.path}
+          type="button"
+        >
+          <span aria-hidden="true">◇</span>
+          <span className="truncate">{node.name}</span>
+          <span className="text-right font-black">
+            {changedPaths.includes(node.path) ? 'M' : ''}
+          </span>
+        </button>
+      );
+    });
+
+  return (
+    <section className="flex min-h-0 flex-1 flex-col border border-[#2c2c2c] max-[900px]:max-h-[320px] max-[900px]:min-h-[180px]">
+      <div className="shrink-0 border-b border-[#2c2c2c] px-4 py-3 font-mono text-[14px] font-bold tracking-[0.12em] text-[#d6ff50]">
+        FILE EXPLORER
+      </div>
+      <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-2">
+        {fileTree.length > 0 ? (
+          renderNodes(fileTree)
+        ) : (
+          <p className="m-0 px-4 py-3 font-mono text-[11px] text-[#666]">
+            파일을 불러오는 중…
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function CodePanel({
   changedPaths,
   code,
+  onSelect,
+  selectedPath,
 }: {
   changedPaths: string[];
   code: ReturnType<typeof useRelayRoom>['code'];
+  onSelect: (path: string) => void;
+  selectedPath: string | null;
 }) {
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
-
   const files = code?.files ?? [];
   const selected =
     files.find((file) => file.path === selectedPath) ?? files[0] ?? null;
@@ -865,7 +1004,7 @@ function CodePanel({
               changedPaths.includes(file.path) ? 'font-bold' : '',
             ].join(' ')}
             key={file.path}
-            onClick={() => setSelectedPath(file.path)}
+            onClick={() => onSelect(file.path)}
             type="button"
           >
             {changedPaths.includes(file.path) ? '● ' : ''}
