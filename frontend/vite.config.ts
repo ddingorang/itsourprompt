@@ -17,6 +17,16 @@ export default defineConfig({
         proxyTimeout: 10 * 60 * 1000,
         timeout: 10 * 60 * 1000,
       },
+      // 릴레이 게임의 WebSocket(/ws/relay/{roomId}). ws: true가 없으면 업그레이드
+      // 요청이 프록시를 통과하지 못한다. 게임 한 판이 수십 분까지 이어질 수 있어
+      // 타임아웃을 /api와 같게 잡는다.
+      '/ws': {
+        target: 'http://localhost:9090',
+        changeOrigin: true,
+        ws: true,
+        proxyTimeout: 10 * 60 * 1000,
+        timeout: 10 * 60 * 1000,
+      },
     },
   },
 })

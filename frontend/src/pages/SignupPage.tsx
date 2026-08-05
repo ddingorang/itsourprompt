@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { signup } from '../features/auth/api';
 import { useAuth } from '../features/auth/AuthContext';
+import { useTheme } from '../features/theme/ThemeContext';
 import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
@@ -19,10 +20,12 @@ import Header from '../shared/components/Header';
  */
 
 const labelClasses =
-  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
+  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[var(--auth-page-acid)]';
 
 const inputClasses =
-  'mt-2.5 w-full border border-[#555] bg-[#131313] p-3.5 text-[13px] leading-[1.6] text-[#f5f5ef] outline-0 focus:border-[#d6ff50] disabled:cursor-not-allowed disabled:opacity-60';
+  'mt-2.5 w-full border border-[var(--auth-page-border-strong)] bg-[var(--auth-page-input-bg)] p-3.5 text-[13px] leading-[1.6] text-[var(--auth-page-text)] outline-0 focus:border-[var(--auth-page-acid)] disabled:cursor-not-allowed disabled:opacity-60';
+
+const fieldErrorClasses = 'mt-2 text-[11px] leading-[1.6] text-[#ff786b]';
 
 /**
  * 가입 실패 응답을 사용자에게 보여줄 한국어 문구로 바꾼다.
@@ -48,20 +51,45 @@ function toSignupErrorMessage(error: unknown): string {
 }
 
 export default function SignupPage() {
+  const { colorMode } = useTheme();
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const canSubmit = username && password && nickname && email && !submitting;
+  const usernameError = username && username.length < 3 ? '아이디는 3~30자로 입력해주세요.' : '';
+  const passwordError = password && password.length < 8 ? '비밀번호는 8자 이상 입력해주세요.' : '';
+  const passwordConfirmError =
+    passwordConfirm && password !== passwordConfirm ? '비밀번호가 일치하지 않습니다.' : '';
+  const nicknameError = nickname && nickname.length < 2 ? '닉네임은 2~30자로 입력해주세요.' : '';
+  const emailError =
+    email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      ? '올바른 이메일 형식으로 입력해주세요.'
+      : '';
+  const canSubmit = Boolean(
+    username &&
+      password &&
+      passwordConfirm &&
+      nickname &&
+      email &&
+      !usernameError &&
+      !passwordError &&
+      !passwordConfirmError &&
+      !nicknameError &&
+      !emailError &&
+      !submitting,
+  );
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!canSubmit) return;
+
     setError('');
     setSubmitting(true);
     try {
@@ -77,15 +105,15 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div
+      className="auth-page flex min-h-screen min-w-80 flex-col bg-[var(--auth-page-bg)] text-[var(--auth-page-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
+      data-color-mode={colorMode}
+    >
       <Header />
 
       <main className="mx-auto flex w-[calc(100%_-_10vw)] flex-1 items-center justify-center py-16 max-[640px]:w-[calc(100%_-_40px)]">
-        <section className="w-full max-w-2xl border-y border-[#343434] py-12">
-          <p className="text-center font-mono text-xs tracking-[0.12em] text-[#d6ff50]">
-            CREATE ACCOUNT
-          </p>
-          <h1 className="mt-4 text-center font-mono text-[clamp(44px,8vw,72px)] leading-none font-bold tracking-[-0.05em]">
+        <section className="w-full max-w-2xl border-y border-[var(--auth-page-border)] py-8">
+          <h1 className="text-center font-mono text-[clamp(44px,8vw,72px)] leading-none font-bold tracking-[-0.05em]">
             SIGN UP
           </h1>
 
@@ -95,17 +123,25 @@ export default function SignupPage() {
           >
             <div>
               <label className={labelClasses} htmlFor="signup-username">
-                USERNAME
+                ID
               </label>
               <input
+                aria-describedby={usernameError ? 'signup-username-error' : undefined}
+                aria-invalid={Boolean(usernameError)}
                 autoComplete="username"
                 className={inputClasses}
                 disabled={submitting}
                 id="signup-username"
+                maxLength={30}
                 onChange={(event) => setUsername(event.target.value)}
                 placeholder="아이디 (3~30자)"
                 value={username}
               />
+              {usernameError && (
+                <p className={fieldErrorClasses} id="signup-username-error" role="alert">
+                  {usernameError}
+                </p>
+              )}
             </div>
 
             <div className="mt-5">
@@ -113,6 +149,8 @@ export default function SignupPage() {
                 PASSWORD
               </label>
               <input
+                aria-describedby={passwordError ? 'signup-password-error' : undefined}
+                aria-invalid={Boolean(passwordError)}
                 autoComplete="new-password"
                 className={inputClasses}
                 disabled={submitting}
@@ -122,6 +160,38 @@ export default function SignupPage() {
                 type="password"
                 value={password}
               />
+              {passwordError && (
+                <p className={fieldErrorClasses} id="signup-password-error" role="alert">
+                  {passwordError}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-5">
+              <label className={labelClasses} htmlFor="signup-password-confirm">
+                PASSWORD CONFIRM
+              </label>
+              <input
+                aria-describedby={passwordConfirmError ? 'signup-password-confirm-error' : undefined}
+                aria-invalid={Boolean(passwordConfirmError)}
+                autoComplete="new-password"
+                className={inputClasses}
+                disabled={submitting}
+                id="signup-password-confirm"
+                onChange={(event) => setPasswordConfirm(event.target.value)}
+                placeholder="비밀번호를 다시 입력하세요."
+                type="password"
+                value={passwordConfirm}
+              />
+              {passwordConfirmError && (
+                <p
+                  className={fieldErrorClasses}
+                  id="signup-password-confirm-error"
+                  role="alert"
+                >
+                  {passwordConfirmError}
+                </p>
+              )}
             </div>
 
             <div className="mt-5">
@@ -129,13 +199,21 @@ export default function SignupPage() {
                 NICKNAME
               </label>
               <input
+                aria-describedby={nicknameError ? 'signup-nickname-error' : undefined}
+                aria-invalid={Boolean(nicknameError)}
                 className={inputClasses}
                 disabled={submitting}
                 id="signup-nickname"
+                maxLength={30}
                 onChange={(event) => setNickname(event.target.value)}
                 placeholder="닉네임 (2~30자) — 마이페이지에 표시됩니다."
                 value={nickname}
               />
+              {nicknameError && (
+                <p className={fieldErrorClasses} id="signup-nickname-error" role="alert">
+                  {nicknameError}
+                </p>
+              )}
             </div>
 
             <div className="mt-5">
@@ -143,6 +221,8 @@ export default function SignupPage() {
                 EMAIL
               </label>
               <input
+                aria-describedby={emailError ? 'signup-email-error' : undefined}
+                aria-invalid={Boolean(emailError)}
                 autoComplete="email"
                 className={inputClasses}
                 disabled={submitting}
@@ -152,6 +232,11 @@ export default function SignupPage() {
                 type="email"
                 value={email}
               />
+              {emailError && (
+                <p className={fieldErrorClasses} id="signup-email-error" role="alert">
+                  {emailError}
+                </p>
+              )}
             </div>
 
             {error && (
@@ -163,14 +248,19 @@ export default function SignupPage() {
               </div>
             )}
 
-            <Button className="mt-6" disabled={!canSubmit} fullWidth type="submit">
+            <Button
+              className="auth-page-primary-action mt-6"
+              disabled={!canSubmit}
+              fullWidth
+              type="submit"
+            >
               {submitting ? 'CREATING…' : 'CREATE ACCOUNT ↗'}
             </Button>
 
-            <p className="mt-6 text-center font-mono text-xs text-[#a3a3a3]">
+            <p className="mt-6 text-center text-xs text-[var(--auth-page-muted)]">
               이미 계정이 있나요?{' '}
-              <Link className="text-[#d6ff50] hover:underline" to="/login">
-                로그인 →
+              <Link className="ml-2 text-[var(--auth-page-acid)] hover:underline" to="/login">
+                로그인 ↗
               </Link>
             </p>
           </form>

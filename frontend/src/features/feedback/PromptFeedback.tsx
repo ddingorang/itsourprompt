@@ -9,11 +9,11 @@ export default function PromptFeedback({
   feedback,
 }: PromptFeedbackProps) {
   return (
-    <div className="leading-[1.75] text-[#f5f5f0] [word-break:keep-all] [&>h2:first-child]:mt-[18px] [&>h2:first-child]:border-t [&>h2:first-child]:border-[#444] [&>h2:first-child]:pt-[18px]">
+    <div className="leading-[1.75] text-[var(--feedback-text)] [word-break:keep-all] [&>h2:first-child]:mt-[18px] [&>h2:first-child]:border-t [&>h2:first-child]:border-[var(--feedback-border)] [&>h2:first-child]:pt-[18px]">
       <ReactMarkdown
         components={{
           h2: ({ children }) => (
-            <h2 className="mt-8 mb-4 text-[22px] font-bold text-[#d6ff50]">
+            <h2 className="mt-8 mb-4 text-[22px] font-bold text-[var(--feedback-acid)]">
               {children}
             </h2>
           ),
@@ -29,7 +29,7 @@ export default function PromptFeedback({
           ),
           li: ({ children }) => <li className="my-2">{children}</li>,
           strong: ({ children }) => (
-            <strong className="font-bold text-white">{children}</strong>
+            <strong className="font-bold text-[var(--feedback-text)]">{children}</strong>
           ),
           code: ({ children }) => (
             <code className="rounded-none border-0 bg-transparent p-0">
@@ -40,6 +40,21 @@ export default function PromptFeedback({
             <pre className="max-w-full overflow-x-auto whitespace-pre-wrap [overflow-wrap:anywhere] [&_code]:whitespace-inherit [&_code]:break-words">
               {children}
             </pre>
+          ),
+          // Tailwind preflight가 a의 색과 밑줄을 지워 링크가 본문과 구분되지 않는다.
+          a: ({ children, href }) => (
+            <a
+              className="text-[var(--feedback-acid)] underline"
+              href={href}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {children}
+            </a>
+          ),
+          // preflight의 hr은 색이 currentColor라 페이지의 다른 구분선보다 진하다.
+          hr: () => (
+            <hr className="my-6 border-[var(--feedback-border)]" />
           ),
         }}
         remarkPlugins={[remarkGfm]}
