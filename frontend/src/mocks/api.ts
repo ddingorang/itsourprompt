@@ -14,6 +14,7 @@ import type {
   ProblemDetail,
   ProblemListResponse,
 } from '../features/problem/types';
+import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
 
 export const useMocks = import.meta.env.VITE_USE_MOCKS === 'true';
 
@@ -90,12 +91,23 @@ export async function createMockAttempt(problemId: number): Promise<Attempt> {
   return attempt;
 }
 
+/**
+ * 없는 어템프트는 실서버와 같은 404 + attempt-not-found로 실패시킨다 — 화면이
+ * code로 분기해 안내를 고르므로, 목이 맨 Error를 던지면 그 분기가 목에서만 빗나간다.
+ */
+function mockAttemptNotFound(attemptId: number): ApiError {
+  return new ApiError(404, {
+    code: API_ERROR_CODES.attemptNotFound,
+    message: `목 어템프트 ${attemptId}를 찾을 수 없습니다.`,
+  });
+}
+
 export async function getMockAttempt(attemptId: number): Promise<Attempt> {
   await delay(200);
 
   const attempt = mockAttempts.get(attemptId);
   if (!attempt) {
-    throw new Error(`목 어템프트 ${attemptId}를 찾을 수 없습니다.`);
+    throw mockAttemptNotFound(attemptId);
   }
   return attempt;
 }
@@ -105,7 +117,7 @@ export async function addMockTurn(attemptId: number, prompt: string): Promise<At
 
   const attempt = mockAttempts.get(attemptId);
   if (!attempt) {
-    throw new Error(`목 어템프트 ${attemptId}를 찾을 수 없습니다.`);
+    throw mockAttemptNotFound(attemptId);
   }
 
   const turnNumber = attempt.turns.length + 1;

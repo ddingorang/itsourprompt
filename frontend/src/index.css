@@ -11,6 +11,55 @@ body {
   margin: 0;
 }
 
+html { scroll-behavior: smooth; }
+::selection { background: #d6ff50; color: #090909; }
+.landing-page { --acid: #d6ff50; }
+.landing-display { text-wrap: balance; }
+.landing-hero { position: relative; }
+.landing-scroll-cue { display: flex; flex-direction: column; align-items: center; gap: 24px; justify-self: center; color: #f5f5ef; font: 700 12px/1 Arial, 'Noto Sans KR', sans-serif; letter-spacing: .08em; white-space: nowrap; }
+.landing-scroll-arrows { display: flex; height: 31px; flex-direction: column; align-items: center; }
+.landing-scroll-arrows i { display: block; width: 22px; height: 22px; margin-bottom: -10px; transform: rotate(45deg); border-right: 3px solid #777; border-bottom: 3px solid #777; animation: landing-scroll-pulse 1.6s ease-in-out infinite; }
+.landing-scroll-arrows i:nth-child(2) { animation-delay: .22s; }
+.landing-pass { position: relative; display: flex; min-height: 460px; align-items: center; padding: clamp(22px, 3vw, 36px); overflow: hidden; border: 1px solid #090909; background: linear-gradient(145deg, #1d1d1d, #101010 60%); color: #f5f5ef; }
+.landing-pass::before { position: absolute; inset: 0; opacity: .12; background: repeating-linear-gradient(90deg, transparent 0 31px, #fff 31px 32px); content: ''; }
+.landing-pass-center { position: relative; z-index: 1; display: flex; width: 100%; min-height: 330px; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.landing-pass-center strong { margin: 18px 0 2px; font-size: clamp(42px, 6vw, 78px); line-height: .9; letter-spacing: -.075em; }
+.landing-pass-center > span:last-child { font: 700 13px/1 monospace; letter-spacing: .35em; color: var(--acid); }
+.landing-pass-check { display: grid; width: 72px; height: 72px; place-items: center; border-radius: 50%; background: var(--acid); color: #090909; font-size: 36px; font-weight: 900; }
+.landing-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: #343434; border: 1px solid #343434; }
+.landing-step { min-height: 380px; padding: clamp(20px, 2.2vw, 30px); background: #111; }
+.landing-step-visual { display: flex; height: 150px; align-items: center; justify-content: center; margin: 18px 0 14px; border: 1px solid #343434; font: 900 clamp(25px, 2.6vw, 38px)/1 Arial, sans-serif; letter-spacing: -.06em; color: var(--acid); }
+.landing-problem { transition: background-color 180ms ease, padding 180ms ease; }
+.landing-problem span:last-child { transition: transform 180ms ease; }
+.landing-problem:hover, .landing-problem:focus-visible { padding-right: 14px; padding-left: 14px; background: #171717; outline: none; }
+.landing-problem:hover span:last-child, .landing-problem:focus-visible span:last-child { transform: translate(3px, -3px); }
+.landing-final { background: radial-gradient(circle at 50% 50%, #202020 0, #090909 58%); }
+.landing-final-grid { position: absolute; inset: -50%; opacity: .11; transform: perspective(600px) rotateX(62deg); background-image: linear-gradient(#d6ff50 1px, transparent 1px), linear-gradient(90deg, #d6ff50 1px, transparent 1px); background-size: 64px 64px; mask-image: radial-gradient(circle, #000 5%, transparent 58%); }
+[data-reveal] { opacity: 0; transform: translateY(38px); transition: opacity 700ms cubic-bezier(.2,.7,.2,1) var(--reveal-delay, 0ms), transform 700ms cubic-bezier(.2,.7,.2,1) var(--reveal-delay, 0ms); }
+[data-reveal].is-visible { opacity: 1; transform: translateY(0); }
+@keyframes landing-scroll-pulse {
+  0%, 100% { border-color: #666; opacity: .55; }
+  45% { border-color: #f5f5ef; opacity: 1; }
+}
+@media (min-width: 761px) {
+  html { scroll-snap-type: y mandatory; scroll-padding-top: 66px; }
+  .landing-page main > section,
+  .landing-ending { scroll-snap-align: start; scroll-snap-stop: always; }
+}
+@media (max-width: 760px) {
+  .landing-scroll-cue { margin-top: 12px; justify-self: center; }
+  .landing-pass { min-height: 400px; }
+  .landing-pass-center { min-height: 280px; }
+  .landing-steps { grid-template-columns: 1fr; }
+  .landing-step { min-height: auto; }
+  .landing-step-visual { height: 160px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .landing-scroll-arrows i { animation: none; }
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
+}
+
 .workspace-scrollbar {
   scrollbar-color: #666 #171717;
   scrollbar-width: thin;
@@ -36,4 +85,12 @@ body {
 
 .workspace-scrollbar::-webkit-scrollbar-corner {
   background: #171717;
+}
+
+.turn-tab-scrollbar {
+  scrollbar-width: none;
+}
+
+.turn-tab-scrollbar::-webkit-scrollbar {
+  display: none;
 }
