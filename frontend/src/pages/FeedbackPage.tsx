@@ -266,7 +266,7 @@ export default function FeedbackPage() {
 
   return (
     <div
-      className="feedback-page flex min-h-screen min-w-80 flex-col bg-[var(--feedback-bg)] text-[var(--feedback-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
+      className="feedback-page flex min-h-screen min-w-80 flex-col overflow-x-hidden bg-[var(--feedback-bg)] text-[var(--feedback-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
       data-color-mode={colorMode}
     >
       <Header mobileBreakpoint="760" />
