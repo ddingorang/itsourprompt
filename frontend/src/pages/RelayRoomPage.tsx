@@ -1079,9 +1079,15 @@ function FinishedView({
 
       {feedback && (
         <>
-          <section className="border border-[#343434] p-5">
-            <span className={smallLabelClasses}>OVERALL</span>
-            <PromptFeedback feedback={feedback.overall} />
+          <section className="border border-[#d6ff50] bg-transparent [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]">
+            <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
+              <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
+                OVERALL.MD
+              </h2>
+            </div>
+            <div className="px-6 pb-7 [&>div>h2:first-child]:border-t-0 [&>div>h2:first-child]:pt-0 max-[760px]:px-5 max-[760px]:pb-5">
+              <PromptFeedback feedback={feedback.overall} />
+            </div>
           </section>
 
           <section className="grid gap-4">
