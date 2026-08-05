@@ -1243,9 +1243,9 @@ function FinishedView({
         </section>
       )}
 
-      <div>
-        <Button to="/relay" variant="secondary">
-          릴레이 입구로
+      <div className="flex justify-end">
+        <Button to="/relay">
+          릴레이 목록으로 돌아가기
         </Button>
       </div>
     </main>
