@@ -181,7 +181,7 @@ function RelayRoomScreen({
         isWaiting ? '!overflow-x-hidden !overflow-y-auto' : ''
       }`}
     >
-      <Header variant="workspace" />
+      <Header variant={isWaiting ? 'default' : 'workspace'} />
       {isWaiting ? (
         <WaitingView myUserId={myUserId} problem={problem} room={room} rtc={rtc} />
       ) : room.status === 'FINISHED' ? (
