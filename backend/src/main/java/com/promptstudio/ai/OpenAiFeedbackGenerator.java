@@ -321,7 +321,8 @@ class OpenAiFeedbackGenerator {
      * 인용 대조 결과를 로그로 남긴다. 승격 뒤에도 남기는 이유는 운영에서 수치를 계속 쌓기 위해서다 —
      * raw·턴스코프 불일치는 계약이 아니라 진단이라 로그에만 있다.
      *
-     * <p>불일치한 인용은 모델이 지어낸 자유 텍스트라 길이가 제한 없이 커질 수 있어 {@link LogFormats}로 자른다.
+     * <p>인용 문장 자체는 남기지 않는다. 그것은 모델이 지어낸 자유 텍스트이고, 자유 텍스트는 로그가 아니라
+     * DB로 간다(observability-plan §7). 로그에는 어느 턴에서 몇 자짜리가 어긋났는지만 남겨 수치를 쌓는다.
      */
     private void logQuoteCheck(QuoteVerifier.Result result, Long attemptId, int turnCount) {
         log.info(
@@ -338,11 +339,11 @@ class OpenAiFeedbackGenerator {
 
         for (QuoteVerifier.Miss miss : result.normalizedMisses()) {
             log.warn(
-                    "[{}] quote not found in input | attemptId={} | turn={} | quote={}",
+                    "[{}] quote not found in input | attemptId={} | turn={} | quoteLength={}",
                     logTag,
                     attemptId,
                     miss.turn(),
-                    LogFormats.abbreviate(miss.quote())
+                    miss.quote() == null ? 0 : miss.quote().length()
             );
         }
     }

@@ -13,6 +13,9 @@ import java.util.List;
  * 앞뒤를 턴 것이며, turnScoped는 그 인용이 <b>그 턴의</b> 태그 블록 안에 있었는지다. 계약으로 쓰는 것은
  * normalized 하나뿐이고 — 줄바꿈과 들여쓰기가 다르다는 이유로 제출을 실패시키는 것은 값이 없다 —
  * 나머지 둘은 섀도 로그의 진단 지표다.
+ *
+ * <p>빈 인용은 세 수준 모두에서 불일치다. 인용을 아예 안 내놓은 턴(빈 배열)은 스키마가 허용하지만,
+ * 빈 문자열을 인용이라고 내놓은 것은 다르다 — 대조를 통과시키면 게이트를 무력화하는 자리라서 막는다.
  */
 final class QuoteVerifier {
 
@@ -60,11 +63,20 @@ final class QuoteVerifier {
             for (String quote : entry.quotes()) {
                 total++;
 
-                if (quote == null || !input.contains(quote)) {
+                String normalizedQuote = normalize(quote);
+
+                // 빈 인용은 대조가 아니라 세 수준을 전부 그냥 통과한다 — contains("")는 언제나 참이다.
+                // 근거를 하나도 내놓지 않은 것이므로 통과가 아니라 불일치로 센다.
+                if (normalizedQuote.isEmpty()) {
                     rawMisses.add(new Miss(turnNumber, quote));
+                    normalizedMisses.add(new Miss(turnNumber, quote));
+                    turnScopedMisses.add(new Miss(turnNumber, quote));
+                    continue;
                 }
 
-                String normalizedQuote = normalize(quote);
+                if (!input.contains(quote)) {
+                    rawMisses.add(new Miss(turnNumber, quote));
+                }
 
                 if (!normalizedInput.contains(normalizedQuote)) {
                     normalizedMisses.add(new Miss(turnNumber, quote));

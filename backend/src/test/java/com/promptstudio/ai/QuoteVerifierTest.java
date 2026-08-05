@@ -115,6 +115,25 @@ class QuoteVerifierTest {
         assertThat(result.grounded()).isTrue();
     }
 
+    /**
+     * 인용을 안 내놓는 것(빈 배열)과 빈 문자열을 인용이라고 내놓는 것은 다르다. 뒤쪽을 통과시키면
+     * {@code contains("")}가 언제나 참이라 게이트가 통째로 무력해진다.
+     */
+    @Test
+    void 빈_인용은_세_수준_모두에서_불일치다() {
+        List<TurnEntry> turns = new ArrayList<>();
+        turns.add(entry("   \n  "));
+        turns.add(new TurnEntry(singletonNull(), "피드백"));
+
+        QuoteVerifier.Result result = QuoteVerifier.verify(INPUT, turns);
+
+        assertThat(result.total()).isEqualTo(2);
+        assertThat(result.grounded()).isFalse();
+        assertThat(result.rawMisses()).hasSize(2);
+        assertThat(result.normalizedMisses()).hasSize(2);
+        assertThat(result.turnScopedMisses()).hasSize(2);
+    }
+
     @Test
     void 정규화는_연속_공백을_한_칸으로_접고_앞뒤를_턴다() {
         assertThat(QuoteVerifier.normalize("  제약 칸이\n\n  비어 있어요  ")).isEqualTo("제약 칸이 비어 있어요");
@@ -123,5 +142,13 @@ class QuoteVerifierTest {
 
     private TurnEntry entry(String... quotes) {
         return new TurnEntry(List.of(quotes), "피드백");
+    }
+
+    /** {@code List.of}는 null 원소를 못 담는다. 모델은 담아 보낼 수 있다. */
+    private List<String> singletonNull() {
+        List<String> quotes = new ArrayList<>();
+        quotes.add(null);
+
+        return quotes;
     }
 }
