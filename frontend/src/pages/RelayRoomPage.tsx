@@ -43,6 +43,9 @@ const waitingTitleClasses =
 
 const smallLabelClasses = 'font-mono text-[14px] font-bold tracking-[0.12em] text-[#777]';
 
+const waitingSectionLabelClasses =
+  'font-mono text-[14px] font-bold tracking-[0.12em] text-[#d6ff50]';
+
 const pageClasses =
   'flex h-screen min-w-80 flex-col overflow-hidden bg-[#090909] text-[#f5f5ef] ' +
   "[font-family:Arial,'Noto_Sans_KR',sans-serif] " +
@@ -268,7 +271,7 @@ function WaitingView({
       {problem && (
         <section className="border border-[#343434]">
           <div className="border-b border-[#343434] px-4 py-3">
-            <span className={smallLabelClasses}>PROBLEM</span>
+            <span className={waitingSectionLabelClasses}>PROBLEM</span>
           </div>
           <div className="max-h-[320px] overflow-y-auto px-5 py-4">
             <ProblemSpec specMd={problem.specMd} />
@@ -278,7 +281,7 @@ function WaitingView({
 
       <section className="border border-[#343434]">
         <div className="border-b border-[#343434] px-4 py-3">
-          <span className={smallLabelClasses}>
+          <span className={waitingSectionLabelClasses}>
             PLAYERS: {room.participants.length} / {room.maxParticipants}
           </span>
         </div>
@@ -304,7 +307,7 @@ function WaitingView({
         </ul>
       </section>
 
-      <VoicePanel rtc={rtc} />
+      <VoicePanel labelClassName={waitingSectionLabelClasses} rtc={rtc} />
 
       {actionError && (
         <p className="m-0 font-mono text-xs text-[#ff786b]">{actionError}</p>
@@ -1036,10 +1039,16 @@ function FinishedView({
 
 /* ---------- 음성 ---------- */
 
-function VoicePanel({ rtc }: { rtc: ReturnType<typeof useRelayRtc> }) {
+function VoicePanel({
+  labelClassName = smallLabelClasses,
+  rtc,
+}: {
+  labelClassName?: string;
+  rtc: ReturnType<typeof useRelayRtc>;
+}) {
   return (
     <section className="grid gap-2 border border-[#2c2c2c] px-4 py-3">
-      <span className={smallLabelClasses}>VOICE</span>
+      <span className={labelClassName}>VOICE</span>
       <button
         className={[
           'cursor-pointer border px-3 py-2 font-mono text-[11px] font-bold',
