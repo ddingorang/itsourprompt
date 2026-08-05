@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { getProblems } from '../features/problem/api';
-import Pagination from '../features/problem/Pagination';
 import type { ProblemSummary } from '../features/problem/types';
-import { usePagination } from '../features/problem/usePagination';
 import { ApiError } from '../shared/api/apiClient';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
+import Pagination from '../shared/components/Pagination';
+import { usePagination } from '../shared/hooks/usePagination';
 
 const PROBLEMS_PER_PAGE = 10;
 const PAGES_PER_GROUP = 5;
@@ -17,7 +17,8 @@ export default function ProblemListPage() {
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const requestedPage = Number(searchParams.get('page'));
+  const pageParam = searchParams.get('page');
+  const requestedPage = Number(pageParam);
   const {
     currentPage,
     pageGroupEnd,
@@ -76,10 +77,20 @@ export default function ProblemListPage() {
   }, []);
 
   useEffect(() => {
+    if (pageParam === null) {
+      return;
+    }
+
+    if (!Number.isInteger(requestedPage) || requestedPage < 1) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('page', '1');
+      setSearchParams(nextParams, { replace: true });
+      return;
+    }
+
     if (
       isLoading ||
       problems.length === 0 ||
-      !Number.isInteger(requestedPage) ||
       requestedPage <= totalPages
     ) {
       return;
@@ -90,6 +101,7 @@ export default function ProblemListPage() {
     setSearchParams(nextParams, { replace: true });
   }, [
     isLoading,
+    pageParam,
     problems.length,
     requestedPage,
     searchParams,

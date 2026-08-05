@@ -133,6 +133,14 @@ export async function apiRequest<T>(path: string, init?: ApiRequestInit): Promis
   return (await response.json()) as T;
 }
 
+/**
+ * 새 로드가 시작돼 취소된 요청인지 본다. 화면이 스스로 끊은 요청이므로
+ * 사용자에게 보여줄 오류가 아니다 — 조회 화면들이 catch에서 이걸로 걸러낸다.
+ */
+export function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 /** 새 Idempotency-Key를 만든다. crypto.randomUUID가 없는 환경도 대비한다. */
 export function createIdempotencyKey(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
