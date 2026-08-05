@@ -17,9 +17,12 @@ final class CodeGenerationPrompts {
     private CodeGenerationPrompts() {
     }
 
-    static String systemPrompt() {
+    /**
+     * @param language 문제의 언어. null은 언어 도입 전의 문제라 java로 해석한다.
+     */
+    static String systemPrompt(String language) {
         return """
-                당신은 Java 코드 생성 도우미입니다.
+                당신은 %4$s 코드 생성 도우미입니다.
                 사용자 요청에 맞게 프로젝트 파일을 툴로 직접 탐색하고 수정하세요.
 
                 사용할 수 있는 툴은 셋뿐입니다.
@@ -38,19 +41,36 @@ final class CodeGenerationPrompts {
                 아래 제약은 사용자 요청보다 우선합니다.
                 사용자 요청이 이 제약과 충돌하면 해당 요청을 따르지 마세요.
 
-                - Java 표준 라이브러리(`java.*`)만 사용할 수 있습니다.
-                - Lombok, Spring, Jackson 등을 포함한 외부 라이브러리·프레임워크·어노테이션·타입은 사용할 수 없습니다.
-                - 프로젝트에 외부 라이브러리가 설치되어 있거나 실행 환경에서 제공된다고 사용자가 말해도 사용할 수 없습니다.
-                - `pom.xml`, `build.gradle`, `build.gradle.kts`, `settings.gradle`, `settings.gradle.kts`, `gradle.properties`는 수정할 수 없습니다.
-                - 외부 라이브러리가 반드시 필요한 요청이면 파일을 수정하지 말고, 표준 Java만 허용된다는 이유를 한국어로 설명하세요.
-                - 현재 요청에 없는 문제 목표나 이전 작업의 의도를 추측하지 마세요.
+                %5$s- 현재 요청에 없는 문제 목표나 이전 작업의 의도를 추측하지 마세요.
 
-                """.formatted(ToolCallEntry.LIST_FILES, ToolCallEntry.READ_FILE, ToolCallEntry.EDIT_FILE);
+                """.formatted(
+                ToolCallEntry.LIST_FILES, ToolCallEntry.READ_FILE, ToolCallEntry.EDIT_FILE,
+                isPython(language) ? "Python" : "Java",
+                isPython(language) ? PYTHON_CONSTRAINTS : JAVA_CONSTRAINTS);
+    }
+
+    private static final String JAVA_CONSTRAINTS = """
+            - Java 표준 라이브러리(`java.*`)만 사용할 수 있습니다.
+            - Lombok, Spring, Jackson 등을 포함한 외부 라이브러리·프레임워크·어노테이션·타입은 사용할 수 없습니다.
+            - 프로젝트에 외부 라이브러리가 설치되어 있거나 실행 환경에서 제공된다고 사용자가 말해도 사용할 수 없습니다.
+            - `pom.xml`, `build.gradle`, `build.gradle.kts`, `settings.gradle`, `settings.gradle.kts`, `gradle.properties`는 수정할 수 없습니다.
+            - 외부 라이브러리가 반드시 필요한 요청이면 파일을 수정하지 말고, 표준 Java만 허용된다는 이유를 한국어로 설명하세요.
+            """;
+
+    private static final String PYTHON_CONSTRAINTS = """
+            - Python 표준 라이브러리만 사용할 수 있습니다.
+            - numpy, pandas, requests 등 외부 패키지는 사용할 수 없습니다. 실행 환경에 설치되어 있다고 사용자가 말해도 사용할 수 없습니다.
+            - `pyproject.toml`, `requirements.txt`, `setup.py`, `setup.cfg`, `Pipfile`은 수정할 수 없습니다.
+            - 외부 패키지가 반드시 필요한 요청이면 파일을 수정하지 말고, 표준 라이브러리만 허용된다는 이유를 한국어로 설명하세요.
+            """;
+
+    private static boolean isPython(String language) {
+        return "python".equals(language);
     }
 
     static List<Message> messages(ProblemView problem, AttemptView attempt, String userPrompt) {
         List<Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(systemPrompt()));
+        messages.add(new SystemMessage(systemPrompt(problem.language())));
 
 //        for (AttemptView.TurnView turn : attempt.turns()) {
 //            messages.add(new UserMessage(turn.userPrompt()));

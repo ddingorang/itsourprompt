@@ -94,7 +94,7 @@ public class OpenAiCodeGenerator implements CodeGenerator {
 
     private GeneratedCode runLoop(
             ProblemView problem, AttemptView attempt, String userPrompt, LlmUsageTracker tracker) {
-        CodeGenerationTools tools = new CodeGenerationTools(attempt.files());
+        CodeGenerationTools tools = new CodeGenerationTools(attempt.files(), problem.language());
         String promptCacheKey = "attempt-" + attempt.id();
         OpenAiChatOptions toolOptions = chatOptionsFactory.forCodeGeneration(promptCacheKey, tools.callbacks());
         Prompt prompt = new Prompt(CodeGenerationPrompts.messages(problem, attempt, userPrompt), toolOptions);

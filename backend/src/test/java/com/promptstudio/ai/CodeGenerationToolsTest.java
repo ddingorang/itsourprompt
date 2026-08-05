@@ -84,6 +84,32 @@ class CodeGenerationToolsTest {
         assertThat(result).contains("ok");
     }
 
+    /**
+     * java의 import 정적 검증은 python 코드를 오탐한다(python의 import 문은 세미콜론이 없어
+     * 걸리지 않지만, 정책 메시지가 Java 기준이라 성립하지 않는다). python 문제의 편집은
+     * import 검증 없이 통과하고, 외부 패키지 시도는 채점에서 ModuleNotFoundError로 드러난다.
+     */
+    @Test
+    void python_문제의_edit_file은_import_검증_없이_수정을_적용한다() {
+        CodeGenerationTools pythonTools = new CodeGenerationTools(
+                List.of(new ProblemFile("src/main/python/report.py", "def top_words(text): ...")), "python");
+
+        String result = call(pythonTools, "edit_file",
+                "{\"path\":\"src/main/python/report.py\",\"content\":\"import collections\\n\\ndef top_words(text): ...\"}");
+
+        assertThat(result).contains("ok");
+    }
+
+    @Test
+    void python_문제도_패키징_파일은_보호된다() {
+        CodeGenerationTools pythonTools = new CodeGenerationTools(
+                List.of(new ProblemFile("requirements.txt", "")), "python");
+
+        String result = call(pythonTools, "edit_file", "{\"path\":\"requirements.txt\",\"content\":\"numpy\"}");
+
+        assertThat(result).contains("변경할 수 없습니다");
+    }
+
     @Test
     void 모든_툴_호출은_실패해도_트레이스에_순서대로_기록된다() {
         call("list_files", "{}");
@@ -127,7 +153,11 @@ class CodeGenerationToolsTest {
     }
 
     private String call(String name, String jsonArguments) {
-        for (ToolCallback callback : tools.callbacks()) {
+        return call(tools, name, jsonArguments);
+    }
+
+    private String call(CodeGenerationTools target, String name, String jsonArguments) {
+        for (ToolCallback callback : target.callbacks()) {
             if (callback.getToolDefinition().name().equals(name)) {
                 return callback.call(jsonArguments);
             }
