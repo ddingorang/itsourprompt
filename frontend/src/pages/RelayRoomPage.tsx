@@ -1038,12 +1038,22 @@ function FinishedView({
 
   return (
     <main className="mx-auto grid w-[min(calc(90%_-_360px),1040px)] flex-1 content-start gap-7 py-10 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)]">
-      <div>
-        <div className={labelClasses}>ROOM #{room.roomId} — FINISHED</div>
-        <h1 className="mt-2 mb-0 text-[26px] font-black tracking-[-0.03em]">
-          {room.name ? `「${room.name}」 릴레이 결과` : '릴레이 결과'}
-        </h1>
-      </div>
+      <header className="flex items-baseline justify-between gap-6 max-[640px]:gap-4">
+        <div className="min-w-0">
+          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+            RELAY FEEDBACK
+          </h1>
+          {/* 이름 도입 전에 만들어진 방은 name이 없다 — 그때는 방 번호만으로 충분하다. */}
+          {room.name && (
+            <p className="mt-2 mb-0 truncate text-[16px] font-bold tracking-[-0.02em]">
+              「{room.name}」
+            </p>
+          )}
+        </div>
+        <span className="shrink-0 text-right font-mono text-[28px] font-bold tracking-[0.06em] text-[#f5f5ef]">
+          ROOM #{room.roomId}
+        </span>
+      </header>
 
       <div
         className={`grid gap-4 ${
