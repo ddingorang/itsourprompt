@@ -173,10 +173,16 @@ function RelayRoomScreen({
     );
   }
 
+  const isWaiting = room.status === 'WAITING';
+
   return (
-    <div className={pageClasses}>
+    <div
+      className={`${pageClasses} ${
+        isWaiting ? '!overflow-x-hidden !overflow-y-auto' : ''
+      }`}
+    >
       <Header variant="workspace" />
-      {room.status === 'WAITING' ? (
+      {isWaiting ? (
         <WaitingView myUserId={myUserId} problem={problem} room={room} rtc={rtc} />
       ) : room.status === 'FINISHED' ? (
         <FinishedView room={room} roomState={roomState} />
@@ -237,7 +243,7 @@ function WaitingView({
   };
 
   return (
-    <main className="mx-auto grid w-full max-w-[720px] flex-1 content-start gap-7 overflow-y-auto px-6 py-10">
+    <main className="mx-auto grid w-full max-w-[720px] flex-1 content-start gap-7 px-6 py-10">
       <div>
         <div className="flex items-end justify-between gap-6 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-3">
           <div className={waitingTitleClasses}>ROOM #{room.roomId}</div>
