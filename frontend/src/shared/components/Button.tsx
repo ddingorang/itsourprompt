@@ -23,26 +23,32 @@ export default function Button({
 }: ButtonProps) {
 const baseClasses =
   'inline-flex min-h-11 cursor-pointer items-center justify-center gap-2.5 ' +
-  "border px-[18px] text-xs leading-none font-extrabold tracking-[-0.01em] [font-family:Arial,'Noto_Sans_KR',sans-serif] " +
+  "border px-[18px] text-[14px] leading-none font-extrabold tracking-[-0.01em] [font-family:Arial,'Noto_Sans_KR',sans-serif] " +
   'no-underline transition-[background,border-color,color,opacity] duration-200 ' +
   'disabled:cursor-not-allowed disabled:opacity-45'
 
+// 강조색은 var(--acid)로 읽되 폴백을 둔다. --acid는 .landing-page 안에서만
+// 정의되므로, 랜딩에서는 라이트 모드 강조색(#bee034)을 자동으로 따라가고
+// 그 바깥 화면에서는 폴백 #d6ff50 그대로다.
+//
+// 클래스 이름을 변수로 조립하지 말 것 — Tailwind는 소스에서 문자열을 통째로
+// 찾으므로 쪼개는 순간 해당 유틸리티가 생성되지 않는다.
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'border-[#d6ff50] bg-[#d6ff50] text-[#090909] ' +
-    'hover:bg-transparent hover:text-[#d6ff50] ' +
-    'focus-visible:bg-transparent focus-visible:text-[#d6ff50] focus-visible:outline-none',
+    'border-[var(--acid,#d6ff50)] bg-[var(--acid,#d6ff50)] text-[#090909] ' +
+    'hover:bg-transparent hover:text-[var(--acid,#d6ff50)] ' +
+    'focus-visible:bg-transparent focus-visible:text-[var(--acid,#d6ff50)] focus-visible:outline-none',
 
   secondary:
     'border-[#4b4b4b] bg-transparent text-[#f5f5ef] ' +
-    'hover:border-[#d6ff50] hover:bg-[#d6ff50] hover:text-[#090909] ' +
-    'focus-visible:border-[#d6ff50] focus-visible:bg-[#d6ff50] ' +
+    'hover:border-[var(--acid,#d6ff50)] hover:bg-[var(--acid,#d6ff50)] hover:text-[#090909] ' +
+    'focus-visible:border-[var(--acid,#d6ff50)] focus-visible:bg-[var(--acid,#d6ff50)] ' +
     'focus-visible:text-[#090909] focus-visible:outline-none',
 
   ghost:
     'border-[#535353] bg-transparent text-[#f5f5ef] ' +
-    'hover:border-[#d6ff50] hover:bg-[#d6ff50] hover:text-[#090909] ' +
-    'focus-visible:border-[#d6ff50] focus-visible:bg-[#d6ff50] ' +
+    'hover:border-[var(--acid,#d6ff50)] hover:bg-[var(--acid,#d6ff50)] hover:text-[#090909] ' +
+    'focus-visible:border-[var(--acid,#d6ff50)] focus-visible:bg-[var(--acid,#d6ff50)] ' +
     'focus-visible:text-[#090909] focus-visible:outline-none',
 }
 
@@ -64,6 +70,7 @@ const classes = [
       <Link
         aria-disabled={disabled}
         className={classes}
+        data-variant={variant}
         onClick={handleClick}
         tabIndex={disabled ? -1 : undefined}
         to={to}
@@ -77,6 +84,7 @@ const classes = [
     <button
       {...buttonProps}
       className={classes}
+      data-variant={variant}
       disabled={disabled}
       type={type}
     >

@@ -30,12 +30,29 @@ export interface ChangedFile {
   content: string | null;
 }
 
+/** 한 번의 프롬프트 실행에서 발생한 LLM 사용량. */
+export interface TokenUsage {
+  inputTokens: number | null;
+  uncachedInputTokens?: number | null;
+  cachedInputTokens: number | null;
+  outputTokens: number | null;
+  reasoningTokens: number | null;
+  latencyMs?: number | null;
+  cost: number | null;
+}
+
+/** 어템프트 전체 사용량. rounds는 전체 LLM 호출 횟수다. */
+export interface AttemptTokenUsage extends TokenUsage {
+  rounds?: number;
+}
+
 /** 어템프트의 한 턴 기록. */
 export interface Turn {
   prompt: string;
   aiResponse: string;
   changedFiles: ChangedFile[];
   toolCalls: ToolCall[];
+  usage?: TokenUsage | null;
 }
 
 /** 어템프트 전체 상태. 생성/조회/턴 추가가 모두 이 형태를 반환한다. */
@@ -48,6 +65,7 @@ export interface Attempt {
   files: RepositoryFile[];
   turns: Turn[];
   status: AttemptStatus;
+  usage?: AttemptTokenUsage | null;
 }
 
 export interface CreateAttemptRequest {
@@ -62,13 +80,73 @@ export interface TurnRequest {
 export interface TurnFeedback {
   turn: number;
   feedbackMd: string;
+  /** 그 턴에 일한 방식에 이름을 붙인 두 번째 피드백. */
+  patternMd: string | null;
 }
 
 /**
  * 제출 결과 피드백.
  * turns는 턴별 피드백 도입 이전에 제출된 어템프트에서는 빈 배열일 수 있다.
+ *
+ * pattern 피드백은 두 자리(patternMd / patternOverallMd)를 한 번의 제출에서 함께 만든다 —
+ * pattern 도입 전에 제출된 어템프트는 두 필드가 함께 null이므로, 화면은 자리마다 따로
+ * 판정하지 않고 한 번만 보면 된다.
  */
 export interface AttemptFeedback {
   turns: TurnFeedback[];
   overallMd: string;
+  patternOverallMd: string | null;
+}
+
+export type CodeRunStatus =
+  | 'QUEUED'
+  | 'SUCCEEDED'
+  | 'COMPILE_ERROR'
+  | 'TEST_FAILED'
+  | 'RUNTIME_ERROR'
+  | 'TIMEOUT'
+  | 'RUNNER_ERROR';
+
+export type CodeRunCaseStatus = 'PASSED' | 'FAILED' | 'ERROR' | 'SKIPPED';
+
+export interface CodeRunCase {
+  className: string | null;
+  name: string;
+  status: CodeRunCaseStatus;
+  message: string | null;
+  durationMs: number | null;
+}
+
+export interface CodeRun {
+  runId: string;
+  turnOrdinal: number | null;
+  status: CodeRunStatus;
+  exitCode: number | null;
+  stdout: string | null;
+  stderr: string | null;
+  durationMs: number | null;
+  cases: CodeRunCase[];
+}
+
+export interface CodeRunTally {
+  total: number;
+  passed: number;
+  failed: number;
+  error: number;
+  skipped: number;
+}
+
+export interface CodeRunSummary {
+  runId: string;
+  turnOrdinal: number | null;
+  status: CodeRunStatus;
+  exitCode: number | null;
+  durationMs: number | null;
+  createdAt: string;
+  finishedAt: string | null;
+  tally: CodeRunTally | null;
+}
+
+export interface CodeRunListResponse {
+  runs: CodeRunSummary[];
 }
