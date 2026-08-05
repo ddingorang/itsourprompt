@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.promptstudio.ai.LiveSessions.Expected;
 import com.promptstudio.ai.LiveSessions.Session;
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -122,7 +123,7 @@ class LiveFeedbackHarnessTest {
         long startedAt = System.nanoTime();
 
         try {
-            FeedbackDraft draft = generator.generate(session.problem(), session.attempt());
+            FeedbackDraft draft = generator.generate(session.problem(), session.attempt(), TurnTestResults.EMPTY);
 
             return succeeded(phase, rep, session, lens, draft, quotesOf(lens, session, recorder), startedAt);
         } catch (FeedbackGenerationException exception) {
@@ -357,7 +358,7 @@ class LiveFeedbackHarnessTest {
                     executor,
                     "OPENAI FEEDBACK",
                     FeedbackPrompts.systemPrompt(),
-                    FeedbackPrompts::userPrompt,
+                    (problem, attempt, testResults) -> FeedbackPrompts.userPrompt(problem, attempt),
                     optionsFactory::forFeedback);
         }
 
@@ -366,7 +367,7 @@ class LiveFeedbackHarnessTest {
                 executor,
                 "OPENAI PATTERN",
                 PatternPrompts.systemPrompt(),
-                PatternPrompts::userPrompt,
+                (problem, attempt, testResults) -> PatternPrompts.userPrompt(problem, attempt),
                 optionsFactory::forPatternFeedback);
     }
 

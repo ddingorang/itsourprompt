@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.problem.domain.ProblemView;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.attempt.port.FeedbackTimeoutException;
@@ -22,7 +23,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 
 /**
@@ -59,7 +59,7 @@ class OpenAiFeedbackGenerator {
     private final AiCallExecutor aiCallExecutor;
     private final String logTag;
     private final String systemPrompt;
-    private final BiFunction<ProblemView, AttemptView, String> userPrompt;
+    private final UserPrompt userPrompt;
     private final IntFunction<OpenAiChatOptions> chatOptions;
 
     OpenAiFeedbackGenerator(
@@ -67,7 +67,7 @@ class OpenAiFeedbackGenerator {
             AiCallExecutor aiCallExecutor,
             String logTag,
             String systemPrompt,
-            BiFunction<ProblemView, AttemptView, String> userPrompt,
+            UserPrompt userPrompt,
             IntFunction<OpenAiChatOptions> chatOptions
     ) {
         this.chatClient = chatClientBuilder.build();
@@ -113,8 +113,18 @@ class OpenAiFeedbackGenerator {
         }
     }
 
-    FeedbackDraft generate(ProblemView problem, AttemptView attempt) {
-        String userMessage = userPrompt.apply(problem, attempt);
+    /**
+     * 렌즈별 유저 프롬프트 조립. 채점 결과를 쓰는 것은 프롬프트 렌즈뿐이라 pattern 렌즈는 셋째 인자를
+     * 받아 두고 버린다 — 작업 방식을 보는 렌즈에 통과 수가 들어가면 어휘만 오염된다.
+     */
+    @FunctionalInterface
+    interface UserPrompt {
+
+        String render(ProblemView problem, AttemptView attempt, TurnTestResults testResults);
+    }
+
+    FeedbackDraft generate(ProblemView problem, AttemptView attempt, TurnTestResults testResults) {
+        String userMessage = userPrompt.render(problem, attempt, testResults);
         int turnCount = attempt.turns().size();
         OpenAiChatOptions options = chatOptions.apply(turnCount);
 

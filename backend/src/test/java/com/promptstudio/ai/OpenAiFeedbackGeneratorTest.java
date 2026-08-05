@@ -4,6 +4,7 @@ import com.openai.models.completions.CompletionUsage;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.domain.ProblemView;
@@ -39,7 +40,7 @@ class OpenAiFeedbackGeneratorTest {
             new AiCallExecutor(),
             "OPENAI FEEDBACK",
             FeedbackPrompts.systemPrompt(),
-            FeedbackPrompts::userPrompt,
+            (problem, attempt, testResults) -> FeedbackPrompts.userPrompt(problem, attempt),
             chatOptionsFactory::forFeedback
     );
 
@@ -47,7 +48,7 @@ class OpenAiFeedbackGeneratorTest {
     void 구조화_응답을_턴별_피드백과_전체_피드백으로_변환한다() {
         chatModel.queue(textResponse(response("첫 턴 피드백", "둘째 턴 피드백")));
 
-        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(2));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(2), TurnTestResults.EMPTY);
 
         assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴 피드백", "둘째 턴 피드백");
         assertThat(feedback.overall()).isEqualTo("전체 피드백");
@@ -63,7 +64,7 @@ class OpenAiFeedbackGeneratorTest {
                 {"turnFeedbacks":[{"quotes":["프롬프트 1","요약 1"],"feedback":"첫 턴 피드백"}],\
                 "overall":"전체 피드백"}"""));
 
-        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴 피드백");
         assertThat(feedback.overall()).doesNotContain("프롬프트 1");
@@ -73,7 +74,7 @@ class OpenAiFeedbackGeneratorTest {
     void 요청_옵션에_턴_수만큼의_구조화_출력_스키마를_싣는다() {
         chatModel.queue(textResponse(response("첫 턴 피드백")));
 
-        feedbackGenerator.generate(problem, attempt(1));
+        feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         OpenAiChatOptions options = (OpenAiChatOptions) chatModel.receivedPrompts().getFirst().getOptions();
         assertThat(options.getResponseFormat()).isNotNull();
@@ -91,7 +92,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse("피드백을 드릴 수 없습니다."));
         chatModel.queue(textResponse("피드백을 드릴 수 없습니다."));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("invalid-json");
@@ -102,7 +103,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse(""));
         chatModel.queue(textResponse(""));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("empty-content");
@@ -113,7 +114,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse(response("첫 턴 피드백")));
         chatModel.queue(textResponse(response("첫 턴 피드백")));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("turn-count-mismatch");
@@ -124,7 +125,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse(responseWithOverall("  ", "첫 턴 피드백")));
         chatModel.queue(textResponse(responseWithOverall("  ", "첫 턴 피드백")));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("empty-overall");
@@ -139,7 +140,7 @@ class OpenAiFeedbackGeneratorTest {
     void 완성_토큰_상한에서_잘린_응답이면_다시_부르지_않고_truncated로_실패한다() {
         chatModel.queue(truncatedResponse(response("첫 턴 피드백")));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("truncated");
@@ -155,7 +156,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse(response("첫 턴 피드백")));
         chatModel.queue(textResponse(response("첫 턴", "둘째 턴")));
 
-        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(2));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(2), TurnTestResults.EMPTY);
 
         assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴", "둘째 턴");
         assertThat(chatModel.receivedPrompts()).hasSize(2);
@@ -169,7 +170,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse(response("첫 턴 피드백")));
         chatModel.queue(textResponse(response("첫 턴 피드백")));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class);
         assertThat(chatModel.receivedPrompts()).hasSize(2);
     }
@@ -181,7 +182,7 @@ class OpenAiFeedbackGeneratorTest {
     void 모델_호출이_실패하면_다시_부르지_않고_provider_error로_변환한다() {
         chatModel.failWith(new IllegalStateException("provider 오류"));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("provider-error");
@@ -192,7 +193,7 @@ class OpenAiFeedbackGeneratorTest {
     void 성공_피드백에_사용량이_실린다() {
         chatModel.queue(withUsage(textResponse(response("첫 턴 피드백")), 500, 120, 300L, 80L));
 
-        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.llmCalls()).hasSize(1);
 
@@ -214,7 +215,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(withUsage(textResponse("피드백을 드릴 수 없습니다."), 500, 120, null, null));
         chatModel.queue(withUsage(textResponse("피드백을 드릴 수 없습니다."), 500, 120, null, null));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOfSatisfying(FeedbackGenerationException.class, exception -> {
                     assertThat(exception.errorType()).isEqualTo("invalid-json");
                     assertThat(exception.llmCalls()).hasSize(2);
@@ -229,7 +230,7 @@ class OpenAiFeedbackGeneratorTest {
     void 입력에_있는_문장을_인용하면_다시_부르지_않는다() {
         chatModel.queue(textResponse(responseWithQuote("프롬프트 1", "첫 턴 피드백")));
 
-        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴 피드백");
         assertThat(chatModel.receivedPrompts()).hasSize(1);
@@ -244,7 +245,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse(responseWithQuote("사용자가 diff를 열어 확인했어요", "첫 턴 피드백")));
         chatModel.queue(textResponse(responseWithQuote("프롬프트 1", "다시 부른 피드백")));
 
-        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.turnFeedbacks()).containsExactly("다시 부른 피드백");
         assertThat(chatModel.receivedPrompts()).hasSize(2);
@@ -255,7 +256,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse(responseWithQuote("사용자가 diff를 열어 확인했어요", "첫 턴 피드백")));
         chatModel.queue(textResponse(responseWithQuote("사용자가 diff를 열어 확인했어요", "첫 턴 피드백")));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("quote-not-found");
