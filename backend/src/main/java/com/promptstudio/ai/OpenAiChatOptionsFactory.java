@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * 워크로드별 호출 옵션을 만든다.
  *
- * <p>두 모델 모두 reasoning 모델이라 max_tokens를 거부하므로 어느 경로에서도
+ * <p>쓰는 모델이 모두 reasoning 모델이라 max_tokens를 거부하므로 어느 경로에서도
  * maxTokens를 세팅하지 않는다.
  *
  * <p>Spring AI는 /v1/chat/completions를 쓰는데, 이 엔드포인트는 함수 툴과 reasoning_effort 병용을
@@ -25,6 +25,9 @@ import java.util.List;
  */
 @Component
 public class OpenAiChatOptionsFactory {
+
+    /** 모든 경로가 공유하는 기본 모델. 슬롯별 env 변수로 각각 덮어쓸 수 있다. */
+    private static final String DEFAULT_MODEL = "gpt-5.6-luna";
 
     private static final String FEEDBACK_PROMPT_CACHE_KEY = "feedback";
     private static final String PATTERN_FEEDBACK_PROMPT_CACHE_KEY = "pattern-feedback";
@@ -48,9 +51,9 @@ public class OpenAiChatOptionsFactory {
     private final String scopeModel;
 
     public OpenAiChatOptionsFactory(
-            @Value("${OPENAI_CODE_MODEL:gpt-5.6-luna}") String codeModel,
-            @Value("${OPENAI_FEEDBACK_MODEL:gpt-5.4-mini}") String feedbackModel,
-            @Value("${OPENAI_SCOPE_MODEL:gpt-5.4-mini}") String scopeModel
+            @Value("${OPENAI_CODE_MODEL:" + DEFAULT_MODEL + "}") String codeModel,
+            @Value("${OPENAI_FEEDBACK_MODEL:" + DEFAULT_MODEL + "}") String feedbackModel,
+            @Value("${OPENAI_SCOPE_MODEL:" + DEFAULT_MODEL + "}") String scopeModel
     ) {
         this.codeModel = codeModel;
         this.feedbackModel = feedbackModel;

@@ -45,7 +45,7 @@ spring:
 #
 # 실제 단가를 팀이 확정해 채운다. 모델명에 점이 있어 대괄호 키가 필수다:
 #   models:
-#     "[gpt-5.6-luna]": { input: 1.25, cached-input: 0.125, output: 10.0 }
+#     "[gpt-5.6-luna]": { input: 0.20, cached-input: 0.02, output: 1.20 }
 #
 # 값을 비운 채 키만 남기면 애플리케이션이 기동하지 못한다. YAML의 빈 값은 빈 문자열로 실려
 # String을 Map으로 바꿀 컨버터가 없어 바인딩이 실패한다 — `models: {}`도 같은 이유로 실패한다.
@@ -53,7 +53,8 @@ spring:
 llm:
   pricing:
     models:
-      "[gpt-5.6-luna]": { input: 1.25, cached-input: 0.125, output: 10.0 }
+      # 2026-07-30 인하가 (developers.openai.com/api/docs/models/gpt-5.6-luna)
+      "[gpt-5.6-luna]": { input: 0.20, cached-input: 0.02, output: 1.20 }
 
 server:
   port: 9090
