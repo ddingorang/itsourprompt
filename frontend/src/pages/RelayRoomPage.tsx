@@ -442,8 +442,10 @@ function GameView({
       {/* 좌: 좌석과 점수 */}
       <aside className="flex min-h-0 flex-col gap-5 overflow-hidden border-r border-[#343434] px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-r-0 max-[900px]:border-b">
         <div>
-          <div className={labelClasses}>{room.name ?? `ROOM #${room.roomId}`}</div>
-          <p className="mt-1 mb-0 font-mono text-[10px] text-[#777]">
+          <div className="font-mono text-[16px] leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]">
+            {room.name ?? `ROOM #${room.roomId}`}
+          </div>
+          <p className="mt-1 mb-0 font-mono text-[12px] text-[#777]">
             {room.name ? `#${room.roomId} · ` : ''}TURN {room.currentTurnIndex + 1} /{' '}
             {room.totalTurns ?? '?'} · LAP {(room.currentLap ?? 0) + 1} / {room.totalLaps}
           </p>
@@ -466,13 +468,6 @@ function GameView({
             />
           ))}
         </div>
-
-        {room.baselinePassed !== null && (
-          <p className="m-0 font-mono text-[10px] leading-[1.7] text-[#666]">
-            BASELINE {room.baselinePassed}/{room.baselineTotal} — 시작 스켈레톤이
-            이미 통과한 테스트. 첫 주자의 기여도 기준선.
-          </p>
-        )}
 
         <VoicePanel compact rtc={rtc} />
 
