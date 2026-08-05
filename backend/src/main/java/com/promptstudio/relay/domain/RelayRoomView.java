@@ -13,9 +13,11 @@ import java.util.List;
  * @param totalTurns     좌석 × 바퀴. 좌석 확정 전에는 null
  * @param baselinePassed 시작 스켈레톤이 통과시킨 테스트 수 — 첫 주자 점수의 기준선.
  *                       베이스라인 채점 결과가 오기 전에는 null
+ * @param name           방장이 붙인 방 이름. 이름 도입 전에 만들어진 방은 null
  */
 public record RelayRoomView(
         Long id,
+        String name,
         Long problemId,
         Long hostUserId,
         RelayRoomStatus status,
@@ -38,6 +40,7 @@ public record RelayRoomView(
     public static RelayRoomView of(RelayRoom room, List<RelayParticipantView> participants) {
         return new RelayRoomView(
                 room.id(),
+                room.name(),
                 room.problemId(),
                 room.hostUserId(),
                 room.status(),

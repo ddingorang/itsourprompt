@@ -39,6 +39,7 @@ public class RelayWebMapper {
 
         return new RelayRoomResponse(
                 room.id(),
+                room.name(),
                 room.problemId(),
                 room.hostUserId(),
                 room.status(),
@@ -65,6 +66,7 @@ public class RelayWebMapper {
         for (RelayRoomSummary summary : summaries) {
             rooms.add(new RelayRoomListResponse.RelayRoomSummaryResponse(
                     summary.roomId(),
+                    summary.name(),
                     summary.problemId(),
                     summary.problemTitle(),
                     summary.hostUserId(),

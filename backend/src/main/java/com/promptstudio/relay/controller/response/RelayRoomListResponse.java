@@ -15,6 +15,8 @@ public record RelayRoomListResponse(
     public record RelayRoomSummaryResponse(
             @Schema(description = "방 ID. 입장은 POST /relay/rooms/{id}/participants", example = "3")
             Long roomId,
+            @Schema(description = "방장이 붙인 방 이름. 이름 도입 전에 만들어진 방은 null", example = "점심시간 한 판")
+            String name,
             @Schema(description = "풀 문제 ID", example = "2")
             Long problemId,
             @Schema(description = "풀 문제 제목", example = "전화번호 개인정보 보호 처리")
