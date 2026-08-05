@@ -3,6 +3,7 @@ package com.promptstudio.relay.service;
 import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.CodeRunView;
+import com.promptstudio.attempt.exception.PromptScopeRejectedException;
 import com.promptstudio.attempt.service.AttemptService;
 import com.promptstudio.attempt.service.CodeRunService;
 import com.promptstudio.relay.domain.RelayParticipant;
@@ -131,7 +132,13 @@ public class RelayGameService {
         } catch (RuntimeException exception) {
             // 되돌리기가 실패해도 원 예외를 가리지 않는다 — 주자는 502/504를 받아야 재시도한다.
             try {
-                gameWriter.recordTurnFailure(roomId, turnIndex, userId);
+                // 반려(문제와 무관한 프롬프트)는 주자 입력의 문제라 마감을 새로 주지 않는다.
+                // 새 마감은 생성 실패(502 등)가 잡아먹은 시간을 보상하는 장치다.
+                if (exception instanceof PromptScopeRejectedException) {
+                    gameWriter.recordTurnRejection(roomId, turnIndex, userId);
+                } else {
+                    gameWriter.recordTurnFailure(roomId, turnIndex, userId);
+                }
             } catch (RuntimeException revertFailure) {
                 exception.addSuppressed(revertFailure);
             }

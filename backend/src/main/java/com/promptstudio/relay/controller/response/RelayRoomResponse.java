@@ -10,6 +10,8 @@ import java.util.List;
 public record RelayRoomResponse(
         @Schema(description = "방 ID", example = "1")
         Long roomId,
+        @Schema(description = "방장이 붙인 방 이름. 이름 도입 전에 만들어진 방은 null", example = "점심시간 한 판")
+        String name,
         @Schema(description = "풀고 있는 문제 ID", example = "1")
         Long problemId,
         @Schema(description = "방장 사용자 ID. 게임 시작 권한이 있다", example = "7")

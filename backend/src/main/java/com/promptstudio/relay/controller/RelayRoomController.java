@@ -84,6 +84,7 @@ public class RelayRoomController {
             @Valid @RequestBody CreateRelayRoomRequest request
     ) {
         return relayWebMapper.toRoomResponse(relayRoomService.openRoom(
+                request.name(),
                 request.problemId(),
                 principal.id(),
                 request.totalLaps(),

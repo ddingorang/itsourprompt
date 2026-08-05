@@ -8,6 +8,7 @@ import java.time.Instant;
  */
 public record RelayRoomSummary(
         Long roomId,
+        String name,
         Long problemId,
         String problemTitle,
         Long hostUserId,

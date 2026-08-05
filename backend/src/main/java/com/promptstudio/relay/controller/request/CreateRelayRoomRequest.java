@@ -4,10 +4,17 @@ import com.promptstudio.relay.domain.RelayRoom;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 @Schema(description = "릴레이 방 개설 요청")
 public record CreateRelayRoomRequest(
+        @NotBlank(message = "name은 비어 있을 수 없습니다.")
+        @Size(max = RelayRoom.MAX_NAME_LENGTH, message = "name은 " + RelayRoom.MAX_NAME_LENGTH + "자 이하여야 합니다.")
+        @Schema(description = "방 이름. 로비 목록에 그대로 노출된다", example = "점심시간 한 판")
+        String name,
+
         @NotNull(message = "problemId는 비어 있을 수 없습니다.")
         @Schema(description = "릴레이로 풀 문제 ID", example = "1")
         Long problemId,

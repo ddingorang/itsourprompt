@@ -66,7 +66,7 @@ public class RelayRoomService {
     }
 
     @Transactional
-    public RelayRoomView openRoom(Long problemId, Long hostUserId, int totalLaps, int maxParticipants) {
+    public RelayRoomView openRoom(String name, Long problemId, Long hostUserId, int totalLaps, int maxParticipants) {
         Problem problem = problemRepository.findById(problemId)
                 .orElseThrow(() -> new ProblemNotFoundException(problemId));
 
@@ -75,7 +75,7 @@ public class RelayRoomService {
         }
 
         RelayRoom room = roomRepository.save(
-                RelayRoom.open(problemId, hostUserId, totalLaps, maxParticipants));
+                RelayRoom.open(name, problemId, hostUserId, totalLaps, maxParticipants));
 
         // 방장은 개설과 동시에 첫 참가자가 된다. 방을 만드는 것과 참가하는 것을 따로 두면
         // 방장이 입장을 빠뜨린 방이 생기고, 그 방은 1번 좌석의 주인이 없다.
@@ -143,6 +143,7 @@ public class RelayRoomService {
 
             summaries.add(new RelayRoomSummary(
                     room.id(),
+                    room.name(),
                     room.problemId(),
                     problemTitles.get(room.problemId()),
                     room.hostUserId(),

@@ -36,6 +36,9 @@ public class RelayRoom {
      */
     public static final int MAX_PARTICIPANTS = 6;
 
+    /** 로비 목록 한 줄에 들어가야 하는 이름이라 길이를 짧게 묶는다. */
+    public static final int MAX_NAME_LENGTH = 30;
+
     public static final int MIN_LAPS = 1;
 
     /**
@@ -46,6 +49,13 @@ public class RelayRoom {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /**
+     * 방장이 붙인 방 이름. 개설 시 필수지만, 이름 도입 전에 만들어진 행은 null일 수 있어
+     * 컬럼과 필드 모두 null을 허용한다 — 화면이 방 번호로 대신 표시한다.
+     */
+    @Column(name = "name", length = MAX_NAME_LENGTH, updatable = false)
+    private String name;
 
     @Column(name = "problem_id", nullable = false, updatable = false)
     private Long problemId;
@@ -102,7 +112,9 @@ public class RelayRoom {
     protected RelayRoom() {
     }
 
-    private RelayRoom(Long problemId, Long hostUserId, int totalLaps, int maxParticipants, Instant createdAt) {
+    private RelayRoom(
+            String name, Long problemId, Long hostUserId, int totalLaps, int maxParticipants, Instant createdAt) {
+        this.name = name;
         this.problemId = problemId;
         this.hostUserId = hostUserId;
         this.totalLaps = totalLaps;
@@ -114,7 +126,13 @@ public class RelayRoom {
      * 방을 열어 입장을 받기 시작한다. 방장은 개설과 동시에 첫 번째 참가자가 되므로
      * 1번 좌석은 항상 방장이다(등록은 서비스가 한다).
      */
-    public static RelayRoom open(Long problemId, Long hostUserId, int totalLaps, int maxParticipants) {
+    public static RelayRoom open(String name, Long problemId, Long hostUserId, int totalLaps, int maxParticipants) {
+        String trimmedName = name == null ? "" : name.strip();
+
+        if (trimmedName.isEmpty() || trimmedName.length() > MAX_NAME_LENGTH) {
+            throw new IllegalArgumentException(
+                    "name must be between 1 and " + MAX_NAME_LENGTH + " characters");
+        }
         if (totalLaps < MIN_LAPS || totalLaps > MAX_LAPS) {
             throw new IllegalArgumentException("totalLaps must be between " + MIN_LAPS + " and " + MAX_LAPS);
         }
@@ -123,7 +141,7 @@ public class RelayRoom {
                     "maxParticipants must be between " + MIN_PARTICIPANTS + " and " + MAX_PARTICIPANTS);
         }
 
-        return new RelayRoom(problemId, hostUserId, totalLaps, maxParticipants, Instant.now());
+        return new RelayRoom(trimmedName, problemId, hostUserId, totalLaps, maxParticipants, Instant.now());
     }
 
     public boolean isWaiting() {
@@ -179,6 +197,17 @@ public class RelayRoom {
         if (status == RelayRoomStatus.TURN_GENERATING) {
             this.status = RelayRoomStatus.PLAYING;
             this.turnDeadline = retryDeadline;
+        }
+    }
+
+    /**
+     * 프롬프트 반려. 좌석을 되돌리는 것은 생성 실패와 같지만 마감은 그대로 둔다 — 반려는
+     * 주자 본인의 입력이 문제라, 마감을 새로 주면 무관한 프롬프트를 반복 전송하는 것만으로
+     * 자기 차례를 무한정 붙들 수 있다. 남은 시간 안에 고쳐 내지 못하면 스킵이 맞다.
+     */
+    public void rejectTurn() {
+        if (status == RelayRoomStatus.TURN_GENERATING) {
+            this.status = RelayRoomStatus.PLAYING;
         }
     }
 
@@ -311,6 +340,11 @@ public class RelayRoom {
 
     public Long id() {
         return id;
+    }
+
+    /** 이름 도입 전에 만들어진 방은 null이다. */
+    public String name() {
+        return name;
     }
 
     public Long problemId() {
