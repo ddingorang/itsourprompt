@@ -508,7 +508,7 @@ function GameView({
             <button
               aria-selected={panelTab === tab}
               className={[
-                'min-h-9 cursor-pointer border-0 bg-transparent px-3 font-mono text-xs font-bold tracking-[0.08em]',
+                'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm leading-[1.5] font-bold tracking-[0.08em]',
                 tab === 'problem' ? 'border-r border-[#3f3f3f]' : '',
                 panelTab === tab
                   ? 'border-b-2 border-b-[#d6ff50] text-[#d6ff50]'
