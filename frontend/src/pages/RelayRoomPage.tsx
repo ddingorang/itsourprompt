@@ -1177,7 +1177,7 @@ function VoicePanel({
         onClick={() => void rtc.toggleAudio()}
         type="button"
       >
-        {rtc.audioOn ? '🎤 마이크 켜짐 — 누르면 끔' : '🎤 마이크 켜기'}
+        {rtc.audioOn ? '🎤 마이크 끄기' : '🎤 마이크 켜기'}
       </button>
       {rtc.audioError && (
         <p className="m-0 font-mono text-[10px] text-[#ff786b]">{rtc.audioError}</p>
