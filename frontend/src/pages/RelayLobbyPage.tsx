@@ -18,6 +18,7 @@ const fieldClasses =
 
 const LAP_CHOICES = [1, 2, 3] as const;
 const SIZE_CHOICES = [2, 3, 4, 5, 6] as const;
+const ROOMS_PER_PAGE = 3;
 
 /** 백엔드 RelayRoom.MAX_NAME_LENGTH와 같은 값. 로비 목록 한 줄에 들어가는 길이. */
 const ROOM_NAME_MAX_LENGTH = 30;
@@ -41,8 +42,14 @@ export default function RelayLobbyPage() {
   const [maxParticipants, setMaxParticipants] = useState<number>(3);
   const [creating, setCreating] = useState(false);
   const [rooms, setRooms] = useState<RelayRoomSummary[]>([]);
+  const [roomPage, setRoomPage] = useState(0);
   const [roomsLoaded, setRoomsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const roomPageCount = Math.max(1, Math.ceil(rooms.length / ROOMS_PER_PAGE));
+  const visibleRooms = rooms.slice(
+    roomPage * ROOMS_PER_PAGE,
+    (roomPage + 1) * ROOMS_PER_PAGE,
+  );
 
   useEffect(() => {
     void getProblems()
@@ -75,6 +82,10 @@ export default function RelayLobbyPage() {
       window.clearInterval(timer);
     };
   }, [refreshRooms]);
+
+  useEffect(() => {
+    setRoomPage((current) => Math.min(current, roomPageCount - 1));
+  }, [roomPageCount]);
 
   const handleCreate = async () => {
     const name = roomName.trim();
@@ -120,13 +131,33 @@ export default function RelayLobbyPage() {
         <section className="border border-[#343434]">
           <div className="flex items-center justify-between border-b border-[#343434] px-6 py-3">
             <span className={labelClasses}>OPEN ROOMS</span>
-            <button
-              className="cursor-pointer border border-[#3f3f3f] bg-transparent px-2.5 py-1 font-mono text-[10px] text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]"
-              onClick={() => void refreshRooms()}
-              type="button"
-            >
-              새로고침
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                aria-label="이전 방 목록 페이지"
+                className="grid size-7 cursor-pointer place-items-center border border-[#3f3f3f] bg-transparent font-mono text-[12px] text-[#a3a3a3] enabled:hover:border-[#d6ff50] enabled:hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:text-[#444]"
+                disabled={roomPage === 0}
+                onClick={() => setRoomPage((current) => current - 1)}
+                type="button"
+              >
+                &lt;
+              </button>
+              <button
+                aria-label="다음 방 목록 페이지"
+                className="grid size-7 cursor-pointer place-items-center border border-[#3f3f3f] bg-transparent font-mono text-[12px] text-[#a3a3a3] enabled:hover:border-[#d6ff50] enabled:hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:text-[#444]"
+                disabled={roomPage >= roomPageCount - 1}
+                onClick={() => setRoomPage((current) => current + 1)}
+                type="button"
+              >
+                &gt;
+              </button>
+              <button
+                className="cursor-pointer border border-[#3f3f3f] bg-transparent px-2.5 py-1 font-mono text-[10px] text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]"
+                onClick={() => void refreshRooms()}
+                type="button"
+              >
+                새로고침
+              </button>
+            </div>
           </div>
 
           {!roomsLoaded ? (
@@ -139,7 +170,7 @@ export default function RelayLobbyPage() {
             </p>
           ) : (
             <ul className="m-0 grid list-none gap-0 p-0">
-              {rooms.map((room) => {
+              {visibleRooms.map((room) => {
                 const full = room.participantCount >= room.maxParticipants;
 
                 return (
