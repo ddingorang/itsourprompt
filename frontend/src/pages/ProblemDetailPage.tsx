@@ -17,6 +17,7 @@ import {
   requestCodeRun,
   submitAttempt,
 } from '../features/attempt/api';
+import { replayFiles } from '../features/attempt/replay';
 import type {
   Attempt,
   ChangedFile,
@@ -33,6 +34,7 @@ import { getProblemDetail } from '../features/problem/api';
 import type { ProblemDetail, RepositoryFile } from '../features/problem/types';
 import { useTheme } from '../features/theme/ThemeContext';
 import CodeViewer from '../features/workspace/CodeViewer';
+import { diffLines } from '../features/workspace/diff';
 import { nextTabIndex } from '../shared/a11y/tabKeyboard';
 import {
   ApiError,
@@ -620,6 +622,28 @@ export default function ProblemDetailPage() {
     return findFile(files, selectedFile)?.content ?? '// 이 턴에서 삭제된 파일입니다.';
   }, [files, selectedFile]);
 
+  /** 직전 턴 직후의 파일 상태. 마지막 턴 diff의 기준선이다. 턴이 없으면 null. */
+  const previousFiles = useMemo(() => {
+    if (!attempt || attempt.turns.length === 0) return null;
+    return replayFiles(attempt.baseFiles, attempt.turns.slice(0, -1));
+  }, [attempt]);
+
+  /** 선택 파일의 직전 턴 대비 diff. 마지막 턴이 안 건드린 파일은 강조가 없다. */
+  const selectedDiff = useMemo(() => {
+    if (!attempt || !previousFiles || !selectedFile) return undefined;
+    const lastTurn = attempt.turns[attempt.turns.length - 1];
+    const normalizedSelected = normalizeRepositoryPath(selectedFile);
+    const touched = lastTurn.changedFiles.some(
+      (file) =>
+        normalizeRepositoryPath(file.path) === normalizedSelected &&
+        file.changeType !== 'DELETED',
+    );
+    if (!touched) return undefined;
+    const afterContent = findFile(files, selectedFile)?.content;
+    if (afterContent === undefined) return undefined;
+    return diffLines(findFile(previousFiles, selectedFile)?.content ?? null, afterContent);
+  }, [attempt, files, previousFiles, selectedFile]);
+
   const showStatus = (message: string, type: StatusType = 'normal') => {
     setStatus({ message, type });
   };
@@ -1126,7 +1150,12 @@ export default function ProblemDetailPage() {
               aria-hidden="true"
               className="sticky top-0 z-[2] h-8 min-w-full border-b border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-header)]"
             />
-            <CodeViewer code={selectedCode} path={selectedFile} />
+            <CodeViewer
+              code={selectedCode}
+              diff={selectedDiff}
+              key={`${selectedFile}::${turns.length}`}
+              path={selectedFile}
+            />
           </div>
         </section>
 

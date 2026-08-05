@@ -672,6 +672,15 @@ html { scroll-behavior: smooth; }
   --code-punct: #808080;
   --code-tag: #569cd6;
   --code-attr: #9cdcfe;
+
+  /* diff 강조(어템프트 화면 전용). 막대·기호는 진하게, 배경은 토큰 색이
+   * 살도록 8% 수준으로 옅게. 삭제 빨강은 화면의 에러 색 #ff786b와 맞춘다. */
+  --code-diff-added-bar: #3fb950;
+  --code-diff-added-bg: #3fb95014;
+  --code-diff-changed-bar: #d29922;
+  --code-diff-changed-bg: #d2992214;
+  --code-diff-deleted-bar: #ff786b;
+  --code-diff-deleted-bg: #ff786b12;
 }
 
 /* 라이트 팔레트는 라이트 모드를 가진 페이지에만 건다. ThemeProvider가 html에도
@@ -688,6 +697,13 @@ html { scroll-behavior: smooth; }
   --code-punct: #6a6a6a;
   --code-tag: #800000;
   --code-attr: #e50000;
+
+  --code-diff-added-bar: #1a7f37;
+  --code-diff-added-bg: #1a7f371f;
+  --code-diff-changed-bar: #9a6700;
+  --code-diff-changed-bg: #9a67001f;
+  --code-diff-deleted-bar: #cf222e;
+  --code-diff-deleted-bg: #cf222e1a;
 }
 
 .problem-detail-page .code-viewer {
