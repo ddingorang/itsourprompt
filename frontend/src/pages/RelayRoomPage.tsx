@@ -310,7 +310,7 @@ function WaitingView({
         <p className="m-0 font-mono text-xs text-[#ff786b]">{actionError}</p>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex justify-end gap-3">
         {isHost &&
           (enough ? (
             <Button disabled={starting} onClick={() => void handleStart()}>
