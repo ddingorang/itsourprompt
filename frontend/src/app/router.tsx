@@ -4,11 +4,14 @@ import ProtectedRoute from '../features/auth/ProtectedRoute'
 import HomePage from '../pages/HomePage'
 import ProblemListPage from '../pages/ProblemListPage'
 import ProblemDetailPage from '../pages/ProblemDetailPage'
+import RankingPage from '../pages/RankingPage'
 import FeedbackPage from '../pages/FeedbackPage'
 import ErrorPage from '../pages/ErrorPage'
 import MyPage from '../pages/MyPage'
 import LoginPage from '../pages/LoginPage'
 import SignupPage from '../pages/SignupPage'
+import RelayLobbyPage from '../pages/RelayLobbyPage'
+import RelayRoomPage from '../pages/RelayRoomPage'
 
 export const router = createBrowserRouter([
   {
@@ -18,6 +21,12 @@ export const router = createBrowserRouter([
   {
     path: '/problems',
     element: <ProblemListPage />,
+  },
+  // 어느 문제의 랭킹을 볼지는 경로가 아니라 쿼리(?problem=N)에 담는다 — 문제 탭이
+  // 곧 주소 이동이라 탭을 바꾸면 page 파라미터가 자연히 떨어진다.
+  {
+    path: '/ranking',
+    element: <RankingPage />,
   },
   // 어템프트 시작 전(문제 스켈레톤)과 진행 중(어템프트)은 같은 화면이고 주소만 다르다.
   // 두 라우트를 최상위 형제로 나란히 두는 것이 중요하다 — react-router는 라우트
@@ -57,5 +66,23 @@ export const router = createBrowserRouter([
   {
     path: '/signup',
     element: <SignupPage />,
+  },
+  // 릴레이 게임. 게스트 풀이가 가능한 문제 풀이와 달리 전부 로그인 필수다 —
+  // 백엔드가 게스트를 받지 않는다(좌석의 주인이 세션 만료로 바뀌면 안 되기 때문).
+  {
+    path: '/relay',
+    element: (
+      <ProtectedRoute>
+        <RelayLobbyPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/relay/rooms/:roomId',
+    element: (
+      <ProtectedRoute>
+        <RelayRoomPage />
+      </ProtectedRoute>
+    ),
   },
 ])

@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 import { useAuth } from './AuthContext';
+import { useTheme } from '../theme/ThemeContext';
 
 /**
  * 로그인이 필요한 라우트를 감싸는 문지기.
@@ -16,12 +17,16 @@ import { useAuth } from './AuthContext';
  */
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { loading, user } = useAuth();
+  const { colorMode } = useTheme();
   const location = useLocation();
 
   if (loading) {
     // 세션 확인 중에는 빈 화면 대신 페이지 배경만 유지한다(깜빡임 최소화).
     return (
-      <div className="flex min-h-screen min-w-80 flex-col bg-[#090909] text-[#f5f5ef]" />
+      <div
+        className="protected-route-loading flex min-h-screen min-w-80 flex-col"
+        data-color-mode={colorMode}
+      />
     );
   }
 
