@@ -5,6 +5,7 @@ import { getProblems } from '../features/problem/api';
 import type { ProblemSummary } from '../features/problem/types';
 import { createRelayRoom, getRelayRooms } from '../features/relay/api';
 import type { RelayRoomSummary } from '../features/relay/types';
+import { useTheme } from '../features/theme/ThemeContext';
 import { ApiError, isAbortError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Header from '../shared/components/Header';
@@ -34,6 +35,7 @@ const ROOM_LIST_REFRESH_MS = 10_000;
  */
 export default function RelayLobbyPage() {
   const navigate = useNavigate();
+  const { colorMode } = useTheme();
 
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
   const [roomName, setRoomName] = useState('');
@@ -105,7 +107,10 @@ export default function RelayLobbyPage() {
   };
 
   return (
-    <div className="min-h-dvh bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]">
+    <div
+      className="relay-page min-h-dvh bg-[#090909] text-[#f5f5ef] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
+      data-color-mode={colorMode}
+    >
       <Header />
 
       <main className="mx-auto grid w-full max-w-[880px] gap-8 px-6 py-12">

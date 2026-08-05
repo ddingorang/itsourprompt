@@ -29,6 +29,7 @@ import type {
 } from '../features/relay/types';
 import { useRelayRoom } from '../features/relay/useRelayRoom';
 import { useRelayRtc, type RelayPeerView } from '../features/relay/useRelayRtc';
+import { useTheme } from '../features/theme/ThemeContext';
 import CodeViewer from '../features/workspace/CodeViewer';
 import { ApiError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
@@ -133,10 +134,11 @@ function createRelayFileTree(paths: string[]): RelayFileTreeNode[] {
 export default function RelayRoomPage() {
   const roomId = parseRouteId(useParams().roomId);
   const { user } = useAuth();
+  const { colorMode } = useTheme();
 
   if (roomId === null) {
     return (
-      <div className={centeredNoticeClasses}>
+      <div className={`relay-page ${centeredNoticeClasses}`} data-color-mode={colorMode}>
         <div>
           <p className="m-0">잘못된 방 주소입니다.</p>
           <Button className="mt-5" to="/relay" variant="secondary">
@@ -159,6 +161,7 @@ function RelayRoomScreen({
   myUserId: number | null;
   roomId: number;
 }) {
+  const { colorMode } = useTheme();
   // RTC 훅은 시그널 전송 함수가 필요해 소켓 훅 다음에 만들어진다. 소켓 훅이 peer/signal
   // 이벤트를 넘길 자리를 ref로 먼저 마련하고, RTC 훅이 만들어진 뒤 채운다.
   const rtcHandlerRef = useRef<(event: RelayEvent) => void>(() => {});
@@ -190,7 +193,7 @@ function RelayRoomScreen({
 
   if (joinError) {
     return (
-      <div className={centeredNoticeClasses}>
+      <div className={`relay-page ${centeredNoticeClasses}`} data-color-mode={colorMode}>
         <div>
           <p className="m-0 text-[#ff786b]">{joinError}</p>
           <Button className="mt-5" to="/relay" variant="secondary">
@@ -203,7 +206,7 @@ function RelayRoomScreen({
 
   if (socketStatus === 'replaced') {
     return (
-      <div className={centeredNoticeClasses}>
+      <div className={`relay-page ${centeredNoticeClasses}`} data-color-mode={colorMode}>
         <div>
           <p className="m-0">
             다른 탭(또는 창)에서 이 방에 접속해 이 화면의 연결이 종료됐습니다.
@@ -218,7 +221,7 @@ function RelayRoomScreen({
 
   if (!room) {
     return (
-      <div className={centeredNoticeClasses}>
+      <div className={`relay-page ${centeredNoticeClasses}`} data-color-mode={colorMode}>
         <p className="m-0">방에 입장하는 중…</p>
       </div>
     );
@@ -229,13 +232,14 @@ function RelayRoomScreen({
 
   return (
     <div
-      className={`${pageClasses} ${
+      className={`relay-page ${pageClasses} ${
         isWaiting
           ? '!overflow-x-hidden !overflow-y-auto'
           : isFinished
             ? '!overflow-x-hidden !overflow-y-auto'
             : ''
       }`}
+      data-color-mode={colorMode}
     >
       <Header variant={isWaiting || isFinished ? 'default' : 'workspace'} />
       {isWaiting ? (

@@ -13,6 +13,123 @@ body {
 
 html { scroll-behavior: smooth; }
 ::selection { background: #d6ff50; color: #090909; }
+
+/* Relay lobby, waiting room, play workspace, and result share one light palette. */
+.relay-page {
+  --relay-bg: #090909;
+  --relay-surface: #121212;
+  --relay-surface-raised: #151515;
+  --relay-text: #f5f5ef;
+  --relay-muted: #a3a3a3;
+  --relay-subtle: #777;
+  --relay-border: #393939;
+  --relay-acid: #d6ff50;
+}
+.relay-page[data-color-mode='light'] {
+  --relay-bg: #fff;
+  --relay-surface: #f7f7f2;
+  --relay-surface-raised: #f3f3ee;
+  --relay-text: #090909;
+  --relay-muted: #585858;
+  --relay-subtle: #70706a;
+  --relay-border: #c7c7c1;
+  --relay-acid: #bee034;
+  background: var(--relay-bg) !important;
+  color: var(--relay-text) !important;
+  color-scheme: light;
+}
+.relay-page[data-color-mode='light'] > header {
+  border-color: var(--relay-border);
+  background: color-mix(in srgb, var(--relay-bg) 94%, transparent);
+  color: var(--relay-text);
+}
+.relay-page[data-color-mode='light'] > header nav a,
+.relay-page[data-color-mode='light'] > header nav button { color: var(--relay-muted); }
+.relay-page[data-color-mode='light'] > header nav a[aria-current='page'],
+.relay-page[data-color-mode='light'] > header nav a:hover,
+.relay-page[data-color-mode='light'] > header nav button:hover,
+.relay-page[data-color-mode='light'] > header nav a:focus-visible,
+.relay-page[data-color-mode='light'] > header nav button:focus-visible { color: var(--relay-acid); }
+.relay-page[data-color-mode='light'] > header nav span { color: var(--relay-border); }
+.relay-page[data-color-mode='light'] > header i { color: var(--relay-acid); }
+
+.relay-page[data-color-mode='light'] [class~="bg-[#090909]"],
+.relay-page[data-color-mode='light'] [class~="bg-[#121212]"] { background-color: var(--relay-bg) !important; }
+.relay-page[data-color-mode='light'] [class~="bg-[#151515]"],
+.relay-page[data-color-mode='light'] [class~="bg-[#171717]"],
+.relay-page[data-color-mode='light'] [class~="bg-[#202020]"],
+.relay-page[data-color-mode='light'] [class~="bg-[#161a08]"] { background-color: var(--relay-surface) !important; }
+.relay-page[data-color-mode='light'] [class~="bg-[#1c0f0e]"] { background-color: #fff4f2 !important; }
+.relay-page[data-color-mode='light'] [class~="bg-[#171207]"] { background-color: #fff9e8 !important; }
+.relay-page[data-color-mode='light'] [class~="bg-[#d6ff50]"] { background-color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="text-[#f5f5ef]"] { color: var(--relay-text) !important; }
+.relay-page[data-color-mode='light'] [class~="text-[#a3a3a3]"],
+.relay-page[data-color-mode='light'] [class~="text-[#8f8f8f]"] { color: var(--relay-muted) !important; }
+.relay-page[data-color-mode='light'] [class~="text-[#777]"],
+.relay-page[data-color-mode='light'] [class~="text-[#666]"],
+.relay-page[data-color-mode='light'] [class~="text-[#686868]"],
+.relay-page[data-color-mode='light'] [class~="text-[#8b8b8b]"],
+.relay-page[data-color-mode='light'] [class~="text-[#b8b8b8]"],
+.relay-page[data-color-mode='light'] [class~="text-[#c7c7c2]"],
+.relay-page[data-color-mode='light'] [class~="text-[#e3e3dd]"],
+.relay-page[data-color-mode='light'] [class~="text-[#444]"],
+.relay-page[data-color-mode='light'] [class~="text-[#555]"] { color: var(--relay-subtle) !important; }
+.relay-page[data-color-mode='light'] [class~="text-[#d6ff50]"] { color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="border-[#222]"],
+.relay-page[data-color-mode='light'] [class~="border-[#292929]"],
+.relay-page[data-color-mode='light'] [class~="border-[#2c2c2c]"],
+.relay-page[data-color-mode='light'] [class~="border-[#333]"],
+.relay-page[data-color-mode='light'] [class~="border-[#343434]"],
+.relay-page[data-color-mode='light'] [class~="border-[#393939]"],
+.relay-page[data-color-mode='light'] [class~="border-[#3f3f3f]"],
+.relay-page[data-color-mode='light'] [class~="border-[#494949]"],
+.relay-page[data-color-mode='light'] [class~="border-[#4b4b4b]"],
+.relay-page[data-color-mode='light'] [class~="border-[#535353]"] { border-color: var(--relay-border) !important; }
+.relay-page[data-color-mode='light'] [class~="border-[#777]"] { border-color: var(--relay-border) !important; }
+.relay-page[data-color-mode='light'] [class~="border-[#5a2c28]"] { border-color: #d94336 !important; }
+.relay-page[data-color-mode='light'] [class~="border-[#d6ff50]"] { border-color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="border-b-[#d6ff50]"] { border-bottom-color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="border-l-[#d6ff50]"] { border-left-color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="after:bg-[#d6ff50]"]::after { background-color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="hover:bg-[#202020]"]:hover { background-color: #e9efd7 !important; }
+.relay-page[data-color-mode='light'] [class~="disabled:hover:bg-[#121212]"]:disabled:hover { background-color: var(--relay-bg) !important; }
+.relay-page[data-color-mode='light'] [class~="hover:border-[#d6ff50]"]:hover,
+.relay-page[data-color-mode='light'] [class~="enabled:hover:border-[#d6ff50]"]:enabled:hover,
+.relay-page[data-color-mode='light'] [class~="focus:border-[#d6ff50]"]:focus,
+.relay-page[data-color-mode='light'] [class~="focus-visible:border-[#d6ff50]"]:focus-visible { border-color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="hover:text-[#d6ff50]"]:hover,
+.relay-page[data-color-mode='light'] [class~="enabled:hover:text-[#d6ff50]"]:enabled:hover,
+.relay-page[data-color-mode='light'] [class~="focus-visible:text-[#d6ff50]"]:focus-visible { color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="hover:!text-[#d6ff50]"]:hover,
+.relay-page[data-color-mode='light'] [class~="focus-visible:!text-[#d6ff50]"]:focus-visible { color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="hover:!border-[#d6ff50]"]:hover,
+.relay-page[data-color-mode='light'] [class~="focus-visible:!border-[#d6ff50]"]:focus-visible { border-color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="hover:text-[#f5f5ef]"]:hover { color: var(--relay-text) !important; }
+.relay-page[data-color-mode='light'] [class~="hover:text-[#b8b8b8]"]:hover { color: var(--relay-muted) !important; }
+.relay-page[data-color-mode='light'] [class~="hover:bg-[#d6ff50]"]:hover,
+.relay-page[data-color-mode='light'] [class~="focus-visible:bg-[#d6ff50]"]:focus-visible { background-color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="hover:border-[#d6ff50]"]:hover,
+.relay-page[data-color-mode='light'] [class~="focus-visible:border-[#d6ff50]"]:focus-visible { border-color: var(--relay-acid) !important; }
+.relay-page[data-color-mode='light'] [class~="hover:bg-transparent"]:hover,
+.relay-page[data-color-mode='light'] [class~="hover:!bg-transparent"]:hover,
+.relay-page[data-color-mode='light'] [class~="focus-visible:bg-transparent"]:focus-visible,
+.relay-page[data-color-mode='light'] [class~="focus-visible:!bg-transparent"]:focus-visible { background-color: transparent !important; }
+.relay-page[data-color-mode='light'] textarea,
+.relay-page[data-color-mode='light'] select,
+.relay-page[data-color-mode='light'] input {
+  background-color: var(--relay-surface-raised) !important;
+  color: var(--relay-text) !important;
+}
+.relay-page[data-color-mode='light'] textarea::placeholder,
+.relay-page[data-color-mode='light'] input::placeholder { color: var(--relay-subtle) !important; }
+.relay-page[data-color-mode='light'] pre,
+.relay-page[data-color-mode='light'] code { color: #232323; }
+.relay-page[data-color-mode='light'] [class~="[--feedback-text:#f5f5ef]"] {
+  --feedback-text: #090909 !important;
+  --feedback-border: var(--relay-border) !important;
+  --feedback-acid: var(--relay-acid) !important;
+}
+.relay-page[data-color-mode='light'] ::selection { background: var(--relay-acid); color: #090909; }
 .landing-page {
   --acid: #d6ff50;
   /* 헤더 실제 높이. 섹션이 "화면 한 장"을 차지하려면 이만큼 빼야 한다.
