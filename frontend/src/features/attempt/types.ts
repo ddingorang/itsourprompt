@@ -80,15 +80,22 @@ export interface TurnRequest {
 export interface TurnFeedback {
   turn: number;
   feedbackMd: string;
+  /** 그 턴에 일한 방식에 이름을 붙인 두 번째 피드백. */
+  patternMd: string | null;
 }
 
 /**
  * 제출 결과 피드백.
  * turns는 턴별 피드백 도입 이전에 제출된 어템프트에서는 빈 배열일 수 있다.
+ *
+ * pattern 피드백은 두 자리(patternMd / patternOverallMd)를 한 번의 제출에서 함께 만든다 —
+ * pattern 도입 전에 제출된 어템프트는 두 필드가 함께 null이므로, 화면은 자리마다 따로
+ * 판정하지 않고 한 번만 보면 된다.
  */
 export interface AttemptFeedback {
   turns: TurnFeedback[];
   overallMd: string;
+  patternOverallMd: string | null;
 }
 
 export type CodeRunStatus =

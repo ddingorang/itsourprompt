@@ -432,6 +432,13 @@ export async function getMockCodeRun(
   return completeMockCodeRun(entry);
 }
 
+/**
+ * BE가 총평 뒤에 고정으로 붙이는 출처 한 줄. 모델이 아니라 코드가 붙이는 문장이라
+ * 목에서도 문구를 그대로 쓴다.
+ */
+const PATTERN_SOURCE_NOTE =
+  '\n\n---\n여기 쓴 용어는 AI Coding Dictionary에서 가져왔어요. https://aicodingdictionary.com';
+
 export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedback> {
   await delay(600);
 
@@ -450,13 +457,73 @@ export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedb
     status: 'SUBMITTED',
   });
 
+  const patternNames = turns.map((_, index) =>
+    mockPatternName(index + 1, index === turns.length - 1),
+  );
+
   return {
     turns: turns.map((turn, index) => ({
       turn: index + 1,
       feedbackMd: `## 관찰\n\n${index + 1}번째 프롬프트는 "${turn.prompt.slice(0, 30)}…" 형태로 요청했습니다.\n\n## 개선 제안\n\nHTTP 메서드와 경로, 요청·응답 형식을 함께 명시하면 의도가 더 정확히 전달됩니다.`,
+      patternMd: mockPatternMd(index + 1, patternNames[index]),
     })),
     overallMd: `## 세션 총평\n\n총 ${turns.length}개의 턴으로 문제를 풀었습니다.\n\n초반 프롬프트에서 도메인 모델과 API 계층을 한 번에 요구하기보다, 단계를 나눠 요청하면 AI가 의도를 덜 추측합니다.`,
+    patternOverallMd: mockPatternOverallMd(patternNames),
   };
+}
+
+/**
+ * BE는 이름을 다음 턴 프롬프트가 이 턴에 바뀐 파일을 부르는지로 가른다. 목에는 대조할 프롬프트가
+ * 없어 턴 번호로 흉내만 낸다.
+ *
+ * <p>마지막 턴만은 흉내가 아니라 계약이다 — 다음 프롬프트가 없어 BE도 두 이름 중 어느 쪽도 붙이지
+ * 못하므로 null이고, 그 턴은 이름 없이 "알 수 없다"고만 쓴다.
+ */
+type MockPatternName = 'vibe coding' | 'human review' | null;
+
+function mockPatternName(turn: number, isLastTurn: boolean): MockPatternName {
+  if (isLastTurn) {
+    return null;
+  }
+
+  return turn % 2 === 1 ? 'vibe coding' : 'human review';
+}
+
+/**
+ * 세션 이름은 턴에 붙은 이름을 세어 고른다. 이름을 셀 수 있는 턴이 하나도 없으면 이름을 붙이지
+ * 않는다 — BE도 턴들이 한 방식으로 모이지 않으면 이름 대신 그 사실을 쓴다. 가져갈 기법은 세션
+ * 이름과 늘 다른 용어여야 한다.
+ */
+function mockPatternOverallMd(names: MockPatternName[]): string {
+  // 마지막 턴은 이름이 없으므로 분모에서도 뺀다 — "다음 프롬프트에 안 불렸다"를 셀 수 없는 턴이다.
+  const namedTurns = names.filter((name) => name !== null).length;
+  const vibeTurns = names.filter((name) => name === 'vibe coding').length;
+
+  if (namedTurns === 0) {
+    return `### 이번 세션의 이름\n\n다음 프롬프트로 확인할 수 있는 턴이 없어 이번 세션에는 이름을 못 붙였어요. 턴을 하나 더 쌓으면 앞 턴의 결과를 어떻게 다루셨는지 드러나요.\n\n### 다음 세션에 가져갈 것\n\n\`human review\` — 사람이 바뀐 코드를 직접 읽고 판단하는 기법이에요. 다음 프롬프트를 쓰기 전에 방금 바뀐 파일을 열고, 고칠 곳을 파일 이름으로 부르세요.${PATTERN_SOURCE_NOTE}`;
+  }
+
+  if (vibeTurns * 2 >= namedTurns) {
+    return `### 이번 세션의 이름\n\n\`vibe coding\` — AI가 낸 코드를 읽지 않고 받는 방식이에요. 다음 프롬프트로 확인할 수 있는 ${namedTurns}턴 중 ${vibeTurns}턴에서 AI가 만든 레코드가 다음 프롬프트에 안 불렸어요. 필드 이름과 타입은 AI가 정한 대로 남았어요.\n\n### 다음 세션에 가져갈 것\n\n\`human review\` — 사람이 바뀐 코드를 직접 읽고 판단하는 기법이에요. 다음 프롬프트를 쓰기 전에 방금 바뀐 파일을 열고, 고칠 곳을 파일 이름으로 부르세요.${PATTERN_SOURCE_NOTE}`;
+  }
+
+  return `### 이번 세션의 이름\n\n\`human review\` — 사람이 바뀐 코드를 직접 읽고 판단하는 방식이에요. 다음 프롬프트로 확인할 수 있는 ${namedTurns}턴 중 ${namedTurns - vibeTurns}턴에서 AI가 만든 파일을 다음 프롬프트가 다시 불렀어요. AI가 정한 것을 그대로 두지 않으셨어요.\n\n### 다음 세션에 가져갈 것\n\n\`design concept\` — 무엇을 만들지 사람과 AI가 미리 맞춘 그림이에요. 다음 세션 첫 프롬프트에 어떤 파일을 어떻게 바꿀지 한 문장으로 먼저 적어 보세요.${PATTERN_SOURCE_NOTE}`;
+}
+
+/**
+ * 이름이 없는 턴은 `### 쓸 기법` 절 자체를 쓰지 않는다. BE도 그렇게 내보내므로, 목이 절을 채우면
+ * 화면이 실서버보다 항상 길어 보인다.
+ */
+function mockPatternMd(turn: number, name: MockPatternName): string {
+  if (name === null) {
+    return `### 이 턴의 패턴\n\n이 턴이 마지막이라, AI가 만든 Post${turn}.java를 확인하셨는지는 알 수 없어요.`;
+  }
+
+  if (name === 'vibe coding') {
+    return `### 이 턴의 패턴\n\n\`vibe coding\` — AI가 낸 코드를 읽지 않고 받는 방식이에요. AI가 Post${turn}.java를 새로 만들었는데, 턴 ${turn + 1} 프롬프트에 Post${turn}이 안 나와요. AI가 정한 필드 이름을 그대로 두셨어요.\n\n### 쓸 기법\n\n\`human review\` — 사람이 바뀐 코드를 읽고 판단하는 기법이에요. 턴 ${turn + 1}을 보내기 전에 Post${turn}.java를 열고, 필드가 문제에서 요구한 것과 맞는지 확인하세요.`;
+  }
+
+  return `### 이 턴의 패턴\n\n\`human review\` — 사람이 바뀐 코드를 읽고 판단하는 방식이에요. AI가 Post${turn}.java를 새로 만들었고, 턴 ${turn + 1} 프롬프트가 Post${turn}을 다시 불러 고칠 곳을 짚었어요. AI가 정한 것을 그대로 두지 않으셨어요.\n\n### 쓸 기법\n\n\`design concept\` — 무엇을 만들지 사람과 AI가 미리 맞춘 그림이에요. 턴 ${turn + 1}에서 Post${turn + 1}을 요청할 때 Post${turn}과 어떤 관계인지 한 문장으로 함께 적어 보세요.`;
 }
 
 function delay(milliseconds: number): Promise<void> {

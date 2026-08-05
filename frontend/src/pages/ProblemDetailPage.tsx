@@ -32,6 +32,7 @@ import type {
 import { getProblemDetail } from '../features/problem/api';
 import type { ProblemDetail, RepositoryFile } from '../features/problem/types';
 import { useTheme } from '../features/theme/ThemeContext';
+import { nextTabIndex } from '../shared/a11y/tabKeyboard';
 import {
   ApiError,
   API_ERROR_CODES,
@@ -894,17 +895,7 @@ export default function ProblemDetailPage() {
     currentTab: DetailTab,
   ) => {
     const currentIndex = detailTabs.findIndex(([tab]) => tab === currentTab);
-    let nextIndex: number | null = null;
-
-    if (event.key === 'ArrowRight') {
-      nextIndex = (currentIndex + 1) % detailTabs.length;
-    } else if (event.key === 'ArrowLeft') {
-      nextIndex = (currentIndex - 1 + detailTabs.length) % detailTabs.length;
-    } else if (event.key === 'Home') {
-      nextIndex = 0;
-    } else if (event.key === 'End') {
-      nextIndex = detailTabs.length - 1;
-    }
+    const nextIndex = nextTabIndex(event.key, currentIndex, detailTabs.length);
 
     if (nextIndex === null) return;
 
