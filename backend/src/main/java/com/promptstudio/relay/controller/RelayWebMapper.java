@@ -45,6 +45,7 @@ public class RelayWebMapper {
                 room.status(),
                 room.totalLaps(),
                 room.maxParticipants(),
+                room.turnTimeLimitSeconds(),
                 room.seatCount(),
                 room.currentTurnIndex(),
                 room.currentSeat(),

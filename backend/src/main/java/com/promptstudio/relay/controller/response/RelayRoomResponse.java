@@ -22,6 +22,8 @@ public record RelayRoomResponse(
         int totalLaps,
         @Schema(description = "정원", example = "4")
         int maxParticipants,
+        @Schema(description = "한 턴의 입력 제한시간(초)", example = "120")
+        int turnTimeLimitSeconds,
         @Schema(description = "시작 시점에 확정된 좌석 수. 시작 전에는 null", example = "4")
         Integer seatCount,
         @Schema(
