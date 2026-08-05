@@ -486,9 +486,7 @@ function GameView({
 
       {/* 중: 코드 */}
       <CodePanel
-        changedPaths={lastTurn?.changedPaths ?? []}
         code={code}
-        onSelect={setSelectedPath}
         selectedPath={selectedPath}
       />
 
@@ -977,14 +975,10 @@ function RelayFileExplorer({
 }
 
 function CodePanel({
-  changedPaths,
   code,
-  onSelect,
   selectedPath,
 }: {
-  changedPaths: string[];
   code: ReturnType<typeof useRelayRoom>['code'];
-  onSelect: (path: string) => void;
   selectedPath: string | null;
 }) {
   const files = code?.files ?? [];
@@ -993,25 +987,9 @@ function CodePanel({
 
   return (
     <section className="flex min-h-0 flex-col overflow-hidden border-r border-[#343434] px-6 py-[22px] max-[900px]:min-h-[420px] max-[900px]:border-r-0 max-[900px]:border-b">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        {files.map((file) => (
-          <button
-            className={[
-              'cursor-pointer border bg-transparent px-2.5 py-1.5 font-mono text-[10px]',
-              file.path === selected?.path
-                ? 'border-[#d6ff50] text-[#d6ff50]'
-                : 'border-[#3f3f3f] text-[#a3a3a3] hover:text-[#d6ff50]',
-              changedPaths.includes(file.path) ? 'font-bold' : '',
-            ].join(' ')}
-            key={file.path}
-            onClick={() => onSelect(file.path)}
-            type="button"
-          >
-            {changedPaths.includes(file.path) ? '● ' : ''}
-            {file.path.split('/').pop()}
-          </button>
-        ))}
-        <span className="ml-auto border border-[#494949] px-2 py-1.5 font-mono text-[9px] text-[#a3a3a3]">
+      <div className="mb-5 flex items-start justify-between gap-[18px]">
+        <div className={labelClasses}>{selected?.path ?? 'FILE'}</div>
+        <span className="shrink-0 border border-[#494949] px-2 py-1.5 font-mono text-[9px] text-[#a3a3a3]">
           READ ONLY · {code ? `${code.appliedTurns}턴 반영` : '로딩 중'}
         </span>
       </div>
