@@ -1,5 +1,6 @@
 package com.promptstudio.ai;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.promptstudio.ai.LiveSessions.Expected;
 import com.promptstudio.ai.LiveSessions.Session;
@@ -9,6 +10,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.setup.OpenAiSetup;
@@ -22,6 +28,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 
 /**
@@ -79,16 +86,16 @@ class LiveFeedbackHarnessTest {
      * 계약 실패로 잘못 잡힌다.
      */
     private List<CallRecord> runBothLenses(String phase, int reps) {
-        ChatClient.Builder chatClientBuilder = chatClientBuilder();
+        OpenAiChatModel chatModel = chatModel();
         List<CallRecord> records = new ArrayList<>();
 
         for (int rep = 1; rep <= reps; rep++) {
             for (Session session : LiveSessions.all()) {
                 int currentRep = rep;
                 Future<CallRecord> promptCall = executor.submit(
-                        () -> call(phase, currentRep, session, Lens.PROMPT, chatClientBuilder));
+                        () -> call(phase, currentRep, session, Lens.PROMPT, chatModel));
                 Future<CallRecord> patternCall = executor.submit(
-                        () -> call(phase, currentRep, session, Lens.PATTERN, chatClientBuilder));
+                        () -> call(phase, currentRep, session, Lens.PATTERN, chatModel));
 
                 records.add(await(promptCall));
                 records.add(await(patternCall));
@@ -109,14 +116,15 @@ class LiveFeedbackHarnessTest {
     /**
      * 호출 하나의 결과. 생성기가 던진 실패도 계약 실패 한 줄로 남기고 계속 돈다 — 실패율 자체가 지표다.
      */
-    private CallRecord call(String phase, int rep, Session session, Lens lens, ChatClient.Builder builder) {
-        OpenAiFeedbackGenerator generator = generatorFor(lens, builder);
+    private CallRecord call(String phase, int rep, Session session, Lens lens, OpenAiChatModel chatModel) {
+        RecordingChatModel recorder = new RecordingChatModel(chatModel);
+        OpenAiFeedbackGenerator generator = generatorFor(lens, ChatClient.builder(recorder));
         long startedAt = System.nanoTime();
 
         try {
             FeedbackDraft draft = generator.generate(session.problem(), session.attempt());
 
-            return succeeded(phase, rep, session, lens, draft, startedAt);
+            return succeeded(phase, rep, session, lens, draft, quotesOf(lens, session, recorder), startedAt);
         } catch (FeedbackGenerationException exception) {
             return failed(phase, rep, session, lens, exception.reason(), exception.llmCalls(), startedAt);
         } catch (RuntimeException exception) {
@@ -130,6 +138,7 @@ class LiveFeedbackHarnessTest {
             Session session,
             Lens lens,
             FeedbackDraft draft,
+            QuoteMetrics quotes,
             long startedAt
     ) {
         List<String> judgements = new ArrayList<>();
@@ -186,7 +195,11 @@ class LiveFeedbackHarnessTest {
                 hits,
                 decisiveScored,
                 decisiveHits,
-                lens == Lens.PROMPT && lastTurnSentencePresent(draft.turnFeedbacks()));
+                lens == Lens.PROMPT && lastTurnSentencePresent(draft.turnFeedbacks()),
+                quotes.total(),
+                quotes.rawMiss(),
+                quotes.normalizedMiss(),
+                quotes.turnScopedMiss());
     }
 
     private CallRecord failed(
@@ -217,7 +230,11 @@ class LiveFeedbackHarnessTest {
                 0,
                 0,
                 0,
-                false);
+                false,
+                0,
+                0,
+                0,
+                0);
     }
 
     /**
@@ -279,6 +296,60 @@ class LiveFeedbackHarnessTest {
         return (int) total;
     }
 
+    /**
+     * 인용 대조는 하네스가 직접 한다. 생성기는 대조를 마치고 인용을 버리므로 원본 응답을 되읽어야
+     * raw·정규화·턴스코프 세 수준을 각각 셀 수 있다.
+     *
+     * <p>페이즈 0의 응답에는 quotes 필드가 없다 — 그때는 총 개수가 0이고 지표도 0이다.
+     */
+    private QuoteMetrics quotesOf(Lens lens, Session session, RecordingChatModel recorder) {
+        String content = recorder.last();
+
+        if (content == null || content.isBlank()) {
+            return QuoteMetrics.NONE;
+        }
+
+        List<OpenAiFeedbackGenerator.TurnEntry> entries = new ArrayList<>();
+
+        try {
+            JsonNode turnFeedbacks = objectMapper.readTree(content).path("turnFeedbacks");
+
+            for (JsonNode turn : turnFeedbacks) {
+                List<String> quotes = new ArrayList<>();
+
+                for (JsonNode quote : turn.path("quotes")) {
+                    quotes.add(quote.asText());
+                }
+
+                entries.add(new OpenAiFeedbackGenerator.TurnEntry(quotes, turn.path("feedback").asText()));
+            }
+        } catch (IOException exception) {
+            return QuoteMetrics.NONE;
+        }
+
+        QuoteVerifier.Result result = QuoteVerifier.verify(userMessageOf(lens, session), entries);
+
+        for (QuoteVerifier.Miss miss : result.normalizedMisses()) {
+            System.out.printf(
+                    "[harness] %s %s 인용 불일치 | turn=%d | quote=%s%n",
+                    session.name(), lens.label, miss.turn(), LogFormats.abbreviate(miss.quote()));
+        }
+
+        return new QuoteMetrics(
+                result.total(),
+                result.rawMisses().size(),
+                result.normalizedMisses().size(),
+                result.turnScopedMisses().size());
+    }
+
+    private String userMessageOf(Lens lens, Session session) {
+        if (lens == Lens.PROMPT) {
+            return FeedbackPrompts.userPrompt(session.problem(), session.attempt());
+        }
+
+        return PatternPrompts.userPrompt(session.problem(), session.attempt());
+    }
+
     private OpenAiFeedbackGenerator generatorFor(Lens lens, ChatClient.Builder builder) {
         if (lens == Lens.PROMPT) {
             return new OpenAiFeedbackGenerator(
@@ -303,8 +374,8 @@ class LiveFeedbackHarnessTest {
      * 운영과 같은 경로로 조립한다. spring-ai 2.0.0의 OpenAI 클라이언트는 {@code OpenAiSetup}이 만든다 —
      * 이 배포에는 {@code openai-java-client-okhttp}가 없고 spring-ai가 자기 okhttp 클라이언트를 쓴다.
      */
-    private ChatClient.Builder chatClientBuilder() {
-        OpenAiChatModel chatModel = OpenAiChatModel.builder()
+    private OpenAiChatModel chatModel() {
+        return OpenAiChatModel.builder()
                 .openAiClient(OpenAiSetup.setupSyncClient(
                         System.getenv("OPENAI_BASE_URL"),
                         System.getenv("OPENAI_API_KEY"),
@@ -324,8 +395,6 @@ class LiveFeedbackHarnessTest {
                         List.of()))
                 .options(OpenAiChatOptions.builder().model(model).build())
                 .build();
-
-        return ChatClient.builder(chatModel);
     }
 
     private void write(String phase, List<CallRecord> records) throws IOException {
@@ -350,6 +419,11 @@ class LiveFeedbackHarnessTest {
         int decisiveScored = 0;
         int decisiveHits = 0;
         long tokens = 0;
+        int quotes = 0;
+        int rawMiss = 0;
+        int normalizedMiss = 0;
+        int turnScopedMiss = 0;
+        int callsWithMiss = 0;
 
         for (CallRecord record : records) {
             if (record.ok()) {
@@ -361,12 +435,24 @@ class LiveFeedbackHarnessTest {
             decisiveScored += record.decisiveScored();
             decisiveHits += record.decisiveHits();
             tokens += record.completionTokens() == null ? 0 : record.completionTokens();
+            quotes += record.quoteTotal();
+            rawMiss += record.rawMiss();
+            normalizedMiss += record.normalizedMiss();
+            turnScopedMiss += record.turnScopedMiss();
+
+            if (record.normalizedMiss() > 0) {
+                callsWithMiss++;
+            }
         }
 
         System.out.println("[harness] ===== phase " + phase + " =====");
         System.out.printf("[harness] 계약 성공 %d/%d (%.1f%%)%n", ok, calls, percent(ok, calls));
         System.out.printf("[harness] 판정1 정확도 %d/%d (%.1f%%)%n", hits, scored, percent(hits, scored));
         System.out.printf("[harness] 결정적 턴 판정1 %d/%d%n", decisiveHits, decisiveScored);
+        System.out.printf(
+                "[harness] 인용 %d개 | raw 불일치 %d | 정규화 불일치 %d (일치율 %.1f%%) | 턴스코프 불일치 %d%n",
+                quotes, rawMiss, normalizedMiss, percent(quotes - normalizedMiss, quotes), turnScopedMiss);
+        System.out.printf("[harness] 불일치 포함 호출 %d/%d%n", callsWithMiss, calls);
         System.out.printf("[harness] 완성 토큰 합계 %d%n", tokens);
     }
 
@@ -397,6 +483,49 @@ class LiveFeedbackHarnessTest {
     }
 
     /**
+     * 실제 모델 앞에 끼워 원본 응답 본문을 붙잡는다. 생성기가 인용을 버리고 draft만 돌려주므로,
+     * 인용 지표는 여기 남은 마지막 응답에서 되읽는다(재시도가 있으면 draft를 만든 쪽이 마지막이다).
+     */
+    private static final class RecordingChatModel implements ChatModel {
+
+        private final ChatModel delegate;
+        private final List<String> responses = new CopyOnWriteArrayList<>();
+
+        private RecordingChatModel(ChatModel delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public ChatOptions getOptions() {
+            return delegate.getOptions();
+        }
+
+        @Override
+        public ChatResponse call(Prompt prompt) {
+            ChatResponse response = delegate.call(prompt);
+            Generation result = response == null ? null : response.getResult();
+
+            if (result != null && result.getOutput() != null) {
+                responses.add(result.getOutput().getText());
+            }
+
+            return response;
+        }
+
+        private String last() {
+            return responses.isEmpty() ? null : responses.getLast();
+        }
+    }
+
+    /**
+     * 인용 대조 지표. 계약으로 쓰는 것은 {@code normalizedMiss} 하나고 나머지 둘은 진단이다.
+     */
+    record QuoteMetrics(int total, int rawMiss, int normalizedMiss, int turnScopedMiss) {
+
+        static final QuoteMetrics NONE = new QuoteMetrics(0, 0, 0, 0);
+    }
+
+    /**
      * 호출 한 건의 측정 결과. jsonl 한 줄이 이 레코드 하나다.
      *
      * @param judgementScored 정답을 아는 턴 수(프롬프트 렌즈만)
@@ -419,7 +548,11 @@ class LiveFeedbackHarnessTest {
             int judgementHits,
             int decisiveScored,
             int decisiveHits,
-            boolean lastTurnSentence
+            boolean lastTurnSentence,
+            int quoteTotal,
+            int rawMiss,
+            int normalizedMiss,
+            int turnScopedMiss
     ) {
     }
 }
