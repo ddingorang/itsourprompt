@@ -648,6 +648,19 @@ export default function ProblemDetailPage() {
     setStatus({ message, type });
   };
 
+  /**
+   * PLAY 탭과 전체 화면 전환 뒤에도 게임이 바로 키보드 입력을 받게 한다.
+   * iframe이 문서를 모두 붙인 다음 한 프레임을 기다려야 전체 화면 전환과
+   * 포커스가 경합하지 않는다.
+   */
+  const focusGamePreview = (iframe: HTMLIFrameElement) => {
+    window.requestAnimationFrame(() => {
+      if (iframe.isConnected) {
+        iframe.focus({ preventScroll: true });
+      }
+    });
+  };
+
   const handlePreviewFullscreen = async () => {
     const previewContainer = previewContainerRef.current;
     if (!previewContainer) return;
@@ -1304,11 +1317,12 @@ export default function ProblemDetailPage() {
                       {isPreviewFullscreen ? '전체 화면 닫기' : '확대 플레이'}
                     </button>
                     <iframe
-                    className="h-full min-h-[320px] w-full border border-[#3f3f3f] bg-white"
-                    key={`${previewHtml}-${previewSession}`}
-                    sandbox="allow-scripts"
-                    srcDoc={previewHtml}
-                    title="게임 미리보기"
+                      className="h-full min-h-[320px] w-full border border-[#3f3f3f] bg-white"
+                      key={`${previewHtml}-${previewSession}`}
+                      onLoad={(event) => focusGamePreview(event.currentTarget)}
+                      sandbox="allow-scripts"
+                      srcDoc={previewHtml}
+                      title="게임 미리보기"
                       />
                   </div>
                 ) : (
