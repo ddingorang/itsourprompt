@@ -472,7 +472,7 @@ function GameView({
           </p>
         )}
 
-        <VoicePanel rtc={rtc} />
+        <VoicePanel compact rtc={rtc} />
 
         <RelayFileExplorer
           changedPaths={lastTurn?.changedPaths ?? []}
@@ -1179,15 +1179,21 @@ function FinishedView({
 /* ---------- 음성 ---------- */
 
 function VoicePanel({
+  compact = false,
   labelClassName = smallLabelClasses,
   rtc,
 }: {
+  compact?: boolean;
   labelClassName?: string;
   rtc: ReturnType<typeof useRelayRtc>;
 }) {
   return (
-    <section className="grid gap-2 border border-[#2c2c2c] px-4 py-3">
-      <span className={labelClassName}>VOICE</span>
+    <section
+      className={
+        compact ? 'grid gap-2' : 'grid gap-2 border border-[#2c2c2c] px-4 py-3'
+      }
+    >
+      {!compact && <span className={labelClassName}>VOICE</span>}
       <button
         className={[
           'cursor-pointer border px-3 py-2 font-mono text-[11px] font-bold',
