@@ -21,12 +21,13 @@ import type {
  */
 
 export async function createRelayRoom(
+  name: string,
   problemId: number,
   totalLaps: number,
   maxParticipants: number,
 ): Promise<RelayRoom> {
   return apiRequest<RelayRoom>('/relay/rooms', {
-    body: JSON.stringify({ maxParticipants, problemId, totalLaps }),
+    body: JSON.stringify({ maxParticipants, name, problemId, totalLaps }),
     method: 'POST',
   });
 }

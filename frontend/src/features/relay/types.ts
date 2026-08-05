@@ -38,6 +38,8 @@ export interface RelayParticipant {
 /** 로비 목록의 방 한 줄. 들어갈지 결정하는 데 필요한 것만 온다. */
 export interface RelayRoomSummary {
   roomId: number;
+  /** 방장이 붙인 방 이름. 이름 도입 전에 만들어진 방은 null. */
+  name: string | null;
   problemId: number;
   problemTitle: string;
   hostUserId: number;
@@ -55,6 +57,8 @@ export interface RelayRoomListResponse {
 /** 방 상태 스냅샷. REST 조회와 WebSocket room.state 이벤트가 같은 모양을 준다. */
 export interface RelayRoom {
   roomId: number;
+  /** 방장이 붙인 방 이름. 이름 도입 전에 만들어진 방은 null. */
+  name: string | null;
   problemId: number;
   hostUserId: number;
   status: RelayRoomStatus;

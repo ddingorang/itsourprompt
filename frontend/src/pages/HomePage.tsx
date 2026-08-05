@@ -147,7 +147,7 @@ export default function HomePage() {
             </Button>
             <Button
               className="group min-h-14 px-7"
-              to="/problems?mode=together"
+              to="/relay"
               variant="secondary"
             >
               <span>친구와 함께 풀기</span>
