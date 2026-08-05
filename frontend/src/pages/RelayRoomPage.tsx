@@ -872,7 +872,7 @@ function PromptForm({
 /** 문제 명세 마크다운. ProblemDetailPage의 PROBLEM 탭과 같은 시각 규칙을 따른다. */
 function ProblemSpec({ specMd }: { specMd: string }) {
   return (
-    <div className="whitespace-pre-wrap text-[13px] leading-[1.7] text-[#a3a3a3] [word-break:keep-all]">
+    <div className="text-[13px] leading-[1.7] text-[#a3a3a3] [word-break:keep-all]">
       <ReactMarkdown
         components={{
           h1: ({ children }) => (
@@ -885,6 +885,8 @@ function ProblemSpec({ specMd }: { specMd: string }) {
           h4: ({ children }) => <h4 className="font-bold text-[#f5f5ef]">{children}</h4>,
           h5: ({ children }) => <h5 className="font-bold text-[#f5f5ef]">{children}</h5>,
           h6: ({ children }) => <h6 className="font-bold text-[#f5f5ef]">{children}</h6>,
+          hr: () => <hr className="my-4 border-0 border-t border-[#777]" />,
+          p: ({ children }) => <p className="m-0">{children}</p>,
         }}
       >
         {specMd}
