@@ -48,7 +48,8 @@ class OpenAiFeedbackGenerator {
             FeedbackGenerationException.EMPTY_CONTENT,
             FeedbackGenerationException.INVALID_JSON,
             FeedbackGenerationException.TURN_COUNT_MISMATCH,
-            FeedbackGenerationException.EMPTY_OVERALL
+            FeedbackGenerationException.EMPTY_OVERALL,
+            FeedbackGenerationException.QUOTE_NOT_FOUND
     );
 
     private static final Logger log = LoggerFactory.getLogger(OpenAiFeedbackGenerator.class);
@@ -172,7 +173,19 @@ class OpenAiFeedbackGenerator {
             CallTrace trace = traceOf(attemptId, turnCount, options, response);
             String content = contentOf(response);
             ParsedFeedback parsed = parse(content, trace, tracker.snapshot());
-            logQuoteCheck(QuoteVerifier.verify(userMessage, parsed.turns()), attemptId, turnCount);
+            QuoteVerifier.Result quotes = QuoteVerifier.verify(userMessage, parsed.turns());
+            logQuoteCheck(quotes, attemptId, turnCount);
+
+            if (!quotes.grounded()) {
+                throw failure(
+                        FeedbackGenerationException.QUOTE_NOT_FOUND,
+                        "AI feedback quoted %d line(s) that are not in the input."
+                                .formatted(quotes.normalizedMisses().size()),
+                        content,
+                        trace,
+                        tracker.snapshot()
+                );
+            }
 
             log.info(
                     "[{}] response received | duration={} ms | finishReason={} | completionTokens={}"
@@ -305,8 +318,8 @@ class OpenAiFeedbackGenerator {
     }
 
     /**
-     * 인용 대조 결과를 로그로만 남기는 섀도 단계. 불일치가 있어도 응답을 버리지 않는다 — 먼저 숫자를 모으고,
-     * 그 숫자를 보고 계약으로 올린다.
+     * 인용 대조 결과를 로그로 남긴다. 승격 뒤에도 남기는 이유는 운영에서 수치를 계속 쌓기 위해서다 —
+     * raw·턴스코프 불일치는 계약이 아니라 진단이라 로그에만 있다.
      *
      * <p>불일치한 인용은 모델이 지어낸 자유 텍스트라 길이가 제한 없이 커질 수 있어 {@link LogFormats}로 자른다.
      */

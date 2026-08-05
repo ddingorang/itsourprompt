@@ -223,6 +223,51 @@ class OpenAiFeedbackGeneratorTest {
     }
 
     /**
+     * 인용이 입력에 있으면 그대로 통과한다. 대조는 조립한 유저 프롬프트 전체를 상대로 한다.
+     */
+    @Test
+    void 입력에_있는_문장을_인용하면_다시_부르지_않는다() {
+        chatModel.queue(textResponse(responseWithQuote("프롬프트 1", "첫 턴 피드백")));
+
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1));
+
+        assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴 피드백");
+        assertThat(chatModel.receivedPrompts()).hasSize(1);
+    }
+
+    /**
+     * 관측된 실패가 이것이다 — 모델이 입력에 없는 사실을 근거로 내놓았다. 지어낸 근거 위에 선 판정은
+     * 믿을 수 없으므로 같은 요청을 한 번 더 보낸다.
+     */
+    @Test
+    void 입력에_없는_문장을_인용하면_한_번_다시_호출한다() {
+        chatModel.queue(textResponse(responseWithQuote("사용자가 diff를 열어 확인했어요", "첫 턴 피드백")));
+        chatModel.queue(textResponse(responseWithQuote("프롬프트 1", "다시 부른 피드백")));
+
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1));
+
+        assertThat(feedback.turnFeedbacks()).containsExactly("다시 부른 피드백");
+        assertThat(chatModel.receivedPrompts()).hasSize(2);
+    }
+
+    @Test
+    void 다시_부른_응답도_없는_문장을_인용하면_quote_not_found로_실패한다() {
+        chatModel.queue(textResponse(responseWithQuote("사용자가 diff를 열어 확인했어요", "첫 턴 피드백")));
+        chatModel.queue(textResponse(responseWithQuote("사용자가 diff를 열어 확인했어요", "첫 턴 피드백")));
+
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+                .isInstanceOf(FeedbackGenerationException.class)
+                .extracting("reason")
+                .isEqualTo("quote-not-found");
+        assertThat(chatModel.receivedPrompts()).hasSize(2);
+    }
+
+    private String responseWithQuote(String quote, String turnFeedback) {
+        return "{\"turnFeedbacks\":[{\"quotes\":[\"" + quote + "\"],\"feedback\":\"" + turnFeedback
+                + "\"}],\"overall\":\"전체 피드백\"}";
+    }
+
+    /**
      * 턴 항목이 인용 배열과 피드백 문자열을 함께 갖는 새 응답 모양. 인용은 대조용이라 여기서는 비워 둔다.
      */
     private String response(String... turnFeedbacks) {
