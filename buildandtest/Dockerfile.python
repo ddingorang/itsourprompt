@@ -1,0 +1,42 @@
+# Python 채점 워커. 워커 애플리케이션(jar)은 자바 워커(Dockerfile)와 같고,
+# WORKER_LANGUAGE=python이 실행기만 PythonCodeExecutor로 갈아끼운다.
+
+# ---- Build stage ----
+FROM eclipse-temurin:21-jdk-jammy AS build
+WORKDIR /app
+
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle settings.gradle ./
+# 윈도우에서 체크아웃하면 gradlew가 CRLF라 셔뱅이 "/bin/sh\r"로 읽혀 not found가 된다.
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
+RUN ./gradlew dependencies --no-daemon || true
+
+COPY src src
+RUN ./gradlew clean bootJar --no-daemon -x test
+
+# ---- Run stage ----
+# 워커 jar에는 JRE, 제출 코드에는 python이 필요하다. noble(우분투 24.04)의 시스템 python은 3.12다.
+# 자바 워커와 달리 JDK가 아니라 JRE다 — 이 워커는 자바 코드를 컴파일하지 않는다.
+FROM eclipse-temurin:21-jre-noble
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# pytest는 문제마다 바뀌지 않는 고정 의존이라 이미지에 굽는다(자바 워커의 junit-console-jar와
+# 같은 판단). 실행 중 pip install은 없다 — 채점이 외부 네트워크 가용성에 종속되면 안 된다.
+RUN python3 -m venv /opt/grader \
+    && /opt/grader/bin/pip install --no-cache-dir pytest==8.3.3
+
+# 제출된 코드를 루트로 실행하지 않는다.
+RUN useradd --create-home --uid 1000 worker
+COPY --from=build /app/build/libs/*.jar app.jar
+RUN chown worker:worker /app/app.jar
+USER worker
+
+ENV WORKER_LANGUAGE=python
+ENV WORKER_PYTHON_BINARY=/opt/grader/bin/python
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
