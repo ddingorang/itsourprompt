@@ -192,6 +192,18 @@ class PatternPromptsTest {
                 .contains("overall");
     }
 
+    /**
+     * 관측된 지어내기가 이 렌즈에서 났다. 인용 필드를 요구하는 문장이 여기에도 있어야 대조할 것이 온다.
+     */
+    @Test
+    void 시스템_프롬프트는_근거_인용을_그대로_복사하게_한다() {
+        assertThat(PatternPrompts.systemPrompt())
+                .contains("## quotes")
+                .contains("Copy each one character for character out of the user message")
+                .contains("Never paraphrase it")
+                .contains("Write an empty array when this turn gives you nothing to point at");
+    }
+
     @Test
     void 문제_제목과_명세와_시작_스켈레톤을_태그로_감싼다() {
         AttemptView attempt = new AttemptView(1L, 1L, List.of(

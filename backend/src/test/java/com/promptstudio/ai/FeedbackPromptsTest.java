@@ -152,6 +152,19 @@ class FeedbackPromptsTest {
                 .contains("overall");
     }
 
+    /**
+     * 지어내기를 잡는 것은 코드 쪽 대조지만, 대조할 인용이 오지 않으면 잴 것이 없다. 그 필드를 요구하는
+     * 문장이 프롬프트에 있는지 본다.
+     */
+    @Test
+    void 시스템_프롬프트는_근거_인용을_그대로_복사하게_한다() {
+        assertThat(FeedbackPrompts.systemPrompt())
+                .contains("## quotes")
+                .contains("Copy each one character for character out of the user message")
+                .contains("Never paraphrase it")
+                .contains("Write an empty array when this turn gives you nothing to point at");
+    }
+
     private AttemptView attemptWith(AttemptView.TurnView... turns) {
         return new AttemptView(
                 1L, 1L, List.of(), List.of(), List.of(turns), AttemptStatus.IN_PROGRESS, null, null, null);
