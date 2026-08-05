@@ -658,7 +658,13 @@ function SeatCard({
         <span className="ml-auto font-bold text-[#c7c7c2]">
           {score === null ? '—' : score > 0 ? `+${score}` : `${score}`}
         </span>
-        {current && deadline && <TurnCountdown deadline={deadline} />}
+        <span className="inline-flex w-[62px] shrink-0 justify-end">
+          {current && deadline ? (
+            <TurnCountdown deadline={deadline} />
+          ) : (
+            <span className="font-mono text-[11px] font-bold text-[#777]">⏱ 2:00</span>
+          )}
+        </span>
       </div>
     </div>
   );
@@ -690,7 +696,7 @@ function TurnCountdown({ deadline }: { deadline: string }) {
 
   return (
     <span
-      className={`font-mono text-[11px] font-bold ${urgent ? 'text-[#ff786b]' : 'text-[#a3a3a3]'}`}
+      className={`font-mono text-[11px] font-bold ${urgent ? 'text-[#ff786b]' : 'text-[#d6ff50]'}`}
     >
       ⏱ {Math.floor(totalSeconds / 60)}:{String(totalSeconds % 60).padStart(2, '0')}
     </span>
