@@ -19,6 +19,9 @@ const fieldClasses =
 const LAP_CHOICES = [1, 2, 3] as const;
 const SIZE_CHOICES = [2, 3, 4, 5, 6] as const;
 
+/** 백엔드 RelayRoom.MAX_NAME_LENGTH와 같은 값. 로비 목록 한 줄에 들어가는 길이. */
+const ROOM_NAME_MAX_LENGTH = 30;
+
 /** 로비가 스스로 목록을 다시 읽는 주기. 방 개설·입장은 수시로 일어나 손 새로고침만으론 낡는다. */
 const ROOM_LIST_REFRESH_MS = 10_000;
 
@@ -32,6 +35,7 @@ export default function RelayLobbyPage() {
   const navigate = useNavigate();
 
   const [problems, setProblems] = useState<ProblemSummary[]>([]);
+  const [roomName, setRoomName] = useState('');
   const [problemId, setProblemId] = useState<number | null>(null);
   const [totalLaps, setTotalLaps] = useState<number>(1);
   const [maxParticipants, setMaxParticipants] = useState<number>(3);
@@ -73,12 +77,13 @@ export default function RelayLobbyPage() {
   }, [refreshRooms]);
 
   const handleCreate = async () => {
-    if (problemId === null || creating) return;
+    const name = roomName.trim();
+    if (!name || problemId === null || creating) return;
 
     setCreating(true);
     setError(null);
     try {
-      const room = await createRelayRoom(problemId, totalLaps, maxParticipants);
+      const room = await createRelayRoom(name, problemId, totalLaps, maxParticipants);
       navigate(`/relay/rooms/${room.roomId}`);
     } catch (cause) {
       setError(
@@ -143,9 +148,15 @@ export default function RelayLobbyPage() {
                     <span className="font-mono text-[11px] text-[#666]">
                       #{room.roomId}
                     </span>
+                    {/* 이름 도입 전에 만들어진 방은 name이 없다 — 문제 제목이 그 자리를 대신한다. */}
                     <span className="min-w-0 flex-1 text-[13px] font-bold">
-                      {room.problemTitle ?? `문제 ${room.problemId}번`}
+                      {room.name ?? room.problemTitle ?? `문제 ${room.problemId}번`}
                     </span>
+                    {room.name && (
+                      <span className="font-mono text-[11px] text-[#a3a3a3]">
+                        {room.problemTitle ?? `문제 ${room.problemId}번`}
+                      </span>
+                    )}
                     <span className="font-mono text-[11px] text-[#a3a3a3]">
                       {room.hostNickname} 님의 방
                     </span>
@@ -177,6 +188,20 @@ export default function RelayLobbyPage() {
           <div className={labelClasses}>CREATE ROOM</div>
 
           <div className="mt-5 grid gap-4">
+            <label className="grid gap-1.5">
+              <span className="font-mono text-[10px] tracking-[0.12em] text-[#777]">
+                ROOM NAME — 로비 목록에 그대로 보입니다
+              </span>
+              <input
+                className={fieldClasses}
+                maxLength={ROOM_NAME_MAX_LENGTH}
+                onChange={(event) => setRoomName(event.target.value)}
+                placeholder="예) 점심시간 한 판"
+                type="text"
+                value={roomName}
+              />
+            </label>
+
             <label className="grid gap-1.5">
               <span className="font-mono text-[10px] tracking-[0.12em] text-[#777]">
                 PROBLEM
@@ -233,10 +258,14 @@ export default function RelayLobbyPage() {
             </div>
 
             <Button
-              disabled={problemId === null || creating}
+              disabled={!roomName.trim() || problemId === null || creating}
               onClick={() => void handleCreate()}
             >
-              {creating ? '만드는 중…' : '방 만들기'}
+              {creating
+                ? '만드는 중…'
+                : roomName.trim()
+                  ? '방 만들기'
+                  : '방 이름을 입력하세요'}
             </Button>
           </div>
         </section>

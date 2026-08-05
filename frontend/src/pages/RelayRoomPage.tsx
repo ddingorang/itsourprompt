@@ -236,6 +236,12 @@ function WaitingView({
     <main className="mx-auto grid w-full max-w-[720px] flex-1 content-start gap-7 overflow-y-auto px-6 py-10">
       <div>
         <div className={labelClasses}>ROOM #{room.roomId} — WAITING</div>
+        {/* 이름 도입 전에 만들어진 방은 name이 없다 — 그때는 방 번호 라벨만으로 충분하다. */}
+        {room.name && (
+          <h1 className="mt-2 mb-0 text-[22px] font-black tracking-[-0.03em]">
+            {room.name}
+          </h1>
+        )}
         <p className="mt-2 mb-0 text-[13px] leading-[1.7] text-[#a3a3a3]">
           {problem ? `「${problem.title}」` : `문제 ${room.problemId}번`} ·{' '}
           {room.totalLaps}바퀴 · 정원 {room.maxParticipants}명. 이 방 번호를
@@ -364,10 +370,10 @@ function GameView({
       {/* 좌: 좌석과 점수 */}
       <aside className="flex min-h-0 flex-col gap-5 overflow-y-auto border-r border-[#343434] px-5 py-[22px] max-[900px]:border-r-0 max-[900px]:border-b">
         <div>
-          <div className={labelClasses}>ROOM #{room.roomId}</div>
+          <div className={labelClasses}>{room.name ?? `ROOM #${room.roomId}`}</div>
           <p className="mt-1 mb-0 font-mono text-[10px] text-[#777]">
-            TURN {room.currentTurnIndex + 1} / {room.totalTurns ?? '?'} · LAP{' '}
-            {(room.currentLap ?? 0) + 1} / {room.totalLaps}
+            {room.name ? `#${room.roomId} · ` : ''}TURN {room.currentTurnIndex + 1} /{' '}
+            {room.totalTurns ?? '?'} · LAP {(room.currentLap ?? 0) + 1} / {room.totalLaps}
           </p>
         </div>
 
@@ -392,6 +398,8 @@ function GameView({
         )}
 
         <VoicePanel rtc={rtc} />
+
+        <LeaveGameButton roomId={room.roomId} />
       </aside>
 
       {/* 중: 코드 */}
@@ -486,6 +494,51 @@ function GameView({
         />
       </aside>
     </main>
+  );
+}
+
+/**
+ * 게임 중 퇴장. 대기실 퇴장과 달리 좌석이 남고 내 차례가 자동으로 건너뛰어지므로,
+ * 실수 클릭 한 번으로 나가지 않게 인라인 확인을 한 단계 거친다. 서버는 게임이 끝나기
+ * 전에 다시 입장하면 이탈 표시를 지워 주므로(rejoin) 복귀 가능함을 함께 안내한다.
+ */
+function LeaveGameButton({ roomId }: { roomId: number }) {
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  const handleLeave = async () => {
+    setLeaving(true);
+    try {
+      await leaveRelayRoom(roomId);
+    } finally {
+      navigate('/relay');
+    }
+  };
+
+  if (!confirming) {
+    return (
+      <Button className="mt-auto" onClick={() => setConfirming(true)} variant="ghost">
+        나가기
+      </Button>
+    );
+  }
+
+  return (
+    <div className="mt-auto grid gap-2">
+      <p className="m-0 font-mono text-[10px] leading-[1.7] text-[#ffb86b]">
+        게임 중에 나가면 내 차례는 건너뛰어집니다. 게임이 끝나기 전에 다시
+        입장하면 이어서 참여할 수 있습니다.
+      </p>
+      <div className="flex gap-2">
+        <Button disabled={leaving} onClick={() => void handleLeave()} variant="secondary">
+          {leaving ? '나가는 중…' : '나가기'}
+        </Button>
+        <Button disabled={leaving} onClick={() => setConfirming(false)} variant="ghost">
+          계속하기
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -849,7 +902,7 @@ function FinishedView({
       <div>
         <div className={labelClasses}>ROOM #{room.roomId} — FINISHED</div>
         <h1 className="mt-2 mb-0 text-[26px] font-black tracking-[-0.03em]">
-          릴레이 결과
+          {room.name ? `「${room.name}」 릴레이 결과` : '릴레이 결과'}
         </h1>
       </div>
 
