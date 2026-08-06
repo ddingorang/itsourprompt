@@ -108,7 +108,7 @@ export default function Header({
 
       <nav
         aria-label="주요 메뉴"
-        className="header-navigation flex items-center gap-3 whitespace-nowrap max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-0 max-[760px]:border max-[760px]:border-[#343434] max-[760px]:bg-[#090909] max-[760px]:p-3 max-[760px]:shadow-xl"
+        className="header-navigation flex items-center gap-3 whitespace-nowrap max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-0 max-[760px]:border max-[760px]:border-[var(--header-menu-border,#343434)] max-[760px]:bg-[var(--header-menu-bg,#090909)] max-[760px]:p-3 max-[760px]:shadow-xl"
         data-open={isMenuOpen}
         id="header-navigation"
       >
@@ -172,13 +172,14 @@ export default function Header({
               </button>
 
               <div
-                className="header-account-menu absolute top-[calc(100%+14px)] right-0 z-30 hidden min-w-[128px] flex-col gap-3 border border-[#343434] bg-[#090909] p-4 shadow-xl"
+                className="header-account-menu absolute top-[calc(100%+14px)] right-0 z-30 hidden min-w-[128px] flex-col gap-3 border border-[var(--header-menu-border,#343434)] bg-[var(--header-menu-bg,#090909)] p-4 shadow-xl"
                 data-open={isAccountMenuOpen}
                 id="header-account-menu"
               >
-                <span className="header-account-menu-label text-[10px] tracking-[0.16em] text-[#777]">
+                {/* span이면 페이지별 `nav span`(구분선 색) 규칙에 걸려 라벨이 흐려진다. */}
+                <div className="header-account-menu-label text-[10px] tracking-[0.16em] text-[#777]">
                   ACCOUNT
-                </span>
+                </div>
                 {accountLinks}
               </div>
 

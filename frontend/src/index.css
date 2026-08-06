@@ -39,6 +39,9 @@ html { scroll-behavior: smooth; }
   color-scheme: light;
 }
 .relay-page[data-color-mode='light'] > header {
+  --header-menu-border: var(--relay-border);
+  --header-menu-bg: var(--relay-bg);
+  --header-menu-accent: var(--relay-acid);
   border-color: var(--relay-border);
   background: color-mix(in srgb, var(--relay-bg) 94%, transparent);
   color: var(--relay-text);
@@ -163,6 +166,9 @@ html { scroll-behavior: smooth; }
   --landing-guest-text: #090909;
 }
 .landing-page > header {
+  --header-menu-border: var(--landing-border);
+  --header-menu-bg: var(--landing-bg);
+  --header-menu-accent: var(--acid);
   border-color: var(--landing-border);
   background: color-mix(in srgb, var(--landing-bg) 94%, transparent);
   color: var(--landing-text);
@@ -237,6 +243,9 @@ html { scroll-behavior: smooth; }
   --problem-list-acid: #bee034;
 }
 .problem-list-page > header {
+  --header-menu-border: var(--problem-list-border);
+  --header-menu-bg: var(--problem-list-bg);
+  --header-menu-accent: var(--problem-list-acid);
   border-color: var(--problem-list-border);
   background: color-mix(in srgb, var(--problem-list-bg) 94%, transparent);
   color: var(--problem-list-text);
@@ -302,6 +311,9 @@ html { scroll-behavior: smooth; }
   --ranking-acid: #bee034;
 }
 .ranking-page > header {
+  --header-menu-border: var(--ranking-border);
+  --header-menu-bg: var(--ranking-bg);
+  --header-menu-accent: var(--ranking-acid);
   border-color: var(--ranking-border);
   background: color-mix(in srgb, var(--ranking-bg) 94%, transparent);
   color: var(--ranking-text);
@@ -378,6 +390,9 @@ html { scroll-behavior: smooth; }
   --problem-detail-input-bg: #f7f7f2;
 }
 .problem-detail-page > header {
+  --header-menu-border: var(--problem-detail-border);
+  --header-menu-bg: var(--problem-detail-bg);
+  --header-menu-accent: var(--problem-detail-acid);
   border-color: var(--problem-detail-border);
   background: var(--problem-detail-bg);
   color: var(--problem-detail-text);
@@ -438,6 +453,9 @@ html { scroll-behavior: smooth; }
   --my-page-acid: #bee034;
 }
 .my-page > header {
+  --header-menu-border: var(--my-page-border);
+  --header-menu-bg: var(--my-page-bg);
+  --header-menu-accent: var(--my-page-acid);
   border-color: var(--my-page-border);
   background: color-mix(in srgb, var(--my-page-bg) 94%, transparent);
   color: var(--my-page-text);
@@ -523,6 +541,9 @@ html { scroll-behavior: smooth; }
   --auth-page-acid: #bee034;
 }
 .auth-page > header {
+  --header-menu-border: var(--auth-page-border);
+  --header-menu-bg: var(--auth-page-bg);
+  --header-menu-accent: var(--auth-page-acid);
   border-color: var(--auth-page-border);
   background: color-mix(in srgb, var(--auth-page-bg) 94%, transparent);
   color: var(--auth-page-text);
@@ -588,6 +609,9 @@ html { scroll-behavior: smooth; }
   --feedback-prompt-bg: #f7f7f2;
 }
 .feedback-page > header {
+  --header-menu-border: var(--feedback-border);
+  --header-menu-bg: var(--feedback-bg);
+  --header-menu-accent: var(--feedback-acid);
   border-color: var(--feedback-border);
   background: color-mix(in srgb, var(--feedback-bg) 94%, transparent);
   color: var(--feedback-text);
@@ -652,6 +676,9 @@ html { scroll-behavior: smooth; }
   --error-page-acid: #bee034;
 }
 .error-page > header {
+  --header-menu-border: var(--error-page-border);
+  --header-menu-bg: var(--error-page-bg);
+  --header-menu-accent: var(--error-page-acid);
   border-color: var(--error-page-border);
   background: color-mix(in srgb, var(--error-page-bg) 94%, transparent);
   color: var(--error-page-text);
@@ -850,7 +877,7 @@ html { scroll-behavior: smooth; }
   right: auto;
   left: 50%;
   transform: translateX(-50%);
-  border-top-color: #d6ff50;
+  border-top-color: var(--header-menu-accent, #d6ff50);
 }
 
 .header-account-menu > a,
