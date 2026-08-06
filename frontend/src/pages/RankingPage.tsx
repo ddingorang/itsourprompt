@@ -5,7 +5,7 @@ import { useAuth } from '../features/auth/AuthContext';
 import { getProblemDetail, getProblems } from '../features/problem/api';
 import type { ProblemSummary } from '../features/problem/types';
 import { getProblemRanking } from '../features/ranking/api';
-import type { ProblemRanking, RankingEntry } from '../features/ranking/types';
+import type { ProblemRanking } from '../features/ranking/types';
 import { useTheme } from '../features/theme/ThemeContext';
 import {
   ApiError,
@@ -67,13 +67,6 @@ function splitCost(cost: number): [string, string] {
   const match = /^(.*?[1-9])(0+)$/.exec(fixed);
 
   return match ? [match[1], match[2]] : [fixed, ''];
-}
-
-/** GUEST는 세션 UUID 앞 네 자만 오므로 접두어는 화면이 붙인다. */
-function formatOwnerLabel(entry: RankingEntry): string {
-  return entry.ownerType === 'GUEST'
-    ? `GUEST·${entry.ownerLabel}`
-    : entry.ownerLabel;
 }
 
 function formatTokens(tokens: number): string {
@@ -540,7 +533,7 @@ export default function RankingPage() {
                       >
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="truncate [font-family:Arial,'Noto_Sans_KR',sans-serif] text-[15px] tracking-[-0.02em]">
-                            {formatOwnerLabel(entry)}
+                            {entry.ownerLabel}
                           </span>
                           {entry.mine && (
                             <span className="shrink-0 border border-[var(--ranking-acid)] px-1.5 py-0.5 font-mono text-[10px] leading-none font-bold tracking-[0.08em] text-[var(--ranking-acid)]">
@@ -660,8 +653,14 @@ export default function RankingPage() {
               </div>
             ) : (
               <p className="m-0 mt-3.5 font-mono text-xs leading-[1.7] text-[var(--ranking-muted)]">
-                아직 이 문제의 랭킹에 오른 내 풀이가 없습니다.
-                {!user && ' 로그인하면 계정에 쌓인 기록도 함께 잡힙니다.'}
+                {/*
+                  로그인 여부로 문장을 갈라 쓴다 — 로그인 사용자에게 사실은 "아직 없다"이고,
+                  게스트에게 사실은 "자격이 없다"이다. 게스트에게 "아직 없다"고만 하면 풀면
+                  오를 수 있다고 읽힌다.
+                */}
+                {user
+                  ? '아직 이 문제의 랭킹에 오른 내 풀이가 없습니다.'
+                  : '게스트 기록은 랭킹에 오르지 않습니다. 로그인하면 지금까지 푼 기록도 함께 등록됩니다.'}
               </p>
             )}
           </section>

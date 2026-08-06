@@ -1,13 +1,10 @@
-export type RankingOwnerType = 'USER' | 'GUEST';
-
 export interface RankingEntry {
   /** 등수. 동점은 같은 값을 받고 다음 등수는 건너뛴다(1, 1, 3). */
   rank: number;
   /** 내 줄일 때만 채워진다. 남의 줄은 null이라 피드백 링크를 걸 수 없다. */
   attemptId: number | null;
   mine: boolean;
-  ownerType: RankingOwnerType;
-  /** USER는 닉네임, GUEST는 세션 UUID 앞 네 자. 접두어는 화면이 붙인다. */
+  /** 닉네임. 랭킹은 로그인 사용자의 제출만 세므로 항상 닉네임이 온다. */
   ownerLabel: string;
   /**
    * 현재 단가로 다시 잰 비용(USD, 소수점 8자리).
