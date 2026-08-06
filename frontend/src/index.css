@@ -30,8 +30,14 @@ html { scroll-behavior: smooth; }
   --relay-subtle: #777;
   --relay-border: #393939;
   --relay-acid: #d6ff50;
-  /* 공통 컴포넌트(Button 등)가 읽는 공용 강조색 별칭 — 라이트 값도 자동으로 따라간다. */
+  /* 공통 컴포넌트(Header/Footer/Button/Pagination)가 읽는 공용 별칭 —
+     페이지 변수를 가리키므로 라이트 값도 자동으로 따라간다. */
   --acid: var(--relay-acid);
+  --theme-bg: var(--relay-bg);
+  --theme-text: var(--relay-text);
+  --theme-muted: var(--relay-muted);
+  --theme-subtle: var(--relay-subtle);
+  --theme-border: var(--relay-border);
 }
 .relay-page[data-color-mode='light'] {
   --relay-bg: #fff;
@@ -165,6 +171,11 @@ html { scroll-behavior: smooth; }
 }
 .landing-page {
   --acid: #d6ff50;
+  --theme-bg: var(--landing-bg);
+  --theme-text: var(--landing-text);
+  --theme-muted: var(--landing-muted);
+  --theme-subtle: var(--landing-muted);
+  --theme-border: var(--landing-border);
   /* 헤더 실제 높이. 섹션이 "화면 한 장"을 차지하려면 이만큼 빼야 한다.
      480px 이하에서 헤더가 세로로 쌓이며 커지므로 아래 미디어쿼리에서 덮는다. */
   --landing-header-h: 66px;
@@ -267,6 +278,11 @@ html { scroll-behavior: smooth; }
   --problem-list-border: #343434;
   --problem-list-acid: #d6ff50;
   --acid: var(--problem-list-acid);
+  --theme-bg: var(--problem-list-bg);
+  --theme-text: var(--problem-list-text);
+  --theme-muted: var(--problem-list-muted);
+  --theme-subtle: var(--problem-list-muted);
+  --theme-border: var(--problem-list-border);
   transition: background-color 240ms ease, color 240ms ease;
 }
 .problem-list-page[data-color-mode='light'] {
@@ -331,6 +347,11 @@ html { scroll-behavior: smooth; }
   --ranking-tab-idle: #8f8f8f;
   --ranking-acid: #d6ff50;
   --acid: var(--ranking-acid);
+  --theme-bg: var(--ranking-bg);
+  --theme-text: var(--ranking-text);
+  --theme-muted: var(--ranking-muted);
+  --theme-subtle: var(--ranking-subtle);
+  --theme-border: var(--ranking-border);
   transition: background-color 240ms ease, color 240ms ease;
 }
 .ranking-page[data-color-mode='light'] {
@@ -406,6 +427,11 @@ html { scroll-behavior: smooth; }
   --problem-detail-border-strong: #555;
   --problem-detail-acid: #d6ff50;
   --acid: var(--problem-detail-acid);
+  --theme-bg: var(--problem-detail-bg);
+  --theme-text: var(--problem-detail-text);
+  --theme-muted: var(--problem-detail-muted);
+  --theme-subtle: var(--problem-detail-subtle);
+  --theme-border: var(--problem-detail-border);
   --problem-detail-code-bg: #202020;
   --problem-detail-code-header: #151515;
   --problem-detail-code-text: #e3e3dd;
@@ -482,6 +508,11 @@ html { scroll-behavior: smooth; }
   --my-page-border: #343434;
   --my-page-acid: #d6ff50;
   --acid: var(--my-page-acid);
+  --theme-bg: var(--my-page-bg);
+  --theme-text: var(--my-page-text);
+  --theme-muted: var(--my-page-muted);
+  --theme-subtle: var(--my-page-subtle);
+  --theme-border: var(--my-page-border);
   transition: background-color 240ms ease, color 240ms ease;
 }
 .my-page[data-color-mode='light'] {
@@ -571,6 +602,11 @@ html { scroll-behavior: smooth; }
   --auth-page-input-bg: #131313;
   --auth-page-acid: #d6ff50;
   --acid: var(--auth-page-acid);
+  --theme-bg: var(--auth-page-bg);
+  --theme-text: var(--auth-page-text);
+  --theme-muted: var(--auth-page-muted);
+  --theme-subtle: var(--auth-page-muted);
+  --theme-border: var(--auth-page-border);
   transition: background-color 240ms ease, color 240ms ease;
 }
 .auth-page[data-color-mode='light'] {
@@ -632,6 +668,11 @@ html { scroll-behavior: smooth; }
   --feedback-border: #393939;
   --feedback-acid: #d6ff50;
   --acid: var(--feedback-acid);
+  --theme-bg: var(--feedback-bg);
+  --theme-text: var(--feedback-text);
+  --theme-muted: var(--feedback-muted);
+  --theme-subtle: var(--feedback-subtle);
+  --theme-border: var(--feedback-border);
   --feedback-surface: #121212;
   --feedback-surface-hover: #202020;
   --feedback-code-bg: #0d0d0d;
@@ -722,6 +763,11 @@ html { scroll-behavior: smooth; }
   --error-page-border: #343434;
   --error-page-acid: #d6ff50;
   --acid: var(--error-page-acid);
+  --theme-bg: var(--error-page-bg);
+  --theme-text: var(--error-page-text);
+  --theme-muted: var(--error-page-muted);
+  --theme-subtle: var(--error-page-subtle);
+  --theme-border: var(--error-page-border);
   transition: background-color 240ms ease, color 240ms ease;
 }
 .error-page[data-color-mode='light'] {

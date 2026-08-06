@@ -27,11 +27,11 @@ function PageButton({
   ...buttonProps
 }: PageButtonProps) {
   const currentPageClasses = isCurrent
-    ? 'border-[#d6ff50] bg-[#d6ff50] text-[16px] font-black text-[#090909] ' +
+    ? 'border-[var(--acid,#d6ff50)] bg-[var(--acid,#d6ff50)] text-[16px] font-black text-[#090909] ' +
       '[-webkit-text-stroke:0.35px_#090909]'
-    : 'border-[#343434] bg-transparent text-[#a3a3a3] ' +
-      'hover:border-[#d6ff50] hover:text-[#d6ff50] ' +
-      'focus-visible:border-[#d6ff50] focus-visible:text-[#d6ff50]';
+    : 'border-[var(--theme-border,#343434)] bg-transparent text-[var(--theme-muted,#a3a3a3)] ' +
+      'hover:border-[var(--acid,#d6ff50)] hover:text-[var(--acid,#d6ff50)] ' +
+      'focus-visible:border-[var(--acid,#d6ff50)] focus-visible:text-[var(--acid,#d6ff50)]';
 
   return (
     <button
