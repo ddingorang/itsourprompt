@@ -16,13 +16,18 @@ import java.util.List;
 /**
  * 실호출 하네스({@link LiveFeedbackHarnessTest})가 쓰는 손으로 만든 세션 픽스처.
  *
- * <p>로컬에 실데이터 DB가 없어 세션 다섯 개를 손으로 짰다. 다섯은 각각 다른 것을 재려고 있다 —
+ * <p>로컬에 실데이터 DB가 없어 세션을 손으로 짰다. 앞의 다섯은 프롬프트 렌즈를 겨냥한다 —
  * S1 정석, S2 범위 초과, S3 결정적 턴(파일에는 변경이 있는데 테스트가 계속 실패), S4 인프라 사고,
  * S5 퇴보(앞 턴이 통과시킨 테스트가 깨짐).
+ *
+ * <p>뒤의 둘은 pattern 렌즈를 겨냥한다 — S6 안 짚음, S7 실행으로만 확인. 앞의 다섯이 전부
+ * {@code 직전 결과 … 확인했어요}로 시작해 {@code vibe coding} 축을 거의 재지 못했기 때문이다.
  *
  * <p>턴마다 기대 판정을 둘 들고 있다. {@code withoutSignal}은 실행 데이터 없이 파일만 보고 내릴 수 있는
  * 판정이고, {@code withSignal}은 턴별 채점 결과를 함께 실었을 때 맞는 판정이다. 둘이 갈리는 턴이
  * <b>결정적 턴</b>이고, 채점 결과 입력이 겨냥한 것이 정확히 그 턴이다.
+ *
+ * <p>pattern 렌즈의 기대값은 {@link PatternExpected}가 따로 들고 있다.
  *
  * <p>{@link OpenAiFeedbackGenerator}가 패키지 프라이빗이라 같은 패키지에 둔다.
  */
@@ -64,19 +69,43 @@ final class LiveSessions {
     }
 
     /**
+     * pattern 렌즈의 기대값. 이름은 턴 N+1의 프롬프트가 정하고, 기법은 세션 전체가 정한다.
+     *
+     * @param name      기대하는 이름. null이면 채점하지 않는다 — 마지막 턴처럼 판정할 수 없는 자리다
+     * @param technique 기대하는 기법. {@link #NONE}이면 그 절이 아예 없어야 한다는 뜻이고,
+     *                  null이면 채점하지 않는다
+     */
+    record PatternExpected(String name, String technique) {
+
+        /** 절이 없어야 하는 자리. `vibe coding`이 아닌 턴에는 처방이 붙으면 안 된다. */
+        static final String NONE = "(없음)";
+
+        static PatternExpected unscored() {
+            return new PatternExpected(null, null);
+        }
+
+        /** 잘한 턴. 이름은 채점하고 기법은 없어야 한다. */
+        static PatternExpected reviewed() {
+            return new PatternExpected("human review", NONE);
+        }
+    }
+
+    /**
      * @param testResults B 페이즈에서만 프롬프트에 실린다. 0·A 페이즈는 {@link TurnTestResults#EMPTY}로 부른다
+     * @param patternTurns pattern 렌즈의 턴별 기대값. 턴 수와 길이가 같다
      */
     record Session(
             String name,
             ProblemView problem,
             AttemptView attempt,
             List<Expected> turns,
-            TurnTestResults testResults
+            TurnTestResults testResults,
+            List<PatternExpected> patternTurns
     ) {
     }
 
     static List<Session> all() {
-        return List.of(정석(), 범위초과(), 결정적턴(), 인프라사고(), 퇴보());
+        return List.of(정석(), 범위초과(), 결정적턴(), 인프라사고(), 퇴보(), 안짚음(), 실행확인());
     }
 
     /**
@@ -145,7 +174,9 @@ final class LiveSessions {
                 TurnTestResults.of(List.of(
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
                         graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
-                        graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()));
+                        graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
+                // 턴마다 다음 프롬프트가 앞 결과를 짚고 이어 간다. 마지막 턴은 다음 프롬프트가 없다.
+                List.of(PatternExpected.reviewed(), PatternExpected.reviewed(), PatternExpected.unscored()));
     }
 
     /**
@@ -215,7 +246,12 @@ final class LiveSessions {
                 TurnTestResults.of(List.of(
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
                         graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
-                        graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()));
+                        graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
+                // 턴 2는 채점하지 않는다 — OrderController는 안 짚혔는데 배송 검사는 짚혀서 양쪽으로 읽힌다.
+                List.of(
+                        new PatternExpected("vibe coding", null),
+                        PatternExpected.unscored(),
+                        PatternExpected.unscored()));
     }
 
     /**
@@ -290,7 +326,13 @@ final class LiveSessions {
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
                         graded(1, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, RESTORED),
                         graded(2, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, RESTORED),
-                        graded(3, CodeRunStatus.TEST_FAILED, 5, RESTORED)), baseline()));
+                        graded(3, CodeRunStatus.TEST_FAILED, 5, RESTORED)), baseline()),
+                // 턴 2·3은 다음 프롬프트가 결과를 고쳐 달라고 한다 — 되돌리기도 읽은 증거다.
+                List.of(
+                        PatternExpected.reviewed(),
+                        PatternExpected.reviewed(),
+                        PatternExpected.reviewed(),
+                        PatternExpected.unscored()));
     }
 
     /**
@@ -353,7 +395,8 @@ final class LiveSessions {
                 List.of(Expected.same(AS_ASKED), Expected.same(AS_ASKED), Expected.same(AS_ASKED)),
                 TurnTestResults.of(List.of(
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
-                        new Graded(1, CodeRunStatus.RUNNER_ERROR, null, List.of())), baseline()));
+                        new Graded(1, CodeRunStatus.RUNNER_ERROR, null, List.of())), baseline()),
+                List.of(PatternExpected.reviewed(), PatternExpected.reviewed(), PatternExpected.unscored()));
     }
 
     /**
@@ -432,7 +475,12 @@ final class LiveSessions {
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
                         graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
                         graded(2, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, DELIVERED_BLOCKED),
-                        graded(3, CodeRunStatus.SUCCEEDED, 6)), baseline()));
+                        graded(3, CodeRunStatus.SUCCEEDED, 6)), baseline()),
+                List.of(
+                        PatternExpected.reviewed(),
+                        PatternExpected.reviewed(),
+                        PatternExpected.reviewed(),
+                        PatternExpected.unscored()));
     }
 
     private static Session session(
@@ -441,11 +489,131 @@ final class LiveSessions {
             List<Expected> expected,
             TurnTestResults testResults
     ) {
+        return session(name, turns, expected, testResults,
+                turns.stream().map(turn -> PatternExpected.unscored()).toList());
+    }
+
+    private static Session session(
+            String name,
+            List<AttemptView.TurnView> turns,
+            List<Expected> expected,
+            TurnTestResults testResults,
+            List<PatternExpected> patternTurns
+    ) {
         ProblemView problem = new ProblemView(1L, "주문 취소와 재고 복구", SPEC_MD, skeleton());
         AttemptView attempt = AttemptView.reconstruct(
                 1L, 1L, skeleton(), turns, AttemptStatus.IN_PROGRESS, null, null, null);
 
-        return new Session(name, problem, attempt, expected, testResults);
+        return new Session(name, problem, attempt, expected, testResults, patternTurns);
+    }
+
+    /**
+     * S6 안 짚음. 앞 턴이 무엇을 바꿨는지 다음 프롬프트가 한 번도 건드리지 않고, 돌려 본 이야기도
+     * 어디에도 없다. 이름은 `vibe coding`이고, 그 답은 읽는 것이 아니라 **먼저 돌려 보는 것**이다.
+     *
+     * <p>기존 다섯은 전부 `직전 결과 … 확인했어요`로 시작해 `vibe coding` 축을 거의 재지 못했다.
+     */
+    private static Session 안짚음() {
+        List<AttemptView.TurnView> turns = List.of(
+                turn("""
+                        목표
+                        - 주문 취소를 만들어 줘
+
+                        작업 대상
+                        - OrderService
+
+                        요구사항
+                        - cancel(orderId)로 주문을 취소할 수 있음""",
+                        "OrderService에 cancel(Long orderId)를 추가했습니다.",
+                        List.of(modified(ORDER_SERVICE, orderService(CANCEL_ONLY))),
+                        readEdit(ORDER_SERVICE)),
+                turn("""
+                        요구사항
+                        - 배송이 시작된 주문은 IllegalStateException으로 취소를 거부함""",
+                        "cancel 앞에 배송 상태 검사를 넣었습니다.",
+                        List.of(modified(ORDER_SERVICE, orderService(CANCEL_WITH_GUARD))),
+                        readEdit(ORDER_SERVICE)),
+                turn("""
+                        요구사항
+                        - 취소한 수량만큼 Inventory 재고를 되돌림""",
+                        "Inventory에 restore를 추가하고 cancel이 재고를 되돌리게 했습니다.",
+                        List.of(
+                                modified(INVENTORY, inventoryWithRestore()),
+                                modified(ORDER_SERVICE, orderService(CANCEL_WITH_GUARD_AND_RESTORE))),
+                        List.of(
+                                new ToolCallEntry(ToolCallEntry.EDIT_FILE, INVENTORY),
+                                new ToolCallEntry(ToolCallEntry.EDIT_FILE, ORDER_SERVICE))));
+
+        return session(
+                "S6-안짚음",
+                turns,
+                List.of(Expected.same(AS_ASKED), Expected.same(AS_ASKED), Expected.same(AS_ASKED)),
+                TurnTestResults.of(List.of(
+                        graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
+                        graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
+                        graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
+                List.of(
+                        new PatternExpected("vibe coding", "automated check"),
+                        new PatternExpected("vibe coding", "automated check"),
+                        PatternExpected.unscored()));
+    }
+
+    /**
+     * S7 실행으로만 확인. 매 턴 돌려 본 결과를 말하지만 파일도 코드도 한 번도 짚지 않는다.
+     * 사전의 `human review`는 diff를 읽는 것이므로 이름은 `vibe coding`이고, 답은 `human review`다.
+     *
+     * <p>이 판정이 실호출에서 가장 흔들린 자리다 — 프롬프트를 고치기 전에는 `human review`가 나왔다.
+     * 흔들림을 재려고 넣은 세션이므로 어긋나면 그 자체가 지표다.
+     */
+    private static Session 실행확인() {
+        List<AttemptView.TurnView> turns = List.of(
+                turn("""
+                        목표
+                        - 주문 취소를 만들어 줘
+
+                        작업 대상
+                        - OrderService
+
+                        요구사항
+                        - cancel(orderId)로 주문을 취소할 수 있음""",
+                        "OrderService에 cancel(Long orderId)를 추가했습니다.",
+                        List.of(modified(ORDER_SERVICE, orderService(CANCEL_ONLY))),
+                        readEdit(ORDER_SERVICE)),
+                turn("""
+                        돌려 봤어요
+                        - 취소하면 상태는 바뀌는데, 배송이 시작된 주문도 그냥 취소돼요
+
+                        요구사항
+                        - 배송이 시작된 주문은 IllegalStateException으로 취소를 거부함""",
+                        "cancel 앞에 배송 상태 검사를 넣었습니다.",
+                        List.of(modified(ORDER_SERVICE, orderService(CANCEL_WITH_GUARD))),
+                        readEdit(ORDER_SERVICE)),
+                turn("""
+                        다시 돌려 봤어요
+                        - 배송 건은 막히는데 취소해도 재고가 그대로예요
+
+                        요구사항
+                        - 취소한 수량만큼 Inventory 재고를 되돌림""",
+                        "Inventory에 restore를 추가하고 cancel이 재고를 되돌리게 했습니다.",
+                        List.of(
+                                modified(INVENTORY, inventoryWithRestore()),
+                                modified(ORDER_SERVICE, orderService(CANCEL_WITH_GUARD_AND_RESTORE))),
+                        List.of(
+                                new ToolCallEntry(ToolCallEntry.EDIT_FILE, INVENTORY),
+                                new ToolCallEntry(ToolCallEntry.EDIT_FILE, ORDER_SERVICE))));
+
+        return session(
+                "S7-실행확인",
+                turns,
+                List.of(Expected.same(AS_ASKED), Expected.same(AS_ASKED), Expected.same(AS_ASKED)),
+                TurnTestResults.of(List.of(
+                        graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
+                        graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
+                        graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
+                List.of(
+                        new PatternExpected("vibe coding", "human review"),
+                        new PatternExpected("vibe coding", "human review"),
+                        PatternExpected.unscored()));
     }
 
     /**

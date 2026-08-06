@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.promptstudio.ai.LiveSessions.Expected;
 import com.promptstudio.ai.LiveSessions.Session;
+import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.LlmCallUsage;
 import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
@@ -67,6 +68,26 @@ class LiveFeedbackHarnessTest {
      */
     private static final Pattern SCORE_LEAK =
             Pattern.compile("\\d+\\s*개[^\\n]{0,8}통과|\\d+\\s*/\\s*\\d+|정답");
+
+    /** pattern 렌즈의 절 제목 뒤 첫 줄. 그 줄이 용어로 시작한다. */
+    private static final Pattern PATTERN_NAME = Pattern.compile("###\\s*이 턴의 패턴\\s*\\n\\s*([^\\n]+)");
+    private static final Pattern PATTERN_TECHNIQUE = Pattern.compile("###\\s*쓸 기법\\s*\\n\\s*([^\\n]+)");
+
+    /** 사전 용어. 긴 것부터 봐야 `human review`가 `human-in-the-loop`을 가로채지 않는다. */
+    private static final List<String> TERMS = List.of(
+            "human-in-the-loop", "automated review", "automated check", "design concept",
+            "human review", "vibe coding", "prototyping", "grilling", "AFK", "DX", "AX");
+
+    /**
+     * 사용자를 주어로 세운 문장.
+     *
+     * <p>둘을 뺀다. `~세요`는 사용자에게 하는 권유라 주장이 아니고, 부정문은 이 렌즈의 정답이다 —
+     * `사용자가 AI가 고친 index.html을 턴 2에서 안 부르셨어요`에서 그 경로는 `<changed_file>`에서
+     * 온 정당한 근거이고, 문장이 말하는 것은 사용자가 그것을 말하지 **않았다**는 사실이다.
+     */
+    private static final Pattern USER_CLAIM = Pattern.compile("(셨어요|하셨|짚으셨)");
+    private static final Pattern NEGATED = Pattern.compile("(안|못)\\s|없");
+    private static final Pattern BACKTICKED = Pattern.compile("`([^`]+)`");
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -237,6 +258,10 @@ class LiveFeedbackHarnessTest {
             }
         }
 
+        PatternMetrics pattern = lens == Lens.PATTERN
+                ? patternMetrics(session, draft)
+                : PatternMetrics.NONE;
+
         return new CallRecord(
                 phase,
                 rep,
@@ -259,7 +284,136 @@ class LiveFeedbackHarnessTest {
                 quotes.total(),
                 quotes.rawMiss(),
                 quotes.normalizedMiss(),
-                quotes.turnScopedMiss());
+                quotes.turnScopedMiss(),
+                pattern.names(),
+                pattern.techniques(),
+                pattern.nameScored(),
+                pattern.nameHits(),
+                pattern.techniqueScored(),
+                pattern.techniqueHits(),
+                pattern.techniqueOnNonVibe(),
+                pattern.attributionMisses());
+    }
+
+    /**
+     * pattern 렌즈만의 지표. 이름과 기법은 절 제목 바로 뒤 첫 줄이 용어로 시작한다는 계약에 기댄다 —
+     * 그 계약이 깨지면 용어가 아닌 것으로 잡혀 불일치로 남고, 그게 정확히 우리가 알고 싶은 것이다.
+     */
+    private PatternMetrics patternMetrics(Session session, FeedbackDraft draft) {
+        List<String> names = new ArrayList<>();
+        List<String> techniques = new ArrayList<>();
+        int nameScored = 0;
+        int nameHits = 0;
+        int techniqueScored = 0;
+        int techniqueHits = 0;
+        int techniqueOnNonVibe = 0;
+
+        for (int index = 0; index < draft.turnFeedbacks().size(); index++) {
+            String feedback = draft.turnFeedbacks().get(index);
+            String name = termAfter(PATTERN_NAME, feedback);
+            String technique = termAfter(PATTERN_TECHNIQUE, feedback);
+            names.add(name);
+            techniques.add(technique);
+
+            if (technique != null && !"vibe coding".equals(name)) {
+                techniqueOnNonVibe++;
+            }
+
+            LiveSessions.PatternExpected expectation = index < session.patternTurns().size()
+                    ? session.patternTurns().get(index)
+                    : LiveSessions.PatternExpected.unscored();
+
+            if (expectation.name() != null) {
+                nameScored++;
+
+                if (expectation.name().equals(name)) {
+                    nameHits++;
+                }
+            }
+
+            if (expectation.technique() != null) {
+                techniqueScored++;
+                String actual = technique == null ? LiveSessions.PatternExpected.NONE : technique;
+
+                if (expectation.technique().equals(actual)) {
+                    techniqueHits++;
+                }
+            }
+        }
+
+        return new PatternMetrics(names, techniques, nameScored, nameHits, techniqueScored,
+                techniqueHits, techniqueOnNonVibe, attributionMisses(session, draft));
+    }
+
+    /**
+     * 사용자가 한 적 없는 말을 사용자 발언·행위로 적은 문장을 센다. 백틱으로 감싼 이름만 본다 —
+     * 파일 경로와 코드 식별자가 거기 들어가고, 지어내기가 실제로 난 자리가 그곳이다.
+     *
+     * <p>모델이 `<changed_file>`에서 가져온 이름을 AI를 주어로 쓰는 것은 정당하므로 세지 않는다.
+     */
+    private int attributionMisses(Session session, FeedbackDraft draft) {
+        StringBuilder prompts = new StringBuilder();
+
+        for (AttemptView.TurnView turn : session.attempt().turns()) {
+            prompts.append(turn.userPrompt()).append("\n");
+        }
+
+        String userText = prompts.toString();
+        List<String> texts = new ArrayList<>(draft.turnFeedbacks());
+        texts.add(draft.overall());
+        int misses = 0;
+
+        for (String text : texts) {
+            if (text == null) {
+                continue;
+            }
+
+            for (String sentence : text.split("(?<=[.요])\\s+")) {
+                if (!USER_CLAIM.matcher(sentence).find()
+                        || sentence.contains("세요")
+                        || NEGATED.matcher(sentence).find()) {
+                    continue;
+                }
+
+                Matcher matcher = BACKTICKED.matcher(sentence);
+
+                while (matcher.find()) {
+                    if (!userText.contains(matcher.group(1))) {
+                        System.out.printf(
+                                "[harness] %s 사용자 오귀속 | name=%s | 문장=%s%n",
+                                session.name(), matcher.group(1), LogFormats.abbreviate(sentence.trim()));
+                        misses++;
+                    }
+                }
+            }
+        }
+
+        return misses;
+    }
+
+    /**
+     * 절 제목 뒤 첫 줄이 어느 사전 용어로 시작하는지. 절이 없거나 용어로 시작하지 않으면 null이다.
+     */
+    private String termAfter(Pattern section, String feedback) {
+        if (feedback == null) {
+            return null;
+        }
+
+        Matcher matcher = section.matcher(feedback);
+
+        if (!matcher.find()) {
+            return null;
+        }
+
+        String line = matcher.group(1).trim();
+
+        for (String term : TERMS) {
+            if (line.startsWith(term)) {
+                return term;
+            }
+        }
+
+        return null;
     }
 
     private CallRecord failed(
@@ -291,6 +445,14 @@ class LiveFeedbackHarnessTest {
                 0,
                 0,
                 false,
+                0,
+                0,
+                0,
+                0,
+                0,
+                List.of(),
+                List.of(),
+                0,
                 0,
                 0,
                 0,
@@ -559,7 +721,48 @@ class LiveFeedbackHarnessTest {
         System.out.printf(
                 "[harness] 채점 문장 누출 %d건 | 누출 포함 호출 %d/%d (프롬프트 렌즈)%n",
                 leaks, callsWithLeak, promptCalls);
+        summarizePattern(records);
         System.out.printf("[harness] 완성 토큰 합계 %d%n", tokens);
+    }
+
+    /**
+     * pattern 렌즈만 따로 낸다. 프롬프트 렌즈와 섞으면 분모가 달라 읽을 수 없다.
+     */
+    private void summarizePattern(List<CallRecord> records) {
+        int nameScored = 0;
+        int nameHits = 0;
+        int techniqueScored = 0;
+        int techniqueHits = 0;
+        int onNonVibe = 0;
+        int attribution = 0;
+        var names = new java.util.TreeMap<String, Integer>();
+        var techniques = new java.util.TreeMap<String, Integer>();
+
+        for (CallRecord record : records) {
+            if (!"pattern".equals(record.lens())) {
+                continue;
+            }
+
+            nameScored += record.patternNameScored();
+            nameHits += record.patternNameHits();
+            techniqueScored += record.techniqueScored();
+            techniqueHits += record.techniqueHits();
+            onNonVibe += record.techniqueOnNonVibe();
+            attribution += record.attributionMisses();
+            record.patternNames().forEach(
+                    name -> names.merge(name == null ? "(이름없음)" : name, 1, Integer::sum));
+            record.patternTechniques().stream().filter(java.util.Objects::nonNull).forEach(
+                    technique -> techniques.merge(technique, 1, Integer::sum));
+        }
+
+        System.out.printf(
+                "[harness] pattern 이름 정확도 %d/%d (%.1f%%) | 분포 %s%n",
+                nameHits, nameScored, percent(nameHits, nameScored), names);
+        System.out.printf(
+                "[harness] pattern 기법 정확도 %d/%d (%.1f%%) | 분포 %s%n",
+                techniqueHits, techniqueScored, percent(techniqueHits, techniqueScored), techniques);
+        System.out.printf(
+                "[harness] vibe coding 아닌 턴에 붙은 기법 %d | 사용자 오귀속 %d%n", onNonVibe, attribution);
     }
 
     private double percent(int part, int total) {
@@ -632,6 +835,27 @@ class LiveFeedbackHarnessTest {
     }
 
     /**
+     * pattern 렌즈 지표. 이 렌즈는 지금까지 계약 성공 여부만 재고 이름은 한 번도 채점하지 않았다.
+     *
+     * @param techniqueOnNonVibe `vibe coding`이 아닌 턴에 처방이 붙은 수. 잘한 턴에 기법을 주면 잔소리가 된다
+     * @param attributionMisses  사용자가 한 적 없는 말을 사용자 발언·행위로 적은 수
+     */
+    record PatternMetrics(
+            List<String> names,
+            List<String> techniques,
+            int nameScored,
+            int nameHits,
+            int techniqueScored,
+            int techniqueHits,
+            int techniqueOnNonVibe,
+            int attributionMisses
+    ) {
+
+        static final PatternMetrics NONE =
+                new PatternMetrics(List.of(), List.of(), 0, 0, 0, 0, 0, 0);
+    }
+
+    /**
      * 호출 한 건의 측정 결과. jsonl 한 줄이 이 레코드 하나다.
      *
      * @param judgementScored 정답을 아는 턴 수(프롬프트 렌즈만)
@@ -659,7 +883,15 @@ class LiveFeedbackHarnessTest {
             int quoteTotal,
             int rawMiss,
             int normalizedMiss,
-            int turnScopedMiss
+            int turnScopedMiss,
+            List<String> patternNames,
+            List<String> patternTechniques,
+            int patternNameScored,
+            int patternNameHits,
+            int techniqueScored,
+            int techniqueHits,
+            int techniqueOnNonVibe,
+            int attributionMisses
     ) {
     }
 }
