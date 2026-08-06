@@ -630,8 +630,12 @@ export default function RankingPage() {
                       >
                         <TurnCount turns={entry.turns} />
                       </td>
+                      {/*
+                        값이 한글이라 머리글과 같은 이유로 등폭 글꼴을 벗긴다 — 모노에는 한글
+                        자형이 없어 "4분 12초"의 숫자와 낱자가 서로 다른 글꼴로 갈린다.
+                      */}
                       <td
-                        className={`${cellClasses} whitespace-nowrap text-[var(--ranking-muted)] max-[860px]:hidden`}
+                        className={`${cellClasses} whitespace-nowrap [font-family:Arial,'Noto_Sans_KR',sans-serif] text-[var(--ranking-muted)] max-[860px]:hidden`}
                         role="cell"
                       >
                         {formatDuration(entry.durationSeconds)}
@@ -705,7 +709,7 @@ export default function RankingPage() {
                   </div>
                   <div>
                     <div className={myBestLabelClasses}>소요 시간</div>
-                    <div className="mt-1.5 text-[var(--ranking-muted)]">
+                    <div className="mt-1.5 [font-family:Arial,'Noto_Sans_KR',sans-serif] text-[var(--ranking-muted)]">
                       {formatDuration(ranking.myBest.durationSeconds)}
                     </div>
                   </div>
