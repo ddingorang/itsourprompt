@@ -309,11 +309,14 @@ public class AttemptController {
             )
     })
     public CodeRunResponse requestTurnRun(
+            @AuthenticationPrincipal AppUserDetails principal,
+            HttpServletRequest httpRequest,
             @PathVariable("id") Long id,
             @Parameter(description = "실행할 턴 번호(0-based)", example = "0")
             @PathVariable("ordinal") int ordinal
     ) {
-        return attemptWebMapper.toCodeRunResponse(codeRunService.requestRun(id, ordinal));
+        return attemptWebMapper.toCodeRunResponse(
+                codeRunService.requestRun(id, owner(principal, httpRequest), ordinal));
     }
 
     @GetMapping("/{id}/runs")

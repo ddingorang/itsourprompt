@@ -6,12 +6,15 @@ import com.promptstudio.attempt.domain.CodeRunCaseStatus;
 import com.promptstudio.attempt.domain.CodeRunResult;
 import com.promptstudio.attempt.domain.CodeRunStatus;
 import com.promptstudio.attempt.service.CodeRunService;
+import com.promptstudio.global.security.AppUserDetails;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
 import com.promptstudio.support.DatabaseTest;
 import com.promptstudio.support.FakeAiConfiguration;
 import com.promptstudio.support.FakeCodeRunConfiguration;
+import com.promptstudio.user.domain.User;
+import com.promptstudio.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.UUID;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -43,6 +47,9 @@ class CodeRunApiTest extends DatabaseTest {
 
     @Autowired
     private FakeCodeRunConfiguration.FakeCodeRunPublisher publisher;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @BeforeEach
     void 발행_기록을_비운다() {
@@ -155,6 +162,23 @@ class CodeRunApiTest extends DatabaseTest {
     @Test
     void 없는_어템프트에_턴_지정_실행을_요청하면_404다() throws Exception {
         mockMvc.perform(post("/api/attempts/{id}/turns/{ordinal}/runs", 999, 0))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("attempt-not-found"));
+    }
+
+    /**
+     * 랭킹이 남의 어템프트 ID를 공개하므로, 표에서 긁은 ID로 남의 실행 컨테이너를 띄우거나
+     * 어템프트당 미완료 실행 1건 제약으로 상대의 실행을 409로 막을 수 있으면 안 된다.
+     */
+    @Test
+    void 다른_사용자는_턴_지정_실행을_요청할_수_없다() throws Exception {
+        Long attemptId = createAttempt();
+        addTurn(attemptId);
+        User otherUser = userRepository.save(User.create(
+                "other-user", "{noop}password", "다른 사람", "other@example.com"));
+
+        mockMvc.perform(post("/api/attempts/{id}/turns/{ordinal}/runs", attemptId, 0)
+                        .with(user(new AppUserDetails(otherUser))))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("attempt-not-found"));
     }

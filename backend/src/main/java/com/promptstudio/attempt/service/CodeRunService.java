@@ -91,9 +91,31 @@ public class CodeRunService {
     /**
      * 지정한 턴의 코드를 실행한다. 턴은 불변이라 과거 턴을 다시 돌려도 그때의 코드가 실행된다 —
      * "몇 번째 프롬프트까지 통과했는지"를 확인하는 용도다.
+     *
+     * <p>서비스 내부(릴레이 채점) 전용이다. 웹 경로는 소유자 검사가 있는 오버로드를 쓴다.
      */
     public CodeRunView requestRun(Long attemptId, int turnOrdinal) {
         AttemptView attempt = getAttempt(attemptId);
+
+        if (turnOrdinal < 0 || turnOrdinal >= attempt.turns().size()) {
+            throw new TurnNotFoundException(attemptId, turnOrdinal, attempt.turns().size());
+        }
+
+        return run(attempt, turnOrdinal);
+    }
+
+    /**
+     * 소유자만 지정 턴을 실행할 수 있다.
+     *
+     * <p>랭킹이 남의 어템프트 ID를 공개하므로 검사가 없으면 표에서 긁은 ID로 남의 빌드/실행 컨테이너를
+     * 띄울 수 있고, {@code uq_code_run_active}(어템프트당 미완료 실행 1건)로 상대의 실행을 409로
+     * 막을 수도 있다 — 다른 쓰기 경로와 같은 관문을 지나게 한다.
+     */
+    public CodeRunView requestRun(Long attemptId, AttemptOwner owner, int turnOrdinal) {
+        expireStaleRuns();
+
+        AttemptView attempt = findAttempt(attemptId, owner)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         if (turnOrdinal < 0 || turnOrdinal >= attempt.turns().size()) {
             throw new TurnNotFoundException(attemptId, turnOrdinal, attempt.turns().size());

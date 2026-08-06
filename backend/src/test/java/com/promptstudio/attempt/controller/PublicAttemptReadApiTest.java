@@ -139,6 +139,18 @@ class PublicAttemptReadApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.code").value("attempt-not-found"));
     }
 
+    /**
+     * 랭킹에 실린 ID로 두드리는 실제 공격 경로다 — 턴 지정 실행도 다른 쓰기와 같은 관문을 지나야 한다.
+     */
+    @Test
+    void 제출된_어템프트에도_턴_지정_실행은_소유자만_한다() throws Exception {
+        Long attemptId = submittedAttempt(AttemptOwner.user(newUser().id()));
+
+        mockMvc.perform(post("/api/attempts/{id}/turns/{ordinal}/runs", attemptId, 0))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("attempt-not-found"));
+    }
+
     private Long submittedAttempt(AttemptOwner owner) {
         AttemptView attempt = attemptService.startAttempt(newProblem().id(), owner, null);
 
