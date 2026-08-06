@@ -47,6 +47,8 @@ export interface RelayRoomSummary {
   participantCount: number;
   maxParticipants: number;
   totalLaps: number;
+  /** 한 턴의 입력 제한시간(초). */
+  turnTimeLimitSeconds: number;
   createdAt: string;
 }
 

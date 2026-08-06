@@ -225,6 +225,9 @@ export default function RelayLobbyPage() {
                     <span className="text-[11px] text-[#a3a3a3]">
                       {room.totalLaps}바퀴
                     </span>
+                    <span className="font-mono text-[11px] text-[#a3a3a3]">
+                      ⏱ {formatTurnTimeLimit(room.turnTimeLimitSeconds)}
+                    </span>
                     <span
                       className={`font-mono text-[11px] font-bold ${
                         full ? 'text-[#ff786b]' : 'text-[#d6ff50]'
