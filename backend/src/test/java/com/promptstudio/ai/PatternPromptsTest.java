@@ -122,6 +122,59 @@ class PatternPromptsTest {
     }
 
     /**
+     * 진단과 다른 용어만 요구했더니 답이 하나로 굳었다. 실호출 네 세션 15턴에서 `쓸 기법`이 붙은
+     * 턴이 셋이었고 셋 다 `human review`였다 — 프롬프트가 본문에 답을 적어 둬서 조회표가 됐다.
+     *
+     * <p>돌려 보지 않은 사용자와 읽지 않은 사용자는 빠뜨린 것이 다르므로 같은 기법을 주면 안 된다.
+     * 어느 쪽인지는 세션의 프롬프트로 갈린다.
+     */
+    @Test
+    void 시스템_프롬프트는_vibe_coding의_답을_둘로_가른다() {
+        assertThat(PatternPrompts.systemPrompt())
+                .contains("`vibe coding` has two answers, and the session picks which one")
+                .contains("`automated check`")
+                .contains("No prompt anywhere in the session says what the code did when it ran")
+                .contains("none of them points at anything inside the code");
+    }
+
+    /**
+     * 답을 둘로 가르자 이번에는 기법이 잘한 턴에도 붙었다 — 실호출 네 세션에서 `human review` 턴
+     * 여섯에 처방이 달렸고, 매 턴 잘한 세션이 턴마다 잔소리를 받았다. 생략 조건을 이름으로 못 박는다.
+     */
+    @Test
+    void 시스템_프롬프트는_기법을_vibe_coding_턴에만_붙이게_한다() {
+        assertThat(PatternPrompts.systemPrompt())
+                .contains("This section exists only when `### 이 턴의 패턴` named `vibe coding`")
+                .contains("reads as a complaint about it");
+    }
+
+    /**
+     * 실호출 네 세션에서 사용자가 쓴 적 없는 이름을 사용자 발언으로 적은 문장이 넷 나왔다 —
+     * `minPlayerWidth`도 `src/main/html/index.html`도 AI가 지은 말인데 "하셨어요"가 붙었다.
+     * 예문이 규칙보다 세게 가르치므로 둘을 같이 싣는다.
+     */
+    @Test
+    void 시스템_프롬프트는_사용자_주어_문장에_사용자_말만_쓰게_한다() {
+        assertThat(PatternPrompts.systemPrompt())
+                .contains("## Only the user's own words may follow 사용자가")
+                .contains("사용자가 턴 4에서 `minPlayerWidth`를 40으로 막아 달라고 하셨어요")
+                .contains("사용자가 턴 4에서 최소 너비를 40px로 막아 달라고 하셨어요")
+                .contains("A sentence that ends in `고치셨어요`")
+                .contains("This holds for the session summary too");
+    }
+
+    /**
+     * 실호출에서 총평이 `다음 세션에 가져갈 것`으로 `vibe coding`을 처방했다. "세션 이름과 다른 용어"
+     * 하나로는 해로운 방식이 그 자리에 오는 것을 못 막는다.
+     */
+    @Test
+    void 시스템_프롬프트는_처방할_수_있는_용어를_못_박는다() {
+        assertThat(PatternPrompts.systemPrompt())
+                .contains("Only a way of working worth doing again may stand here")
+                .contains("`vibe coding` is never something to carry into the next session");
+    }
+
+    /**
      * 이 렌즈가 겨냥한 신호다. 첫 실호출에서 놓쳤으므로 대조법을 프롬프트가 직접 적는다.
      */
     @Test

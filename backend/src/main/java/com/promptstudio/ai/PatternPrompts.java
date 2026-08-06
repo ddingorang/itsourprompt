@@ -104,6 +104,18 @@ final class PatternPrompts {
                 (You may still say the user read something when the *next prompt* proves it — that is a different tag and a different claim.)
                 Read the trace for one thing: **how far the AI had to search before it could act.** A `list_files` followed by several `read_file` calls means the prompt did not name the target, so the AI went looking. A trace that opens straight on the file the prompt named means the user pointed at it.
 
+                ## Only the user's own words may follow 사용자가
+                A path, a class, a method, a variable is the user's word only when that exact text is in a `<user_prompt>`. Everything else in `<changed_file>` and `<ai_tool_calls>` is the AI's naming, and the user never saw it.
+                So before you write `사용자가 ... 하셨어요`, find each name in that sentence inside the prompt you are describing. A name you cannot find there does not go in the sentence — say what the user actually asked for, in the user's words.
+                  쓰지 말 것: 사용자가 턴 4에서 `minPlayerWidth`를 40으로 막아 달라고 하셨어요
+                  이렇게:    사용자가 턴 4에서 최소 너비를 40px로 막아 달라고 하셨어요
+                  쓰지 말 것: 사용자가 `src/main/html/index.html`을 다시 짚으셨어요
+                  이렇게:    사용자가 화면에서 본 것을 말하고 고쳐 달라고 하셨어요
+                The same holds for what the user *did*. The user asks; the AI edits. A sentence that ends in `고치셨어요`, `더하셨어요`, `바꾸셨어요` about code is always wrong here, whatever the file.
+                  쓰지 말 것: `src/main/html/index.html`에서 초록 아이템 생성과 `player.w` 증가를 바로 고치셨어요
+                  이렇게:    사용자가 화면에서 본 것을 말했고, AI가 초록 아이템 생성과 바 너비를 고쳤어요
+                This holds for the session summary too. Naming a file the user never typed is the same invention there.
+
                 Most of the dictionary describes things this session cannot show — what the user did away from the keyboard, how a session ended, what carried over to the next one. A term you cannot ground in those three tags does not go in, however well it fits your impression.
                 When a turn shows nothing worth naming, say exactly that in one sentence and stop. Never stretch a term to fill the shape.
 
@@ -141,9 +153,19 @@ final class PatternPrompts {
                 Two or three sentences. When the turn shows nothing to name, write that one sentence here and write no `### 쓸 기법` section at all.
 
                 ## 쓸 기법
+                **This section exists only when `### 이 턴의 패턴` named `vibe coding`.** Any other name — `human review`, or no name at all — means this turn has nothing to answer, so the turn's string ends after `### 이 턴의 패턴`. Handing a technique to a turn that already went well reads as a complaint about it.
                 One technique, written as a term the same way. Say what doing it looks like in the next turn of this session, not in general.
-                **It must be a different term from the one in `### 이 턴의 패턴`.** A section that repeats the diagnosis prescribes nothing — `vibe coding` is answered by `human review`, not by `vibe coding`.
-                That rule can only ever remove this section, never invent one. Leave it out when the turn's pattern is already worth repeating, or when the only term that would differ is one this session gives you no reason to raise. A technique the user has no cause to try is worse than no technique — never reach for a name just to fill the heading.
+                **It must be a different term from the one in `### 이 턴의 패턴`.** A section that repeats the diagnosis prescribes nothing.
+
+                ### `vibe coding` has two answers, and the session picks which one
+                A user who never opens the diff and a user who never runs the code are not missing the same thing, so do not hand them the same technique.
+                Read every `<user_prompt>` in this session once, then choose:
+                - **No prompt anywhere in the session says what the code did when it ran** — nothing about opening it, playing it, a test, an error, a screen: `automated check` — let the run tell them what changed before they read anything.
+                - **Some prompt reports what happened when it ran, but none of them points at anything inside the code**: `human review` — the running told them something is wrong; the diff tells them where.
+                - Both are already there and the turn still went unread: `human review`.
+                Read the whole session to answer this, then say what it looks like in this turn.
+
+                These rules can only ever remove this section, never invent one. Leave it out when the only term that would differ is one this session gives you no reason to raise. A technique the user has no cause to try is worse than no technique — never reach for a name just to fill the heading.
                 Leaving it out means the string for that turn ends after `### 이 턴의 패턴` and its sentences. **Never write the `### 쓸 기법` heading with nothing under it** — an empty heading renders as a blank section on the user's screen.
 
                 # overall
@@ -157,6 +179,8 @@ final class PatternPrompts {
                 ## 다음 세션에 가져갈 것
                 Exactly one technique — the one that changes the most turns, not the longest list.
                 Again a different term from the session name.
+                Only a way of working worth doing again may stand here: `human review`, `automated check`, `automated review`, `human-in-the-loop`, `design concept`, `prototyping`.
+                `vibe coding` is never something to carry into the next session. It is the cost this section answers, so naming it here tells the user to keep doing what cost them.
                 """;
     }
 
