@@ -6,6 +6,12 @@ body,
   min-height: 100%;
   background: #090909;
 }
+/* 라이트 모드 오버스크롤·여백이 검게 남지 않도록 루트 배경도 함께 바꾼다. */
+html[data-color-mode='light'],
+html[data-color-mode='light'] body,
+html[data-color-mode='light'] #root {
+  background: #fff;
+}
 
 body {
   margin: 0;
@@ -24,6 +30,8 @@ html { scroll-behavior: smooth; }
   --relay-subtle: #777;
   --relay-border: #393939;
   --relay-acid: #d6ff50;
+  /* 공통 컴포넌트(Button 등)가 읽는 공용 강조색 별칭 — 라이트 값도 자동으로 따라간다. */
+  --acid: var(--relay-acid);
 }
 .relay-page[data-color-mode='light'] {
   --relay-bg: #fff;
@@ -192,7 +200,7 @@ html { scroll-behavior: smooth; }
 .landing-hero-actions a[data-variant='secondary']:focus-visible { border-color: var(--acid); background: var(--landing-bg); color: var(--acid); }
 .landing-scroll-cue { display: flex; flex-direction: column; align-items: center; gap: 24px; justify-self: center; color: var(--landing-text); font: 400 12px/1 Arial, 'Noto Sans KR', sans-serif; letter-spacing: .08em; white-space: nowrap; }
 .landing-scroll-arrows { display: flex; height: 31px; flex-direction: column; align-items: center; }
-.landing-scroll-arrows i { display: block; width: 22px; height: 22px; margin-bottom: -10px; transform: rotate(45deg); border-right: 3px solid #777; border-bottom: 3px solid #777; animation: landing-scroll-pulse 1.6s ease-in-out infinite; }
+.landing-scroll-arrows i { display: block; width: 22px; height: 22px; margin-bottom: -10px; transform: rotate(45deg); border-right: 3px solid var(--landing-muted); border-bottom: 3px solid var(--landing-muted); animation: landing-scroll-pulse 1.6s ease-in-out infinite; }
 .landing-scroll-arrows i:nth-child(2) { animation-delay: .22s; }
 .landing-detail-preview-frame { min-width: 0; }
 .landing-detail-preview { min-height: 430px; overflow: hidden; border: 1px solid var(--landing-border); background: var(--landing-bg); color: var(--landing-text); }
@@ -233,6 +241,7 @@ html { scroll-behavior: smooth; }
   --problem-list-muted: #a3a3a3;
   --problem-list-border: #343434;
   --problem-list-acid: #d6ff50;
+  --acid: var(--problem-list-acid);
   transition: background-color 240ms ease, color 240ms ease;
 }
 .problem-list-page[data-color-mode='light'] {
@@ -295,6 +304,7 @@ html { scroll-behavior: smooth; }
   --ranking-surface-hover: #202020;
   --ranking-tab-idle: #8f8f8f;
   --ranking-acid: #d6ff50;
+  --acid: var(--ranking-acid);
   transition: background-color 240ms ease, color 240ms ease;
 }
 .ranking-page[data-color-mode='light'] {
@@ -368,6 +378,7 @@ html { scroll-behavior: smooth; }
   --problem-detail-border: #343434;
   --problem-detail-border-strong: #555;
   --problem-detail-acid: #d6ff50;
+  --acid: var(--problem-detail-acid);
   --problem-detail-code-bg: #202020;
   --problem-detail-code-header: #151515;
   --problem-detail-code-text: #e3e3dd;
@@ -442,6 +453,7 @@ html { scroll-behavior: smooth; }
   --my-page-subtle: #777;
   --my-page-border: #343434;
   --my-page-acid: #d6ff50;
+  --acid: var(--my-page-acid);
   transition: background-color 240ms ease, color 240ms ease;
 }
 .my-page[data-color-mode='light'] {
@@ -529,6 +541,7 @@ html { scroll-behavior: smooth; }
   --auth-page-border-strong: #555;
   --auth-page-input-bg: #131313;
   --auth-page-acid: #d6ff50;
+  --acid: var(--auth-page-acid);
   transition: background-color 240ms ease, color 240ms ease;
 }
 .auth-page[data-color-mode='light'] {
@@ -588,6 +601,7 @@ html { scroll-behavior: smooth; }
   --feedback-subtle: #777;
   --feedback-border: #393939;
   --feedback-acid: #d6ff50;
+  --acid: var(--feedback-acid);
   --feedback-surface: #121212;
   --feedback-surface-hover: #202020;
   --feedback-code-bg: #0d0d0d;
@@ -634,6 +648,17 @@ html { scroll-behavior: smooth; }
   background: transparent;
   color: var(--feedback-acid);
 }
+.feedback-page .feedback-page-secondary-action {
+  border-color: var(--feedback-border);
+  background: transparent;
+  color: var(--feedback-text);
+}
+.feedback-page .feedback-page-secondary-action:hover,
+.feedback-page .feedback-page-secondary-action:focus-visible {
+  border-color: var(--feedback-acid);
+  background: var(--feedback-acid);
+  color: #090909;
+}
 .feedback-page .workspace-scrollbar {
   scrollbar-color: var(--feedback-subtle) var(--feedback-code-bg);
 }
@@ -665,6 +690,7 @@ html { scroll-behavior: smooth; }
   --error-page-subtle: #777;
   --error-page-border: #343434;
   --error-page-acid: #d6ff50;
+  --acid: var(--error-page-acid);
   transition: background-color 240ms ease, color 240ms ease;
 }
 .error-page[data-color-mode='light'] {
@@ -723,8 +749,9 @@ html { scroll-behavior: smooth; }
 [data-reveal] { opacity: 0; transform: translateY(38px); transition: opacity 700ms cubic-bezier(.2,.7,.2,1) var(--reveal-delay, 0ms), transform 700ms cubic-bezier(.2,.7,.2,1) var(--reveal-delay, 0ms); }
 [data-reveal].is-visible { opacity: 1; transform: translateY(0); }
 @keyframes landing-scroll-pulse {
-  0%, 100% { border-color: #666; opacity: .55; }
-  45% { border-color: #f5f5ef; opacity: 1; }
+  /* 라이트 모드에서 흰 배경에 흰 화살표가 되지 않도록 페이지 변수를 쓴다. */
+  0%, 100% { border-color: var(--landing-muted); opacity: .55; }
+  45% { border-color: var(--landing-text); opacity: 1; }
 }
 @media (min-width: 761px) {
   html { scroll-snap-type: y mandatory; scroll-padding-top: 66px; }
