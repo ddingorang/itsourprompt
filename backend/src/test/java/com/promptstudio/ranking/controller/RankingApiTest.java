@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
@@ -178,7 +179,9 @@ class RankingApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.entries[0].durationSeconds").value(252))
                 .andExpect(jsonPath("$.myBest.durationSeconds").value(252))
                 .andExpect(jsonPath("$.entries[1].attemptId").value(others))
-                .andExpect(jsonPath("$.entries[1].durationSeconds").doesNotExist());
+                // doesNotExist()가 아니라 value(nullValue())다 — 전자는 필드가 통째로 사라져도 통과한다.
+                // 화면은 "모름"과 "필드 없음"을 가려야 하므로 null이 실려 오는 것까지가 계약이다.
+                .andExpect(jsonPath("$.entries[1].durationSeconds").value(nullValue()));
     }
 
     @Test
