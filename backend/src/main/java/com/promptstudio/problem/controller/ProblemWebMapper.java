@@ -18,7 +18,9 @@ public class ProblemWebMapper {
         for (ProblemView problem : problems) {
             summaries.add(new ProblemListResponse.ProblemSummaryResponse(
                     problem.id(),
-                    problem.title()
+                    problem.title(),
+                    problem.type(),
+                    problem.language()
             ));
         }
 
