@@ -382,7 +382,7 @@ export default function FeedbackPage() {
                       생성된 코드
                     </h2>
                     {selectedSection.changedFiles.length > 0 ? (
-                      <div className="mt-[18px] grid gap-3">
+                      <div className="workspace-scrollbar mt-[18px] grid max-h-[520px] gap-3 overflow-y-auto max-[760px]:max-h-none max-[760px]:overflow-y-visible">
                         {selectedSection.changedFiles.map((file) => (
                           <div
                             className="overflow-hidden border border-[var(--feedback-border)] bg-[var(--feedback-code-bg)]"
@@ -391,7 +391,7 @@ export default function FeedbackPage() {
                             <div className="border-b border-[var(--feedback-border)] px-4 py-3 font-mono text-xs font-bold text-[var(--feedback-muted)]">
                               {file.path}
                             </div>
-                            <div className="workspace-scrollbar min-h-[280px] max-w-full overflow-auto max-[760px]:min-h-[220px]">
+                            <div className="workspace-scrollbar min-h-[280px] max-w-full overflow-x-auto max-[760px]:min-h-[220px]">
                               <CodeViewer
                                 code={file.content ?? '// 이 턴에서 삭제된 파일입니다.'}
                                 path={file.path}
