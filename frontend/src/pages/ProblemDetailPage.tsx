@@ -209,6 +209,25 @@ function tallyCodeRunCases(cases: CodeRunCase[]): CodeRunTally | null {
   );
 }
 
+/**
+ * 기록된 실행 중 결과가 남은 마지막 것을 읽어 온다. 새 실행을 요청하지 않으므로
+ * 쓰기가 막힌 자리(남의 제출)에서도 쓸 수 있다.
+ *
+ * 아직 채점 중(QUEUED)인 실행은 건너뛴다 — 보여 줄 결과가 아직 없고, 남의
+ * 어템프트라 우리가 그것이 끝나기를 기다릴 이유도 없다. 되살릴 기록이 없으면 null.
+ */
+async function fetchRecordedCodeRun(
+  attemptId: number,
+  signal: AbortSignal,
+): Promise<{ run: CodeRun; tally: CodeRunTally | null } | null> {
+  const response = await getCodeRuns(attemptId, signal);
+  const recorded = response.runs.find((run) => run.status !== 'QUEUED');
+  if (!recorded) return null;
+
+  const run = await getCodeRun(attemptId, recorded.runId, signal);
+  return { run, tally: recorded.tally };
+}
+
 function createFileTree(
   files: RepositoryFile[],
   changedFiles: ChangedFile[],
@@ -353,6 +372,12 @@ export default function ProblemDetailPage() {
     attemptTokenUsage ??
     turnTokenUsages.reduce<number>((total, usage) => total + (usage ?? 0), 0);
   const isSubmitted = attempt?.status === 'SUBMITTED';
+  /**
+   * 남이 제출한 어템프트를 읽는 중인지. 제3자가 읽을 수 있는 것은 제출된 어템프트뿐이라
+   * 프롬프트·제출 UI는 이미 isSubmitted가 막고 있다. 남은 자리는 코드 실행뿐이다 —
+   * 실행은 제출 뒤에도 주인에게 열려 있어 isSubmitted로는 가릴 수 없다.
+   */
+  const isOthersAttempt = attempt !== null && !attempt.mine;
   const canSubmit = turns.length > 0 && !isSubmitted;
   const visibleCodeRunTally =
     codeRunTally && codeRunTally.total > 0 ? codeRunTally : null;
@@ -413,6 +438,50 @@ export default function ProblemDetailPage() {
     };
 
     void poll();
+  };
+
+  /**
+   * 남의 제출을 읽을 때의 TEST 탭. 실행은 상태와 무관하게 소유자만 할 수 있어
+   * (남이 부르면 404) 새로 돌리지 않고, 그 사람이 남긴 마지막 결과만 되살린다.
+   * 폴링도 걸지 않는다 — 주인이 방금 돌린 실행이 남아 있어도 우리 화면이 그것을
+   * 기다릴 이유가 없다.
+   */
+  const showRecordedCodeRun = async (attemptId: number) => {
+    isCodeRunPendingRef.current = true;
+    stopCodeRunPolling();
+    const controller = new AbortController();
+    codeRunControllerRef.current = controller;
+    setCodeRunError(null);
+    setCodeRunTally(null);
+    setIsCodeRunLoading(true);
+
+    try {
+      const recorded = await fetchRecordedCodeRun(attemptId, controller.signal);
+      if (controller.signal.aborted || routeAttemptIdRef.current !== attemptId) {
+        return;
+      }
+
+      if (recorded) {
+        setCodeRunTally(recorded.tally);
+        applyCodeRun(recorded.run);
+      } else {
+        // 한 번도 돌리지 않고 제출한 어템프트다. 빈 결과 자리를 그대로 둔다.
+        setCodeRun(null);
+      }
+
+      setIsCodeRunLoading(false);
+      codeRunControllerRef.current = null;
+    } catch (error: unknown) {
+      if (isAbortError(error) || controller.signal.aborted) return;
+
+      setCodeRunError(
+        getErrorInfo(error, '기록된 테스트 결과를 불러오지 못했습니다.').message,
+      );
+      setIsCodeRunLoading(false);
+      codeRunControllerRef.current = null;
+    } finally {
+      isCodeRunPendingRef.current = false;
+    }
   };
 
   /**
@@ -485,8 +554,13 @@ export default function ProblemDetailPage() {
       }
 
       if (loadedAttempt?.status === 'SUBMITTED') {
+        // 제출된 어템프트는 누구나 열 수 있으므로 "이미 제출된"이 늘 참은 아니다 —
+        // 남의 기록에서는 내가 제출한 적이 없다. 파생 플래그가 아니라 방금 받은
+        // 응답의 mine을 본다(이 시점의 attempt 상태는 아직 갱신 전이다).
         setStatus({
-          message: '이미 제출된 어템프트입니다. 피드백만 확인할 수 있습니다.',
+          message: loadedAttempt.mine
+            ? '이미 제출된 어템프트입니다. 피드백만 확인할 수 있습니다.'
+            : '다른 사람이 제출한 풀이입니다. 읽기만 할 수 있습니다.',
           type: 'normal',
         });
       }
@@ -565,6 +639,13 @@ export default function ProblemDetailPage() {
       return stopCodeRunPolling;
     }
 
+    // 남의 제출은 기록만 되살린다. 주인이 돌리는 중인 실행이 남아 있어도 폴링을
+    // 걸지 않는다 — 그것이 끝나기를 기다리는 것은 이 화면의 일이 아니다.
+    if (isOthersAttempt) {
+      void showRecordedCodeRun(routeAttemptId);
+      return stopCodeRunPolling;
+    }
+
     const controller = new AbortController();
     codeRunControllerRef.current = controller;
 
@@ -610,7 +691,15 @@ export default function ProblemDetailPage() {
     void restoreLatestCodeRun();
 
     return stopCodeRunPolling;
-  }, [attempt?.id, attempt?.problemId, isGame, problem?.id, routeAttemptId, routeProblemId]);
+  }, [
+    attempt?.id,
+    attempt?.problemId,
+    isGame,
+    isOthersAttempt,
+    problem?.id,
+    routeAttemptId,
+    routeProblemId,
+  ]);
 
   const fileTree = useMemo(
     () => createFileTree(files, getLatestChangedFiles(turns)),
@@ -688,6 +777,18 @@ export default function ProblemDetailPage() {
 
   const handleCodeRunRequest = async () => {
     if (isGame || !problem || isCodeRunLoading || isCodeRunPendingRef.current) return;
+
+    /*
+      TEST 탭은 열자마자 실행을 요청한다. 제출된 어템프트가 공개로 바뀌어 이 화면은
+      남의 풀이로도 열리는데, 실행은 소유자만 할 수 있어(남이 부르면 404) 그대로
+      두면 어템프트가 멀쩡히 보이는 화면이 "찾을 수 없다"고 말하게 된다.
+      남의 것이면 요청 대신 그 사람이 남긴 결과를 읽는다 — 랭킹에서 넘어온 사람이
+      가장 궁금해할 "이 풀이가 정말 통과했나"에 답하는 것이 이 탭의 쓸모다.
+    */
+    if (attempt && isOthersAttempt) {
+      await showRecordedCodeRun(attempt.id);
+      return;
+    }
 
     isCodeRunPendingRef.current = true;
     stopCodeRunPolling();
@@ -1335,29 +1436,49 @@ export default function ProblemDetailPage() {
                       onClick={() => void handleCodeRunRequest()}
                       type="button"
                     >
-                      다시 채점하기
+                      {/* 남의 제출에서 이 버튼이 다시 하는 일은 채점이 아니라 읽기다. */}
+                      {isOthersAttempt ? '다시 불러오기' : '다시 채점하기'}
                     </button>
                   </div>
                 </div>
               ) : isCodeRunLoading || codeRun?.status === 'QUEUED' ? (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[var(--problem-detail-muted)]">
-                  <div>
-                    <div className="text-[var(--problem-detail-acid)]">채점 중…</div>
-                    <div className="mt-2 text-[9px] text-[var(--problem-detail-subtle)]">
-                      완료될 때까지 잠시 기다려주세요.
+                  {/* 남의 제출에서는 우리가 채점을 시킨 적이 없다 — 읽는 중일 뿐이다. */}
+                  {isOthersAttempt ? (
+                    <div>
+                      <div className="text-[var(--problem-detail-acid)]">
+                        기록을 불러오는 중…
+                      </div>
+                      <div className="mt-2 text-[9px] text-[var(--problem-detail-subtle)]">
+                        이 제출에 남은 실행 결과를 읽고 있습니다.
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div>
+                      <div className="text-[var(--problem-detail-acid)]">채점 중…</div>
+                      <div className="mt-2 text-[9px] text-[var(--problem-detail-subtle)]">
+                        완료될 때까지 잠시 기다려주세요.
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : codeRun ? (
                 <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif]">
                   <div className="border border-[var(--problem-detail-border-strong)] bg-[var(--problem-detail-surface)] px-4 py-3">
                     <div className="flex items-end justify-between gap-4">
+                      {/*
+                        남의 제출에서 보이는 것은 지금 돌린 결과가 아니라 그 사람이
+                        남긴 기록이다. 제목 자리에서 그렇게 밝힌다 — 아래 케이스 목록과
+                        실행 로그가 방금 만들어진 것처럼 읽히면 안 된다.
+                      */}
                       <div>
                         <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[var(--problem-detail-subtle)]">
-                          TEST RESULT
+                          {isOthersAttempt ? 'RECORDED RESULT' : 'TEST RESULT'}
                         </p>
                         <p className="mt-1 mb-0 text-[12px] text-[var(--problem-detail-text)]">
-                          테스트 케이스 채점 결과
+                          {isOthersAttempt
+                            ? '이 제출에 기록된 마지막 채점 결과'
+                            : '테스트 케이스 채점 결과'}
                         </p>
                       </div>
                       {visibleCodeRunTally ? (
@@ -1472,7 +1593,13 @@ export default function ProblemDetailPage() {
                 </div>
               ) : (
                 <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[var(--problem-detail-subtle)]">
-                  테스트 결과가 없습니다.
+                  {/*
+                    남의 제출은 우리가 돌려 채울 수 없다. 채점 없이 제출했거나 아직
+                    채점 중이면 보여 줄 기록이 없고, 그건 오류가 아니라 사실이다.
+                  */}
+                  {isOthersAttempt
+                    ? '이 제출에는 기록된 채점 결과가 없습니다.'
+                    : '테스트 결과가 없습니다.'}
                 </div>
               )}
             </div>
@@ -1490,9 +1617,11 @@ export default function ProblemDetailPage() {
                 onChange={(event) => setPrompt(event.target.value)}
                 onKeyDown={handlePromptKeyDown}
                 placeholder={
-                  isSubmitted
-                    ? '제출이 완료된 어템프트입니다.'
-                    : '문제를 해결할 프롬프트를 입력하세요.'
+                  isOthersAttempt
+                    ? '다른 사람의 풀이라 프롬프트를 쓸 수 없습니다.'
+                    : isSubmitted
+                      ? '제출이 완료된 어템프트입니다.'
+                      : '문제를 해결할 프롬프트를 입력하세요.'
                 }
                 rows={1}
                 value={prompt}
@@ -1547,14 +1676,38 @@ export default function ProblemDetailPage() {
                 </div>
               )}
 
+              {/*
+                제출은 곧 공개다. 확인 다이얼로그를 새로 세우면 지금 한 번에 끝나는
+                제출 흐름이 통째로 바뀌므로, 버튼에 붙은 한 줄로만 알린다.
+
+                제출이 끝나면 지운다 — 그때 버튼은 피드백을 여는 문이고, 바로 위
+                상태 칸이 이미 제출됐다고 말하고 있다. 이미 참인 사실은 공개된
+                내용이 실제로 있는 피드백 화면(주인 띠)이 계속 이고 있다.
+              */}
+              {!isSubmitted && (
+                <p className="mb-2 font-mono text-[10px] leading-[1.5] text-[var(--problem-detail-muted)]">
+                  제출하면 이 풀이와 피드백을 누구나 볼 수 있습니다.
+                </p>
+              )}
+
               <Button
                 className="problem-detail-primary-action"
                 disabled={isRunning || isSubmitting || !(canSubmit || isSubmitted)}
                 fullWidth
                 onClick={handleSubmit}
               >
+                {/*
+                  남의 풀이에서는 제출을 말하지 않는다. 버튼은 활성인 채로 두는데,
+                  랭킹에서 이 주소로 들어온 사람에게 그 사람 피드백으로 가는 길이
+                  여기뿐이기 때문이다 — handleSubmit도 제출된 어템프트면 바로
+                  피드백으로 넘긴다. 문구만 실제로 하는 일에 맞춘다.
+                */}
                 <span className="text-[14px]">
-                  {isSubmitting ? 'LOADING…' : '최종 제출 & 피드백 확인하기 ↗'}
+                  {isSubmitting
+                    ? 'LOADING…'
+                    : isOthersAttempt
+                      ? '이 풀이의 피드백 보기 ↗'
+                      : '최종 제출 & 피드백 확인하기 ↗'}
                 </span>
               </Button>
             </div>
