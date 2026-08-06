@@ -31,7 +31,7 @@ final class FeedbackPrompts {
                     "제약 칸이 비어 있어요. 그래서 AI가 PostService 밖까지 고쳤어요"),
             new Example("범위가 넘어갔어요", "AI가 PostService 밖의 AttemptController를 고쳤어요"),
             new Example("제약이 부족해요", "제약 칸에 '어느 파일을 건드리면 안 되는지'가 없어요"),
-            new Example("수정 범위를 적으셨어야 해요", "다음 턴에는 제약 칸에 수정 범위를 적어 보세요")
+            new Example("수정 범위를 적으셨어야 해요", "제약 칸에 수정 범위를 적으세요")
     );
 
     /**
@@ -130,13 +130,12 @@ final class FeedbackPrompts {
                 3. Did part of the request stay out, or did something land that the prompt never asked for? Then `일부만 바뀌었어요`. Name the label whose gap let it happen — a change nobody asked for came from the 제약 gap.
                 4. None of the above? Then `요청한 대로 바뀌었어요`.
 
-                Second judgement — who settled the direction? Observe in three steps: (1) find a decision in the changed files that the specification did not settle, (2) check whether the prompt expressed a direction for it, (3) read whether the next turn's prompt shows the user reviewed that choice. Use exactly one of these four sentences:
+                Second judgement — who settled the direction? Observe in two steps: (1) find a decision in the changed files that the specification did not settle, (2) check whether the prompt expressed a direction for it. Use exactly one of these three sentences:
                 - `방향을 정하셨어요`: the prompt set the direction.
-                - `AI에 맡기고 다음 턴에서 확인하셨어요`: the prompt did not, but the next turn shows the choice was reviewed.
-                - `AI에 맡기고 확인하지 않으셨어요`: neither the prompt nor the next turn mentions it.
+                - `AI에 맡기셨어요`: the prompt did not — the AI settled it.
                 - `이 턴에는 판단할 만한 결정 지점이 없었어요`: the turn settled nothing the specification left open.
-                The turn with the highest turn number is the last turn, and only that one turn. The last turn takes `이 턴이 마지막이라, AI가 정한 것을 확인하셨는지는 알 수 없어요` instead of the four above — its evidence would be a next turn that does not exist. When the session has one turn, that turn is the last turn and takes this sentence; when it has five, only turn 5 does.
-                Never state the user's intent as fact in the second judgement. Say what the prompt and the next turn actually carried, then say what to write next time.
+                Judge only from this turn — this turn's prompt and this turn's changed files. What any later turn did with the choice is not this judgement's evidence.
+                Never state the user's intent as fact in the second judgement. Say what the prompt actually carried, then say what to write next time.
 
                 ## 다음 프롬프트 쓰기
                 Give one improved prompt example in a code block. This block is the only place the user ever sees the format, so a wrong shape here teaches a wrong format.

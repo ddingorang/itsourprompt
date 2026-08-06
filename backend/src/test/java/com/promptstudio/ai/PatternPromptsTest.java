@@ -59,8 +59,7 @@ class PatternPromptsTest {
                         "요청하셨지만 AI가 하지 않았어요")
                 .doesNotContain(
                         "방향을 정하셨어요",
-                        "AI에 맡기고 다음 턴에서 확인하셨어요",
-                        "AI에 맡기고 확인하지 않으셨어요")
+                        "AI에 맡기셨어요")
                 .doesNotContain("프롬프트 정리하기", "결과와 비교하기", "다음 프롬프트 쓰기");
     }
 
@@ -190,7 +189,31 @@ class PatternPromptsTest {
                 .contains("`named=true` → `human review`")
                 .contains("`named=false` → `vibe coding`")
                 .contains("Never overrule that value from your own reading of the prompts")
-                .contains("Whether the AI stayed inside what was asked has no bearing on the name");
+                .contains("Whether the AI stayed inside what was asked has no bearing on the name")
+                .contains("did this turn's prompt come back to what the previous turn changed")
+                .contains("turn 1 has no line")
+                .contains("whose previous turn changed no files");
+    }
+
+    /**
+     * 턴 K의 절이 턴 K+1을 사실로 주장하면 사용자가 아직 읽지 않은 턴을 근거로 받는다. 근거 범위를
+     * 앞 턴 변경과 이 턴 프롬프트 둘로 못 박는다.
+     */
+    @Test
+    void 시스템_프롬프트는_뒤_턴을_근거에서_제외한다() {
+        assertThat(PatternPrompts.systemPrompt())
+                .contains("Turns after this one do not exist")
+                .contains("Use only the previous turn's changed files");
+    }
+
+    /**
+     * 기법도 뒤를 보면 안 된다 — 다음 턴에서 무엇을 하라는 처방은 사용자가 아직 읽지 않은 턴을 가리킨다.
+     */
+    @Test
+    void 시스템_프롬프트는_쓸_기법을_회고형으로_적게_한다() {
+        assertThat(PatternPrompts.systemPrompt())
+                .contains("would have looked like before this turn's prompt was sent")
+                .contains("never a turn the user has not read yet");
     }
 
     /**
@@ -213,15 +236,15 @@ class PatternPromptsTest {
                 new AttemptView.TurnView("Main.java를 고쳐 줘", "두 번째 요약", List.of(), List.of(), null, null, null)
         ));
 
-        assertThat(prompt).startsWith("<" + PatternPrompts.REVIEW_TAG + ">\nturn=1 named=true");
+        assertThat(prompt).startsWith("<" + PatternPrompts.REVIEW_TAG + ">\nturn=2 named=true");
     }
 
     /**
-     * 파일명만 써도 짚은 것이고, 아무것도 안 쓰면 안 짚은 것이다. 마지막 턴은 다음 프롬프트가 없어
+     * 파일명만 써도 짚은 것이고, 아무것도 안 쓰면 안 짚은 것이다. 첫 턴은 앞 프롬프트가 없어
      * 줄 자체를 만들지 않는다.
      */
     @Test
-    void 다음_프롬프트가_바뀐_파일을_안_부르면_named가_거짓이다() {
+    void 프롬프트가_앞_턴의_바뀐_파일을_안_부르면_named가_거짓이다() {
         String prompt = PatternPrompts.userPrompt(problem, attemptWith(
                 new AttemptView.TurnView("첫 프롬프트", "첫 요약", List.of(
                         new FileChange("src/main/html/index.html", FileChange.ChangeType.MODIFIED, "<html>")
@@ -230,8 +253,40 @@ class PatternPromptsTest {
         ));
 
         assertThat(prompt)
-                .contains("turn=1 named=false")
-                .doesNotContain("turn=2 named=");
+                .contains("turn=2 named=false")
+                .doesNotContain("turn=1 named=");
+    }
+
+    /**
+     * 앞 턴이 아무 파일도 안 바꿨으면 짚을 것이 없다. 줄을 만들면 {@code named=false}가 나가
+     * 짚지 않은 턴으로 오판된다.
+     */
+    @Test
+    void 앞_턴에_변경_파일이_없으면_줄을_싣지_않는다() {
+        String prompt = PatternPrompts.userPrompt(problem, attemptWith(
+                new AttemptView.TurnView("첫 프롬프트", "첫 요약", List.of(
+                        new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "class Main {}")
+                ), List.of(), null, null, null),
+                new AttemptView.TurnView("이건 뭐 하는 코드야", "두 번째 요약", List.of(), List.of(), null, null, null),
+                new AttemptView.TurnView("노란 아이템도 추가해 줘", "세 번째 요약", List.of(), List.of(), null, null, null)
+        ));
+
+        assertThat(prompt)
+                .contains("turn=2 named=")
+                .doesNotContain("turn=3 named=");
+    }
+
+    /**
+     * 남는 줄이 하나도 없으면 태그 자체를 싣지 않는다. 빈 태그는 판정이 없다는 뜻으로 읽히지 않는다.
+     */
+    @Test
+    void 모든_앞_턴에_변경이_없으면_태그를_만들지_않는다() {
+        String prompt = PatternPrompts.userPrompt(problem, attemptWith(
+                new AttemptView.TurnView("첫 프롬프트", "첫 요약", List.of(), List.of(), null, null, null),
+                new AttemptView.TurnView("두 번째 프롬프트", "두 번째 요약", List.of(), List.of(), null, null, null)
+        ));
+
+        assertThat(prompt).doesNotContain("<" + PatternPrompts.REVIEW_TAG + ">");
     }
 
     /**
@@ -258,21 +313,21 @@ class PatternPromptsTest {
     @Test
     void 제목_줄을_이름과_뜻풀이로_조립한다() {
         String rendered = PatternPrompts.renderTurn(new OpenAiFeedbackGenerator.TurnEntry(
-                List.of(), "vibe coding", "AI가 낸 코드를 안 열고 넘긴 방식", "턴 3 프롬프트에 그 파일이 안 나와요."));
+                List.of(), "vibe coding", "AI가 낸 코드를 안 열고 넘긴 방식", "이 턴 프롬프트에 그 파일이 안 나와요."));
 
         assertThat(rendered).isEqualTo(
-                "### 이 턴의 이름\nvibe coding — AI가 낸 코드를 안 열고 넘긴 방식\n턴 3 프롬프트에 그 파일이 안 나와요.");
+                "### 이 턴의 이름\nvibe coding — AI가 낸 코드를 안 열고 넘긴 방식\n이 턴 프롬프트에 그 파일이 안 나와요.");
     }
 
     /**
-     * 마지막 턴은 다음 프롬프트가 없어 이름이 빈 문자열로 온다. 그때는 모델이 쓴 문장만 남는다.
+     * 첫 턴은 앞선 결과가 없어 이름이 빈 문자열로 온다. 그때는 모델이 쓴 문장만 남는다.
      */
     @Test
     void 이름이_비면_제목_줄을_붙이지_않는다() {
         String rendered = PatternPrompts.renderTurn(new OpenAiFeedbackGenerator.TurnEntry(
-                List.of(), "", "", "이 턴이 마지막이라 다음 프롬프트가 없어요."));
+                List.of(), "", "", "첫 턴이라 앞선 결과가 없어요."));
 
-        assertThat(rendered).isEqualTo("이 턴이 마지막이라 다음 프롬프트가 없어요.");
+        assertThat(rendered).isEqualTo("첫 턴이라 앞선 결과가 없어요.");
     }
 
     @Test
@@ -313,7 +368,7 @@ class PatternPromptsTest {
     void 문체_예문은_pattern_렌즈의_소재를_쓴다() {
         assertThat(PatternPrompts.systemPrompt())
                 .contains("AI가 고친 OrderValidator를 안 읽으셨어요")
-                .contains("다음 턴에는 바뀐 파일을 먼저 열어 보세요")
+                .contains("바뀐 파일을 먼저 여세요")
                 .doesNotContain("AI가 PostService 밖의 AttemptController를 고쳤어요");
     }
 
