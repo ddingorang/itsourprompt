@@ -17,6 +17,7 @@ import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.ranking.exception.RankingLimitOutOfRangeException;
 import com.promptstudio.relay.exception.NotRelayHostException;
 import com.promptstudio.relay.exception.NotRelayParticipantException;
+import com.promptstudio.relay.exception.RelayParticipantLeftException;
 import com.promptstudio.relay.exception.RelayGameNotPlayingException;
 import com.promptstudio.relay.exception.RelayGameNotStartedException;
 import com.promptstudio.relay.exception.RelayNotEnoughParticipantsException;
@@ -218,6 +219,19 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    /**
+     * 게임 중 이탈한 참가자의 재입장. 이탈은 확답을 받은 최종 결정이라 되돌아올 수 없다.
+     */
+    @ExceptionHandler(RelayParticipantLeftException.class)
+    public ResponseEntity<ApiErrorResponse> handleRelayParticipantLeft(RelayParticipantLeftException exception) {
+        ApiErrorResponse response = new ApiErrorResponse(
+                "relay-participant-left",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
     /**

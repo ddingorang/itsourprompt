@@ -9,6 +9,7 @@ import com.promptstudio.relay.domain.RelayRoom;
 import com.promptstudio.relay.domain.RelayRoomSummary;
 import com.promptstudio.relay.domain.RelayRoomView;
 import com.promptstudio.relay.exception.NotRelayParticipantException;
+import com.promptstudio.relay.exception.RelayParticipantLeftException;
 import com.promptstudio.relay.exception.RelayRoomAlreadyStartedException;
 import com.promptstudio.relay.exception.RelayRoomFullException;
 import com.promptstudio.relay.exception.RelayRoomNotFoundException;
@@ -185,6 +186,7 @@ public class RelayRoomService {
     /**
      * 입장은 멱등하다. 이미 참가자면 새로 넣지 않고 현재 상태를 그대로 돌려준다 — 새로고침이나
      * 재접속으로 같은 요청이 다시 오는 것이 정상 경로이고, 그걸 409로 막으면 방에 돌아올 수 없다.
+     * 단 게임 중 이탈은 예외다 — 이탈은 확답을 받은 최종 결정이라 되돌아올 수 없다.
      *
      * <p>정원 검사 때문에 방 행에 쓰기 락을 걸고 시작한다({@code findByIdForUpdate} 주석 참고).
      */
@@ -198,15 +200,10 @@ public class RelayRoomService {
         if (existing.isPresent()) {
             RelayParticipant participant = existing.get();
 
-            // 게임 중 이탈했다 돌아온 참가자. 낙인을 지우지 않으면 이탈 좌석 즉시 스킵에
-            // 걸려, 돌아왔는데도 자기 차례가 오는 족족 건너뛰어진다.
+            // 게임 중 이탈한 참가자는 돌아올 수 없다. 좌석은 남아 있지만(진행 인덱스 보전용)
+            // 남은 차례는 전부 스킵된다.
             if (participant.hasLeft()) {
-                participant.rejoin();
-                participantRepository.save(participant);
-
-                log.info("[RELAY] participant rejoined | roomId={} | userId={}", roomId, userId);
-
-                return publishChanged(toView(room));
+                throw new RelayParticipantLeftException(roomId);
             }
 
             return toView(room);
