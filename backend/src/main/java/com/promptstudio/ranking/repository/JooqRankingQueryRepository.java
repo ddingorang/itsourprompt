@@ -197,10 +197,11 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
     /**
      * 자격을 갖춘 제출과 그 집계, 그리고 등수.
      *
-     * <p>자격은 넷이다. 제출 완료이고, 마지막 턴의 코드가 채점을 통과했고, 턴에 속한 LLM 호출이
-     * 하나 이상이고, 그 호출이 전부 비용을 계산할 수 있어야 한다. 셋째 조건은 INNER JOIN이 대신하고
-     * (호출이 없으면 그룹 자체가 생기지 않는다) 넷째는 HAVING의 BOOL_AND가 본다 — 호출 하나라도
-     * 토큰이나 단가를 모르면 그 어템프트의 비용은 "0"이 아니라 "모름"이라 표에서 빼야 한다.
+     * <p>자격은 다섯이다. 제출 완료이고, 마지막 턴의 코드가 채점을 통과했고, 로그인 사용자의 것이고,
+     * 턴에 속한 LLM 호출이 하나 이상이고, 그 호출이 전부 비용을 계산할 수 있어야 한다. 넷째 조건은
+     * INNER JOIN이 대신하고 (호출이 없으면 그룹 자체가 생기지 않는다) 다섯째는 HAVING의 BOOL_AND가
+     * 본다 — 호출 하나라도 토큰이나 단가를 모르면 그 어템프트의 비용은 "0"이 아니라 "모름"이라
+     * 표에서 빼야 한다.
      */
     private Table<?> ranked(Long problemId) {
         return dsl.select(RANKED_FIELDS)
@@ -220,6 +221,9 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
                         .and(RUN_TURN_ORDINAL.eq(select(max(TURN_ORDINAL))
                                 .from(ATTEMPT_TURN)
                                 .where(TURN_ATTEMPT_ID.eq(ATTEMPT_ID))))))
+                // 게스트 제외. 상위 목록·등수·전체 수·myBest가 전부 이 파생 테이블에서 나오므로
+                // 여기 한 줄이 네 곳을 동시에 맞춘다.
+                .and(ATTEMPT_USER_ID.isNotNull())
                 .groupBy(ATTEMPT_ID, ATTEMPT_USER_ID, ATTEMPT_GUEST_SESSION_ID, ATTEMPT_SUBMITTED_AT)
                 .having(boolAnd(CALL_INPUT_TOKENS.isNotNull()
                         .and(CALL_OUTPUT_TOKENS.isNotNull())

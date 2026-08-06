@@ -140,20 +140,17 @@ class RankingApiTest extends DatabaseTest {
     }
 
     @Test
-    void 게스트_쿠키로도_내_최고_기록을_찾는다() throws Exception {
+    void 게스트_쿠키가_있어도_내_최고_기록은_없다() throws Exception {
         Problem problem = newProblem();
         Cookie guestCookie = issueGuestCookie();
-        Long guestAttemptId = createGuestAttempt(problem, guestCookie);
+        createGuestAttempt(problem, guestCookie);
 
-        String guestSessionId = guestSessionIdOf(guestAttemptId);
-
+        // 자격 조건은 모두 갖췄지만 게스트라 랭킹에 들지 않는다. 남은 길은 로그인뿐이다.
         mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).cookie(guestCookie).with(anonymous()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.myBest.attemptId").value(guestAttemptId))
-                .andExpect(jsonPath("$.myBest.mine").value(true))
-                .andExpect(jsonPath("$.myBest.ownerType").value("GUEST"))
-                // 이름이 없는 게스트는 세션 ID 앞 네 자로 서로 구분한다.
-                .andExpect(jsonPath("$.myBest.ownerLabel").value(guestSessionId.substring(0, 4)));
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.entries").isEmpty())
+                .andExpect(jsonPath("$.myBest").doesNotExist());
     }
 
     @Test

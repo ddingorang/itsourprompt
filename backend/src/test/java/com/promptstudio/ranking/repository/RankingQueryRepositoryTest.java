@@ -206,17 +206,27 @@ class RankingQueryRepositoryTest extends DatabaseTest {
     }
 
     @Test
-    void 게스트도_랭킹에_들고_세션_UUID_앞_네_자로_표시된다() {
+    void 게스트의_제출은_랭킹에_들지_않는다() {
         Problem problem = newProblem();
-        UUID guestSessionId = newGuestSession();
-        Long attemptId = submittedAttempt(problem, AttemptOwner.guest(guestSessionId), 1);
+        submittedAttempt(problem, AttemptOwner.guest(newGuestSession()), 1);
 
-        RankingEntry entry = top(problem.id(), 10).getFirst();
+        RankedPage page = rankingQueryRepository.findTop(problem.id(), 10);
 
-        assertThat(entry.attemptId()).isEqualTo(attemptId);
-        // 게스트는 닉네임이 없다. 표시 이름을 세션 ID로 만드는 것은 응답 계층의 일이다.
-        assertThat(entry.owner()).isEqualTo(AttemptOwner.guest(guestSessionId));
-        assertThat(entry.nickname()).isNull();
+        assertThat(page.entries()).isEmpty();
+        assertThat(page.totalCount()).isZero();
+    }
+
+    @Test
+    void 게스트가_더_싸도_등수와_전체_수는_로그인_사용자만_센다() {
+        Problem problem = newProblem();
+        submittedAttempt(problem, AttemptOwner.guest(newGuestSession()), 1);
+        Long mine = submittedAttempt(problem, AttemptOwner.user(ownerId), 2);
+
+        RankedPage page = rankingQueryRepository.findTop(problem.id(), 10);
+
+        assertThat(page.entries()).extracting(RankingEntry::attemptId).containsExactly(mine);
+        assertThat(page.entries()).extracting(RankingEntry::rank).containsExactly(1);
+        assertThat(page.totalCount()).isEqualTo(1);
     }
 
     @Test
@@ -261,17 +271,13 @@ class RankingQueryRepositoryTest extends DatabaseTest {
     }
 
     @Test
-    void 게스트의_가장_좋은_한_줄도_찾는다() {
+    void 게스트의_가장_좋은_한_줄은_없다() {
         Problem problem = newProblem();
-        UUID guestSessionId = newGuestSession();
-        AttemptOwner owner = AttemptOwner.guest(guestSessionId);
+        AttemptOwner owner = AttemptOwner.guest(newGuestSession());
         submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
-        Long guestAttemptId = submittedAttempt(problem, owner, 2);
+        submittedAttempt(problem, owner, 2);
 
-        RankingEntry best = rankingQueryRepository.findBestOf(problem.id(), owner).orElseThrow();
-
-        assertThat(best.attemptId()).isEqualTo(guestAttemptId);
-        assertThat(best.rank()).isEqualTo(2);
+        assertThat(rankingQueryRepository.findBestOf(problem.id(), owner)).isEmpty();
     }
 
     @Test
