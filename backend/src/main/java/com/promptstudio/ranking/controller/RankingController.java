@@ -65,8 +65,10 @@ public class RankingController {
             @AuthenticationPrincipal AppUserDetails principal,
             HttpServletRequest request
     ) {
-        Optional<AttemptOwner> owner = attemptOwnerResolver.resolveExisting(principal, request);
+        Optional<Long> userId = attemptOwnerResolver.resolveExisting(principal, request)
+                .filter(AttemptOwner::isUser)
+                .map(AttemptOwner::userId);
 
-        return ProblemRankingResponse.from(rankingService.getRanking(problemId, limit, owner), owner);
+        return ProblemRankingResponse.from(rankingService.getRanking(problemId, limit, userId), userId);
     }
 }

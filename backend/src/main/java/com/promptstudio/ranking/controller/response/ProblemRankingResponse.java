@@ -1,6 +1,5 @@
 package com.promptstudio.ranking.controller.response;
 
-import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.ranking.domain.ProblemRanking;
 import com.promptstudio.ranking.domain.RankingEntry;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -27,21 +26,18 @@ public record ProblemRankingResponse(
 ) {
 
     /**
-     * @param requester 요청자. 비어 있으면 어느 줄도 내 줄이 아니다(로그인도 게스트 쿠키도 없는 방문자)
+     * @param requesterUserId 요청자의 사용자 ID. 비어 있으면 어느 줄도 내 줄이 아니다(로그인하지 않은 요청)
      */
-    public static ProblemRankingResponse from(ProblemRanking ranking, Optional<AttemptOwner> requester) {
+    public static ProblemRankingResponse from(ProblemRanking ranking, Optional<Long> requesterUserId) {
         RankingEntry myBest = ranking.myBest();
 
         return new ProblemRankingResponse(
                 ranking.problemId(),
                 ranking.totalCount(),
-                ranking.entries().stream().map(entry -> RankingEntryResponse.from(entry, requester)).toList(),
-                myBest == null ? null : RankingEntryResponse.from(myBest, requester)
+                ranking.entries().stream().map(entry -> RankingEntryResponse.from(entry, requesterUserId)).toList(),
+                myBest == null ? null : RankingEntryResponse.from(myBest, requesterUserId)
         );
     }
-
-    /** 게스트 표시 이름으로 쓸 세션 ID 앞자리 수. */
-    private static final int GUEST_LABEL_LENGTH = 4;
 
     @Schema(description = "랭킹 한 줄. 어템프트 1건이 1줄이라 한 사람이 여러 줄을 차지할 수 있다")
     public record RankingEntryResponse(
@@ -90,15 +86,15 @@ public record ProblemRankingResponse(
          * <p>내 줄인지는 소유자 신원으로 판정한다. 최고 기록과 견주면 상위에 오른 내 두 번째 줄이
          * 남의 줄과 구분되지 않는다 — 어템프트 1건이 1줄이라 한 사람이 여러 줄을 차지하기 때문이다.
          */
-        public static RankingEntryResponse from(RankingEntry entry, Optional<AttemptOwner> requester) {
-            boolean mine = requester.filter(entry.owner()::equals).isPresent();
+        public static RankingEntryResponse from(RankingEntry entry, Optional<Long> requesterUserId) {
+            boolean mine = requesterUserId.filter(entry.userId()::equals).isPresent();
 
             return new RankingEntryResponse(
                     entry.rank(),
                     mine ? entry.attemptId() : null,
                     mine,
-                    entry.owner().isUser() ? RankingOwnerType.USER : RankingOwnerType.GUEST,
-                    ownerLabelOf(entry),
+                    RankingOwnerType.USER,
+                    entry.nickname(),
                     entry.cost(),
                     entry.uncachedInputTokens(),
                     entry.cachedInputTokens(),
@@ -107,18 +103,6 @@ public record ProblemRankingResponse(
                     entry.rounds(),
                     entry.submittedAt()
             );
-        }
-
-        /**
-         * 게스트는 이름이 없다. 세션 ID를 같은 표에서 서로 구분될 만큼만 잘라 쓴다 — 자르는 길이는
-         * 화면에 보일 글자 수라 표시 계층이 정한다.
-         */
-        private static String ownerLabelOf(RankingEntry entry) {
-            if (entry.owner().isUser()) {
-                return entry.nickname();
-            }
-
-            return entry.owner().guestSessionId().toString().substring(0, GUEST_LABEL_LENGTH);
         }
     }
 }

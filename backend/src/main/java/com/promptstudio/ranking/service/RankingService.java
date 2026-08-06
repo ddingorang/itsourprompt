@@ -1,6 +1,5 @@
 package com.promptstudio.ranking.service;
 
-import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
 import com.promptstudio.problem.repository.ProblemRepository;
 import com.promptstudio.ranking.domain.ProblemRanking;
@@ -34,10 +33,10 @@ public class RankingService {
      *
      * <p>비활성 문제도 그대로 보여준다 — 이미 푼 사람들의 기록은 문제가 목록에서 내려갔다고 사라지지 않는다.
      *
-     * @param owner 요청자. 비어 있으면 내 순위를 계산하지 않는다(로그인도 게스트 쿠키도 없는 방문자)
+     * @param userId 요청자의 사용자 ID. 비어 있으면 로그인하지 않은 요청이라 내 순위가 없다
      */
     @Transactional(readOnly = true)
-    public ProblemRanking getRanking(Long problemId, int limit, Optional<AttemptOwner> owner) {
+    public ProblemRanking getRanking(Long problemId, int limit, Optional<Long> userId) {
         // 값 검사가 먼저다. 못 쓸 요청 때문에 DB를 두드릴 이유가 없고, 잘못된 limit이 없는 문제로 가면
         // 400과 404 중 뭐가 나올지가 순서에 좌우된다.
         if (limit < MIN_LIMIT || limit > MAX_LIMIT) {
@@ -50,7 +49,7 @@ public class RankingService {
         }
 
         RankedPage page = rankingQueryRepository.findTop(problemId, limit);
-        RankingEntry myBest = owner
+        RankingEntry myBest = userId
                 .flatMap(it -> rankingQueryRepository.findBestOf(problemId, it))
                 .orElse(null);
 

@@ -1,12 +1,10 @@
 package com.promptstudio.ranking.repository;
 
-import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.CodeRunStatus;
 import com.promptstudio.pricing.LlmPricingProperties;
 import com.promptstudio.ranking.domain.RankedPage;
 import com.promptstudio.ranking.domain.RankingEntry;
-import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Record;
@@ -22,7 +20,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static com.promptstudio.pricing.repository.ModelPriceTables.CACHED_INPUT;
 import static com.promptstudio.pricing.repository.ModelPriceTables.INPUT;
@@ -61,8 +58,6 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
     private static final Field<Long> ATTEMPT_ID = field(name("attempt", "id"), SQLDataType.BIGINT);
     private static final Field<Long> ATTEMPT_PROBLEM_ID = field(name("attempt", "problem_id"), SQLDataType.BIGINT);
     private static final Field<Long> ATTEMPT_USER_ID = field(name("attempt", "user_id"), SQLDataType.BIGINT);
-    private static final Field<UUID> ATTEMPT_GUEST_SESSION_ID =
-            field(name("attempt", "guest_session_id"), SQLDataType.UUID);
     private static final Field<String> ATTEMPT_STATUS = field(name("attempt", "status"), SQLDataType.VARCHAR);
     private static final Field<Instant> ATTEMPT_SUBMITTED_AT =
             field(name("attempt", "submitted_at"), SQLDataType.INSTANT);
@@ -107,7 +102,7 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
     );
 
     private static final List<SelectFieldOrAsterisk> RANKED_FIELDS = List.of(
-            ATTEMPT_ID, ATTEMPT_USER_ID, ATTEMPT_GUEST_SESSION_ID, ATTEMPT_SUBMITTED_AT,
+            ATTEMPT_ID, ATTEMPT_USER_ID, ATTEMPT_SUBMITTED_AT,
             COST_SCALED_EXPR.as("cost_scaled"),
             // 캐시 적중분은 input에 포함돼 있어 행 단위로 빼야 한다(JooqAttemptQueryRepository와 같은 이유).
             sum(CALL_INPUT_TOKENS.minus(coalesce(CALL_CACHED_INPUT_TOKENS, 0L))).as("uncached_input_tokens"),
@@ -126,8 +121,6 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
 
     private static final Field<Long> RANKED_ATTEMPT_ID = field(name("ranked", "id"), SQLDataType.BIGINT);
     private static final Field<Long> RANKED_USER_ID = field(name("ranked", "user_id"), SQLDataType.BIGINT);
-    private static final Field<UUID> RANKED_GUEST_SESSION_ID =
-            field(name("ranked", "guest_session_id"), SQLDataType.UUID);
     private static final Field<Instant> RANKED_SUBMITTED_AT =
             field(name("ranked", "submitted_at"), SQLDataType.INSTANT);
     private static final Field<BigDecimal> RANKED_COST_SCALED =
@@ -150,7 +143,7 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
             LlmPricingProperties.COST_SCALE).as("cost");
 
     private static final List<SelectFieldOrAsterisk> ENTRY_FIELDS = List.of(
-            RANKED_RANK, RANKED_ATTEMPT_ID, RANKED_USER_ID, RANKED_GUEST_SESSION_ID, USER_NICKNAME,
+            RANKED_RANK, RANKED_ATTEMPT_ID, RANKED_USER_ID, USER_NICKNAME,
             COST, RANKED_UNCACHED_INPUT_TOKENS, RANKED_CACHED_INPUT_TOKENS, RANKED_OUTPUT_TOKENS,
             RANKED_TURNS, RANKED_ROUNDS, RANKED_SUBMITTED_AT, RANKED_TOTAL_COUNT);
 
@@ -176,13 +169,9 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<RankingEntry> findBestOf(Long problemId, AttemptOwner owner) {
-        Condition ownedBy = owner.isUser()
-                ? RANKED_USER_ID.eq(owner.userId())
-                : RANKED_GUEST_SESSION_ID.eq(owner.guestSessionId());
-
+    public Optional<RankingEntry> findBestOf(Long problemId, Long userId) {
         return selectEntries(problemId)
-                .where(ownedBy)
+                .where(RANKED_USER_ID.eq(userId))
                 .orderBy(RANKED_RANK, RANKED_SEQ)
                 .limit(1)
                 .fetchOptional(JooqRankingQueryRepository::toEntry);
@@ -224,7 +213,7 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
                 // 게스트 제외. 상위 목록·등수·전체 수·myBest가 전부 이 파생 테이블에서 나오므로
                 // 여기 한 줄이 네 곳을 동시에 맞춘다.
                 .and(ATTEMPT_USER_ID.isNotNull())
-                .groupBy(ATTEMPT_ID, ATTEMPT_USER_ID, ATTEMPT_GUEST_SESSION_ID, ATTEMPT_SUBMITTED_AT)
+                .groupBy(ATTEMPT_ID, ATTEMPT_USER_ID, ATTEMPT_SUBMITTED_AT)
                 .having(boolAnd(CALL_INPUT_TOKENS.isNotNull()
                         .and(CALL_OUTPUT_TOKENS.isNotNull())
                         .and(MODEL.isNotNull())).isTrue())
@@ -235,7 +224,7 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
         return new RankingEntry(
                 record.get(RANKED_RANK),
                 record.get(RANKED_ATTEMPT_ID),
-                new AttemptOwner(record.get(RANKED_USER_ID), record.get(RANKED_GUEST_SESSION_ID)),
+                record.get(RANKED_USER_ID),
                 record.get(USER_NICKNAME),
                 record.get(COST),
                 record.get(RANKED_UNCACHED_INPUT_TOKENS).longValue(),

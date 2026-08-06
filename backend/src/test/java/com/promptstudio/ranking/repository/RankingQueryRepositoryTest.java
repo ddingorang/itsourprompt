@@ -147,7 +147,7 @@ class RankingQueryRepositoryTest extends DatabaseTest {
         assertThat(entry.uncachedInputTokens()).isEqualTo(3_000L);
         assertThat(entry.cachedInputTokens()).isEqualTo(2_000L);
         assertThat(entry.outputTokens()).isEqualTo(1_000L);
-        assertThat(entry.owner()).isEqualTo(AttemptOwner.user(ownerId));
+        assertThat(entry.userId()).isEqualTo(ownerId);
         assertThat(entry.nickname()).isEqualTo("test owner");
         assertThat(entry.submittedAt()).isNotNull();
     }
@@ -263,7 +263,7 @@ class RankingQueryRepositoryTest extends DatabaseTest {
         Long cheap = submittedAttempt(problem, owner, 1);
         submittedAttempt(problem, AttemptOwner.user(otherUserId()), 2);
 
-        RankingEntry best = rankingQueryRepository.findBestOf(problem.id(), owner).orElseThrow();
+        RankingEntry best = rankingQueryRepository.findBestOf(problem.id(), ownerId).orElseThrow();
 
         assertThat(best.attemptId()).isEqualTo(cheap);
         assertThat(best.rank()).isEqualTo(1);
@@ -271,21 +271,11 @@ class RankingQueryRepositoryTest extends DatabaseTest {
     }
 
     @Test
-    void 게스트의_가장_좋은_한_줄은_없다() {
-        Problem problem = newProblem();
-        AttemptOwner owner = AttemptOwner.guest(newGuestSession());
-        submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
-        submittedAttempt(problem, owner, 2);
-
-        assertThat(rankingQueryRepository.findBestOf(problem.id(), owner)).isEmpty();
-    }
-
-    @Test
     void 자격을_갖춘_내_어템프트가_없으면_비어_있다() {
         Problem problem = newProblem();
         submittedAttempt(problem, AttemptOwner.user(otherUserId()), 1);
 
-        assertThat(rankingQueryRepository.findBestOf(problem.id(), AttemptOwner.user(ownerId))).isEmpty();
+        assertThat(rankingQueryRepository.findBestOf(problem.id(), ownerId)).isEmpty();
     }
 
     /** 턴을 turns개 쌓고 제출한 뒤, 마지막 턴에 대한 SUCCEEDED 실행을 남긴다. */
