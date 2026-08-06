@@ -241,14 +241,10 @@ export default function FeedbackPage() {
       <Header mobileBreakpoint="760" />
 
       <main className="mx-auto w-[calc(100%_-_10vw)] max-w-[1840px] flex-1 pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
-        <section className="flex items-center justify-between gap-[18px] bg-[var(--feedback-acid)] px-[22px] py-5 text-[#090909] max-[760px]:flex-col max-[760px]:items-start">
-          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em]">
-            SESSION FEEDBACK
+        <section className="bg-[var(--feedback-acid)] px-[22px] py-5 text-[#090909]">
+          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em]">
+            풀이 피드백
           </h1>
-          <span className="text-right font-mono text-sm leading-[1.5] font-bold tracking-[0.05em] max-[760px]:text-left">
-            INTENT RECONSTRUCTION
-            <br />+ WORK PATTERNS
-          </span>
         </section>
 
         {isLoading && (
