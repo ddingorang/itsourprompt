@@ -210,6 +210,51 @@ class RankingQueryRepositoryTest extends DatabaseTest {
     }
 
     @Test
+    void 소요_시간은_첫_CODE_호출부터_제출까지를_초로_잰다() {
+        Problem problem = newProblem();
+        Long attemptId = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        setCodeCallCreatedAt(attemptId, 1, "2026-08-01T00:00:00Z");
+        setCodeCallCreatedAt(attemptId, 2, "2026-08-01T00:01:00Z");
+        setSubmittedAt(attemptId, "2026-08-01T00:04:12Z");
+
+        // 두 번째 호출(192초)이 아니라 첫 호출부터 잰다.
+        assertThat(top(problem.id(), 10).getFirst().durationSeconds()).isEqualTo(252L);
+    }
+
+    @Test
+    void 실패한_CODE_호출도_시작으로_친다() {
+        Problem problem = newProblem();
+        Long attemptId = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        setCodeCallCreatedAt(attemptId, 1, "2026-08-01T00:01:00Z");
+        setCodeCallCreatedAt(attemptId, 2, "2026-08-01T00:01:00Z");
+        insertFailedCodeCall(attemptId, "2026-08-01T00:00:00Z");
+        setSubmittedAt(attemptId, "2026-08-01T00:05:00Z");
+
+        assertThat(top(problem.id(), 10).getFirst().durationSeconds()).isEqualTo(300L);
+    }
+
+    @Test
+    void 피드백_호출은_시작으로_치지_않는다() {
+        Problem problem = newProblem();
+        Long attemptId = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        setCodeCallCreatedAt(attemptId, 1, "2026-08-01T00:00:00Z");
+        setCodeCallCreatedAt(attemptId, 2, "2026-08-01T00:00:00Z");
+        insertFeedbackCall(attemptId, "2026-07-31T23:50:00Z");
+        setSubmittedAt(attemptId, "2026-08-01T00:00:42Z");
+
+        assertThat(top(problem.id(), 10).getFirst().durationSeconds()).isEqualTo(42L);
+    }
+
+    @Test
+    void 제출_시각을_모르면_소요_시간도_모른다() {
+        Problem problem = newProblem();
+        Long attemptId = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        dsl.execute("UPDATE attempt SET submitted_at = NULL WHERE id = ?", attemptId);
+
+        assertThat(top(problem.id(), 10).getFirst().durationSeconds()).isNull();
+    }
+
+    @Test
     void 게스트의_제출은_랭킹에_들지_않는다() {
         Problem problem = newProblem();
         submittedAttempt(problem, AttemptOwner.guest(newGuestSession()), 1);
@@ -336,6 +381,41 @@ class RankingQueryRepositoryTest extends DatabaseTest {
         dsl.update(table(name("attempt")))
                 .set(field(name("attempt", "submitted_at"), SQLDataType.INSTANT), Instant.parse(submittedAt))
                 .where(field(name("attempt", "id"), SQLDataType.BIGINT).eq(attemptId))
+                .execute();
+    }
+
+    private void setCodeCallCreatedAt(Long attemptId, int seq, String createdAt) {
+        dsl.update(table(name("attempt_llm_call")))
+                .set(field(name("attempt_llm_call", "created_at"), SQLDataType.INSTANT), Instant.parse(createdAt))
+                .where(field(name("attempt_llm_call", "attempt_id"), SQLDataType.BIGINT).eq(attemptId))
+                .and(field(name("attempt_llm_call", "purpose"), SQLDataType.VARCHAR).eq("CODE"))
+                .and(field(name("attempt_llm_call", "seq"), SQLDataType.INTEGER).eq(seq))
+                .execute();
+    }
+
+    /** 실패한 호출은 턴이 저장되지 않아 turn_ordinal도 model도 없다. */
+    private void insertFailedCodeCall(Long attemptId, String createdAt) {
+        insertUnturnedCall(attemptId, "CODE", "FAILED", createdAt);
+    }
+
+    /** 제출이 내는 피드백 호출은 비동기라, 시각을 정해 검사하려면 직접 넣어야 한다. */
+    private void insertFeedbackCall(Long attemptId, String createdAt) {
+        insertUnturnedCall(attemptId, "FEEDBACK", "SUCCESS", createdAt);
+    }
+
+    /**
+     * 턴에 속하지 않는 호출 1건. seq는 턴 호출(1, 2)과 부딪히지 않게 크게 잡는다. 토큰과 모델을
+     * 비워도 자격은 흔들리지 않는다 — 자격은 turn_ordinal이 있는 행만 본다.
+     */
+    private void insertUnturnedCall(Long attemptId, String purpose, String status, String createdAt) {
+        dsl.insertInto(table(name("attempt_llm_call")))
+                .columns(
+                        field(name("attempt_id"), SQLDataType.BIGINT),
+                        field(name("purpose"), SQLDataType.VARCHAR),
+                        field(name("seq"), SQLDataType.INTEGER),
+                        field(name("status"), SQLDataType.VARCHAR),
+                        field(name("created_at"), SQLDataType.INSTANT))
+                .values(attemptId, purpose, 99, status, Instant.parse(createdAt))
                 .execute();
     }
 
