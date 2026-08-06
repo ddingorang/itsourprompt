@@ -1547,6 +1547,20 @@ export default function ProblemDetailPage() {
                 </div>
               )}
 
+              {/*
+                제출은 곧 공개다. 확인 다이얼로그를 새로 세우면 지금 한 번에 끝나는
+                제출 흐름이 통째로 바뀌므로, 버튼에 붙은 한 줄로만 알린다.
+
+                제출이 끝나면 지운다 — 그때 버튼은 피드백을 여는 문이고, 바로 위
+                상태 칸이 이미 제출됐다고 말하고 있다. 이미 참인 사실은 공개된
+                내용이 실제로 있는 피드백 화면(주인 띠)이 계속 이고 있다.
+              */}
+              {!isSubmitted && (
+                <p className="mb-2 font-mono text-[10px] leading-[1.5] text-[var(--problem-detail-muted)]">
+                  제출하면 이 풀이와 피드백을 누구나 볼 수 있습니다.
+                </p>
+              )}
+
               <Button
                 className="problem-detail-primary-action"
                 disabled={isRunning || isSubmitting || !(canSubmit || isSubmitted)}
