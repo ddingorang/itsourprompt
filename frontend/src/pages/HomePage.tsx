@@ -294,7 +294,10 @@ export default function HomePage() {
             <div className="landing-final-grid" aria-hidden="true" />
             <div className="relative z-[1]" data-reveal>
               <p className="mb-7 font-mono text-[20px] font-bold tracking-[0.18em] text-[var(--acid)]">READY WHEN YOU ARE</p>
-              <h2 className="mx-auto mb-10 max-w-[1000px] text-[clamp(50px,9vw,100px)] leading-[1.0] font-black tracking-[-0.05em]">
+              {/* 최소 폰트를 28px까지 낮춘다 — 50px 바닥에서는 좁은 창에서
+                  "달라집니다."가 음절 단위로 꺾여 세 줄이 된다. 9vw면 어느 너비에서든
+                  한 줄이 90vw 안에 들어와 두 줄이 유지된다. */}
+              <h2 className="mx-auto mb-10 max-w-[1000px] text-[clamp(28px,9vw,100px)] leading-[1.0] font-black tracking-[-0.05em]">
                 연습이 쌓이면
                 <br />
                 프롬프트가 달라집니다.
