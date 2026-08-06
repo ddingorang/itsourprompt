@@ -357,7 +357,7 @@ function WaitingView({
       <div>
         <div className="flex items-end justify-between gap-6 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-3">
           <div className={waitingTitleClasses}>방 #{room.roomId}</div>
-          <div className="shrink-0 text-right font-mono text-[12px] leading-[1.6] tracking-[0.04em] text-[#a3a3a3] max-[640px]:text-left">
+          <div className="shrink-0 text-right text-[12px] leading-[1.6] text-[#a3a3a3] max-[640px]:text-left">
             {problem ? `「${problem.title}」` : `문제 ${room.problemId}번`} ·{' '}
             {room.totalLaps}바퀴 · 정원 {room.maxParticipants}명
           </div>
@@ -1415,7 +1415,7 @@ function VoicePanel({
       {!compact && <span className={labelClassName}>음성</span>}
       <button
         className={[
-          'cursor-pointer border px-3 py-2 font-mono text-[11px] font-bold',
+          'cursor-pointer border px-3 py-2 text-[11px] font-bold',
           rtc.audioOn
             ? 'border-[#d6ff50] bg-[#d6ff50] text-[#090909]'
             : 'border-[#3f3f3f] bg-transparent text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]',

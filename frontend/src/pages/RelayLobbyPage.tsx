@@ -15,7 +15,7 @@ const labelClasses =
   'text-[20px] leading-[1.5] font-bold text-[#d6ff50]';
 
 const fieldClasses =
-  'w-full border border-[#3f3f3f] bg-[#151515] px-3 py-2.5 font-mono text-sm ' +
+  'w-full border border-[#3f3f3f] bg-[#151515] px-3 py-2.5 text-sm ' +
   'text-[#f5f5ef] focus:border-[#d6ff50] focus:outline-none';
 
 const LAP_CHOICES = [1, 2, 3] as const;
@@ -152,7 +152,7 @@ export default function RelayLobbyPage() {
         </div>
 
         {error && (
-          <p className="m-0 border border-[#5a2c28] bg-[#1c0f0e] px-4 py-3 font-mono text-xs text-[#ff786b]">
+          <p className="m-0 border border-[#5a2c28] bg-[#1c0f0e] px-4 py-3 text-xs text-[#ff786b]">
             {error}
           </p>
         )}
@@ -180,7 +180,7 @@ export default function RelayLobbyPage() {
                 &gt;
               </button>
               <button
-                className="cursor-pointer border border-[#3f3f3f] bg-transparent px-2.5 py-1 font-mono text-[10px] text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]"
+                className="cursor-pointer border border-[#3f3f3f] bg-transparent px-2.5 py-1 text-[10px] text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]"
                 onClick={() => void refreshRooms()}
                 type="button"
               >
@@ -190,11 +190,11 @@ export default function RelayLobbyPage() {
           </div>
 
           {!roomsLoaded ? (
-            <p className="m-0 px-4 py-6 font-mono text-[11px] text-[#666]">
+            <p className="m-0 px-4 py-6 text-[11px] text-[#666]">
               방 목록을 불러오는 중…
             </p>
           ) : rooms.length === 0 ? (
-            <p className="m-0 px-4 py-6 font-mono text-[11px] leading-[1.7] text-[#666]">
+            <p className="m-0 px-4 py-6 text-[11px] leading-[1.7] text-[#666]">
               입장을 기다리는 방이 없습니다. 아래에서 새 방을 만들어 보세요.
             </p>
           ) : (
@@ -215,14 +215,14 @@ export default function RelayLobbyPage() {
                       {room.name ?? room.problemTitle ?? `문제 ${room.problemId}번`}
                     </span>
                     {room.name && (
-                      <span className="font-mono text-[11px] text-[#a3a3a3]">
+                      <span className="text-[11px] text-[#a3a3a3]">
                         {room.problemTitle ?? `문제 ${room.problemId}번`}
                       </span>
                     )}
-                    <span className="font-mono text-[11px] text-[#a3a3a3]">
+                    <span className="text-[11px] text-[#a3a3a3]">
                       {room.hostNickname} 님의 방
                     </span>
-                    <span className="font-mono text-[11px] text-[#a3a3a3]">
+                    <span className="text-[11px] text-[#a3a3a3]">
                       {room.totalLaps}바퀴
                     </span>
                     <span
