@@ -32,8 +32,8 @@ interface LoadNotice {
 type FeedbackLens = 'feedback' | 'pattern';
 
 const LENS_TABS: { value: FeedbackLens; label: string }[] = [
-  { value: 'feedback', label: 'FEEDBACK' },
-  { value: 'pattern', label: 'PATTERN' },
+  { value: 'feedback', label: '프롬프트 진단' },
+  { value: 'pattern', label: '작업 방식' },
 ];
 
 /**
@@ -90,7 +90,7 @@ function OverallPanel({
   return (
     <section className="mt-4 border border-[var(--feedback-border)] bg-transparent">
       <div className="flex min-h-[58px] items-center border-b border-[var(--feedback-border)] px-6 max-[760px]:px-5">
-        <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
+        <h2 className="m-0 text-xl leading-[1.4] font-bold text-[var(--feedback-acid)]">
           {title}
         </h2>
       </div>
@@ -137,7 +137,7 @@ export default function FeedbackPage() {
   useEffect(() => {
     if (!Number.isInteger(attemptId) || attemptId <= 0) {
       setNotice({
-        message: '잘못된 어템프트 주소입니다.',
+        message: '잘못된 주소입니다.',
         actionLabel: '이전 페이지로 돌아가기',
         actionTo: null,
         isError: true,
@@ -182,8 +182,8 @@ export default function FeedbackPage() {
           error.code === API_ERROR_CODES.feedbackNotFound
         ) {
           setNotice({
-            message: '아직 제출되지 않은 어템프트입니다.',
-            actionLabel: 'BACK TO WORKSPACE ↗',
+            message: '아직 제출하지 않았습니다.',
+            actionLabel: '작업장으로 돌아가기 ↗',
             actionTo: `/attempts/${attemptId}`,
             isError: false,
           });
@@ -324,20 +324,23 @@ export default function FeedbackPage() {
 
         {!isLoading && !notice && feedback && (
           <>
-            <OverallPanel markdown={feedback.overallMd} title="OVERALL.MD" />
+            <OverallPanel
+              markdown={feedback.overallMd}
+              title="프롬프트 진단 총평"
+            />
 
             {pattern && (
-              <OverallPanel markdown={pattern.overallMd} title="PATTERN.MD" />
+              <OverallPanel markdown={pattern.overallMd} title="작업 방식 총평" />
             )}
 
             {selectedSection && (
               <section
                 className="mt-4 border border-[var(--feedback-border)] bg-[var(--feedback-surface)]"
-                aria-label="턴별 프롬프트 피드백"
+                aria-label="턴별 피드백"
               >
                 <div className="sticky top-[66px] z-40 border-b border-[var(--feedback-border)] bg-[var(--feedback-surface)]">
-                  <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[220px] place-items-center border-r border-[var(--feedback-border)] bg-[var(--feedback-surface)] font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)] max-[760px]:hidden">
-                    PROMPT HISTORY
+                  <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[220px] place-items-center border-r border-[var(--feedback-border)] bg-[var(--feedback-surface)] text-xl leading-[1.4] font-bold text-[var(--feedback-acid)] max-[760px]:hidden">
+                    턴 고르기
                   </span>
                   <button
                     aria-label="이전 턴 보기"
@@ -360,7 +363,7 @@ export default function FeedbackPage() {
                         <button
                           aria-controls="feedback-turn-panel"
                           aria-selected={isSelected}
-                          className={`relative min-h-[58px] min-w-[130px] shrink-0 cursor-pointer border-0 bg-transparent px-[22px] font-mono text-sm font-bold tracking-[0.06em] hover:text-[var(--feedback-text)] focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-4px] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:z-10 after:h-[3px] ${
+                          className={`relative min-h-[58px] min-w-[130px] shrink-0 cursor-pointer border-0 bg-transparent px-[22px] text-sm font-bold hover:text-[var(--feedback-text)] focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-4px] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:z-10 after:h-[3px] ${
                             isSelected
                               ? 'text-[var(--feedback-acid)] after:bg-[var(--feedback-acid)]'
                               : 'text-[var(--feedback-muted)] after:bg-transparent'
@@ -378,7 +381,7 @@ export default function FeedbackPage() {
                           tabIndex={isSelected ? 0 : -1}
                           type="button"
                         >
-                          TURN {String(section.turn).padStart(2, '0')}
+                          턴 {section.turn}
                         </button>
                       );
                     })}
@@ -407,8 +410,8 @@ export default function FeedbackPage() {
                   tabIndex={0}
                 >
                   <article className="min-w-0 p-[22px]">
-                    <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
-                      TURN {String(selectedSection.turn).padStart(2, '0')} GENERATED CODE
+                    <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-acid)]">
+                      생성된 코드
                     </h2>
                     {selectedSection.changedFiles.length > 0 ? (
                       <div className="mt-[18px] grid gap-3">
@@ -422,7 +425,7 @@ export default function FeedbackPage() {
                             </div>
                             <div className="workspace-scrollbar min-h-[280px] max-w-full overflow-auto max-[760px]:min-h-[220px]">
                               <CodeViewer
-                                code={file.content ?? '(deleted)'}
+                                code={file.content ?? '// 이 턴에서 삭제된 파일입니다.'}
                                 path={file.path}
                               />
                             </div>
@@ -430,16 +433,16 @@ export default function FeedbackPage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="mt-[18px] grid min-h-[280px] place-items-center border border-[var(--feedback-border)] bg-[var(--feedback-code-bg)] p-[18px] font-mono text-xs text-[var(--feedback-subtle)]">
-                        NO CHANGED FILES
+                      <div className="mt-[18px] grid min-h-[280px] place-items-center border border-[var(--feedback-border)] bg-[var(--feedback-code-bg)] p-[18px] text-xs text-[var(--feedback-subtle)]">
+                        바뀐 파일이 없습니다
                       </div>
                     )}
                   </article>
 
                   <div className="grid min-w-0 grid-rows-[auto_1fr] divide-y divide-[var(--feedback-border)]">
                     <article className="min-w-0 p-[22px]">
-                      <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
-                        TURN {String(selectedSection.turn).padStart(2, '0')} USER PROMPT
+                      <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-acid)]">
+                        작성한 프롬프트
                       </h2>
                       <p className="mt-[18px] min-h-[110px] whitespace-pre-wrap border border-[var(--feedback-border)] bg-[var(--feedback-prompt-bg)] p-[18px] font-mono text-[15px] leading-[1.9] text-[var(--feedback-code-text)] [word-break:keep-all] max-[760px]:min-h-40">
                         {selectedSection.prompt || '(프롬프트 원문을 불러오지 못했습니다.)'}
@@ -461,7 +464,7 @@ export default function FeedbackPage() {
                               <button
                                 aria-controls="feedback-lens-panel"
                                 aria-selected={isSelected}
-                                className={`relative cursor-pointer border-0 bg-transparent p-0 pb-2 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] hover:text-[var(--feedback-text)] focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-4px] after:absolute after:right-0 after:bottom-0 after:left-0 after:h-[3px] ${
+                                className={`relative cursor-pointer border-0 bg-transparent p-0 pb-2 text-lg leading-[1.4] font-bold hover:text-[var(--feedback-text)] focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-4px] after:absolute after:right-0 after:bottom-0 after:left-0 after:h-[3px] ${
                                   isSelected
                                     ? 'text-[var(--feedback-acid)] after:bg-[var(--feedback-acid)]'
                                     : 'text-[var(--feedback-muted)] after:bg-transparent'
@@ -485,8 +488,8 @@ export default function FeedbackPage() {
                           })}
                         </div>
                       ) : (
-                        <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
-                          TURN {String(selectedSection.turn).padStart(2, '0')} FEEDBACK
+                        <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-acid)]">
+                          프롬프트 진단
                         </h2>
                       )}
                       {/* 탭 줄이 라벨하는 패널이므로 탭 줄 밖에 둔다 — 패널이 자기 탭을 품으면
