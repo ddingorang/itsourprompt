@@ -35,7 +35,10 @@ interface RankingNotice {
 }
 
 const headCellClasses =
-  'border-b border-[var(--ranking-border)] px-2 py-3 text-left font-mono text-[11px] font-bold tracking-[0.06em] text-[var(--ranking-subtle)]';
+  'border-b border-[var(--ranking-border)] px-2 py-3 text-left font-mono text-[13px] font-bold tracking-[0.06em] text-[var(--ranking-subtle)]';
+/** MY BEST 항목 제목. 표 머리글과 같은 글자 스타일에서 셀 테두리·여백만 뺀 것. */
+const myBestLabelClasses =
+  'font-mono text-[13px] font-bold tracking-[0.06em] text-[var(--ranking-subtle)]';
 const cellClasses =
   'border-b border-[var(--ranking-border)] px-2 py-3 font-mono text-[13px] max-[860px]:border-b-0 max-[860px]:py-1';
 
@@ -54,12 +57,13 @@ function formatSubmittedAt(submittedAt: string | null): string {
 }
 
 /**
- * 비용을 8자리로 고정하고 뒤쪽 0을 떼어낸다 — 자릿수는 그대로 두되 의미 있는
- * 숫자까지만 밝게 남기기 위함이다. 유효 숫자가 없으면(0.00000000) 매치가 실패해
- * 전체가 밝게 남는다 — 온통 흐린 숫자를 피한다.
+ * 비용을 소수점 5자리까지만 보이고(그 아래는 반올림해 아예 표시하지 않는다)
+ * 뒤쪽 0을 떼어낸다 — 자릿수는 그대로 두되 의미 있는 숫자까지만 밝게 남기기
+ * 위함이다. 유효 숫자가 없으면(0.00000) 매치가 실패해 전체가 밝게 남는다 —
+ * 온통 흐린 숫자를 피한다.
  */
 function splitCost(cost: number): [string, string] {
-  const fixed = cost.toFixed(8);
+  const fixed = cost.toFixed(5);
   const match = /^(.*?[1-9])(0+)$/.exec(fixed);
 
   return match ? [match[1], match[2]] : [fixed, ''];
@@ -331,13 +335,13 @@ export default function RankingPage() {
       <Header />
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-16 max-[1200px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
-        <header className="flex items-end justify-between gap-6 pb-10 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-4 max-[640px]:pb-8">
+        <header className="pb-10 max-[640px]:pb-8">
           <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--ranking-acid)]">
             RANKING
           </h1>
-          <span className="font-mono text-[11px] leading-[1.6] font-bold tracking-[0.06em] text-[var(--ranking-muted)] max-[640px]:text-left">
+          <p className="mt-2 mb-0 text-[13px] leading-[1.7] text-[var(--ranking-muted)]">
             가장 적은 비용으로 푼 순서
-          </span>
+          </p>
         </header>
 
         {problemsError && (
@@ -415,7 +419,7 @@ export default function RankingPage() {
           className="mt-6 border-y border-t-[var(--ranking-text)] border-b-[var(--ranking-border)] py-[15px]"
           aria-label="랭킹 정보"
         >
-          <div className="font-mono text-[11px] font-bold tracking-[0.06em] text-[var(--ranking-muted)]">
+          <div className="font-mono text-[13px] font-bold tracking-[0.06em] text-[var(--ranking-muted)]">
             RANKED SUBMISSIONS /{' '}
             {String(ranking?.totalCount ?? 0).padStart(2, '0')}
             {ranking && ranking.totalCount > RANKING_LIMIT && (
@@ -500,32 +504,16 @@ export default function RankingPage() {
                   <th className={headCellClasses} role="columnheader" scope="col">
                     OWNER
                   </th>
-                  <th
-                    className={`${headCellClasses} text-right`}
-                    role="columnheader"
-                    scope="col"
-                  >
+                  <th className={headCellClasses} role="columnheader" scope="col">
                     COST
                   </th>
-                  <th
-                    className={`${headCellClasses} text-right`}
-                    role="columnheader"
-                    scope="col"
-                  >
+                  <th className={headCellClasses} role="columnheader" scope="col">
                     IN·CACHE·OUT
                   </th>
-                  <th
-                    className={`${headCellClasses} text-right`}
-                    role="columnheader"
-                    scope="col"
-                  >
+                  <th className={headCellClasses} role="columnheader" scope="col">
                     TURNS
                   </th>
-                  <th
-                    className={`${headCellClasses} text-right`}
-                    role="columnheader"
-                    scope="col"
-                  >
+                  <th className={headCellClasses} role="columnheader" scope="col">
                     DATE
                   </th>
                 </tr>
@@ -536,7 +524,7 @@ export default function RankingPage() {
 
                   return (
                     <tr
-                      className="max-[860px]:grid max-[860px]:grid-cols-[52px_minmax(0,1fr)_auto] max-[860px]:items-center max-[860px]:gap-x-2 max-[860px]:border-b max-[860px]:border-[var(--ranking-border)] max-[860px]:py-2"
+                      className="max-[860px]:grid max-[860px]:grid-cols-[52px_minmax(0,1fr)_auto_auto] max-[860px]:items-center max-[860px]:gap-x-2 max-[860px]:border-b max-[860px]:border-[var(--ranking-border)] max-[860px]:py-2"
                       key={pageStart + index}
                       role="row"
                     >
@@ -562,19 +550,16 @@ export default function RankingPage() {
                         </div>
                       </td>
                       <td
-                        className={`${cellClasses} text-right whitespace-nowrap max-[860px]:col-start-3 max-[860px]:row-start-1`}
+                        className={`${cellClasses} whitespace-nowrap max-[860px]:col-start-3 max-[860px]:row-start-1`}
                         role="cell"
                       >
                         <span className="text-[var(--ranking-subtle)]">$</span>
                         {significantCost}
                         <span className="text-[var(--ranking-faint)]">{trailingZeros}</span>
                       </td>
-                      {/*
-                        접힌 줄에서는 옆 칸(DATE)과 폭을 나눠 쓰므로 넘치면 잘라낸다 —
-                        넘치는 대로 두면 320px에서 날짜 위에 숫자가 겹쳐 찍힌다.
-                      */}
+                      {/* 접힌 줄은 "등수·이름·비용·턴"만 남긴다 — 토큰과 날짜는 숨긴다. */}
                       <td
-                        className={`${cellClasses} text-right text-[12px] whitespace-nowrap text-[var(--ranking-muted)] max-[860px]:col-start-2 max-[860px]:row-start-2 max-[860px]:overflow-hidden max-[860px]:text-ellipsis`}
+                        className={`${cellClasses} text-[12px] whitespace-nowrap text-[var(--ranking-muted)] max-[860px]:hidden`}
                         role="cell"
                       >
                         {formatTokens(entry.uncachedInputTokens)}
@@ -584,13 +569,13 @@ export default function RankingPage() {
                         {formatTokens(entry.outputTokens)}
                       </td>
                       <td
-                        className={`${cellClasses} text-right whitespace-nowrap text-[var(--ranking-muted)] max-[860px]:col-start-1 max-[860px]:row-start-2 max-[860px]:text-left`}
+                        className={`${cellClasses} whitespace-nowrap text-[var(--ranking-muted)] max-[860px]:col-start-4 max-[860px]:row-start-1`}
                         role="cell"
                       >
                         <TurnCount turns={entry.turns} />
                       </td>
                       <td
-                        className={`${cellClasses} text-right whitespace-nowrap text-[var(--ranking-subtle)] max-[860px]:col-start-3 max-[860px]:row-start-2`}
+                        className={`${cellClasses} whitespace-nowrap text-[var(--ranking-subtle)] max-[860px]:hidden`}
                         role="cell"
                       >
                         {formatSubmittedAt(entry.submittedAt)}
@@ -615,33 +600,59 @@ export default function RankingPage() {
 
         {!isLoading && !notice && ranking && (
           <section
-            className="mt-6 border border-[var(--ranking-acid)] p-5 max-[640px]:p-4"
+            className="mt-6 border border-[var(--ranking-border)] p-5 max-[640px]:p-4"
             aria-label="내 최고 기록"
           >
-            <div className="font-mono text-[11px] font-bold tracking-[0.14em] text-[var(--ranking-acid)]">
+            <div className="font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--ranking-acid)]">
               MY BEST
             </div>
             {ranking.myBest ? (
-              <div className="mt-3.5 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap items-baseline gap-x-7 gap-y-2 font-mono text-[15px]">
-                  <span>#{ranking.myBest.rank}</span>
-                  <span>
-                    <span className="text-[var(--ranking-subtle)]">$</span>
-                    {splitCost(ranking.myBest.cost)[0]}
-                    <span className="text-[var(--ranking-faint)]">
-                      {splitCost(ranking.myBest.cost)[1]}
-                    </span>
-                  </span>
-                  <span className="text-[var(--ranking-muted)]">
-                    <TurnCount turns={ranking.myBest.turns} />
-                  </span>
+              <div className="mt-3.5 flex flex-wrap items-end justify-between gap-4">
+                <div className="flex flex-wrap gap-x-8 gap-y-3 font-mono text-[15px]">
+                  <div>
+                    <div className={myBestLabelClasses}>RANK</div>
+                    <div className="mt-1.5">
+                      {String(ranking.myBest.rank).padStart(2, '0')}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={myBestLabelClasses}>COST</div>
+                    <div className="mt-1.5">
+                      <span className="text-[var(--ranking-subtle)]">$</span>
+                      {splitCost(ranking.myBest.cost)[0]}
+                      <span className="text-[var(--ranking-faint)]">
+                        {splitCost(ranking.myBest.cost)[1]}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className={myBestLabelClasses}>IN·CACHE·OUT</div>
+                    <div className="mt-1.5 text-[14px] leading-[1.6] text-[var(--ranking-muted)]">
+                      {formatTokens(ranking.myBest.uncachedInputTokens)}
+                      <span className="text-[var(--ranking-faint)]">/</span>
+                      {formatTokens(ranking.myBest.cachedInputTokens)}
+                      <span className="text-[var(--ranking-faint)]">/</span>
+                      {formatTokens(ranking.myBest.outputTokens)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={myBestLabelClasses}>TURNS</div>
+                    <div className="mt-1.5 text-[var(--ranking-muted)]">
+                      <TurnCount turns={ranking.myBest.turns} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className={myBestLabelClasses}>DATE</div>
+                    <div className="mt-1.5 text-[var(--ranking-subtle)]">
+                      {formatSubmittedAt(ranking.myBest.submittedAt)}
+                    </div>
+                  </div>
                 </div>
                 {/* attemptId는 내 줄에만 오므로 피드백 링크는 여기서만 걸린다. */}
                 {ranking.myBest.attemptId !== null && (
                   <Button
-                    className="ranking-secondary-action"
+                    className="ranking-primary-action"
                     to={`/attempts/${ranking.myBest.attemptId}/feedback`}
-                    variant="secondary"
                   >
                     <span className="text-[14px]">피드백 보기 ↗</span>
                   </Button>

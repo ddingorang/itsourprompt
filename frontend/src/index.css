@@ -325,17 +325,6 @@ html { scroll-behavior: smooth; }
   background: transparent;
   color: var(--ranking-acid);
 }
-.ranking-page .ranking-secondary-action {
-  border-color: var(--ranking-border);
-  background: transparent;
-  color: var(--ranking-text);
-}
-.ranking-page .ranking-secondary-action:hover,
-.ranking-page .ranking-secondary-action:focus-visible {
-  border-color: var(--ranking-acid);
-  background: var(--ranking-acid);
-  color: #090909;
-}
 .ranking-page nav[aria-label='페이지 이동'] button {
   border-color: var(--ranking-border);
   background: transparent;
