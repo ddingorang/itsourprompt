@@ -828,12 +828,12 @@ GET .../runs/{runId} ◀── 결과 반영 ◀── 큐 ◀──────
     {
       "turn": 1,
       "feedbackMd": "## 좋은 점\n출력 형식을 명확히 지정했습니다.\n\n## 개선점\n어떤 파일을 수정해야 하는지 함께 알려주면 더 정확한 결과를 얻습니다.",
-      "patternMd": "### 이 턴의 패턴\nhuman-in-the-loop — 세션이 도는 동안 사람이 붙어 읽고 방향을 바꾸는 방식\n턴 1에서 AI가 고친 Main.java를 턴 2 프롬프트에서 그대로 부르셨어요.\n\n### 쓸 기법\nhuman review — 요약 말고 바뀐 코드를 읽는 것"
+      "patternMd": "### 이 턴의 이름\nhuman-in-the-loop — 세션이 도는 동안 사람이 붙어 읽고 방향을 바꾸는 방식\n턴 1에서 AI가 고친 Main.java를 턴 2 프롬프트에서 그대로 부르셨어요.\n\n### 쓸 기법\nhuman review — 요약 말고 바뀐 코드를 읽는 것"
     },
     {
       "turn": 2,
       "feedbackMd": "## 개선점\n\"고쳐줘\"처럼 대상이 모호한 표현 대신 기대 동작을 서술하세요.",
-      "patternMd": "### 이 턴의 패턴\nvibe coding — AI가 낸 코드를 읽지 않고 받아들이는 방식\n턴 2에서 AI가 OrderValidator를 새로 만들었어요. 그 뒤로 그 이름이 프롬프트에 안 나와요.\n\n### 쓸 기법\nhuman review — diff를 열어 새로 생긴 파일부터 읽는 것"
+      "patternMd": "### 이 턴의 이름\nvibe coding — AI가 낸 코드를 읽지 않고 받아들이는 방식\n턴 2에서 AI가 OrderValidator를 새로 만들었어요. 그 뒤로 그 이름이 프롬프트에 안 나와요.\n\n### 쓸 기법\nhuman review — diff를 열어 새로 생긴 파일부터 읽는 것"
     }
   ],
   "overallMd": "## 전체 평가\n요구사항을 단계적으로 좁혀간 흐름이 좋았습니다.\n\n## 다음 세션 제안\n첫 프롬프트에 입출력 예시를 포함해 보세요.",

@@ -70,7 +70,7 @@ class LiveFeedbackHarnessTest {
             Pattern.compile("\\d+\\s*개[^\\n]{0,8}통과|\\d+\\s*/\\s*\\d+|정답");
 
     /** pattern 렌즈의 절 제목 뒤 첫 줄. 그 줄이 용어로 시작한다. */
-    private static final Pattern PATTERN_NAME = Pattern.compile("###\\s*이 턴의 패턴\\s*\\n\\s*([^\\n]+)");
+    private static final Pattern PATTERN_NAME = Pattern.compile("###\\s*이 턴의 이름\\s*\\n\\s*([^\\n]+)");
     private static final Pattern PATTERN_TECHNIQUE = Pattern.compile("###\\s*쓸 기법\\s*\\n\\s*([^\\n]+)");
 
     /** 사전 용어. 긴 것부터 봐야 `human review`가 `human-in-the-loop`을 가로채지 않는다. */

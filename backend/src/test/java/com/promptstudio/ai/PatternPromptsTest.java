@@ -112,13 +112,13 @@ class PatternPromptsTest {
     }
 
     /**
-     * 첫 실호출에서 `쓸 기법`이 `이 턴의 패턴`과 네 턴 내리 같은 용어였다. 처방이 진단을 되풀이하면
+     * 첫 실호출에서 `쓸 기법`이 `이 턴의 이름`과 네 턴 내리 같은 용어였다. 처방이 진단을 되풀이하면
      * 아무것도 처방하지 않은 것이다.
      */
     @Test
     void 시스템_프롬프트는_처방이_진단과_같은_용어가_되지_않게_한다() {
         assertThat(PatternPrompts.systemPrompt())
-                .contains("It must be a different term from the one in `### 이 턴의 패턴`")
+                .contains("It must be a different term from the one in `### 이 턴의 이름`")
                 .contains("Again a different term from the session name");
     }
 
@@ -145,7 +145,7 @@ class PatternPromptsTest {
     @Test
     void 시스템_프롬프트는_기법을_vibe_coding_턴에만_붙이게_한다() {
         assertThat(PatternPrompts.systemPrompt())
-                .contains("This section exists only when `### 이 턴의 패턴` named `vibe coding`")
+                .contains("This section exists only when `### 이 턴의 이름` named `vibe coding`")
                 .contains("reads as a complaint about it");
     }
 
@@ -261,7 +261,7 @@ class PatternPromptsTest {
                 List.of(), "vibe coding", "AI가 낸 코드를 안 열고 넘긴 방식", "턴 3 프롬프트에 그 파일이 안 나와요."));
 
         assertThat(rendered).isEqualTo(
-                "### 이 턴의 패턴\nvibe coding — AI가 낸 코드를 안 열고 넘긴 방식\n턴 3 프롬프트에 그 파일이 안 나와요.");
+                "### 이 턴의 이름\nvibe coding — AI가 낸 코드를 안 열고 넘긴 방식\n턴 3 프롬프트에 그 파일이 안 나와요.");
     }
 
     /**
@@ -278,7 +278,7 @@ class PatternPromptsTest {
     @Test
     void 시스템_프롬프트는_턴과_총평의_절_제목을_고정한다() {
         assertThat(PatternPrompts.systemPrompt())
-                .contains("### 이 턴의 패턴", "### 쓸 기법")
+                .contains("### 이 턴의 이름", "### 쓸 기법")
                 .contains("### 이번 세션의 이름", "### 다음 세션에 가져갈 것");
     }
 

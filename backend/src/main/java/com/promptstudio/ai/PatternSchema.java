@@ -42,7 +42,7 @@ final class PatternSchema {
                       },
                       "feedback": {
                         "type": "string",
-                        "description": "근거 문장들과 필요하면 `### 쓸 기법` 절. `### 이 턴의 패턴` 제목과 이름 줄은 쓰지 않는다 — 그건 BE가 붙인다."
+                        "description": "근거 문장들과 필요하면 `### 쓸 기법` 절. `### 이 턴의 이름` 제목과 이름 줄은 쓰지 않는다 — 그건 BE가 붙인다."
                       }
                     },
                     "required": ["quotes", "name", "gloss", "feedback"],

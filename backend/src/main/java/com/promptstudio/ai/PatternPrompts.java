@@ -82,7 +82,7 @@ final class PatternPrompts {
                 + """
 
                 # Only two of them can be a name here
-                A name goes after `### 이 턴의 패턴` or `### 이번 세션의 이름`, and it may only ever be one of these two:
+                A name goes after `### 이 턴의 이름` or `### 이번 세션의 이름`, and it may only ever be one of these two:
 
                 - `vibe coding` — the AI's change went unread. Turn N+1's prompt never comes back to what turn N changed.
                 - `human review` — the change was read. Turn N+1's prompt comes back to it: names it, describes what it does now, corrects it, or rolls it back.
@@ -171,17 +171,17 @@ final class PatternPrompts {
                 Write an empty array when this turn gives you nothing to point at. An empty array is a correct answer; an invented line is not.
 
                 # Each turn's feedback
-                The turn's Markdown is `### 이 턴의 패턴` + the name line + your `feedback` string. Only the last part is yours.
+                The turn's Markdown is `### 이 턴의 이름` + the name line + your `feedback` string. Only the last part is yours.
 
                 ## `feedback` — the evidence, and only that
-                `### 이 턴의 패턴` and the name line are already there; your string continues under them. Start with the evidence, never with the heading or the term.
+                `### 이 턴의 이름` and the name line are already there; your string continues under them. Start with the evidence, never with the heading or the term.
                 Name the file, the class, the tool call or the turn number that shows it — a name the user cannot check reads as a label you stuck on. Two or three sentences.
                 The last turn has no name, so there its string is the one sentence saying the next prompt does not exist, and nothing else.
 
                 ## 쓸 기법
-                **This section exists only when `### 이 턴의 패턴` named `vibe coding`.** Any other name — `human review`, or no name at all — means this turn has nothing to answer, so the turn's string ends after `### 이 턴의 패턴`. Handing a technique to a turn that already went well reads as a complaint about it.
+                **This section exists only when `### 이 턴의 이름` named `vibe coding`.** Any other name — `human review`, or no name at all — means this turn has nothing to answer, so the turn's string ends after `### 이 턴의 이름`. Handing a technique to a turn that already went well reads as a complaint about it.
                 One technique, written as a term the same way. Say what doing it looks like in the next turn of this session, not in general.
-                **It must be a different term from the one in `### 이 턴의 패턴`.** A section that repeats the diagnosis prescribes nothing.
+                **It must be a different term from the one in `### 이 턴의 이름`.** A section that repeats the diagnosis prescribes nothing.
 
                 ### `vibe coding` has two answers, and the session picks which one
                 A user who never opens the diff and a user who never runs the code are not missing the same thing, so do not hand them the same technique.
@@ -192,7 +192,7 @@ final class PatternPrompts {
                 Read the whole session to answer this, then say what it looks like in this turn.
 
                 These rules can only ever remove this section, never invent one. Leave it out when the only term that would differ is one this session gives you no reason to raise. A technique the user has no cause to try is worse than no technique — never reach for a name just to fill the heading.
-                Leaving it out means the string for that turn ends after `### 이 턴의 패턴` and its sentences. **Never write the `### 쓸 기법` heading with nothing under it** — an empty heading renders as a blank section on the user's screen.
+                Leaving it out means the string for that turn ends after `### 이 턴의 이름` and its sentences. **Never write the `### 쓸 기법` heading with nothing under it** — an empty heading renders as a blank section on the user's screen.
 
                 # overall
                 Write these two sections in this order, with the Korean headings `### 이번 세션의 이름` and `### 다음 세션에 가져갈 것`.
@@ -253,7 +253,7 @@ final class PatternPrompts {
 
         String gloss = entry.gloss() == null || entry.gloss().isBlank() ? "" : " — " + entry.gloss().trim();
 
-        return "### 이 턴의 패턴\n" + name + gloss + "\n" + entry.feedback();
+        return "### 이 턴의 이름\n" + name + gloss + "\n" + entry.feedback();
     }
 
     /**
