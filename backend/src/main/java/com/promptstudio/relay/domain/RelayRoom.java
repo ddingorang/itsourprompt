@@ -46,6 +46,12 @@ public class RelayRoom {
      */
     public static final int MAX_LAPS = 5;
 
+    /** 너무 짧으면 프롬프트를 쓸 시간도 없이 스킵된다. */
+    public static final int MIN_TURN_TIME_LIMIT_SECONDS = 30;
+
+    /** 채점 마감(RelayGameWriter.GRADING_DEADLINE, 3분)보다 길게 두면 입력 대기만으로 그 턴을 넘긴다. */
+    public static final int MAX_TURN_TIME_LIMIT_SECONDS = 300;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -78,6 +84,13 @@ public class RelayRoom {
 
     @Column(name = "max_participants", nullable = false, updatable = false)
     private int maxParticipants;
+
+    /**
+     * 한 턴의 입력 제한시간(초). 방장이 개설 시 정하지 않으면 서비스가 전역 기본값을 채워 넣으므로
+     * 여기서는 항상 값이 있다 — 어디서 읽든 "설정 안 함"을 따로 처리할 필요가 없다.
+     */
+    @Column(name = "turn_time_limit_seconds", nullable = false, updatable = false)
+    private int turnTimeLimitSeconds;
 
     @Column(name = "seat_count")
     private Integer seatCount;
@@ -113,20 +126,37 @@ public class RelayRoom {
     }
 
     private RelayRoom(
-            String name, Long problemId, Long hostUserId, int totalLaps, int maxParticipants, Instant createdAt) {
+            String name,
+            Long problemId,
+            Long hostUserId,
+            int totalLaps,
+            int maxParticipants,
+            int turnTimeLimitSeconds,
+            Instant createdAt) {
         this.name = name;
         this.problemId = problemId;
         this.hostUserId = hostUserId;
         this.totalLaps = totalLaps;
         this.maxParticipants = maxParticipants;
+        this.turnTimeLimitSeconds = turnTimeLimitSeconds;
         this.createdAt = createdAt;
     }
 
     /**
      * 방을 열어 입장을 받기 시작한다. 방장은 개설과 동시에 첫 번째 참가자가 되므로
      * 1번 좌석은 항상 방장이다(등록은 서비스가 한다).
+     *
+     * @param turnTimeLimitSeconds 한 턴의 입력 제한시간(초). 방장이 정하지 않았으면 호출자(서비스)가
+     *                             전역 기본값을 채워 넣은 뒤 여기 넘긴다 — "설정 안 함"은 이 시점 이전에
+     *                             이미 해소되어 있어야 한다.
      */
-    public static RelayRoom open(String name, Long problemId, Long hostUserId, int totalLaps, int maxParticipants) {
+    public static RelayRoom open(
+            String name,
+            Long problemId,
+            Long hostUserId,
+            int totalLaps,
+            int maxParticipants,
+            int turnTimeLimitSeconds) {
         String trimmedName = name == null ? "" : name.strip();
 
         if (trimmedName.isEmpty() || trimmedName.length() > MAX_NAME_LENGTH) {
@@ -140,8 +170,14 @@ public class RelayRoom {
             throw new IllegalArgumentException(
                     "maxParticipants must be between " + MIN_PARTICIPANTS + " and " + MAX_PARTICIPANTS);
         }
+        if (turnTimeLimitSeconds < MIN_TURN_TIME_LIMIT_SECONDS || turnTimeLimitSeconds > MAX_TURN_TIME_LIMIT_SECONDS) {
+            throw new IllegalArgumentException(
+                    "turnTimeLimitSeconds must be between " + MIN_TURN_TIME_LIMIT_SECONDS
+                            + " and " + MAX_TURN_TIME_LIMIT_SECONDS);
+        }
 
-        return new RelayRoom(trimmedName, problemId, hostUserId, totalLaps, maxParticipants, Instant.now());
+        return new RelayRoom(
+                trimmedName, problemId, hostUserId, totalLaps, maxParticipants, turnTimeLimitSeconds, Instant.now());
     }
 
     public boolean isWaiting() {
@@ -369,6 +405,10 @@ public class RelayRoom {
 
     public int maxParticipants() {
         return maxParticipants;
+    }
+
+    public int turnTimeLimitSeconds() {
+        return turnTimeLimitSeconds;
     }
 
     public Integer seatCount() {

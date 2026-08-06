@@ -42,6 +42,20 @@ public record CreateRelayRoomRequest(
                 description = "정원. WebRTC를 mesh로 붙이므로 상한이 있다",
                 example = "4"
         )
-        Integer maxParticipants
+        Integer maxParticipants,
+
+        @Min(
+                value = RelayRoom.MIN_TURN_TIME_LIMIT_SECONDS,
+                message = "turnTimeLimitSeconds는 " + RelayRoom.MIN_TURN_TIME_LIMIT_SECONDS + " 이상이어야 합니다."
+        )
+        @Max(
+                value = RelayRoom.MAX_TURN_TIME_LIMIT_SECONDS,
+                message = "turnTimeLimitSeconds는 " + RelayRoom.MAX_TURN_TIME_LIMIT_SECONDS + " 이하여야 합니다."
+        )
+        @Schema(
+                description = "한 턴의 입력 제한시간(초). 생략하면 서버 기본값(2분)을 쓴다",
+                example = "120"
+        )
+        Integer turnTimeLimitSeconds
 ) {
 }

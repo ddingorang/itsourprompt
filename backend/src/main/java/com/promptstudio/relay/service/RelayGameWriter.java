@@ -18,7 +18,6 @@ import com.promptstudio.relay.repository.RelayRoomRepository;
 import com.promptstudio.relay.repository.RelayTurnRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,20 +56,13 @@ public class RelayGameWriter {
     private final AttemptService attemptService;
     private final ApplicationEventPublisher eventPublisher;
 
-    /**
-     * 주자가 이 시간 안에 프롬프트를 내지 않으면 차례가 스킵된다. AFK 하나가 게임 전체를
-     * 인질로 잡지 못하게 하는 안전망이라 게임의 일부다.
-     */
-    private final Duration turnInputTimeout;
-
     public RelayGameWriter(
             RelayRoomRepository roomRepository,
             RelayParticipantRepository participantRepository,
             RelayTurnRepository turnRepository,
             RelayRoomViewFactory viewFactory,
             AttemptService attemptService,
-            ApplicationEventPublisher eventPublisher,
-            @Value("${relay.turn-input-timeout:PT2M}") Duration turnInputTimeout
+            ApplicationEventPublisher eventPublisher
     ) {
         this.roomRepository = roomRepository;
         this.participantRepository = participantRepository;
@@ -78,11 +70,15 @@ public class RelayGameWriter {
         this.viewFactory = viewFactory;
         this.attemptService = attemptService;
         this.eventPublisher = eventPublisher;
-        this.turnInputTimeout = turnInputTimeout;
     }
 
-    private Instant nextInputDeadline() {
-        return Instant.now().plus(turnInputTimeout);
+    /**
+     * 주자가 이 시간 안에 프롬프트를 내지 않으면 차례가 스킵된다. AFK 하나가 게임 전체를
+     * 인질로 잡지 못하게 하는 안전망이라 게임의 일부다. 방마다 다를 수 있어 방 인스턴스의
+     * 설정값(turnTimeLimitSeconds)에서 매번 다시 계산한다.
+     */
+    private Instant nextInputDeadline(RelayRoom room) {
+        return Instant.now().plusSeconds(room.turnTimeLimitSeconds());
     }
 
     /**
@@ -120,7 +116,7 @@ public class RelayGameWriter {
         AttemptView attempt = attemptService.startAttempt(
                 room.problemId(), AttemptOwner.user(room.hostUserId()), null);
 
-        room.startGame(participants.size(), attempt.id(), nextInputDeadline());
+        room.startGame(participants.size(), attempt.id(), nextInputDeadline(room));
         roomRepository.save(room);
 
         log.info("[RELAY] game started | roomId={} | attemptId={} | seats={} | laps={}",
@@ -200,7 +196,7 @@ public class RelayGameWriter {
     public void recordTurnFailure(Long roomId, int turnIndex, Long authorUserId) {
         RelayRoom room = getRoom(roomId);
 
-        room.failTurn(nextInputDeadline());
+        room.failTurn(nextInputDeadline(room));
         roomRepository.save(room);
 
         eventPublisher.publishEvent(new RelayTurnFailed(viewFactory.toView(room), turnIndex, authorUserId));
@@ -301,7 +297,7 @@ public class RelayGameWriter {
         Integer delta = RelayScoring.delta(tally.passed(), RelayScoring.previousPassed(
                 turnRepository.findByRoomIdOrderByTurnIndex(roomId), turnIndex, room.baselinePassed()));
 
-        room.advanceAfterGrading(nextInputDeadline());
+        room.advanceAfterGrading(nextInputDeadline(room));
         roomRepository.save(room);
 
         eventPublisher.publishEvent(new RelayGradingFinished(
@@ -335,7 +331,7 @@ public class RelayGameWriter {
         RelayTurn turn = getTurn(roomId, turnIndex);
         Long authorUserId = turn.authorUserId();
 
-        room.advanceAfterGrading(nextInputDeadline());
+        room.advanceAfterGrading(nextInputDeadline(room));
         roomRepository.save(room);
 
         eventPublisher.publishEvent(new RelayGradingFinished(
@@ -410,7 +406,7 @@ public class RelayGameWriter {
         Long authorUserId = userAtSeat(participants, room.currentSeat());
 
         turnRepository.save(RelayTurn.skipped(room.id(), turnIndex, authorUserId));
-        room.skipTurn(nextInputDeadline());
+        room.skipTurn(nextInputDeadline(room));
         roomRepository.save(room);
 
         eventPublisher.publishEvent(new RelayTurnSkipped(
