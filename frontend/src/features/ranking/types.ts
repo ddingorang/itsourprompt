@@ -26,6 +26,12 @@ export interface RankingEntry {
    */
   rounds: number;
   submittedAt: string | null;
+  /**
+   * 소요 시간(초). 제출 시각 − 첫 CODE 호출 시각을 서버가 계산한 값이다 — "첫 CODE
+   * 호출부터"라는 정의가 서버 한곳에만 살아야 하므로 화면이 두 시각을 빼지 않는다.
+   * submittedAt이 null인 옛 기록은 null이다.
+   */
+  durationSeconds: number | null;
 }
 
 export interface ProblemRanking {
