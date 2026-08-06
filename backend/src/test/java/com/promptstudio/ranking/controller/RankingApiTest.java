@@ -14,6 +14,7 @@ import com.promptstudio.user.domain.User;
 import com.promptstudio.user.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.jooq.DSLContext;
+import org.jooq.impl.SQLDataType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -23,10 +24,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
@@ -160,6 +163,25 @@ class RankingApiTest extends DatabaseTest {
     }
 
     @Test
+    void 랭킹_줄에_소요_시간을_초로_싣는다() throws Exception {
+        Problem problem = newProblem();
+        Long mine = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        Long others = submittedAttempt(problem, AttemptOwner.user(newUser().id()), 1);
+        setCodeCallsCreatedAt(mine, "2026-08-01T00:00:00Z");
+        setSubmittedAt(mine, "2026-08-01T00:04:12Z");
+        // 제출 시각을 모르는 옛 기록은 소요 시간도 모른다.
+        dsl.execute("UPDATE attempt SET submitted_at = NULL WHERE id = ?", others);
+
+        mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).with(user(principalOf(ownerId))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].attemptId").value(mine))
+                .andExpect(jsonPath("$.entries[0].durationSeconds").value(252))
+                .andExpect(jsonPath("$.myBest.durationSeconds").value(252))
+                .andExpect(jsonPath("$.entries[1].attemptId").value(others))
+                .andExpect(jsonPath("$.entries[1].durationSeconds").doesNotExist());
+    }
+
+    @Test
     void 자격을_갖춘_제출이_없으면_빈_목록을_준다() throws Exception {
         Problem problem = newProblem();
 
@@ -267,6 +289,21 @@ class RankingApiTest extends DatabaseTest {
         String setCookie = result.getResponse().getHeader(HttpHeaders.SET_COOKIE);
 
         return new Cookie("GUEST_SESSION", setCookie.substring("GUEST_SESSION=".length(), setCookie.indexOf(';')));
+    }
+
+    private void setSubmittedAt(Long attemptId, String submittedAt) {
+        dsl.update(table(name("attempt")))
+                .set(field(name("attempt", "submitted_at"), SQLDataType.INSTANT), Instant.parse(submittedAt))
+                .where(field(name("attempt", "id"), SQLDataType.BIGINT).eq(attemptId))
+                .execute();
+    }
+
+    private void setCodeCallsCreatedAt(Long attemptId, String createdAt) {
+        dsl.update(table(name("attempt_llm_call")))
+                .set(field(name("attempt_llm_call", "created_at"), SQLDataType.INSTANT), Instant.parse(createdAt))
+                .where(field(name("attempt_llm_call", "attempt_id"), SQLDataType.BIGINT).eq(attemptId))
+                .and(field(name("attempt_llm_call", "purpose"), SQLDataType.VARCHAR).eq("CODE"))
+                .execute();
     }
 
     private void succeedRun(Long attemptId, int turnOrdinal) {
