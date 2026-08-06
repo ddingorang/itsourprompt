@@ -50,6 +50,7 @@ html { scroll-behavior: smooth; }
   --header-menu-border: var(--relay-border);
   --header-menu-bg: var(--relay-bg);
   --header-menu-accent: var(--relay-acid);
+  --header-menu-muted: var(--relay-muted);
   border-color: var(--relay-border);
   background: color-mix(in srgb, var(--relay-bg) 94%, transparent);
   color: var(--relay-text);
@@ -98,6 +99,9 @@ html { scroll-behavior: smooth; }
 .relay-page[data-color-mode='light'] [class~="border-[#535353]"] { border-color: var(--relay-border) !important; }
 .relay-page[data-color-mode='light'] [class~="border-[#777]"] { border-color: var(--relay-border) !important; }
 .relay-page[data-color-mode='light'] [class~="border-[#5a2c28]"] { border-color: #d94336 !important; }
+/* 건너뜀 경고 박스 — 크림 배경(#fff9e8) 위에서 읽히도록 앰버 계열을 어둡게. */
+.relay-page[data-color-mode='light'] [class~="border-[#4a3a1e]"] { border-color: #d29922 !important; }
+.relay-page[data-color-mode='light'] [class~="text-[#ffb86b]"] { color: #8a5a00 !important; }
 .relay-page[data-color-mode='light'] [class~="border-[#d6ff50]"] { border-color: var(--relay-acid) !important; }
 .relay-page[data-color-mode='light'] [class~="border-b-[#d6ff50]"] { border-bottom-color: var(--relay-acid) !important; }
 .relay-page[data-color-mode='light'] [class~="border-l-[#d6ff50]"] { border-left-color: var(--relay-acid) !important; }
@@ -141,6 +145,24 @@ html { scroll-behavior: smooth; }
   --feedback-acid: var(--relay-acid) !important;
 }
 .relay-page[data-color-mode='light'] ::selection { background: var(--relay-acid); color: #090909; }
+/* 릴레이도 다른 워크스페이스처럼 스크롤바를 페이지 팔레트에 맞춘다 —
+   이게 없으면 라이트 모드에서 스크롤바 트랙만 다크(#171717)로 남는다. */
+.relay-page .workspace-scrollbar {
+  scrollbar-color: var(--relay-subtle) var(--relay-surface);
+}
+.relay-page .workspace-scrollbar::-webkit-scrollbar-track {
+  background: var(--relay-surface);
+}
+.relay-page .workspace-scrollbar::-webkit-scrollbar-thumb {
+  border-color: var(--relay-surface);
+  background: var(--relay-subtle);
+}
+.relay-page .workspace-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--relay-acid);
+}
+.relay-page .workspace-scrollbar::-webkit-scrollbar-corner {
+  background: var(--relay-surface);
+}
 .landing-page {
   --acid: #d6ff50;
   /* 헤더 실제 높이. 섹션이 "화면 한 장"을 차지하려면 이만큼 빼야 한다.
@@ -177,6 +199,7 @@ html { scroll-behavior: smooth; }
   --header-menu-border: var(--landing-border);
   --header-menu-bg: var(--landing-bg);
   --header-menu-accent: var(--acid);
+  --header-menu-muted: var(--landing-muted);
   border-color: var(--landing-border);
   background: color-mix(in srgb, var(--landing-bg) 94%, transparent);
   color: var(--landing-text);
@@ -235,6 +258,8 @@ html { scroll-behavior: smooth; }
 .landing-final { background: radial-gradient(circle at 50% 50%, var(--landing-surface) 0, var(--landing-bg) 58%); }
 .landing-final-grid { position: absolute; inset: -50%; opacity: var(--landing-grid-opacity); transform: perspective(600px) rotateX(62deg); background-image: linear-gradient(var(--acid) 1px, transparent 1px), linear-gradient(90deg, var(--acid) 1px, transparent 1px); background-size: 64px 64px; mask-image: radial-gradient(circle, #000 5%, transparent 58%); }
 .landing-page footer { border-color: var(--landing-border); color: var(--landing-muted); }
+.landing-page ::selection { background: var(--acid); color: #090909; }
+.problem-list-page ::selection { background: var(--problem-list-acid); color: #090909; }
 .problem-list-page {
   --problem-list-bg: #090909;
   --problem-list-text: #f5f5ef;
@@ -255,6 +280,7 @@ html { scroll-behavior: smooth; }
   --header-menu-border: var(--problem-list-border);
   --header-menu-bg: var(--problem-list-bg);
   --header-menu-accent: var(--problem-list-acid);
+  --header-menu-muted: var(--problem-list-muted);
   border-color: var(--problem-list-border);
   background: color-mix(in srgb, var(--problem-list-bg) 94%, transparent);
   color: var(--problem-list-text);
@@ -324,6 +350,7 @@ html { scroll-behavior: smooth; }
   --header-menu-border: var(--ranking-border);
   --header-menu-bg: var(--ranking-bg);
   --header-menu-accent: var(--ranking-acid);
+  --header-menu-muted: var(--ranking-muted);
   border-color: var(--ranking-border);
   background: color-mix(in srgb, var(--ranking-bg) 94%, transparent);
   color: var(--ranking-text);
@@ -404,6 +431,7 @@ html { scroll-behavior: smooth; }
   --header-menu-border: var(--problem-detail-border);
   --header-menu-bg: var(--problem-detail-bg);
   --header-menu-accent: var(--problem-detail-acid);
+  --header-menu-muted: var(--problem-detail-muted);
   border-color: var(--problem-detail-border);
   background: var(--problem-detail-bg);
   color: var(--problem-detail-text);
@@ -468,6 +496,7 @@ html { scroll-behavior: smooth; }
   --header-menu-border: var(--my-page-border);
   --header-menu-bg: var(--my-page-bg);
   --header-menu-accent: var(--my-page-acid);
+  --header-menu-muted: var(--my-page-muted);
   border-color: var(--my-page-border);
   background: color-mix(in srgb, var(--my-page-bg) 94%, transparent);
   color: var(--my-page-text);
@@ -557,6 +586,7 @@ html { scroll-behavior: smooth; }
   --header-menu-border: var(--auth-page-border);
   --header-menu-bg: var(--auth-page-bg);
   --header-menu-accent: var(--auth-page-acid);
+  --header-menu-muted: var(--auth-page-muted);
   border-color: var(--auth-page-border);
   background: color-mix(in srgb, var(--auth-page-bg) 94%, transparent);
   color: var(--auth-page-text);
@@ -626,6 +656,7 @@ html { scroll-behavior: smooth; }
   --header-menu-border: var(--feedback-border);
   --header-menu-bg: var(--feedback-bg);
   --header-menu-accent: var(--feedback-acid);
+  --header-menu-muted: var(--feedback-muted);
   border-color: var(--feedback-border);
   background: color-mix(in srgb, var(--feedback-bg) 94%, transparent);
   color: var(--feedback-text);
@@ -705,6 +736,7 @@ html { scroll-behavior: smooth; }
   --header-menu-border: var(--error-page-border);
   --header-menu-bg: var(--error-page-bg);
   --header-menu-accent: var(--error-page-acid);
+  --header-menu-muted: var(--error-page-muted);
   border-color: var(--error-page-border);
   background: color-mix(in srgb, var(--error-page-bg) 94%, transparent);
   color: var(--error-page-text);

@@ -570,7 +570,7 @@ function GameView({
 
       {/* 우: 문제/진행 패널. 프롬프트 폼은 탭과 무관하게 아래 고정 —
           주자는 명세를 읽으면서 동시에 프롬프트를 써야 한다. */}
-      <aside className="flex min-h-0 flex-col gap-4 overflow-hidden px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-t max-[900px]:border-[#343434]">
+      <aside className="flex min-h-0 flex-col gap-4 overflow-hidden px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-t max-[900px]:border-[var(--relay-border)]">
         <div className="grid shrink-0 grid-cols-2 border border-[#3f3f3f]" role="tablist">
           {(
             [

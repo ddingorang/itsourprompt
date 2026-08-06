@@ -22,7 +22,7 @@ const workspaceHeaderClasses =
   'relative flex min-h-[66px] items-center justify-between gap-6 border-b border-[#343434] bg-[#090909] px-6 font-mono text-[15px] tracking-[0.04em] max-[760px]:px-4';
 
 const menuItemClasses =
-  'transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none';
+  'transition-colors hover:text-[var(--acid,#d6ff50)] focus-visible:text-[var(--acid,#d6ff50)] focus-visible:outline-none';
 
 const getMenuLinkClasses = ({ isActive }: { isActive: boolean }) =>
   `${menuItemClasses} ${isActive ? 'text-[#d6ff50]' : 'text-[#a3a3a3]'}`;
@@ -99,7 +99,7 @@ export default function Header({
         aria-controls="header-navigation"
         aria-expanded={isMenuOpen}
         aria-label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
-        className={`${menuItemClasses} header-menu-toggle hidden cursor-pointer border-0 bg-transparent p-1 font-[inherit] text-2xl leading-none text-[#a3a3a3]`}
+        className={`${menuItemClasses} header-menu-toggle hidden cursor-pointer border-0 bg-transparent p-1 font-[inherit] text-2xl leading-none text-[var(--header-menu-muted,#a3a3a3)]`}
         onClick={() => setIsMenuOpen((isOpen) => !isOpen)}
         type="button"
       >
@@ -177,7 +177,7 @@ export default function Header({
                 id="header-account-menu"
               >
                 {/* span이면 페이지별 `nav span`(구분선 색) 규칙에 걸려 라벨이 흐려진다. */}
-                <div className="header-account-menu-label text-[10px] tracking-[0.16em] text-[#777]">
+                <div className="header-account-menu-label text-[10px] tracking-[0.16em] text-[var(--header-menu-muted,#777)]">
                   ACCOUNT
                 </div>
                 {accountLinks}
