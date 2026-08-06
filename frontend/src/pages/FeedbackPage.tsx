@@ -446,8 +446,7 @@ export default function FeedbackPage() {
             <div className="mt-5 flex justify-end gap-3 max-[760px]:flex-col max-[760px]:justify-stretch">
               {attempt && (
                 <Button
-
-                  className="max-[760px]:w-full"
+                  className="feedback-page-secondary-action max-[760px]:w-full"
                   to={`/ranking?problem=${attempt.problemId}`}
                   variant="secondary"
                 >

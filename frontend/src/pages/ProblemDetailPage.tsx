@@ -104,10 +104,10 @@ const codeRunCaseLabels: Record<CodeRunCaseStatus, string> = {
 };
 
 const codeRunCaseColorClasses: Record<CodeRunCaseStatus, string> = {
-  PASSED: 'text-[#d6ff50]',
+  PASSED: 'text-[var(--problem-detail-acid)]',
   FAILED: 'text-[#ff786b]',
   ERROR: 'text-[#ffb86b]',
-  SKIPPED: 'text-[#8b8b8b]',
+  SKIPPED: 'text-[var(--problem-detail-subtle)]',
 };
 
 interface ErrorInfo {
@@ -1159,10 +1159,6 @@ export default function ProblemDetailPage() {
           </div>
 
           <div className="workspace-scrollbar min-h-0 flex-1 overflow-auto border border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-bg)] max-[700px]:min-h-[360px]">
-            <div
-              aria-hidden="true"
-              className="sticky top-0 z-[2] h-8 min-w-full border-b border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-header)]"
-            />
             <CodeViewer
               code={selectedCode}
               diff={selectedDiff}
@@ -1173,10 +1169,10 @@ export default function ProblemDetailPage() {
         </section>
 
         <aside
-          className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[#343434] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]"
+          className="col-span-1 grid min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden px-6 py-[22px] max-[1080px]:col-span-full max-[1080px]:grid-rows-1 max-[1080px]:grid-cols-[minmax(0,0.8fr)_minmax(300px,1.2fr)] max-[1080px]:gap-7 max-[1080px]:overflow-visible max-[1080px]:border-t max-[1080px]:border-[var(--problem-detail-border)] max-[700px]:block max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]"
           style={isPlaying ? { gridTemplateRows: 'minmax(0, 1fr)' } : undefined}
         >
-          <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[#343434] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-[var(--problem-detail-border)] pb-[22px] max-[1080px]:border-b-0 max-[1080px]:pb-0 max-[700px]:overflow-visible">
             <div
               className="grid shrink-0 grid-cols-3 border border-[var(--problem-detail-border)]"
               role="tablist"
@@ -1326,7 +1322,7 @@ export default function ProblemDetailPage() {
                       />
                   </div>
                 ) : (
-                  <div className="grid min-h-[160px] place-items-center border border-[#343434] px-4 text-center font-mono text-[11px] leading-[1.7] text-[#777]">
+                  <div className="grid min-h-[160px] place-items-center border border-[var(--problem-detail-border)] px-4 text-center font-mono text-[11px] leading-[1.7] text-[var(--problem-detail-subtle)]">
                     실행할 index.html 파일이 없습니다.
                   </div>
                 )
@@ -1335,7 +1331,7 @@ export default function ProblemDetailPage() {
                   <div>
                     <p className="m-0">{codeRunError}</p>
                     <button
-                      className="mt-3 cursor-pointer border border-[#666] bg-transparent px-3 py-1.5 text-[10px] text-[#d0d0ca] hover:border-[#d6ff50] hover:text-[#d6ff50]"
+                      className="mt-3 cursor-pointer border border-[var(--problem-detail-border-strong)] bg-transparent px-3 py-1.5 text-[10px] text-[var(--problem-detail-text)] hover:border-[var(--problem-detail-acid)] hover:text-[var(--problem-detail-acid)]"
                       onClick={() => void handleCodeRunRequest()}
                       type="button"
                     >
@@ -1344,32 +1340,32 @@ export default function ProblemDetailPage() {
                   </div>
                 </div>
               ) : isCodeRunLoading || codeRun?.status === 'QUEUED' ? (
-                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[#a3a3a3]">
+                <div className="grid min-h-[160px] place-items-center text-center font-mono text-[11px] leading-[1.7] text-[var(--problem-detail-muted)]">
                   <div>
-                    <div className="text-[#d6ff50]">채점 중…</div>
-                    <div className="mt-2 text-[9px] text-[#666]">
+                    <div className="text-[var(--problem-detail-acid)]">채점 중…</div>
+                    <div className="mt-2 text-[9px] text-[var(--problem-detail-subtle)]">
                       완료될 때까지 잠시 기다려주세요.
                     </div>
                   </div>
                 </div>
               ) : codeRun ? (
                 <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif]">
-                  <div className="border border-[#3f3f3f] bg-[#111] px-4 py-3">
+                  <div className="border border-[var(--problem-detail-border-strong)] bg-[var(--problem-detail-surface)] px-4 py-3">
                     <div className="flex items-end justify-between gap-4">
                       <div>
-                        <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[#777]">
+                        <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[var(--problem-detail-subtle)]">
                           TEST RESULT
                         </p>
-                        <p className="mt-1 mb-0 text-[12px] text-[#f5f5ef]">
+                        <p className="mt-1 mb-0 text-[12px] text-[var(--problem-detail-text)]">
                           테스트 케이스 채점 결과
                         </p>
                       </div>
                       {visibleCodeRunTally ? (
                         <div className="flex shrink-0 items-baseline gap-1 leading-none">
-                          <strong className="font-mono text-xl text-[#d6ff50]">
+                          <strong className="font-mono text-xl text-[var(--problem-detail-acid)]">
                             {visibleCodeRunTally.passed}/{visibleCodeRunTally.total}
                           </strong>
-                          <span className="text-[10px] leading-none text-[#8b8b8b]">
+                          <span className="text-[10px] leading-none text-[var(--problem-detail-subtle)]">
                             개 통과
                           </span>
                         </div>
@@ -1377,7 +1373,7 @@ export default function ProblemDetailPage() {
                         <strong
                           className={`font-mono text-[11px] ${
                             codeRun.status === 'SUCCEEDED'
-                              ? 'text-[#d6ff50]'
+                              ? 'text-[var(--problem-detail-acid)]'
                               : 'text-[#ff786b]'
                           }`}
                         >
@@ -1392,11 +1388,11 @@ export default function ProblemDetailPage() {
                         aria-valuemax={visibleCodeRunTally.total}
                         aria-valuemin={0}
                         aria-valuenow={visibleCodeRunTally.passed}
-                        className="mt-4 h-1.5 overflow-hidden bg-[#303030]"
+                        className="mt-4 h-1.5 overflow-hidden bg-[var(--problem-detail-border)]"
                         role="progressbar"
                       >
                         <div
-                          className="h-full bg-[#d6ff50]"
+                          className="h-full bg-[var(--problem-detail-acid)]"
                           style={{
                             width: `${(visibleCodeRunTally.passed / visibleCodeRunTally.total) * 100}%`,
                           }}
@@ -1404,7 +1400,7 @@ export default function ProblemDetailPage() {
                       </div>
                     )}
 
-                    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] text-[#777]">
+                    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] text-[var(--problem-detail-subtle)]">
                       <span>STATUS {codeRunStatusLabels[codeRun.status]}</span>
                       {codeRun.turnOrdinal !== null && (
                         <span>TURN {String(codeRun.turnOrdinal + 1).padStart(2, '0')}</span>
@@ -1416,18 +1412,18 @@ export default function ProblemDetailPage() {
                   </div>
 
                   {codeRun.cases.length > 0 ? (
-                    <div className="mt-3 grid border-x border-t border-[#343434]">
+                    <div className="mt-3 grid border-x border-t border-[var(--problem-detail-border)]">
                       {codeRun.cases.map((testCase, index) => (
                         <article
-                          className="border-b border-[#343434] px-3 py-2.5"
+                          className="border-b border-[var(--problem-detail-border)] px-3 py-2.5"
                           key={`${testCase.className ?? 'case'}-${testCase.name}-${index}`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="m-0 break-words text-[11px] leading-[1.5] text-[#d0d0ca]">
+                              <p className="m-0 break-words text-[11px] leading-[1.5] text-[var(--problem-detail-text)]">
                                 {testCase.name}
                               </p>
-                              <div className="mt-1 flex flex-wrap gap-2 font-mono text-[8px] text-[#666]">
+                              <div className="mt-1 flex flex-wrap gap-2 font-mono text-[8px] text-[var(--problem-detail-subtle)]">
                                 {testCase.className && <span>{testCase.className}</span>}
                                 {testCase.durationMs !== null && (
                                   <span>{testCase.durationMs.toLocaleString('ko-KR')}ms</span>
@@ -1443,7 +1439,7 @@ export default function ProblemDetailPage() {
                           {(testCase.status === 'FAILED' ||
                             testCase.status === 'ERROR') &&
                             testCase.message && (
-                              <p className="mt-2 mb-0 break-words border-l-2 border-[#555] pl-2 font-mono text-[9px] leading-[1.5] text-[#999]">
+                              <p className="mt-2 mb-0 break-words border-l-2 border-[var(--problem-detail-border-strong)] pl-2 font-mono text-[9px] leading-[1.5] text-[var(--problem-detail-muted)]">
                                 {testCase.message}
                               </p>
                             )}
@@ -1451,23 +1447,23 @@ export default function ProblemDetailPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="mt-3 border border-[#343434] px-3 py-4 text-center text-[11px] text-[#777]">
+                    <div className="mt-3 border border-[var(--problem-detail-border)] px-3 py-4 text-center text-[11px] text-[var(--problem-detail-subtle)]">
                       테스트 케이스 기록이 없습니다.
                     </div>
                   )}
 
                   {(codeRun.stdout || codeRun.stderr) && (
-                    <details className="mt-3 border border-[#343434] bg-[#111]">
-                      <summary className="cursor-pointer px-3 py-2 font-mono text-[10px] text-[#a3a3a3] hover:text-[#f5f5ef]">
+                    <details className="mt-3 border border-[var(--problem-detail-border)] bg-[var(--problem-detail-surface)]">
+                      <summary className="cursor-pointer px-3 py-2 font-mono text-[10px] text-[var(--problem-detail-muted)] hover:text-[var(--problem-detail-text)]">
                         전체 실행 로그
                       </summary>
                       {codeRun.stderr && (
-                        <pre className="workspace-scrollbar m-0 max-h-48 overflow-auto border-t border-[#343434] p-3 font-mono text-[9px] leading-[1.6] whitespace-pre-wrap text-[#ff786b]">
+                        <pre className="workspace-scrollbar m-0 max-h-48 overflow-auto border-t border-[var(--problem-detail-border)] p-3 font-mono text-[9px] leading-[1.6] whitespace-pre-wrap text-[#ff786b]">
                           {codeRun.stderr}
                         </pre>
                       )}
                       {codeRun.stdout && (
-                        <pre className="workspace-scrollbar m-0 max-h-48 overflow-auto border-t border-[#343434] p-3 font-mono text-[9px] leading-[1.6] whitespace-pre-wrap text-[#aaa]">
+                        <pre className="workspace-scrollbar m-0 max-h-48 overflow-auto border-t border-[var(--problem-detail-border)] p-3 font-mono text-[9px] leading-[1.6] whitespace-pre-wrap text-[var(--problem-detail-muted)]">
                           {codeRun.stdout}
                         </pre>
                       )}

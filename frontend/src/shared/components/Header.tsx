@@ -11,7 +11,7 @@ type HeaderProps = {
 };
 
 const defaultHeaderBaseClasses =
-  'sticky top-0 z-50 flex min-h-[66px] shrink-0 items-center justify-between gap-6 border-b border-[#343434] bg-[rgba(9,9,9,0.94)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[760px]:px-5';
+  'sticky top-0 z-50 flex min-h-[66px] shrink-0 items-center justify-between gap-6 border-b border-[var(--theme-border,#343434)] bg-[color-mix(in_srgb,var(--theme-bg,#090909)_94%,transparent)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[760px]:px-5';
 
 const mobilePaddingClasses = {
   '640': 'max-[640px]:px-5',
@@ -19,13 +19,13 @@ const mobilePaddingClasses = {
 };
 
 const workspaceHeaderClasses =
-  'relative flex min-h-[66px] items-center justify-between gap-6 border-b border-[#343434] bg-[#090909] px-6 font-mono text-[15px] tracking-[0.04em] max-[760px]:px-4';
+  'relative flex min-h-[66px] items-center justify-between gap-6 border-b border-[var(--theme-border,#343434)] bg-[var(--theme-bg,#090909)] px-6 font-mono text-[15px] tracking-[0.04em] max-[760px]:px-4';
 
 const menuItemClasses =
-  'transition-colors hover:text-[#d6ff50] focus-visible:text-[#d6ff50] focus-visible:outline-none';
+  'transition-colors hover:text-[var(--acid,#d6ff50)] focus-visible:text-[var(--acid,#d6ff50)] focus-visible:outline-none';
 
 const getMenuLinkClasses = ({ isActive }: { isActive: boolean }) =>
-  `${menuItemClasses} ${isActive ? 'text-[#d6ff50]' : 'text-[#a3a3a3]'}`;
+  `${menuItemClasses} ${isActive ? 'text-[var(--acid,#d6ff50)]' : 'text-[var(--theme-muted,#a3a3a3)]'}`;
 
 export default function Header({
   variant = 'default',
@@ -66,7 +66,7 @@ export default function Header({
         MY PAGE
       </NavLink>
       <button
-        className={`${menuItemClasses} cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] text-[#a3a3a3]`}
+        className={`${menuItemClasses} cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] text-[var(--theme-muted,#a3a3a3)]`}
         type="button"
         onClick={() => void handleLogout()}
       >
@@ -92,14 +92,14 @@ export default function Header({
         aria-label="홈으로 이동"
         onClick={onLogoClick}
       >
-        prompt<i className="not-italic text-[#d6ff50]">.</i>practice
+        prompt<i className="not-italic text-[var(--acid,#d6ff50)]">.</i>practice
       </Link>
 
       <button
         aria-controls="header-navigation"
         aria-expanded={isMenuOpen}
         aria-label={isMenuOpen ? '메뉴 닫기' : '메뉴 열기'}
-        className={`${menuItemClasses} header-menu-toggle hidden cursor-pointer border-0 bg-transparent p-1 font-[inherit] text-2xl leading-none text-[#a3a3a3]`}
+        className={`${menuItemClasses} header-menu-toggle hidden cursor-pointer border-0 bg-transparent p-1 font-[inherit] text-2xl leading-none text-[var(--header-menu-muted,#a3a3a3)]`}
         onClick={() => setIsMenuOpen((isOpen) => !isOpen)}
         type="button"
       >
@@ -108,7 +108,7 @@ export default function Header({
 
       <nav
         aria-label="주요 메뉴"
-        className="header-navigation flex items-center gap-3 whitespace-nowrap max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-0 max-[760px]:border max-[760px]:border-[#343434] max-[760px]:bg-[#090909] max-[760px]:p-3 max-[760px]:shadow-xl"
+        className="header-navigation flex items-center gap-3 whitespace-nowrap max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-0 max-[760px]:border max-[760px]:border-[var(--header-menu-border,#343434)] max-[760px]:bg-[var(--header-menu-bg,#090909)] max-[760px]:p-3 max-[760px]:shadow-xl"
         data-open={isMenuOpen}
         id="header-navigation"
       >
@@ -124,12 +124,12 @@ export default function Header({
           </NavLink>
         </div>
 
-        <span className="order-3 text-[#555] max-[760px]:hidden" aria-hidden="true">|</span>
+        <span className="order-3 text-[var(--theme-border,#555)] max-[760px]:hidden" aria-hidden="true">|</span>
 
         <button
           aria-label={`헤더에서 ${colorMode === 'dark' ? '라이트' : '다크'} 모드로 전환`}
           aria-pressed={colorMode === 'light'}
-          className={`${menuItemClasses} header-theme-toggle order-4 inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] text-[#a3a3a3] max-[760px]:w-full max-[760px]:px-3 max-[760px]:py-3`}
+          className={`${menuItemClasses} header-theme-toggle order-4 inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] text-[var(--theme-muted,#a3a3a3)] max-[760px]:w-full max-[760px]:px-3 max-[760px]:py-3`}
           onClick={toggleColorMode}
           type="button"
         >
@@ -150,14 +150,14 @@ export default function Header({
 
         {!loading && (
           <>
-            <span className="order-1 text-[#555] max-[760px]:hidden" aria-hidden="true">|</span>
+            <span className="order-1 text-[var(--theme-border,#555)] max-[760px]:hidden" aria-hidden="true">|</span>
 
-            <div className="header-account relative order-2 flex items-center max-[760px]:mt-1 max-[760px]:w-full max-[760px]:items-stretch max-[760px]:border-t max-[760px]:border-[#343434] max-[760px]:pt-1">
+            <div className="header-account relative order-2 flex items-center max-[760px]:mt-1 max-[760px]:w-full max-[760px]:items-stretch max-[760px]:border-t max-[760px]:border-[var(--theme-border,#343434)] max-[760px]:pt-1">
               <button
                 aria-controls="header-account-menu"
                 aria-expanded={isAccountMenuOpen}
                 aria-label={user ? '계정 메뉴' : '로그인 메뉴'}
-                className={`${menuItemClasses} header-account-toggle inline-flex cursor-pointer items-center border-0 bg-transparent p-0 font-[inherit] leading-none tracking-[inherit] text-[#a3a3a3]`}
+                className={`${menuItemClasses} header-account-toggle inline-flex cursor-pointer items-center border-0 bg-transparent p-0 font-[inherit] leading-none tracking-[inherit] text-[var(--theme-muted,#a3a3a3)]`}
                 onClick={() => setIsAccountMenuOpen((isOpen) => !isOpen)}
                 type="button"
               >
@@ -172,13 +172,14 @@ export default function Header({
               </button>
 
               <div
-                className="header-account-menu absolute top-[calc(100%+14px)] right-0 z-30 hidden min-w-[128px] flex-col gap-3 border border-[#343434] bg-[#090909] p-4 shadow-xl"
+                className="header-account-menu absolute top-[calc(100%+14px)] right-0 z-30 hidden min-w-[128px] flex-col gap-3 border border-[var(--header-menu-border,#343434)] bg-[var(--header-menu-bg,#090909)] p-4 shadow-xl"
                 data-open={isAccountMenuOpen}
                 id="header-account-menu"
               >
-                <span className="header-account-menu-label text-[10px] tracking-[0.16em] text-[#777]">
+                {/* span이면 페이지별 `nav span`(구분선 색) 규칙에 걸려 라벨이 흐려진다. */}
+                <div className="header-account-menu-label text-[10px] tracking-[0.16em] text-[var(--header-menu-muted,#777)]">
                   ACCOUNT
-                </span>
+                </div>
                 {accountLinks}
               </div>
 

@@ -31,6 +31,7 @@ import { useRelayRoom } from '../features/relay/useRelayRoom';
 import { useRelayRtc, type RelayPeerView } from '../features/relay/useRelayRtc';
 import { useTheme } from '../features/theme/ThemeContext';
 import CodeViewer from '../features/workspace/CodeViewer';
+import { diffLines } from '../features/workspace/diff';
 import { ApiError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
@@ -475,6 +476,7 @@ function GameView({
     lastGrading,
     lastSkip,
     lastTurn,
+    previousCode,
     submitError,
     submitTurn,
     submitting,
@@ -565,12 +567,13 @@ function GameView({
       {/* 중: 코드 */}
       <CodePanel
         code={code}
+        previousCode={previousCode}
         selectedPath={selectedPath}
       />
 
       {/* 우: 문제/진행 패널. 프롬프트 폼은 탭과 무관하게 아래 고정 —
           주자는 명세를 읽으면서 동시에 프롬프트를 써야 한다. */}
-      <aside className="flex min-h-0 flex-col gap-4 overflow-hidden px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-t max-[900px]:border-[#343434]">
+      <aside className="flex min-h-0 flex-col gap-4 overflow-hidden px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-t max-[900px]:border-[var(--relay-border)]">
         <div className="grid shrink-0 grid-cols-2 border border-[#3f3f3f]" role="tablist">
           {(
             [
@@ -1058,14 +1061,25 @@ function RelayFileExplorer({
 
 function CodePanel({
   code,
+  previousCode,
   selectedPath,
 }: {
   code: ReturnType<typeof useRelayRoom>['code'];
+  previousCode: ReturnType<typeof useRelayRoom>['previousCode'];
   selectedPath: string | null;
 }) {
   const files = code?.files ?? [];
   const selected =
     files.find((file) => file.path === selectedPath) ?? files[0] ?? null;
+  // 마지막 턴이 바꾼 곳의 강조. 기준선이 없으면(게임 중간 입장 직후) 강조 없이 그린다.
+  const diff = useMemo(() => {
+    if (!selected || !previousCode) return undefined;
+
+    const before =
+      previousCode.files.find((file) => file.path === selected.path)?.content ??
+      null;
+    return diffLines(before, selected.content);
+  }, [previousCode, selected]);
 
   return (
     <section className="flex min-h-0 flex-col overflow-hidden border-r border-[#343434] px-6 py-[22px] max-[900px]:min-h-[420px] max-[900px]:border-r-0 max-[900px]:border-b">
@@ -1083,7 +1097,10 @@ function CodePanel({
         {selected ? (
           <CodeViewer
             code={selected.content}
+            diff={diff}
             gutterWidth="2.5rem"
+            // 파일이나 턴이 바뀌면 펼쳐 둔 삭제 마커를 리셋한다.
+            key={`${selected.path}#${code?.appliedTurns ?? 0}`}
             path={selected.path}
           />
         ) : (
