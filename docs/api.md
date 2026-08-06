@@ -273,6 +273,7 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 | `turns` | number | 턴 수 |
 | `rounds` | number | LLM 호출 수. 턴 하나가 여러 라운드를 쓸 수 있다 |
 | `submittedAt` | string \| null | 제출 시각(ISO-8601). 오래된 기록은 null일 수 있다 |
+| `durationSeconds` | number \| null | 소요 시간(초) = 제출 시각 − 첫 CODE 호출 시각. 실패한 코드 생성 호출도 시작으로 친다. `submittedAt`이 null인 옛 기록은 null |
 
 **`myBest`는 상위 목록에 이미 있어도 항상 채운다.** 중복해서 그릴지 여부는 `myBest.attemptId`와 같은 `attemptId`가 `entries`에 있는지로 클라이언트가 판단한다 — `mine`으로는 판단할 수 없다. 내 줄이 상위에 여럿 올라오면 그중 하나만 `myBest`이기 때문이다.
 
