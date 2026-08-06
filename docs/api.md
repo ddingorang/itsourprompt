@@ -293,7 +293,8 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
       "outputTokens": 500,
       "turns": 1,
       "rounds": 2,
-      "submittedAt": "2026-08-03T05:10:32Z"
+      "submittedAt": "2026-08-03T05:10:32Z",
+      "durationSeconds": 252
     }
   ],
   "myBest": {
@@ -307,7 +308,8 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
     "outputTokens": 1500,
     "turns": 3,
     "rounds": 6,
-    "submittedAt": "2026-08-03T06:22:10Z"
+    "submittedAt": "2026-08-03T06:22:10Z",
+    "durationSeconds": 4980
   }
 }
 ```
