@@ -12,10 +12,10 @@ import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
 const labelClasses =
-  'font-mono text-[20px] leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
+  'text-[20px] leading-[1.5] font-bold text-[#d6ff50]';
 
 const fieldClasses =
-  'w-full border border-[#3f3f3f] bg-[#151515] px-3 py-2.5 font-mono text-sm ' +
+  'w-full border border-[#3f3f3f] bg-[#151515] px-3 py-2.5 text-sm ' +
   'text-[#f5f5ef] focus:border-[#d6ff50] focus:outline-none';
 
 const LAP_CHOICES = [1, 2, 3] as const;
@@ -139,8 +139,8 @@ export default function RelayLobbyPage() {
 
       <main className="mx-auto grid w-full max-w-[880px] gap-8 px-6 py-12">
         <div>
-          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-            RELAY MODE
+          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+            릴레이 모드
           </h1>
           <p className="mt-2 mb-0 text-[13px] leading-[1.7] text-[#a3a3a3]">
             여러 명이 한 문제를 정해진 순서대로 이어 풉니다. 각자 프롬프트 한 번씩 —
@@ -152,14 +152,14 @@ export default function RelayLobbyPage() {
         </div>
 
         {error && (
-          <p className="m-0 border border-[#5a2c28] bg-[#1c0f0e] px-4 py-3 font-mono text-xs text-[#ff786b]">
+          <p className="m-0 border border-[#5a2c28] bg-[#1c0f0e] px-4 py-3 text-xs text-[#ff786b]">
             {error}
           </p>
         )}
 
         <section className="border border-[#343434]">
           <div className="flex items-center justify-between border-b border-[#343434] px-6 py-3">
-            <span className={labelClasses}>OPEN ROOMS</span>
+            <span className={labelClasses}>열린 방</span>
             <div className="flex items-center gap-2">
               <button
                 aria-label="이전 방 목록 페이지"
@@ -180,7 +180,7 @@ export default function RelayLobbyPage() {
                 &gt;
               </button>
               <button
-                className="cursor-pointer border border-[#3f3f3f] bg-transparent px-2.5 py-1 font-mono text-[10px] text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]"
+                className="cursor-pointer border border-[#3f3f3f] bg-transparent px-2.5 py-1 text-[10px] text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]"
                 onClick={() => void refreshRooms()}
                 type="button"
               >
@@ -190,11 +190,11 @@ export default function RelayLobbyPage() {
           </div>
 
           {!roomsLoaded ? (
-            <p className="m-0 px-4 py-6 font-mono text-[11px] text-[#666]">
+            <p className="m-0 px-4 py-6 text-[11px] text-[#666]">
               방 목록을 불러오는 중…
             </p>
           ) : rooms.length === 0 ? (
-            <p className="m-0 px-4 py-6 font-mono text-[11px] leading-[1.7] text-[#666]">
+            <p className="m-0 px-4 py-6 text-[11px] leading-[1.7] text-[#666]">
               입장을 기다리는 방이 없습니다. 아래에서 새 방을 만들어 보세요.
             </p>
           ) : (
@@ -215,14 +215,14 @@ export default function RelayLobbyPage() {
                       {room.name ?? room.problemTitle ?? `문제 ${room.problemId}번`}
                     </span>
                     {room.name && (
-                      <span className="font-mono text-[11px] text-[#a3a3a3]">
+                      <span className="text-[11px] text-[#a3a3a3]">
                         {room.problemTitle ?? `문제 ${room.problemId}번`}
                       </span>
                     )}
-                    <span className="font-mono text-[11px] text-[#a3a3a3]">
+                    <span className="text-[11px] text-[#a3a3a3]">
                       {room.hostNickname} 님의 방
                     </span>
-                    <span className="font-mono text-[11px] text-[#a3a3a3]">
+                    <span className="text-[11px] text-[#a3a3a3]">
                       {room.totalLaps}바퀴
                     </span>
                     <span
@@ -273,12 +273,12 @@ export default function RelayLobbyPage() {
         </section>
 
         <section className="border border-[#343434] p-6">
-          <div className={labelClasses}>CREATE ROOM</div>
+          <div className={labelClasses}>방 만들기</div>
 
           <div className="mt-5 grid gap-4">
             <label className="grid gap-1.5">
-              <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                ROOM NAME — 로비 목록에 그대로 보입니다
+              <span className="text-[12px] text-[#777]">
+                방 이름 — 로비 목록에 그대로 보입니다
               </span>
               <input
                 className={fieldClasses}
@@ -291,8 +291,8 @@ export default function RelayLobbyPage() {
             </label>
 
             <label className="grid gap-1.5">
-              <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                PROBLEM
+              <span className="text-[12px] text-[#777]">
+                문제
               </span>
               <select
                 className={fieldClasses}
@@ -309,8 +309,8 @@ export default function RelayLobbyPage() {
 
             <div className="grid grid-cols-2 gap-4 max-[480px]:grid-cols-1">
               <label className="grid gap-1.5">
-                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                  LAPS — 인원 × 바퀴 = 총 턴 수
+                <span className="text-[12px] text-[#777]">
+                  바퀴 수 — 인원 × 바퀴 = 총 턴 수
                 </span>
                 <select
                   className={fieldClasses}
@@ -326,8 +326,8 @@ export default function RelayLobbyPage() {
               </label>
 
               <label className="grid gap-1.5">
-                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                  MAX PLAYERS
+                <span className="text-[12px] text-[#777]">
+                  최대 인원
                 </span>
                 <select
                   className={fieldClasses}
@@ -346,8 +346,8 @@ export default function RelayLobbyPage() {
             </div>
 
             <label className="grid gap-1.5">
-              <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                TURN TIME LIMIT — 주자 한 명의 입력 제한시간
+              <span className="text-[12px] text-[#777]">
+                턴 제한시간 — 주자 한 명의 입력 제한시간
               </span>
               <select
                 className={fieldClasses}

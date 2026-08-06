@@ -56,9 +56,9 @@ interface StatusMessage {
 type DetailTab = 'problem' | 'logs' | 'test';
 
 const detailTabs: ReadonlyArray<readonly [DetailTab, string]> = [
-  ['problem', 'PROBLEM'],
-  ['logs', 'PROMPT LOG'],
-  ['test', 'TEST'],
+  ['problem', '문제'],
+  ['logs', '프롬프트 기록'],
+  ['test', '채점'],
 ];
 
 interface FileTreeNode {
@@ -72,6 +72,9 @@ interface FileTreeNode {
 
 const labelClasses =
   'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[var(--problem-detail-acid)]';
+
+const koreanLabelClasses =
+  'text-sm leading-[1.5] font-bold text-[var(--problem-detail-acid)]';
 
 const pageStateClasses =
   'grid min-h-dvh place-items-center bg-[var(--problem-detail-bg)] p-10 ' +
@@ -97,10 +100,10 @@ const codeRunStatusLabels: Record<CodeRunStatus, string> = {
 };
 
 const codeRunCaseLabels: Record<CodeRunCaseStatus, string> = {
-  PASSED: 'PASSED',
-  FAILED: 'FAILED',
-  ERROR: 'ERROR',
-  SKIPPED: 'SKIPPED',
+  PASSED: '통과',
+  FAILED: '실패',
+  ERROR: '오류',
+  SKIPPED: '건너뜀',
 };
 
 const codeRunCaseColorClasses: Record<CodeRunCaseStatus, string> = {
@@ -1232,7 +1235,7 @@ export default function ProblemDetailPage() {
 
       <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[230px_minmax(360px,1fr)_minmax(420px,480px)] max-[1080px]:grid-cols-[190px_minmax(0,1fr)] max-[700px]:block max-[700px]:overflow-visible">
         <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[var(--problem-detail-border)] px-6 py-[22px] max-[700px]:overflow-visible max-[700px]:border-r-0 max-[700px]:border-b max-[700px]:px-4 max-[700px]:py-[18px]">
-          <div className={labelClasses}>FILE EXPLORER</div>
+          <div className={koreanLabelClasses}>파일 탐색기</div>
 
           <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-auto max-[700px]:flex-none max-[700px]:overflow-visible">
             <div className="grid w-max min-w-full select-none gap-[3px] font-mono text-xs leading-[1.5] text-[var(--problem-detail-muted)]">
@@ -1241,21 +1244,21 @@ export default function ProblemDetailPage() {
           </div>
 
           <div className="mt-4 grid shrink-0 gap-2 border-t border-[var(--problem-detail-border)] pt-4 font-mono text-[9px] text-[var(--problem-detail-subtle)]">
-            <span>A / ADDED</span>
-            <span>M / MODIFIED</span>
-            <span>D / DELETED</span>
+            <span>A / 추가</span>
+            <span>M / 수정</span>
+            <span>D / 삭제</span>
           </div>
         </aside>
 
         <section className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[var(--problem-detail-border)] px-7 py-[22px] max-[1080px]:border-r-0 max-[700px]:block max-[700px]:overflow-visible max-[700px]:border-b max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
           <div className="mb-5 flex items-start justify-between gap-[18px]">
             <div>
-              <div className={labelClasses}>
-                {selectedFile || 'FILE'}
+              <div className={selectedFile ? labelClasses : koreanLabelClasses}>
+                {selectedFile || '파일'}
               </div>
             </div>
-            <span className="shrink-0 border border-[var(--problem-detail-border-strong)] px-2 py-1.5 font-mono text-[9px] text-[var(--problem-detail-muted)]">
-              READ ONLY
+            <span className="shrink-0 border border-[var(--problem-detail-border-strong)] px-2 py-1.5 text-[9px] text-[var(--problem-detail-muted)]">
+              읽기 전용
             </span>
           </div>
 
@@ -1284,7 +1287,7 @@ export default function ProblemDetailPage() {
                   aria-controls="problem-detail-tabpanel"
                   aria-selected={activeTab === tab}
                   className={[
-                    'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm leading-[1.5] font-bold tracking-[0.08em]',
+                    'min-h-10 cursor-pointer border-0 bg-transparent px-3 text-sm leading-[1.5] font-bold',
                     tab !== 'test' ? 'border-r border-[var(--problem-detail-border)]' : '',
                     activeTab === tab
                       ? 'border-b-2 border-b-[var(--problem-detail-acid)] text-[var(--problem-detail-acid)]'
@@ -1301,7 +1304,7 @@ export default function ProblemDetailPage() {
                   tabIndex={activeTab === tab ? 0 : -1}
                   type="button"
                 >
-                  {isGame && tab === 'test' ? 'PLAY' : label}
+                  {isGame && tab === 'test' ? '플레이' : label}
                 </button>
               ))}
             </div>
@@ -1338,10 +1341,7 @@ export default function ProblemDetailPage() {
                 <div className="grid gap-4">
                   <div className="flex items-end justify-between border border-[var(--problem-detail-border)] bg-[var(--problem-detail-surface)] px-4 py-3">
                     <div>
-                      <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[var(--problem-detail-subtle)]">
-                        TOTAL TOKEN USAGE
-                      </p>
-                      <p className="mt-1 mb-0 text-[12px] text-[var(--problem-detail-text)]">
+                      <p className="m-0 text-[12px] text-[var(--problem-detail-text)]">
                         전체 프롬프트 토큰 사용량
                       </p>
                     </div>
@@ -1355,19 +1355,19 @@ export default function ProblemDetailPage() {
                       className="border-l-2 border-[var(--problem-detail-acid)] pl-3"
                       key={`turn-${index + 1}`}
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 font-mono text-[11px] font-bold">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] font-bold">
                         <span className="text-[var(--problem-detail-acid)]">
-                          TURN {String(index + 1).padStart(2, '0')}
+                          턴 {index + 1}
                         </span>
                         <span className="flex gap-3 text-[var(--problem-detail-subtle)]">
                           <span>
-                            TOKENS{' '}
+                            토큰{' '}
                             <strong className="text-[var(--problem-detail-text)]">
                               {formatUsageValue(turnTokenUsages[index])}
                             </strong>
                           </span>
                           <span>
-                            LATENCY{' '}
+                            응답 시간{' '}
                             <strong className="text-[var(--problem-detail-text)]">
                               {formatUsageValue(turn.usage?.latencyMs, 'ms')}
                             </strong>
@@ -1472,10 +1472,7 @@ export default function ProblemDetailPage() {
                         실행 로그가 방금 만들어진 것처럼 읽히면 안 된다.
                       */}
                       <div>
-                        <p className="m-0 font-mono text-[9px] font-bold tracking-[0.12em] text-[var(--problem-detail-subtle)]">
-                          {isOthersAttempt ? 'RECORDED RESULT' : 'TEST RESULT'}
-                        </p>
-                        <p className="mt-1 mb-0 text-[12px] text-[var(--problem-detail-text)]">
+                        <p className="m-0 text-[12px] text-[var(--problem-detail-text)]">
                           {isOthersAttempt
                             ? '이 제출에 기록된 마지막 채점 결과'
                             : '테스트 케이스 채점 결과'}
@@ -1521,10 +1518,10 @@ export default function ProblemDetailPage() {
                       </div>
                     )}
 
-                    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] text-[var(--problem-detail-subtle)]">
-                      <span>STATUS {codeRunStatusLabels[codeRun.status]}</span>
+                    <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-[var(--problem-detail-subtle)]">
+                      <span>상태 {codeRunStatusLabels[codeRun.status]}</span>
                       {codeRun.turnOrdinal !== null && (
-                        <span>TURN {String(codeRun.turnOrdinal + 1).padStart(2, '0')}</span>
+                        <span>턴 {codeRun.turnOrdinal + 1}</span>
                       )}
                       {codeRun.durationMs !== null && (
                         <span>{codeRun.durationMs.toLocaleString('ko-KR')}ms</span>
@@ -1552,7 +1549,7 @@ export default function ProblemDetailPage() {
                               </div>
                             </div>
                             <strong
-                              className={`shrink-0 font-mono text-[10px] ${codeRunCaseColorClasses[testCase.status]}`}
+                              className={`shrink-0 text-[10px] ${codeRunCaseColorClasses[testCase.status]}`}
                             >
                               {codeRunCaseLabels[testCase.status]}
                             </strong>
@@ -1607,7 +1604,7 @@ export default function ProblemDetailPage() {
 
           {!isPlaying && (
             <section className="flex min-h-0 flex-col overflow-hidden pt-2 max-[1080px]:overflow-visible max-[1080px]:pt-0 max-[700px]:pt-[22px]">
-            <div className={labelClasses}>PROMPT / MAX 4,000</div>
+            <div className={koreanLabelClasses}>프롬프트 / 최대 4,000자</div>
             <div className="relative mt-2 shrink-0 border border-[var(--problem-detail-border-strong)] bg-[var(--problem-detail-input-bg)] focus-within:border-[var(--problem-detail-acid)]">
               <textarea
                 aria-keyshortcuts="Control+Enter Meta+Enter"
@@ -1704,7 +1701,7 @@ export default function ProblemDetailPage() {
                 */}
                 <span className="text-[14px]">
                   {isSubmitting
-                    ? 'LOADING…'
+                    ? '제출 중…'
                     : isOthersAttempt
                       ? '이 풀이의 피드백 보기 ↗'
                       : '최종 제출 & 피드백 확인하기 ↗'}

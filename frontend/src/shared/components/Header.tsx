@@ -11,7 +11,7 @@ type HeaderProps = {
 };
 
 const defaultHeaderBaseClasses =
-  'sticky top-0 z-50 flex min-h-[66px] shrink-0 items-center justify-between gap-6 border-b border-[var(--theme-border,#343434)] bg-[color-mix(in_srgb,var(--theme-bg,#090909)_94%,transparent)] px-[5vw] font-mono text-[15px] tracking-[0.04em] backdrop-blur-[12px] max-[760px]:px-5';
+  'sticky top-0 z-50 flex min-h-[66px] shrink-0 items-center justify-between gap-6 border-b border-[var(--theme-border,#343434)] bg-[color-mix(in_srgb,var(--theme-bg,#090909)_94%,transparent)] px-[5vw] text-[15px] backdrop-blur-[12px] max-[760px]:px-5';
 
 const mobilePaddingClasses = {
   '640': 'max-[640px]:px-5',
@@ -19,7 +19,7 @@ const mobilePaddingClasses = {
 };
 
 const workspaceHeaderClasses =
-  'relative flex min-h-[66px] items-center justify-between gap-6 border-b border-[var(--theme-border,#343434)] bg-[var(--theme-bg,#090909)] px-6 font-mono text-[15px] tracking-[0.04em] max-[760px]:px-4';
+  'relative flex min-h-[66px] items-center justify-between gap-6 border-b border-[var(--theme-border,#343434)] bg-[var(--theme-bg,#090909)] px-6 text-[15px] max-[760px]:px-4';
 
 const menuItemClasses =
   'transition-colors hover:text-[var(--acid,#d6ff50)] focus-visible:text-[var(--acid,#d6ff50)] focus-visible:outline-none';
@@ -63,23 +63,23 @@ export default function Header({
   const accountLinks = user ? (
     <>
       <NavLink className={getMenuLinkClasses} to="/my" onClick={closeMenus}>
-        MY PAGE
+        마이페이지
       </NavLink>
       <button
         className={`${menuItemClasses} cursor-pointer border-0 bg-transparent p-0 font-[inherit] tracking-[inherit] text-[var(--theme-muted,#a3a3a3)]`}
         type="button"
         onClick={() => void handleLogout()}
       >
-        LOGOUT
+        로그아웃
       </button>
     </>
   ) : (
     <>
       <NavLink className={getMenuLinkClasses} to="/login" onClick={closeMenus}>
-        LOGIN
+        로그인
       </NavLink>
       <NavLink className={getMenuLinkClasses} to="/signup" onClick={closeMenus}>
-        SIGN UP
+        회원가입
       </NavLink>
     </>
   );
@@ -114,13 +114,13 @@ export default function Header({
       >
         <div className="flex items-center gap-7 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-0">
           <NavLink className={(state) => `${getMenuLinkClasses(state)} max-[760px]:px-3 max-[760px]:py-3`} end to="/problems" onClick={closeMenus}>
-            PROBLEM LIST
+            문제 목록
           </NavLink>
           <NavLink className={(state) => `${getMenuLinkClasses(state)} max-[760px]:px-3 max-[760px]:py-3`} to="/relay" onClick={closeMenus}>
-            RELAY
+            릴레이
           </NavLink>
           <NavLink className={(state) => `${getMenuLinkClasses(state)} max-[760px]:px-3 max-[760px]:py-3`} to="/ranking" onClick={closeMenus}>
-            RANKING
+            랭킹
           </NavLink>
         </div>
 
@@ -167,7 +167,7 @@ export default function Header({
                     <path d="M4.5 16c.5-3 2.5-4.5 5.5-4.5s5 1.5 5.5 4.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
                   </svg>
                 ) : (
-                  'LOGIN'
+                  '로그인'
                 )}
               </button>
 
@@ -177,8 +177,8 @@ export default function Header({
                 id="header-account-menu"
               >
                 {/* span이면 페이지별 `nav span`(구분선 색) 규칙에 걸려 라벨이 흐려진다. */}
-                <div className="header-account-menu-label text-[10px] tracking-[0.16em] text-[var(--header-menu-muted,#777)]">
-                  ACCOUNT
+                <div className="header-account-menu-label text-[10px] text-[var(--header-menu-muted,#777)]">
+                  계정
                 </div>
                 {accountLinks}
               </div>
