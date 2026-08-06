@@ -2,6 +2,7 @@ package com.promptstudio.ai;
 
 import com.openai.models.completions.CompletionUsage;
 import com.promptstudio.attempt.domain.AttemptFeedback;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.LlmCallUsage;
@@ -220,7 +221,7 @@ class FeedbackGeneratorsTest {
                     "프롬프트 " + index, "요약 " + index, List.of(), List.of(), null, null, null));
         }
 
-        return new AttemptView(1L, 1L, files, files, turns, AttemptStatus.IN_PROGRESS, null, null, null);
+        return new AttemptView(1L, 1L, AttemptOwner.user(1L), null, files, files, turns, AttemptStatus.IN_PROGRESS, null, null, null);
     }
 
     private LlmCallUsage usage(int seq, long inputTokens) {

@@ -6,6 +6,7 @@ import com.promptstudio.attempt.controller.response.AttemptResponse;
 import com.promptstudio.attempt.controller.response.CodeRunListResponse;
 import com.promptstudio.attempt.controller.response.CodeRunResponse;
 import com.promptstudio.attempt.controller.response.FeedbackResponse;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.service.AttemptService;
 import com.promptstudio.attempt.service.CodeRunService;
 import com.promptstudio.global.exception.ApiErrorResponse;
@@ -96,8 +97,10 @@ public class AttemptController {
             @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody CreateAttemptRequest request
     ) {
+        AttemptOwner requester = owner(principal, httpRequest);
+
         return attemptWebMapper.toAttemptResponse(
-                attemptService.startAttempt(request.problemId(), owner(principal, httpRequest), idempotencyKey));
+                attemptService.startAttempt(request.problemId(), requester, idempotencyKey), requester);
     }
 
     @GetMapping("/{id}")
@@ -123,7 +126,9 @@ public class AttemptController {
             HttpServletRequest httpRequest,
             @PathVariable("id") Long id
     ) {
-        return attemptWebMapper.toAttemptResponse(attemptService.readAttempt(id, owner(principal, httpRequest)));
+        AttemptOwner requester = owner(principal, httpRequest);
+
+        return attemptWebMapper.toAttemptResponse(attemptService.readAttempt(id, requester), requester);
     }
 
     @GetMapping("/{id}/feedback")
@@ -201,8 +206,10 @@ public class AttemptController {
             @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody TurnRequest request
     ) {
+        AttemptOwner requester = owner(principal, httpRequest);
+
         return attemptWebMapper.toAttemptResponse(
-                attemptService.addTurn(id, owner(principal, httpRequest), request.prompt(), idempotencyKey));
+                attemptService.addTurn(id, requester, request.prompt(), idempotencyKey), requester);
     }
 
     @PostMapping("/{id}/submit")
@@ -374,10 +381,7 @@ public class AttemptController {
         return attemptWebMapper.toCodeRunResponse(codeRunService.readRun(id, owner(principal, httpRequest), runId));
     }
 
-    private com.promptstudio.attempt.domain.AttemptOwner owner(
-            AppUserDetails principal,
-            HttpServletRequest request
-    ) {
+    private AttemptOwner owner(AppUserDetails principal, HttpServletRequest request) {
         return attemptOwnerResolver.resolve(principal, request);
     }
 }

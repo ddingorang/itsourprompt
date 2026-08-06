@@ -1,5 +1,6 @@
 package com.promptstudio.ai;
 
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.CodeRunCaseTally;
@@ -508,7 +509,7 @@ final class LiveSessions {
     ) {
         ProblemView problem = new ProblemView(1L, "주문 취소와 재고 복구", SPEC_MD, skeleton());
         AttemptView attempt = AttemptView.reconstruct(
-                1L, 1L, skeleton(), turns, AttemptStatus.IN_PROGRESS, null, null, null);
+                1L, 1L, AttemptOwner.user(1L), null, skeleton(), turns, AttemptStatus.IN_PROGRESS, null, null, null);
 
         return new Session(name, problem, attempt, expected, testResults, patternTurns);
     }
