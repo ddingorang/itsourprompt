@@ -10,7 +10,6 @@ import com.promptstudio.attempt.domain.PromptScopeDecision;
 import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
-import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.CodeGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
@@ -20,7 +19,6 @@ import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.attempt.port.LlmUsageCarrier;
 import com.promptstudio.attempt.port.PromptScopeValidator;
-import com.promptstudio.attempt.repository.AttemptQueryRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemView;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
@@ -37,7 +35,7 @@ public class AttemptService {
     private static final Logger log = LoggerFactory.getLogger(AttemptService.class);
 
     private final ProblemRepository problemRepository;
-    private final AttemptQueryRepository attemptQueryRepository;
+    private final AttemptReader attemptReader;
     private final AttemptWriter attemptWriter;
     private final IdempotencyGuard idempotencyGuard;
     private final FeedbackGenerationGuard feedbackGenerationGuard;
@@ -49,7 +47,7 @@ public class AttemptService {
 
     public AttemptService(
             ProblemRepository problemRepository,
-            AttemptQueryRepository attemptQueryRepository,
+            AttemptReader attemptReader,
             AttemptWriter attemptWriter,
             IdempotencyGuard idempotencyGuard,
             FeedbackGenerationGuard feedbackGenerationGuard,
@@ -60,7 +58,7 @@ public class AttemptService {
             PromptScopeValidator promptScopeValidator
     ) {
         this.problemRepository = problemRepository;
-        this.attemptQueryRepository = attemptQueryRepository;
+        this.attemptReader = attemptReader;
         this.attemptWriter = attemptWriter;
         this.idempotencyGuard = idempotencyGuard;
         this.feedbackGenerationGuard = feedbackGenerationGuard;
@@ -90,9 +88,12 @@ public class AttemptService {
         return getAttempt(attemptId, AttemptOwner.user(userId));
     }
 
+    /**
+     * 소유자 조회 — 턴 추가(generateTurnWhileGuarded)와 제출이 소유권 관문으로 재사용한다.
+     * 그래서 여기를 제출 완료까지 열도록 완화하면 안 된다. 근거는 {@link AttemptReader#requireOwned}에 있다.
+     */
     public AttemptView getAttempt(Long attemptId, AttemptOwner owner) {
-        return findAttempt(attemptId, owner)
-                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+        return attemptReader.requireOwned(attemptId, owner);
     }
 
     public AttemptView getFeedback(Long attemptId, Long userId) {
@@ -110,22 +111,11 @@ public class AttemptService {
     }
 
     /**
-     * 읽기 전용 조회 — 제출 완료(SUBMITTED)면 누구나, 아니면 소유자만.
-     *
-     * <p>{@link #getAttempt(Long, AttemptOwner)}를 완화하지 않고 따로 두는 이유: getAttempt는
-     * 턴 추가(generateTurnWhileGuarded)가 소유권 관문으로 재사용한다. 거기서 SUBMITTED까지 함께 열면
-     * 쓰기의 소유권 보장이 "제출 상태 검사"라는 무관한 조건에 얹히고, 제출 후 재개 같은 기능이 생기는
-     * 순간 남의 attemptId로 LLM 비용을 태울 수 있다.
-     *
-     * <p>남의 진행 중 어템프트는 403이 아니라 404다 — 존재를 알리지 않는다.
-     *
-     * <p>소유자 조회를 먼저 타므로 자기 어템프트는 상태와 무관하게 1쿼리다. 남의 SUBMITTED만 2쿼리를 쓴다.
+     * 읽기 전용 조회 — 공개 범위는 {@link AttemptReader#requireReadable}가 정한다.
+     * 쓰기가 지나는 {@link #getAttempt(Long, AttemptOwner)}와 갈라 둔 이유도 거기 적혀 있다.
      */
     public AttemptView readAttempt(Long attemptId, AttemptOwner requester) {
-        return findAttempt(attemptId, requester)
-                .or(() -> attemptQueryRepository.findById(attemptId)
-                        .filter(attempt -> attempt.status() == AttemptStatus.SUBMITTED))
-                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+        return attemptReader.requireReadable(attemptId, requester);
     }
 
     /**
@@ -338,13 +328,6 @@ public class AttemptService {
         }
 
         return problem;
-    }
-
-    private java.util.Optional<AttemptView> findAttempt(Long attemptId, AttemptOwner owner) {
-        if (owner.isUser()) {
-            return attemptQueryRepository.findByIdAndUserId(attemptId, owner.userId());
-        }
-        return attemptQueryRepository.findByIdAndGuestSessionId(attemptId, owner.guestSessionId());
     }
 
     private long elapsedMillis(long startedAt) {

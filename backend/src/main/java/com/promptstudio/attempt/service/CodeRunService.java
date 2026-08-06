@@ -1,6 +1,5 @@
 package com.promptstudio.attempt.service;
 
-import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.CodeRunCaseTally;
@@ -47,6 +46,7 @@ public class CodeRunService {
     private static final Logger log = LoggerFactory.getLogger(CodeRunService.class);
 
     private final AttemptQueryRepository attemptQueryRepository;
+    private final AttemptReader attemptReader;
     private final CodeRunRepository codeRunRepository;
     private final ProblemRepository problemRepository;
     private final CodeRunPublisher codeRunPublisher;
@@ -54,12 +54,14 @@ public class CodeRunService {
 
     public CodeRunService(
             AttemptQueryRepository attemptQueryRepository,
+            AttemptReader attemptReader,
             CodeRunRepository codeRunRepository,
             ProblemRepository problemRepository,
             CodeRunPublisher codeRunPublisher,
             ApplicationEventPublisher eventPublisher
     ) {
         this.attemptQueryRepository = attemptQueryRepository;
+        this.attemptReader = attemptReader;
         this.codeRunRepository = codeRunRepository;
         this.problemRepository = problemRepository;
         this.codeRunPublisher = codeRunPublisher;
@@ -82,8 +84,7 @@ public class CodeRunService {
     public CodeRunView requestRun(Long attemptId, AttemptOwner owner) {
         expireStaleRuns();
 
-        AttemptView attempt = findAttempt(attemptId, owner)
-                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+        AttemptView attempt = attemptReader.requireOwned(attemptId, owner);
 
         return run(attempt, attempt.headTurnOrdinal());
     }
@@ -105,17 +106,13 @@ public class CodeRunService {
     }
 
     /**
-     * 소유자만 지정 턴을 실행할 수 있다.
-     *
-     * <p>랭킹이 남의 어템프트 ID를 공개하므로 검사가 없으면 표에서 긁은 ID로 남의 빌드/실행 컨테이너를
-     * 띄울 수 있고, {@code uq_code_run_active}(어템프트당 미완료 실행 1건)로 상대의 실행을 409로
-     * 막을 수도 있다 — 다른 쓰기 경로와 같은 관문을 지나게 한다.
+     * 소유자만 지정 턴을 실행할 수 있다 — 다른 쓰기 경로와 같은 관문({@link AttemptReader#requireOwned})을
+     * 지나게 한다. 검사가 없을 때 무엇이 열리는지는 거기 적혀 있다.
      */
     public CodeRunView requestRun(Long attemptId, AttemptOwner owner, int turnOrdinal) {
         expireStaleRuns();
 
-        AttemptView attempt = findAttempt(attemptId, owner)
-                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+        AttemptView attempt = attemptReader.requireOwned(attemptId, owner);
 
         if (turnOrdinal < 0 || turnOrdinal >= attempt.turns().size()) {
             throw new TurnNotFoundException(attemptId, turnOrdinal, attempt.turns().size());
@@ -151,6 +148,11 @@ public class CodeRunService {
         return CodeRunView.queued(runId, attemptId, turnOrdinal);
     }
 
+    /**
+     * 요청자가 없는 내부 경로(릴레이 채점) 전용이라 {@link AttemptReader}를 지나지 않는다 — 방장이 만든
+     * 어템프트를 서버가 자기 판단으로 돌리는 것이라 대조할 요청자 자체가 없다. 이 오버로드가 웹으로
+     * 새면 소유자 검사 없는 실행 요청이 되므로, 컨트롤러에서는 부르지 않는다.
+     */
     private AttemptView getAttempt(Long attemptId) {
         expireStaleRuns();
 
@@ -184,24 +186,20 @@ public class CodeRunService {
     }
 
     /**
-     * 어템프트의 실행 기록 전체를 최근 순으로 반환한다. 제출 완료(SUBMITTED)면 누구나, 아니면 소유자만.
+     * 어템프트의 실행 기록 전체를 최근 순으로 반환한다. 공개 범위는 {@link AttemptReader#requireReadable}가
+     * 정한다 — 조회는 어느 턴까지 통과했는지를 보여 주므로 어템프트 본문과 같이 열린다.
      *
      * <p>실행 요청은 202로 접수증(runId)만 주고 결과는 뒤늦게 도착한다. 그 runId가 클라이언트에만
      * 있으면 새로고침 한 번에 사라지고, 그러면 진행 중인 실행을 조회할 수도 없고 다시 요청할 수도 없다
      * — 어템프트당 미완료 1건 제약 때문에 409가 나고 TTL 회수까지 기다려야 한다.
      * 그 상태를 서버에 물어볼 수 있게 하는 것이 이 조회의 목적이다.
-     *
-     * <p>실행 요청과 같은 소유자 조회를 쓰지 않고 갈라 둔 이유는 {@code AttemptService.readAttempt}와 같다:
-     * 쓰기 경로가 소유권을 보장하는 자리에 "제출 상태 검사"를 얹으면 공개 범위를 넓히는 변경이
-     * 조용히 쓰기까지 넓힌다. 조회는 어느 턴까지 통과했는지를 보여 주므로 공개 대상이다.
      */
     public List<CodeRunSummary> readRuns(Long attemptId, AttemptOwner requester) {
         // 조회 전에 먼저 회수한다. 빠뜨리면 좌초된 QUEUED가 "실행 중"으로 보이고, 그 상태로 새 실행을
         // 시도한 사용자는 409만 받는다 — 화면과 동작이 어긋난다.
         expireStaleRuns();
 
-        findReadableAttempt(attemptId, requester)
-                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+        attemptReader.requireReadable(attemptId, requester);
 
         List<CodeRunSummary> runs = codeRunRepository.findAllByAttemptId(attemptId);
 
@@ -217,8 +215,7 @@ public class CodeRunService {
     public CodeRunView readRun(Long attemptId, AttemptOwner requester, UUID runId) {
         expireStaleRuns();
 
-        findReadableAttempt(attemptId, requester)
-                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+        attemptReader.requireReadable(attemptId, requester);
 
         CodeRunView run = codeRunRepository.findByIdAndAttemptId(runId, attemptId)
                 .orElseThrow(() -> new CodeRunNotFoundException(attemptId, runId));
@@ -257,21 +254,5 @@ public class CodeRunService {
         if (expired > 0) {
             log.warn("[CODE RUN] 좌초된 실행 {}건을 RUNNER_ERROR로 회수했습니다.", expired);
         }
-    }
-
-    private java.util.Optional<AttemptView> findAttempt(Long attemptId, AttemptOwner owner) {
-        if (owner.isUser()) {
-            return attemptQueryRepository.findByIdAndUserId(attemptId, owner.userId());
-        }
-        return attemptQueryRepository.findByIdAndGuestSessionId(attemptId, owner.guestSessionId());
-    }
-
-    /**
-     * 읽기 경로가 보는 어템프트 — 내 것이거나, 제출 완료라 누구에게나 열린 것.
-     */
-    private java.util.Optional<AttemptView> findReadableAttempt(Long attemptId, AttemptOwner requester) {
-        return findAttempt(attemptId, requester)
-                .or(() -> attemptQueryRepository.findById(attemptId)
-                        .filter(attempt -> attempt.status() == AttemptStatus.SUBMITTED));
     }
 }
