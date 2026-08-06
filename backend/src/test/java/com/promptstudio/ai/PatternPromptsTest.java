@@ -313,10 +313,10 @@ class PatternPromptsTest {
     @Test
     void 제목_줄을_이름과_뜻풀이로_조립한다() {
         String rendered = PatternPrompts.renderTurn(new OpenAiFeedbackGenerator.TurnEntry(
-                List.of(), "vibe coding", "AI가 낸 코드를 안 열고 넘긴 방식", "턴 3 프롬프트에 그 파일이 안 나와요."));
+                List.of(), "vibe coding", "AI가 낸 코드를 안 열고 넘긴 방식", "이 턴 프롬프트에 그 파일이 안 나와요."));
 
         assertThat(rendered).isEqualTo(
-                "### 이 턴의 이름\nvibe coding — AI가 낸 코드를 안 열고 넘긴 방식\n턴 3 프롬프트에 그 파일이 안 나와요.");
+                "### 이 턴의 이름\nvibe coding — AI가 낸 코드를 안 열고 넘긴 방식\n이 턴 프롬프트에 그 파일이 안 나와요.");
     }
 
     /**

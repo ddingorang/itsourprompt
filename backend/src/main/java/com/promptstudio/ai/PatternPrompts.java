@@ -39,9 +39,9 @@ final class PatternPrompts {
             new Example("코드 확인이 필요합니다", "바뀐 코드를 읽으세요"),
             new Example(
                     "diff를 안 여시고 이 턴 프롬프트에도 파일 이름이 없어서 AI가 정한 것을 그대로 두셨어요",
-                    "턴 2에서 diff를 안 여셨어요. 턴 3 프롬프트에도 OrderValidator가 안 나와요"),
-            new Example("AI가 만든 걸 안 보셨어요", "AI가 만든 OrderValidator를 턴 3에서 안 부르셨어요"),
-            new Example("확인이 부족해요", "AI가 고친 세 파일 중 턴 3에서 부르신 것은 OrderService 하나예요"),
+                    "턴 2에서 AI가 OrderValidator를 새로 만들었어요. 이 턴 프롬프트에 그 이름이 안 나와요"),
+            new Example("AI가 만든 걸 안 보셨어요", "AI가 턴 2에 만든 OrderValidator를 이 턴에서 안 부르셨어요"),
+            new Example("확인이 부족해요", "AI가 턴 2에 고친 세 파일 중 이 턴에서 부르신 것은 OrderService 하나예요"),
             new Example("바뀐 파일을 확인하셨어야 해요", "바뀐 파일을 먼저 여세요")
     );
 
