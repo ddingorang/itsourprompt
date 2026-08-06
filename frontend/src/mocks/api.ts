@@ -16,6 +16,7 @@ import type {
 import type {
   ProblemDetail,
   ProblemListResponse,
+  RepositoryFile,
 } from '../features/problem/types';
 import type { ProblemRanking, RankingEntry } from '../features/ranking/types';
 import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
@@ -102,6 +103,9 @@ export async function getMockProblemDetail(problemId: number): Promise<ProblemDe
   return { ...problemDetail, id: problemId };
 }
 
+/** 목에서 나를 부르는 이름. 랭킹의 내 줄과 어템프트 주인이 같은 이름이어야 한다. */
+const MY_MOCK_OWNER_LABEL = '내닉네임';
+
 const mockRankingNicknames = [
   '프롬프트왕',
   '토큰줍는사람',
@@ -138,7 +142,7 @@ function buildMockRankingEntry(
     // 피드백으로 갈 수 있다. 등수는 동점으로 겹치므로 자리(index)로 ID를 가른다.
     attemptId: mine ? MY_RANKED_ATTEMPT_ID : RANKED_ATTEMPT_ID_BASE + index + 1,
     mine,
-    ownerLabel: mine ? '내닉네임' : nickname,
+    ownerLabel: mine ? MY_MOCK_OWNER_LABEL : nickname,
     cost: 0.0012 + (rank - 1) * 0.00037,
     uncachedInputTokens: 1500 + (rank - 1) * 220,
     cachedInputTokens: 400 + (rank - 1) * 130,
@@ -219,6 +223,10 @@ export async function createMockAttempt(problemId: number): Promise<Attempt> {
     files: problemDetail.files,
     status: 'IN_PROGRESS',
     turns: [],
+    // 생성 응답만 ownerLabel이 null이다 — 실서버가 이 경로에서만 닉네임을 조인하지
+    // 않는다. 목이 채워 주면 생성 직후 빈칸이 나는 화면을 목에서 못 잡는다.
+    ownerLabel: null,
+    mine: true,
   };
 
   mockAttempts.set(attempt.id, attempt);
@@ -236,26 +244,64 @@ function mockAttemptNotFound(attemptId: number): ApiError {
   });
 }
 
+/**
+ * 랭킹이 가리키는 어템프트를 ID만 보고 지어낸다. 남이 제출한 어템프트를 읽는 상태는
+ * 손으로 만들 수 없어, 목에서 그 화면을 여는 유일한 길이다. 주인은 ID 대역으로 가른다.
+ */
+function buildRankedMockAttempt(attemptId: number): Attempt | null {
+  const mine = attemptId === MY_RANKED_ATTEMPT_ID;
+  if (!mine && attemptId < RANKED_ATTEMPT_ID_BASE) return null;
+
+  const builtTurns = [
+    '게시글 엔티티와 CRUD API 계층을 만들어 주세요.',
+    '앞 턴에서 만든 레코드에 작성 시각을 넣고 목록을 최신순으로 정렬해 주세요.',
+  ].map((prompt, index) => buildMockTurn(prompt, index + 1));
+
+  return {
+    id: attemptId,
+    problemId: problemDetail.id,
+    baseFiles: problemDetail.files,
+    files: [...problemDetail.files, ...builtTurns.map((built) => built.addedFile)],
+    turns: builtTurns.map((built) => built.turn),
+    status: 'SUBMITTED',
+    ownerLabel: mine
+      ? MY_MOCK_OWNER_LABEL
+      : mockRankingNicknames[
+          (attemptId - RANKED_ATTEMPT_ID_BASE - 1) % mockRankingNicknames.length
+        ],
+    mine,
+  };
+}
+
+/**
+ * 메모리에 있으면 그것을, 없으면 랭킹이 가리키는 어템프트를 지어내 담아 둔다 —
+ * 조회와 피드백이 같은 어템프트를 집어야 두 응답이 어긋나지 않는다.
+ */
+function resolveMockAttempt(attemptId: number): Attempt | undefined {
+  const stored = mockAttempts.get(attemptId);
+  if (stored) return stored;
+
+  const ranked = buildRankedMockAttempt(attemptId);
+  if (!ranked) return undefined;
+
+  mockAttempts.set(attemptId, ranked);
+  return ranked;
+}
+
 export async function getMockAttempt(attemptId: number): Promise<Attempt> {
   await delay(200);
 
-  const attempt = mockAttempts.get(attemptId);
+  const attempt = resolveMockAttempt(attemptId);
   if (!attempt) {
     throw mockAttemptNotFound(attemptId);
   }
-  return attempt;
+  // 조회는 생성과 달리 주인 이름을 채워 준다.
+  return { ...attempt, ownerLabel: attempt.ownerLabel ?? MY_MOCK_OWNER_LABEL };
 }
 
-export async function addMockTurn(attemptId: number, prompt: string): Promise<Attempt> {
-  await delay(800);
-
-  const attempt = mockAttempts.get(attemptId);
-  if (!attempt) {
-    throw mockAttemptNotFound(attemptId);
-  }
-
-  const turnNumber = attempt.turns.length + 1;
-  const turnUsage = {
+/** 한 턴의 사용량. 총계를 더하는 쪽이 null을 만나지 않도록 항목을 모두 채운다. */
+function buildMockTurnUsage(turnNumber: number) {
+  return {
     inputTokens: 2500 + (turnNumber - 1) * 320,
     uncachedInputTokens: 1500 + (turnNumber - 1) * 200,
     cachedInputTokens: 1000 + (turnNumber - 1) * 120,
@@ -264,6 +310,18 @@ export async function addMockTurn(attemptId: number, prompt: string): Promise<At
     latencyMs: 260 + (turnNumber - 1) * 35,
     cost: 0.003 + (turnNumber - 1) * 0.0004,
   };
+}
+
+/** 턴 하나와 그 턴이 새로 만든 파일. 턴을 쌓는 자리와 지어내는 자리가 같이 쓴다. */
+function buildMockTurn(
+  prompt: string,
+  turnNumber: number,
+): {
+  addedFile: RepositoryFile;
+  turn: Turn;
+  usage: ReturnType<typeof buildMockTurnUsage>;
+} {
+  const turnUsage = buildMockTurnUsage(turnNumber);
   const addedFile = {
     path: `src/main/java/Post${turnNumber}.java`,
     content: `package com.example.board;
@@ -290,8 +348,26 @@ public record Post${turnNumber}(Long id, String title, String content) {}`,
     usage: turnUsage,
   };
 
+  return { addedFile, turn, usage: turnUsage };
+}
+
+export async function addMockTurn(attemptId: number, prompt: string): Promise<Attempt> {
+  await delay(800);
+
+  const attempt = mockAttempts.get(attemptId);
+  if (!attempt) {
+    throw mockAttemptNotFound(attemptId);
+  }
+
+  const { addedFile, turn, usage: turnUsage } = buildMockTurn(
+    prompt,
+    attempt.turns.length + 1,
+  );
+
   const updated: Attempt = {
     ...attempt,
+    // 턴 추가는 커밋 뒤 다시 읽으므로 생성과 달리 주인 이름이 채워져 온다.
+    ownerLabel: attempt.ownerLabel ?? MY_MOCK_OWNER_LABEL,
     files: [...attempt.files, addedFile],
     turns: [...attempt.turns, turn],
     usage: {
@@ -445,7 +521,8 @@ const PATTERN_SOURCE_NOTE =
 export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedback> {
   await delay(600);
 
-  const attempt = mockAttempts.get(attemptId);
+  // 피드백 조회도 이 함수로 오므로, 랭킹에서 열린 남의 어템프트까지 같이 집는다.
+  const attempt = resolveMockAttempt(attemptId);
   const turns = attempt?.turns ?? [];
 
   mockAttempts.set(attemptId, {
@@ -456,6 +533,8 @@ export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedb
       files: problemDetail.files,
       turns: [],
       status: 'IN_PROGRESS',
+      ownerLabel: MY_MOCK_OWNER_LABEL,
+      mine: true,
     }),
     status: 'SUBMITTED',
   });
