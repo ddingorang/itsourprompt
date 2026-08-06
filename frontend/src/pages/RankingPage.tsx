@@ -62,6 +62,40 @@ function formatSubmittedAt(submittedAt: string | null): string {
   ].join('.');
 }
 
+/** 소요 시간 표기 단위. 큰 것부터 늘어놓아 앞에서부터 첫 0 아닌 칸을 찾는다. */
+const DURATION_UNITS = [
+  { seconds: 86400, label: '일' },
+  { seconds: 3600, label: '시간' },
+  { seconds: 60, label: '분' },
+  { seconds: 1, label: '초' },
+];
+
+/**
+ * 소요 시간을 한글 단위로, 큰 쪽 두 칸까지만 적는다. 42초 / 4분 12초 / 1시간 23분 /
+ * 2일 5시간. 아래 칸이 0이면 생략한다(정확히 2시간이면 "2시간") — 등수를 가르는 숫자가
+ * 아니라 얼마나 걸렸는지 훑는 값이라, 두 칸이면 크기를 읽기에 충분하다. 값이 없으면 '--'.
+ */
+function formatDuration(durationSeconds: number | null): string {
+  if (durationSeconds === null || durationSeconds < 0) return '--';
+
+  // 0초는 어느 단위에도 못 미쳐 -1이 온다 — 마지막 칸(초)으로 떨어뜨린다.
+  const found = DURATION_UNITS.findIndex(
+    (unit) => durationSeconds >= unit.seconds,
+  );
+  const headIndex = found === -1 ? DURATION_UNITS.length - 1 : found;
+  const head = DURATION_UNITS[headIndex];
+  const parts = [`${Math.floor(durationSeconds / head.seconds)}${head.label}`];
+
+  if (headIndex + 1 < DURATION_UNITS.length) {
+    const next = DURATION_UNITS[headIndex + 1];
+    const rest = Math.floor((durationSeconds % head.seconds) / next.seconds);
+
+    if (rest > 0) parts.push(`${rest}${next.label}`);
+  }
+
+  return parts.join(' ');
+}
+
 /**
  * 비용을 소수점 5자리까지만 보이고(그 아래는 반올림해 아예 표시하지 않는다)
  * 뒤쪽 0을 떼어낸다 — 자릿수는 그대로 두되 의미 있는 숫자까지만 밝게 남기기
@@ -495,6 +529,7 @@ export default function RankingPage() {
                 <col className="w-[132px]" />
                 <col className="w-[168px]" />
                 <col className="w-[84px]" />
+                <col className="w-[104px]" />
                 <col className="w-[100px]" />
               </colgroup>
               <thead className="max-[860px]:hidden" role="rowgroup">
@@ -513,6 +548,9 @@ export default function RankingPage() {
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
                     턴
+                  </th>
+                  <th className={headCellClasses} role="columnheader" scope="col">
+                    소요 시간
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
                     제출일
@@ -567,7 +605,7 @@ export default function RankingPage() {
                         {significantCost}
                         <span className="text-[var(--ranking-faint)]">{trailingZeros}</span>
                       </td>
-                      {/* 접힌 줄은 "등수·이름·비용·턴"만 남긴다 — 토큰과 날짜는 숨긴다. */}
+                      {/* 접힌 줄은 "등수·이름·비용·턴"만 남긴다 — 토큰·소요 시간·날짜는 숨긴다. */}
                       <td
                         className={`${cellClasses} text-[12px] whitespace-nowrap text-[var(--ranking-muted)] max-[860px]:hidden`}
                         role="cell"
@@ -583,6 +621,12 @@ export default function RankingPage() {
                         role="cell"
                       >
                         <TurnCount turns={entry.turns} />
+                      </td>
+                      <td
+                        className={`${cellClasses} whitespace-nowrap text-[var(--ranking-muted)] max-[860px]:hidden`}
+                        role="cell"
+                      >
+                        {formatDuration(entry.durationSeconds)}
                       </td>
                       <td
                         className={`${cellClasses} whitespace-nowrap text-[var(--ranking-subtle)] max-[860px]:hidden`}
@@ -649,6 +693,12 @@ export default function RankingPage() {
                     <div className={myBestLabelClasses}>턴</div>
                     <div className="mt-1.5 text-[var(--ranking-muted)]">
                       <TurnCount turns={ranking.myBest.turns} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className={myBestLabelClasses}>소요 시간</div>
+                    <div className="mt-1.5 text-[var(--ranking-muted)]">
+                      {formatDuration(ranking.myBest.durationSeconds)}
                     </div>
                   </div>
                   <div>
