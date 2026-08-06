@@ -78,7 +78,10 @@ class AttemptApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.files.length()").value(1))
                 .andExpect(jsonPath("$.files[0].path").value("src/main/java/Main.java"))
                 .andExpect(jsonPath("$.files[0].content").value("class Main {}"))
-                .andExpect(jsonPath("$.turns.length()").value(0));
+                .andExpect(jsonPath("$.turns.length()").value(0))
+                .andExpect(jsonPath("$.mine").value(true))
+                // 생성 응답은 방금 쓴 엔티티에서 만들고 그 경로는 닉네임을 조인하지 않는다.
+                .andExpect(jsonPath("$.ownerLabel").doesNotExist());
     }
 
     @Test
@@ -90,6 +93,9 @@ class AttemptApiTest extends DatabaseTest {
                         .content("{\"prompt\":\"Hello 출력해줘\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(attemptId))
+                .andExpect(jsonPath("$.mine").value(true))
+                // 턴 추가는 사용량을 얻으려 커밋 후 조회 seam으로 다시 읽으므로 닉네임이 함께 온다.
+                .andExpect(jsonPath("$.ownerLabel").value("test owner"))
                 .andExpect(jsonPath("$.files[0].content").value("생성된 내용"))
                 .andExpect(jsonPath("$.turns.length()").value(1))
                 .andExpect(jsonPath("$.turns[0].prompt").value("Hello 출력해줘"))
