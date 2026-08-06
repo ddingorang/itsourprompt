@@ -267,7 +267,7 @@ export default function FeedbackPage() {
 
   return (
     <div
-      className="feedback-page flex min-h-screen min-w-80 flex-col overflow-x-hidden bg-[var(--feedback-bg)] text-[var(--feedback-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
+      className="feedback-page flex min-h-screen min-w-80 flex-col overflow-x-clip bg-[var(--feedback-bg)] text-[var(--feedback-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
       data-color-mode={colorMode}
     >
       <Header mobileBreakpoint="760" />
@@ -335,7 +335,7 @@ export default function FeedbackPage() {
                 className="mt-4 border border-[var(--feedback-border)] bg-[var(--feedback-surface)]"
                 aria-label="턴별 프롬프트 피드백"
               >
-                <div className="relative border-b border-[var(--feedback-border)]">
+                <div className="sticky top-[66px] z-40 border-b border-[var(--feedback-border)] bg-[var(--feedback-surface)]">
                   <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[220px] place-items-center border-r border-[var(--feedback-border)] bg-[var(--feedback-surface)] font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[var(--feedback-acid)] max-[760px]:hidden">
                     PROMPT HISTORY
                   </span>
