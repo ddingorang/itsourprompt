@@ -158,31 +158,6 @@ public class CodeRunService {
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
     }
 
-    public List<CodeRunSummary> getRuns(Long attemptId, Long userId) {
-        return getRuns(attemptId, AttemptOwner.user(userId));
-    }
-
-    /**
-     * 어템프트의 실행 기록 전체를 최근 순으로 반환한다.
-     *
-     * <p>실행 요청은 202로 접수증(runId)만 주고 결과는 뒤늦게 도착한다. 그 runId가 클라이언트에만
-     * 있으면 새로고침 한 번에 사라지고, 그러면 진행 중인 실행을 조회할 수도 없고 다시 요청할 수도 없다
-     * — 어템프트당 미완료 1건 제약 때문에 409가 나고 TTL 회수까지 기다려야 한다.
-     * 그 상태를 서버에 물어볼 수 있게 하는 것이 이 조회의 목적이다.
-     */
-    public List<CodeRunSummary> getRuns(Long attemptId, AttemptOwner owner) {
-        // 다른 조회 경로와 같은 이유로 먼저 회수한다. 빠뜨리면 좌초된 QUEUED가 "실행 중"으로 보이고,
-        // 그 상태로 새 실행을 시도한 사용자는 409만 받는다 — 화면과 동작이 어긋난다.
-        expireStaleRuns();
-
-        findAttempt(attemptId, owner)
-                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
-
-        List<CodeRunSummary> runs = codeRunRepository.findAllByAttemptId(attemptId);
-
-        return withTallies(runs);
-    }
-
     /**
      * 케이스 집계를 한 번의 쿼리로 붙인다. 실행마다 조회하면 목록 길이에 비례해 쿼리가 늘어난다.
      * 케이스 기록이 없는 실행은 집계가 null로 남는다.
@@ -209,14 +184,20 @@ public class CodeRunService {
     }
 
     /**
-     * 읽기 전용 목록 조회 — 제출 완료(SUBMITTED)면 누구나, 아니면 소유자만.
+     * 어템프트의 실행 기록 전체를 최근 순으로 반환한다. 제출 완료(SUBMITTED)면 누구나, 아니면 소유자만.
+     *
+     * <p>실행 요청은 202로 접수증(runId)만 주고 결과는 뒤늦게 도착한다. 그 runId가 클라이언트에만
+     * 있으면 새로고침 한 번에 사라지고, 그러면 진행 중인 실행을 조회할 수도 없고 다시 요청할 수도 없다
+     * — 어템프트당 미완료 1건 제약 때문에 409가 나고 TTL 회수까지 기다려야 한다.
+     * 그 상태를 서버에 물어볼 수 있게 하는 것이 이 조회의 목적이다.
      *
      * <p>실행 요청과 같은 소유자 조회를 쓰지 않고 갈라 둔 이유는 {@code AttemptService.readAttempt}와 같다:
      * 쓰기 경로가 소유권을 보장하는 자리에 "제출 상태 검사"를 얹으면 공개 범위를 넓히는 변경이
      * 조용히 쓰기까지 넓힌다. 조회는 어느 턴까지 통과했는지를 보여 주므로 공개 대상이다.
      */
     public List<CodeRunSummary> readRuns(Long attemptId, AttemptOwner requester) {
-        // getRuns와 같은 이유로 먼저 회수한다 — 좌초된 QUEUED가 "실행 중"으로 보이면 안 된다.
+        // 조회 전에 먼저 회수한다. 빠뜨리면 좌초된 QUEUED가 "실행 중"으로 보이고, 그 상태로 새 실행을
+        // 시도한 사용자는 409만 받는다 — 화면과 동작이 어긋난다.
         expireStaleRuns();
 
         findReadableAttempt(attemptId, requester)
@@ -228,31 +209,15 @@ public class CodeRunService {
     }
 
     /**
-     * 읽기 전용 단건 조회 — 공개 규칙은 {@link #readRuns}와 같다.
+     * 실행 하나의 상태와 결과. 공개 규칙은 {@link #readRuns}와 같다.
+     *
+     * <p>결과는 폴링으로 받으므로 여기서도 먼저 회수한다 — 워커가 죽어 좌초된 QUEUED를 영원히
+     * "실행 중"으로 보여 주면 사용자는 끝나지 않는 실행을 기다리게 된다.
      */
     public CodeRunView readRun(Long attemptId, AttemptOwner requester, UUID runId) {
         expireStaleRuns();
 
         findReadableAttempt(attemptId, requester)
-                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
-
-        CodeRunView run = codeRunRepository.findByIdAndAttemptId(runId, attemptId)
-                .orElseThrow(() -> new CodeRunNotFoundException(attemptId, runId));
-
-        // 케이스는 별도 테이블이라 따로 읽는다. 진행 중(QUEUED)이면 아직 없으니 조회하지 않는다.
-        return run.status() == CodeRunStatus.QUEUED
-                ? run
-                : run.withCases(codeRunRepository.findCasesByRunId(runId));
-    }
-
-    public CodeRunView getRun(Long attemptId, Long userId, UUID runId) {
-        return getRun(attemptId, AttemptOwner.user(userId), runId);
-    }
-
-    public CodeRunView getRun(Long attemptId, AttemptOwner owner, UUID runId) {
-        expireStaleRuns();
-
-        findAttempt(attemptId, owner)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         CodeRunView run = codeRunRepository.findByIdAndAttemptId(runId, attemptId)
