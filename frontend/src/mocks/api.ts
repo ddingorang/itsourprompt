@@ -17,11 +17,7 @@ import type {
   ProblemDetail,
   ProblemListResponse,
 } from '../features/problem/types';
-import type {
-  ProblemRanking,
-  RankingEntry,
-  RankingOwnerType,
-} from '../features/ranking/types';
+import type { ProblemRanking, RankingEntry } from '../features/ranking/types';
 import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
 
 export const useMocks = import.meta.env.VITE_USE_MOCKS === 'true';
@@ -106,15 +102,15 @@ export async function getMockProblemDetail(problemId: number): Promise<ProblemDe
   return { ...problemDetail, id: problemId };
 }
 
-const mockRankingOwners: { ownerType: RankingOwnerType; ownerLabel: string }[] = [
-  { ownerType: 'USER', ownerLabel: '프롬프트왕' },
-  { ownerType: 'GUEST', ownerLabel: '8f2a' },
-  { ownerType: 'USER', ownerLabel: 'tokenshaver' },
-  { ownerType: 'USER', ownerLabel: '한줄이면충분' },
-  { ownerType: 'GUEST', ownerLabel: 'c41d' },
-  { ownerType: 'USER', ownerLabel: 'minimal_prompt' },
-  { ownerType: 'GUEST', ownerLabel: '0b73' },
-  { ownerType: 'USER', ownerLabel: '캐시장인' },
+const mockRankingNicknames = [
+  '프롬프트왕',
+  '토큰줍는사람',
+  'tokenshaver',
+  '한줄이면충분',
+  'cold_start',
+  'minimal_prompt',
+  '세턴안에끝냄',
+  '캐시장인',
 ];
 
 /**
@@ -126,7 +122,7 @@ function buildMockRankingEntry(
   index: number,
   mineIndex: number | null,
 ): RankingEntry {
-  const owner = mockRankingOwners[index % mockRankingOwners.length];
+  const nickname = mockRankingNicknames[index % mockRankingNicknames.length];
   const mine = index === mineIndex;
 
   return {
@@ -134,8 +130,7 @@ function buildMockRankingEntry(
     // attemptId는 내 줄에만 온다 — 남의 줄에 링크가 생기면 목이 실서버와 어긋난다.
     attemptId: mine ? 4200 + rank : null,
     mine,
-    ownerType: mine ? 'USER' : owner.ownerType,
-    ownerLabel: mine ? '내닉네임' : owner.ownerLabel,
+    ownerLabel: mine ? '내닉네임' : nickname,
     cost: 0.0012 + (rank - 1) * 0.00037,
     uncachedInputTokens: 1500 + (rank - 1) * 220,
     cachedInputTokens: 400 + (rank - 1) * 130,
