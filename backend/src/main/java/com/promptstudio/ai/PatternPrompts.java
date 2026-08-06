@@ -265,6 +265,9 @@ final class PatternPrompts {
      * 전부 `human review`가 됐다. 셋 다 틀렸고 원인은 문구가 아니라 판정 주체였다.
      *
      * <p>그래서 대조를 여기서 한다. {@code String.contains}는 틀릴 수가 없다.
+     *
+     * <p>변경이 없는 앞 턴은 짚을 것이 없으므로 판정 대상이 아니다 — 줄을 만들면 {@code named=false}가
+     * 나가 `vibe coding`으로 오판된다.
      */
     private static void appendReviewCheck(StringBuilder message, List<AttemptView.TurnView> turns) {
         if (turns.size() < 2) {
@@ -274,12 +277,20 @@ final class PatternPrompts {
         StringBuilder lines = new StringBuilder();
 
         for (int index = 1; index < turns.size(); index++) {
+            if (turns.get(index - 1).changes().isEmpty()) {
+                continue;
+            }
+
             if (!lines.isEmpty()) {
                 lines.append("\n");
             }
 
             lines.append("turn=").append(index + 1)
                     .append(" named=").append(namesPreviousChange(turns.get(index), turns.get(index - 1)));
+        }
+
+        if (lines.isEmpty()) {
+            return;
         }
 
         FeedbackPrompts.appendTag(message, REVIEW_TAG, lines.toString());

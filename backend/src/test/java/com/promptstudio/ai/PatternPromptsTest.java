@@ -235,6 +235,38 @@ class PatternPromptsTest {
     }
 
     /**
+     * 앞 턴이 아무 파일도 안 바꿨으면 짚을 것이 없다. 줄을 만들면 {@code named=false}가 나가
+     * 짚지 않은 턴으로 오판된다.
+     */
+    @Test
+    void 앞_턴에_변경_파일이_없으면_줄을_싣지_않는다() {
+        String prompt = PatternPrompts.userPrompt(problem, attemptWith(
+                new AttemptView.TurnView("첫 프롬프트", "첫 요약", List.of(
+                        new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "class Main {}")
+                ), List.of(), null, null, null),
+                new AttemptView.TurnView("이건 뭐 하는 코드야", "두 번째 요약", List.of(), List.of(), null, null, null),
+                new AttemptView.TurnView("노란 아이템도 추가해 줘", "세 번째 요약", List.of(), List.of(), null, null, null)
+        ));
+
+        assertThat(prompt)
+                .contains("turn=2 named=")
+                .doesNotContain("turn=3 named=");
+    }
+
+    /**
+     * 남는 줄이 하나도 없으면 태그 자체를 싣지 않는다. 빈 태그는 판정이 없다는 뜻으로 읽히지 않는다.
+     */
+    @Test
+    void 모든_앞_턴에_변경이_없으면_태그를_만들지_않는다() {
+        String prompt = PatternPrompts.userPrompt(problem, attemptWith(
+                new AttemptView.TurnView("첫 프롬프트", "첫 요약", List.of(), List.of(), null, null, null),
+                new AttemptView.TurnView("두 번째 프롬프트", "두 번째 요약", List.of(), List.of(), null, null, null)
+        ));
+
+        assertThat(prompt).doesNotContain("<" + PatternPrompts.REVIEW_TAG + ">");
+    }
+
+    /**
      * 사용자가 프롬프트에 이 태그를 그대로 적으면 계산 결과를 위조할 수 있다. 여는 꺾쇠를 죽인다.
      */
     @Test
