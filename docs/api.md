@@ -127,7 +127,7 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 
 ### GET /api/problems
 
-랜딩 화면에서 고를 수 있는 문제의 ID와 제목만 반환한다. 비활성 문제는 목록에서 제외된다.
+랜딩 화면에서 고를 수 있는 문제의 요약을 반환한다. 명세와 스켈레톤 파일은 빠진다. 비활성 문제는 목록에서 제외된다.
 
 - **인증**: 불필요
 - **파라미터**: 없음
@@ -139,13 +139,15 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 | `problems` | array | 문제 요약 목록 (비어 있을 수 있음) |
 | `problems[].id` | number | 문제 ID |
 | `problems[].title` | string | 문제 제목 |
+| `problems[].type` | string | `coding` 또는 `game` |
+| `problems[].language` | string | 채점 언어 `java` 또는 `python`. game 문제는 채점을 하지 않아 이 값을 쓰지 않는다(기본값 `java`가 그대로 남는다) |
 
 ```json
 {
   "problems": [
-    { "id": 1, "title": "Hello World 출력" },
-    { "id": 2, "title": "SSAFY 출력" },
-    { "id": 3, "title": "환영 메시지 출력" }
+    { "id": 1, "title": "Hello World 출력", "type": "coding", "language": "java" },
+    { "id": 2, "title": "두 수의 합", "type": "coding", "language": "python" },
+    { "id": 3, "title": "블럭 피하기 만들기", "type": "game", "language": "java" }
   ]
 }
 ```
@@ -169,6 +171,7 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
 | `id` | number | 문제 ID |
 | `title` | string | 문제 제목 |
 | `specMd` | string | Markdown 형식의 문제 명세 |
+| `type` | string | `coding` 또는 `game` |
 | `files` | array | 문제가 제공하는 스켈레톤 파일 목록 |
 | `files[].path` | string | 파일 경로 |
 | `files[].content` | string | 파일 내용 |
@@ -178,6 +181,7 @@ CSRF는 비활성화되어 있어 상태 변경 요청에 CSRF 토큰이 필요�
   "id": 1,
   "title": "Hello World 출력",
   "specMd": "# Hello World 출력\n\n표준 출력으로 `Hello, World!`를 출력하세요.\n",
+  "type": "coding",
   "files": [
     {
       "path": "src/main/java/Main.java",
