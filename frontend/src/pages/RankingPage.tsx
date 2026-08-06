@@ -386,8 +386,10 @@ export default function RankingPage() {
         )}
 
         {tabProblems.length > 0 && (
+          // 표를 한참 내려다보다가도 문제를 갈아탈 수 있게 헤더(66px) 아래 붙인다.
+          // 배경이 이미 불투명해 밑줄이 비쳐 오르지는 않는다.
           <section
-            className="border border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)]"
+            className="sticky top-[66px] z-40 border border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)]"
             aria-label="문제 선택"
           >
             <div className="relative">
