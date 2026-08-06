@@ -483,6 +483,7 @@ function GameView({
               participant={participant}
               peer={rtc.peers.get(participant.userId)}
               score={scores.get(participant.userId) ?? null}
+              turnTimeLimitSeconds={room.turnTimeLimitSeconds}
             />
           ))}
         </div>
@@ -643,6 +644,7 @@ function SeatCard({
   participant,
   peer,
   score,
+  turnTimeLimitSeconds,
 }: {
   current: boolean;
   deadline: string | null;
@@ -650,6 +652,7 @@ function SeatCard({
   participant: RelayParticipant;
   peer: RelayPeerView | undefined;
   score: number | null;
+  turnTimeLimitSeconds: number;
 }) {
   return (
     <div
@@ -679,12 +682,19 @@ function SeatCard({
           {current && deadline ? (
             <TurnCountdown deadline={deadline} />
           ) : (
-            <span className="font-mono text-[11px] font-bold text-[#777]">⏱ 2:00</span>
+            <span className="font-mono text-[11px] font-bold text-[#777]">
+              ⏱ {formatSeconds(turnTimeLimitSeconds)}
+            </span>
           )}
         </span>
       </div>
     </div>
   );
+}
+
+/** m:ss로 표시한다. 카운트다운과 대기 중인 좌석의 제한시간 표시가 같은 형식을 쓴다. */
+function formatSeconds(totalSeconds: number): string {
+  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
 }
 
 /**
@@ -719,7 +729,7 @@ function TurnCountdown({ deadline }: { deadline: string }) {
     <span
       className={`font-mono text-[11px] font-bold whitespace-nowrap ${urgent ? 'text-[#ff786b]' : 'text-[#d6ff50]'}`}
     >
-      ⏱ {Math.floor(totalSeconds / 60)}:{String(totalSeconds % 60).padStart(2, '0')}
+      ⏱ {formatSeconds(totalSeconds)}
     </span>
   );
 }

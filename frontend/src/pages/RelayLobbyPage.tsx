@@ -20,7 +20,21 @@ const fieldClasses =
 
 const LAP_CHOICES = [1, 2, 3] as const;
 const SIZE_CHOICES = [2, 3, 4, 5, 6] as const;
+/** 백엔드 RelayRoom.MIN/MAX_TURN_TIME_LIMIT_SECONDS(30~300) 안에서 고른 프리셋. */
+const TURN_TIME_LIMIT_CHOICES = [30, 60, 90, 120, 180, 240, 300] as const;
+/** 안 정하면 서버가 채우는 기본값과 같다(relay.turn-input-timeout, 2분). */
+const DEFAULT_TURN_TIME_LIMIT_SECONDS = 120;
 const ROOMS_PER_PAGE = 3;
+
+function formatTurnTimeLimit(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+
+  if (minutes === 0) return `${remainder}초`;
+  if (remainder === 0) return `${minutes}분`;
+
+  return `${minutes}분 ${remainder}초`;
+}
 
 /** 백엔드 RelayRoom.MAX_NAME_LENGTH와 같은 값. 로비 목록 한 줄에 들어가는 길이. */
 const ROOM_NAME_MAX_LENGTH = 30;
@@ -43,6 +57,9 @@ export default function RelayLobbyPage() {
   const [problemId, setProblemId] = useState<number | null>(null);
   const [totalLaps, setTotalLaps] = useState<number>(1);
   const [maxParticipants, setMaxParticipants] = useState<number>(3);
+  const [turnTimeLimitSeconds, setTurnTimeLimitSeconds] = useState<number>(
+    DEFAULT_TURN_TIME_LIMIT_SECONDS,
+  );
   const [creating, setCreating] = useState(false);
   const [rooms, setRooms] = useState<RelayRoomSummary[]>([]);
   const [roomPage, setRoomPage] = useState(0);
@@ -97,7 +114,13 @@ export default function RelayLobbyPage() {
     setCreating(true);
     setError(null);
     try {
-      const room = await createRelayRoom(name, problemId, totalLaps, maxParticipants);
+      const room = await createRelayRoom(
+        name,
+        problemId,
+        totalLaps,
+        maxParticipants,
+        turnTimeLimitSeconds,
+      );
       navigate(`/relay/rooms/${room.roomId}`);
     } catch (cause) {
       setError(
@@ -321,6 +344,25 @@ export default function RelayLobbyPage() {
                 </select>
               </label>
             </div>
+
+            <label className="grid gap-1.5">
+              <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
+                TURN TIME LIMIT — 주자 한 명의 입력 제한시간
+              </span>
+              <select
+                className={fieldClasses}
+                onChange={(event) =>
+                  setTurnTimeLimitSeconds(Number(event.target.value))
+                }
+                value={turnTimeLimitSeconds}
+              >
+                {TURN_TIME_LIMIT_CHOICES.map((seconds) => (
+                  <option key={seconds} value={seconds}>
+                    {formatTurnTimeLimit(seconds)}
+                  </option>
+                ))}
+              </select>
+            </label>
 
             <Button
               disabled={!roomName.trim() || problemId === null || creating}
