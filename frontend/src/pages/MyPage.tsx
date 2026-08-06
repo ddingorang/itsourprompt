@@ -18,7 +18,7 @@ import { usePagination } from '../shared/hooks/usePagination';
 const SUBMISSIONS_PER_PAGE = 5;
 const PAGES_PER_GROUP = 5;
 
-/** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (MEMBER SINCE 표기용) */
+/** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (가입일 표기용) */
 function formatMemberSince(createdAt: string): string {
   const date = new Date(createdAt);
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -201,12 +201,12 @@ export default function MyPage() {
   ).size;
   const stats = [
     {
-      label: 'SOLVED',
+      label: '풀어낸 문제',
       value: isLoadingAttempts ? '--' : String(solvedCount),
       suffix: null,
     },
     {
-      label: 'SUBMISSIONS',
+      label: '제출 횟수',
       value: isLoadingAttempts ? '--' : String(submittedAttempts.length),
       suffix: null,
     },
@@ -220,8 +220,8 @@ export default function MyPage() {
       <Header />
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-24 max-[1200px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
-        <h1 className="pb-5 font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--my-page-acid)]">
-          USER PROFILE
+        <h1 className="pb-5 text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--my-page-acid)]">
+          내 정보
         </h1>
 
         <section className="grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[var(--my-page-text)] max-[1200px]:grid-cols-1">
@@ -235,8 +235,8 @@ export default function MyPage() {
                 {user.nickname.charAt(0).toUpperCase()}
               </div>
               <div>
-                <p className="mb-1 font-mono text-[13px] tracking-[0.12em] text-[var(--my-page-subtle)]">
-                  USER NAME
+                <p className="mb-1 text-[13px] text-[var(--my-page-subtle)]">
+                  닉네임
                 </p>
                 <h2 className="text-[clamp(28px,4vw,42px)] leading-none font-black tracking-[-0.05em]">
                   {user.nickname}
@@ -245,9 +245,9 @@ export default function MyPage() {
             </div>
 
             <div>
-              <span className="inline-flex items-center gap-2 font-mono text-[13px] tracking-[0.08em] text-[var(--my-page-subtle)]">
+              <span className="inline-flex items-center gap-2 text-[13px] text-[var(--my-page-subtle)]">
                 <span className="size-1.5 rounded-full bg-[var(--my-page-acid)]" />
-                MEMBER SINCE {formatMemberSince(user.createdAt)}
+                가입일 {formatMemberSince(user.createdAt)}
               </span>
             </div>
           </div>
@@ -258,7 +258,7 @@ export default function MyPage() {
                 className="flex min-h-[130px] flex-col justify-between border-r border-[var(--my-page-border)] p-[clamp(16px,2vw,24px)] last:border-r-0 max-[520px]:min-h-[110px] max-[520px]:border-r-0 max-[520px]:border-b max-[520px]:last:border-b-0"
                 key={stat.label}
               >
-                <span className="font-mono text-[13px] tracking-[0.1em] text-[var(--my-page-subtle)]">
+                <span className="text-[13px] text-[var(--my-page-subtle)]">
                   0{index + 1} / {stat.label}
                 </span>
                 <div className="flex items-baseline gap-2">
@@ -281,8 +281,8 @@ export default function MyPage() {
           ref={submissionHistorySectionRef}
         >
           <div className="flex items-end justify-between gap-6 pb-5 max-[640px]:flex-col max-[640px]:items-start">
-            <div className="font-mono text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--my-page-acid)]">
-              SUBMISSION HISTORY
+            <div className="text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--my-page-acid)]">
+              제출 기록
             </div>
             <div
               className="flex items-center gap-3 pr-2 whitespace-nowrap text-[14px] font-normal tracking-[-0.01em] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
