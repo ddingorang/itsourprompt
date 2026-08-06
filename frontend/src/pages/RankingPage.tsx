@@ -534,9 +534,18 @@ export default function RankingPage() {
                         role="cell"
                       >
                         <div className="flex min-w-0 items-center gap-2">
-                          <span className="truncate [font-family:Arial,'Noto_Sans_KR',sans-serif] text-[15px] tracking-[-0.02em]">
+                          {/*
+                            이름은 사람이 아니라 이 줄의 제출 한 건으로 간다 —
+                            프로필로 읽히지 않게 접근 이름에 "이 제출"을 박아 둔다.
+                          */}
+                          <Link
+                            aria-label={`${entry.ownerLabel}의 이 제출 피드백 보기`}
+                            className="truncate [font-family:Arial,'Noto_Sans_KR',sans-serif] text-[15px] tracking-[-0.02em] underline decoration-[var(--ranking-faint)] underline-offset-[3px] hover:text-[var(--ranking-acid)] hover:decoration-[var(--ranking-acid)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-2"
+                            title={`${entry.ownerLabel}의 이 제출 피드백 보기`}
+                            to={`/attempts/${entry.attemptId}/feedback`}
+                          >
                             {entry.ownerLabel}
-                          </span>
+                          </Link>
                           {entry.mine && (
                             <span className="shrink-0 border border-[var(--ranking-acid)] px-1.5 py-0.5 font-mono text-[10px] leading-none font-bold tracking-[0.08em] text-[var(--ranking-acid)]">
                               YOU
@@ -643,15 +652,13 @@ export default function RankingPage() {
                     </div>
                   </div>
                 </div>
-                {/* attemptId는 내 줄에만 오므로 피드백 링크는 여기서만 걸린다. */}
-                {ranking.myBest.attemptId !== null && (
-                  <Button
-                    className="ranking-primary-action"
-                    to={`/attempts/${ranking.myBest.attemptId}/feedback`}
-                  >
-                    <span className="text-[14px]">피드백 보기 ↗</span>
-                  </Button>
-                )}
+                {/* 표의 이름 링크와 같은 목적지다 — 여긴 이름 대신 버튼으로 놓는다. */}
+                <Button
+                  className="ranking-primary-action"
+                  to={`/attempts/${ranking.myBest.attemptId}/feedback`}
+                >
+                  <span className="text-[14px]">피드백 보기 ↗</span>
+                </Button>
               </div>
             ) : (
               <p className="m-0 mt-3.5 font-mono text-xs leading-[1.7] text-[var(--ranking-muted)]">

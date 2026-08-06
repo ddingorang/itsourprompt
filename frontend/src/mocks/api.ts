@@ -114,6 +114,13 @@ const mockRankingNicknames = [
 ];
 
 /**
+ * 랭킹 줄이 가리키는 목 어템프트 ID의 자리. 내 줄과 남의 줄을 다른 대역에 두어,
+ * 어템프트 조회가 ID만 보고 주인(mine)을 되돌려 줄 수 있게 한다.
+ */
+const MY_RANKED_ATTEMPT_ID = 4100;
+const RANKED_ATTEMPT_ID_BASE = 4200;
+
+/**
  * 랭킹 한 줄을 만든다. 비용·토큰은 등수로 계산해 동점 줄이 같은 값을 갖게 한다 —
  * 등수와 비용이 어긋나면 표가 목에서만 이상해 보인다.
  */
@@ -127,8 +134,9 @@ function buildMockRankingEntry(
 
   return {
     rank,
-    // attemptId는 내 줄에만 온다 — 남의 줄에 링크가 생기면 목이 실서버와 어긋난다.
-    attemptId: mine ? 4200 + rank : null,
+    // attemptId는 모든 줄에 온다 — 랭킹에 오른 제출은 모두 공개라 남의 줄에서도
+    // 피드백으로 갈 수 있다. 등수는 동점으로 겹치므로 자리(index)로 ID를 가른다.
+    attemptId: mine ? MY_RANKED_ATTEMPT_ID : RANKED_ATTEMPT_ID_BASE + index + 1,
     mine,
     ownerLabel: mine ? '내닉네임' : nickname,
     cost: 0.0012 + (rank - 1) * 0.00037,
