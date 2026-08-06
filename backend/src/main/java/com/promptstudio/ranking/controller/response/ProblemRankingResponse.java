@@ -44,7 +44,7 @@ public record ProblemRankingResponse(
             @Schema(description = "등수. 동점은 같은 등수를 받고 다음 등수는 건너뛴다", example = "3")
             int rank,
 
-            @Schema(description = "내 줄일 때만 채워지는 어템프트 ID. 남의 줄은 null이다", example = "42")
+            @Schema(description = "이 줄의 어템프트 ID. 랭킹에서 해당 풀이·피드백 화면으로 이동할 때 쓴다", example = "42")
             Long attemptId,
 
             @Schema(description = "요청자 본인의 줄인지. 한 사람이 여러 줄을 차지할 수 있어 내 줄이 여럿일 수 "
@@ -77,7 +77,9 @@ public record ProblemRankingResponse(
     ) {
 
         /**
-         * 남의 어템프트 ID는 싣지 않는다 — 랭킹은 공개 조회라 표에 실린 ID로 남의 풀이를 두드려볼 수 있다.
+         * attemptId는 모든 줄에 싣는다 — 제출된 어템프트는 이제 누구나 읽을 수 있어 ID를 실어도 새로
+         * 열리는 것이 없고, 랭킹에서 남의 풀이로 가는 빠른 길이 된다. 주인의 신원(사용자 ID·세션 ID)은
+         * 여전히 싣지 않는다.
          *
          * <p>내 줄인지는 소유자 신원으로 판정한다. 최고 기록과 견주면 상위에 오른 내 두 번째 줄이
          * 남의 줄과 구분되지 않는다 — 어템프트 1건이 1줄이라 한 사람이 여러 줄을 차지하기 때문이다.
@@ -87,7 +89,7 @@ public record ProblemRankingResponse(
 
             return new RankingEntryResponse(
                     entry.rank(),
-                    mine ? entry.attemptId() : null,
+                    entry.attemptId(),
                     mine,
                     entry.nickname(),
                     entry.cost(),

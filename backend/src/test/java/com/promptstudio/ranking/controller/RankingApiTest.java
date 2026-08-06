@@ -81,13 +81,13 @@ class RankingApiTest extends DatabaseTest {
     @Test
     void 익명_방문자에게는_내_순위가_없고_게스트_쿠키도_발급하지_않는다() throws Exception {
         Problem problem = newProblem();
-        submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        Long attemptId = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
 
         mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).with(anonymous()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.myBest").doesNotExist())
                 .andExpect(jsonPath("$.entries[0].mine").value(false))
-                .andExpect(jsonPath("$.entries[0].attemptId").doesNotExist())
+                .andExpect(jsonPath("$.entries[0].attemptId").value(attemptId))
                 .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
 
         // 구경만 한 방문자에게 게스트 세션 행이 생기면 안 된다.
@@ -98,7 +98,7 @@ class RankingApiTest extends DatabaseTest {
     void 로그인_사용자에게는_내_최고_기록을_함께_준다() throws Exception {
         Problem problem = newProblem();
         User other = newUser();
-        submittedAttempt(problem, AttemptOwner.user(other.id()), 1);
+        Long others = submittedAttempt(problem, AttemptOwner.user(other.id()), 1);
         Long mine = submittedAttempt(problem, AttemptOwner.user(ownerId), 2);
 
         mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).with(user(principalOf(ownerId))))
@@ -110,7 +110,7 @@ class RankingApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.entries[1].attemptId").value(mine))
                 .andExpect(jsonPath("$.entries[1].mine").value(true))
                 .andExpect(jsonPath("$.entries[0].mine").value(false))
-                .andExpect(jsonPath("$.entries[0].attemptId").doesNotExist());
+                .andExpect(jsonPath("$.entries[0].attemptId").value(others));
     }
 
     /**
@@ -122,7 +122,7 @@ class RankingApiTest extends DatabaseTest {
         Problem problem = newProblem();
         Long cheaper = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
         Long pricier = submittedAttempt(problem, AttemptOwner.user(ownerId), 2);
-        submittedAttempt(problem, AttemptOwner.user(newUser().id()), 3);
+        Long others = submittedAttempt(problem, AttemptOwner.user(newUser().id()), 3);
 
         mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).with(user(principalOf(ownerId))))
                 .andExpect(status().isOk())
@@ -131,7 +131,7 @@ class RankingApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.entries[1].mine").value(true))
                 .andExpect(jsonPath("$.entries[1].attemptId").value(pricier))
                 .andExpect(jsonPath("$.entries[2].mine").value(false))
-                .andExpect(jsonPath("$.entries[2].attemptId").doesNotExist())
+                .andExpect(jsonPath("$.entries[2].attemptId").value(others))
                 .andExpect(jsonPath("$.myBest.attemptId").value(cheaper));
     }
 

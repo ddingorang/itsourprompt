@@ -58,7 +58,9 @@ class AttemptServiceTest extends DatabaseTest {
         assertThat(started.problemId()).isEqualTo(problem.id());
         assertThat(started.files()).containsExactly(SKELETON);
         assertThat(started.turns()).isEmpty();
-        assertThat(attemptService.getAttempt(started.id(), ownerId)).isEqualTo(started);
+        // 엔티티 경로는 닉네임을 조인할 수 없어 null이다.
+        assertThat(attemptService.getAttempt(started.id(), ownerId))
+                .usingRecursiveComparison().ignoringFields("nickname").isEqualTo(started);
     }
 
     @Test
@@ -83,7 +85,9 @@ class AttemptServiceTest extends DatabaseTest {
     void 저장된_어템프트를_ID로_조회한다() {
         AttemptView started = attemptService.startAttempt(newProblem().id(), ownerId, null);
 
-        assertThat(attemptService.getAttempt(started.id(), ownerId)).isEqualTo(started);
+        // 엔티티 경로는 닉네임을 조인할 수 없어 null이다.
+        assertThat(attemptService.getAttempt(started.id(), ownerId))
+                .usingRecursiveComparison().ignoringFields("nickname").isEqualTo(started);
     }
 
     @Test
@@ -119,7 +123,9 @@ class AttemptServiceTest extends DatabaseTest {
 
         assertThat(codeGenerator.receivedProblem().id()).isEqualTo(problem.id());
         assertThat(codeGenerator.receivedProblem().specMd()).isEqualTo("명세");
-        assertThat(codeGenerator.receivedAttempt()).isEqualTo(started);
+        // 엔티티 경로는 닉네임을 조인할 수 없어 null이다.
+        assertThat(codeGenerator.receivedAttempt())
+                .usingRecursiveComparison().ignoringFields("nickname").isEqualTo(started);
         assertThat(codeGenerator.receivedPrompt()).isEqualTo("Hello 출력해줘");
     }
 

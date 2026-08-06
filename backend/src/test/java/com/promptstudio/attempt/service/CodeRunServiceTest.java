@@ -1,5 +1,6 @@
 package com.promptstudio.attempt.service;
 
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.CodeRunResult;
 import com.promptstudio.attempt.domain.CodeRunStatus;
 import com.promptstudio.attempt.domain.CodeRunView;
@@ -157,7 +158,7 @@ class CodeRunServiceTest extends DatabaseTest {
         codeRunService.applyResult(new CodeRunResult(
                 runId, CodeRunStatus.TEST_FAILED, 1, "1 tests failed", "", 900L));
 
-        assertThat(codeRunService.getRun(attemptId, ownerId, runId).turnOrdinal()).isZero();
+        assertThat(codeRunService.readRun(attemptId, AttemptOwner.user(ownerId), runId).turnOrdinal()).isZero();
     }
 
     @Test
@@ -198,7 +199,7 @@ class CodeRunServiceTest extends DatabaseTest {
 
         codeRunService.applyResult(succeeded(queued.id()));
 
-        CodeRunView run = codeRunService.getRun(attemptId, ownerId, queued.id());
+        CodeRunView run = codeRunService.readRun(attemptId, AttemptOwner.user(ownerId), queued.id());
         assertThat(run.status()).isEqualTo(CodeRunStatus.SUCCEEDED);
         assertThat(run.exitCode()).isZero();
         assertThat(run.stdout()).isEqualTo("Hello World\n");
@@ -215,7 +216,7 @@ class CodeRunServiceTest extends DatabaseTest {
         codeRunService.applyResult(new CodeRunResult(
                 queued.id(), CodeRunStatus.RUNTIME_ERROR, 1, "", "펑", 99L));
 
-        CodeRunView run = codeRunService.getRun(attemptId, ownerId, queued.id());
+        CodeRunView run = codeRunService.readRun(attemptId, AttemptOwner.user(ownerId), queued.id());
         assertThat(run.status()).isEqualTo(CodeRunStatus.SUCCEEDED);
         assertThat(run.stderr()).isEmpty();
     }
@@ -226,7 +227,7 @@ class CodeRunServiceTest extends DatabaseTest {
 
         codeRunService.applyResult(succeeded(UUID.randomUUID()));
 
-        assertThatThrownBy(() -> codeRunService.getRun(attemptId, ownerId, UUID.randomUUID()))
+        assertThatThrownBy(() -> codeRunService.readRun(attemptId, AttemptOwner.user(ownerId), UUID.randomUUID()))
                 .isInstanceOf(CodeRunNotFoundException.class);
     }
 
@@ -236,7 +237,7 @@ class CodeRunServiceTest extends DatabaseTest {
         Long otherAttemptId = newAttempt();
         CodeRunView run = codeRunService.requestRun(attemptId, ownerId);
 
-        assertThatThrownBy(() -> codeRunService.getRun(otherAttemptId, ownerId, run.id()))
+        assertThatThrownBy(() -> codeRunService.readRun(otherAttemptId, AttemptOwner.user(ownerId), run.id()))
                 .isInstanceOf(CodeRunNotFoundException.class);
     }
 
@@ -250,7 +251,7 @@ class CodeRunServiceTest extends DatabaseTest {
         int expired = codeRunRepository.expireStale(now.plus(1, ChronoUnit.HOURS), now);
         assertThat(expired).isEqualTo(1);
 
-        CodeRunView recovered = codeRunService.getRun(attemptId, ownerId, stranded.id());
+        CodeRunView recovered = codeRunService.readRun(attemptId, AttemptOwner.user(ownerId), stranded.id());
         assertThat(recovered.status()).isEqualTo(CodeRunStatus.RUNNER_ERROR);
         assertThat(recovered.stderr()).isNotBlank();
 

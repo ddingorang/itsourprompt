@@ -4,6 +4,8 @@ import com.promptstudio.attempt.controller.response.AttemptResponse;
 import com.promptstudio.attempt.controller.response.CodeRunListResponse;
 import com.promptstudio.attempt.controller.response.CodeRunResponse;
 import com.promptstudio.attempt.controller.response.FeedbackResponse;
+import com.promptstudio.attempt.domain.AttemptOwner;
+import com.promptstudio.attempt.domain.AttemptOwnerLabel;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.CodeRunCase;
 import com.promptstudio.attempt.domain.CodeRunCaseTally;
@@ -22,12 +24,18 @@ import java.util.List;
 @Component
 public class AttemptWebMapper {
 
-    public AttemptResponse toAttemptResponse(AttemptView attempt) {
+    /**
+     * 주인의 신원(사용자 ID·세션 ID)은 응답에 싣지 않는다 — 제출된 어템프트는 누구나 읽으므로
+     * 그대로 내보내면 공개 조회로 남의 식별자가 새어 나간다. 표시 이름과 mine 판정만 내보낸다.
+     */
+    public AttemptResponse toAttemptResponse(AttemptView attempt, AttemptOwner requester) {
         List<AttemptResponse.TurnResponse> turns = new ArrayList<>();
 
         for (AttemptView.TurnView turn : attempt.turns()) {
             turns.add(toTurnResponse(turn));
         }
+
+        boolean mine = attempt.owner() != null && attempt.owner().equals(requester);
 
         return new AttemptResponse(
                 attempt.id(),
@@ -36,6 +44,8 @@ public class AttemptWebMapper {
                 toFileResponses(attempt.files()),
                 turns,
                 attempt.status(),
+                AttemptOwnerLabel.of(attempt.owner(), attempt.nickname()),
+                mine,
                 toUsageResponse(attempt.usage())
         );
     }

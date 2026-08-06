@@ -1,5 +1,6 @@
 package com.promptstudio.attempt.repository;
 
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
@@ -49,6 +50,9 @@ import static com.promptstudio.attempt.repository.AttemptTables.GUEST_SESSION_ID
 import static com.promptstudio.attempt.repository.AttemptTables.PATTERN_FEEDBACK;
 import static com.promptstudio.attempt.repository.AttemptTables.PROBLEM_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.STATUS;
+import static com.promptstudio.attempt.repository.AttemptTables.USERS;
+import static com.promptstudio.attempt.repository.AttemptTables.USERS_ID;
+import static com.promptstudio.attempt.repository.AttemptTables.USERS_NICKNAME;
 import static com.promptstudio.attempt.repository.AttemptTables.USER_ID;
 import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_ORDINAL;
 import static com.promptstudio.attempt.repository.AttemptTables.TOOL_CALL_PATH;
@@ -125,12 +129,18 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
         Field<List<AttemptView.TurnView>> turns = turnsField();
         Field<LlmUsageTotals> usage = usageTotalsField();
 
-        return dsl.select(ID, PROBLEM_ID, baseFiles, turns, STATUS, FEEDBACK, PATTERN_FEEDBACK, usage)
+        return dsl.select(
+                        ID, PROBLEM_ID, USER_ID, GUEST_SESSION_ID, USERS_NICKNAME,
+                        baseFiles, turns, STATUS, FEEDBACK, PATTERN_FEEDBACK, usage)
                 .from(ATTEMPT)
+                // 주인의 표시 이름을 같은 왕복에서 얻는다. 게스트 소유는 매칭되는 행이 없어 닉네임이 null이다.
+                .leftJoin(USERS).on(USERS_ID.eq(USER_ID))
                 .where(condition)
                 .fetchOptional(record -> AttemptView.reconstruct(
                         record.get(ID),
                         record.get(PROBLEM_ID),
+                        owner(record.get(USER_ID), record.get(GUEST_SESSION_ID)),
+                        record.get(USERS_NICKNAME),
                         record.get(baseFiles),
                         record.get(turns),
                         AttemptStatus.valueOf(record.get(STATUS)),
@@ -138,6 +148,17 @@ public class JooqAttemptQueryRepository implements AttemptQueryRepository {
                         record.get(PATTERN_FEEDBACK),
                         record.get(usage)
                 ));
+    }
+
+    /**
+     * 소유자 컬럼이 생기기 전 행은 둘 다 비어 있다 — AttemptOwner가 그 조합을 거부하므로 null로 남긴다.
+     */
+    private AttemptOwner owner(Long userId, UUID guestSessionId) {
+        if (userId == null && guestSessionId == null) {
+            return null;
+        }
+
+        return new AttemptOwner(userId, guestSessionId);
     }
 
     private Field<List<AttemptView.TurnView>> turnsField() {

@@ -1,5 +1,6 @@
 package com.promptstudio.ai;
 
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
@@ -87,7 +88,7 @@ class CodeGenerationPromptsTest {
 
     @Test
     void 수정한_파일이_있는_이전_턴도_코드_생성_메시지에_포함하지_않는다() {
-        AttemptView attempt = new AttemptView(1L, 1L, List.of(), List.of(), List.of(
+        AttemptView attempt = new AttemptView(1L, 1L, AttemptOwner.user(1L), null, List.of(), List.of(), List.of(
                 new AttemptView.TurnView("첫 요청", "첫 요약", List.of(
                         new FileChange("src/Main.java", FileChange.ChangeType.MODIFIED, "class Main { void run() {} }")
                 ), List.of(), null, null, null)
@@ -107,7 +108,7 @@ class CodeGenerationPromptsTest {
 
     @Test
     void 변경이_없는_이전_턴도_코드_생성_메시지에_포함하지_않는다() {
-        AttemptView attempt = new AttemptView(1L, 1L, List.of(), List.of(), List.of(
+        AttemptView attempt = new AttemptView(1L, 1L, AttemptOwner.user(1L), null, List.of(), List.of(), List.of(
                 new AttemptView.TurnView("첫 요청", "첫 요약", List.of(), List.of(), null, null, null)
         ), AttemptStatus.IN_PROGRESS, null, null, null);
 
@@ -130,7 +131,8 @@ class CodeGenerationPromptsTest {
     }
 
     private AttemptView attemptWithoutTurns() {
-        return new AttemptView(1L, 1L, List.of(), List.of(new ProblemFile("src/Main.java", "class Main {}")),
+        return new AttemptView(1L, 1L, AttemptOwner.user(1L), null, List.of(),
+                List.of(new ProblemFile("src/Main.java", "class Main {}")),
                 List.of(), AttemptStatus.IN_PROGRESS, null, null, null);
     }
 }

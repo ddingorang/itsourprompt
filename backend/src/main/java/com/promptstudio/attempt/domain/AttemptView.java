@@ -6,6 +6,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * @param owner           이 풀이의 주인. 응답에는 나가지 않는다 — 남의 사용자 ID·세션 ID를 공개 조회로
+ *                        흘리면 안 된다. mine 판정과 표시 이름 조립에만 쓴다.
+ *                        소유자 없는 과거 기록은 null이다
+ * @param nickname        주인이 로그인 사용자일 때의 닉네임. 게스트면 null이고, 조인이 없는 엔티티
+ *                        경로({@link #from})는 USER여도 null이다
  * @param baseFiles       시작 스켈레톤
  * @param files           턴을 재생한 현재 상태
  * @param patternFeedback 세션 전체 pattern 피드백. pattern 피드백 이전에 제출된 어템프트면 null
@@ -14,6 +19,8 @@ import java.util.List;
 public record AttemptView(
         Long id,
         Long problemId,
+        AttemptOwner owner,
+        String nickname,
         List<ProblemFile> baseFiles,
         List<ProblemFile> files,
         List<TurnView> turns,
@@ -42,9 +49,17 @@ public record AttemptView(
             ));
         }
 
+        // 소유자 컬럼이 생기기 전 행은 둘 다 비어 있다(schema.sql의 chk_attempt_exactly_one_owner는
+        // NOT VALID다). AttemptOwner 생성자가 그 조합을 거부하므로 여기서 null로 남긴다.
+        AttemptOwner owner = attempt.userId() == null && attempt.guestSessionId() == null
+                ? null
+                : new AttemptOwner(attempt.userId(), attempt.guestSessionId());
+
         return reconstruct(
                 attempt.id(),
                 attempt.problemId(),
+                owner,
+                null,
                 attempt.baseFiles(),
                 turns,
                 attempt.status(),
@@ -60,6 +75,8 @@ public record AttemptView(
     public static AttemptView reconstruct(
             Long id,
             Long problemId,
+            AttemptOwner owner,
+            String nickname,
             List<ProblemFile> baseFiles,
             List<TurnView> turns,
             AttemptStatus status,
@@ -70,6 +87,8 @@ public record AttemptView(
         return new AttemptView(
                 id,
                 problemId,
+                owner,
+                nickname,
                 List.copyOf(baseFiles),
                 FileReplay.head(baseFiles, turns, TurnView::changes),
                 List.copyOf(turns),

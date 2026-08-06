@@ -22,6 +22,12 @@ public record AttemptResponse(
         List<TurnResponse> turns,
         @Schema(description = "어템프트 상태", example = "IN_PROGRESS")
         AttemptStatus status,
+        @Schema(description = "표시 이름. USER는 닉네임, GUEST는 세션 UUID 앞 네 자('게스트' 접두어는 화면이 붙인다). "
+                + "생성 직후 응답 등 닉네임을 모르는 경로와 소유자 없는 과거 기록은 null", example = "프롬프트왕")
+        String ownerLabel,
+        @Schema(description = "요청자 본인의 어템프트인지. 랭킹에서 남의 풀이로 들어온 화면과 내 풀이 화면을 가른다",
+                example = "true")
+        boolean mine,
         @Schema(description = "어템프트의 LLM 사용량 총계(= 턴별 합계의 합). 기록이 없으면 null")
         AttemptUsageResponse usage
 ) {

@@ -3,6 +3,7 @@ package com.promptstudio.attempt.repository;
 import com.promptstudio.attempt.domain.Attempt;
 import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptLlmCall;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.FileChange;
@@ -16,11 +17,13 @@ import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
 import com.promptstudio.support.DatabaseTest;
+import org.jooq.DSLContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,6 +42,9 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
 
     @Autowired
     private ProblemRepository problemRepository;
+
+    @Autowired
+    private DSLContext dsl;
 
     @Test
     void 저장한_어템프트를_조회한다() {
@@ -155,6 +161,31 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
         assertThat(submitted.status()).isEqualTo(AttemptStatus.SUBMITTED);
         assertThat(submitted.feedback()).isEqualTo("저장된 피드백");
         assertThat(submitted.patternFeedback()).isEqualTo("저장된 패턴 피드백");
+    }
+
+    /**
+     * 주인 표시는 조회 한 번에 딸려 와야 한다 — 화면마다 사용자 조회를 덧붙이면 목록에서 N+1이 된다.
+     */
+    @Test
+    void 소유자와_닉네임을_함께_조회한다() {
+        Attempt saved = attemptRepository.save(Attempt.start(newProblem(), ownerId));
+
+        AttemptView view = attemptQueryRepository.findById(saved.id()).orElseThrow();
+
+        assertThat(view.owner()).isEqualTo(AttemptOwner.user(ownerId));
+        assertThat(view.nickname()).isEqualTo("test owner");
+    }
+
+    @Test
+    void 게스트_소유자는_닉네임_없이_조회된다() {
+        UUID guestSessionId = newGuestSession();
+        Attempt saved = attemptRepository.save(
+                Attempt.start(newProblem(), AttemptOwner.guest(guestSessionId)));
+
+        AttemptView view = attemptQueryRepository.findById(saved.id()).orElseThrow();
+
+        assertThat(view.owner().guestSessionId()).isEqualTo(guestSessionId);
+        assertThat(view.nickname()).isNull();
     }
 
     @Test
@@ -341,5 +372,18 @@ class AttemptQueryRepositoryTest extends DatabaseTest {
     private Problem newProblem() {
         return problemRepository.save(
                 new Problem(null, "Hello World 출력", "# Hello World 출력", List.of(SKELETON), List.of()));
+    }
+
+    /** attempt.guest_session_id에 FK가 걸려 있어 세션 행이 먼저 있어야 한다. */
+    private UUID newGuestSession() {
+        UUID id = UUID.randomUUID();
+
+        dsl.execute(
+                "INSERT INTO guest_session (id, token_hash, created_at, expires_at)"
+                        + " VALUES (?, ?, now(), now() + interval '1 hour')",
+                id, id.toString()
+        );
+
+        return id;
     }
 }

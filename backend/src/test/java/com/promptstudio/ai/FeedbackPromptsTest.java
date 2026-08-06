@@ -1,5 +1,6 @@
 package com.promptstudio.ai;
 
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.CodeRunCaseTally;
@@ -21,7 +22,7 @@ class FeedbackPromptsTest {
 
     @Test
     void 시작_스켈레톤_코드를_경로_태그로_감싸_한_번_포함한다() {
-        AttemptView attempt = new AttemptView(1L, 1L, List.of(
+        AttemptView attempt = new AttemptView(1L, 1L, AttemptOwner.user(1L), null, List.of(
                 new ProblemFile("src/Main.java", "class Main {}")
         ), List.of(), List.of(
                 new AttemptView.TurnView("프롬프트", "요약", List.of(), List.of(), null, null, null)
@@ -277,6 +278,6 @@ class FeedbackPromptsTest {
 
     private AttemptView attemptWith(AttemptView.TurnView... turns) {
         return new AttemptView(
-                1L, 1L, List.of(), List.of(), List.of(turns), AttemptStatus.IN_PROGRESS, null, null, null);
+                1L, 1L, AttemptOwner.user(1L), null, List.of(), List.of(), List.of(turns), AttemptStatus.IN_PROGRESS, null, null, null);
     }
 }
