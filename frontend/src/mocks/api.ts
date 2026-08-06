@@ -118,24 +118,51 @@ const mockRankingNicknames = [
 ];
 
 /**
- * 랭킹 줄이 가리키는 목 어템프트 ID의 자리. 내 줄과 남의 줄을 다른 대역에 두어,
- * 어템프트 조회가 ID만 보고 주인(mine)을 되돌려 줄 수 있게 한다.
+ * 랭킹 줄이 가리키는 목 어템프트 ID를 `기준 + 문제ID*칸수 + 자리`로 짠다.
+ *
+ * ID 하나에 문제까지 실어야 하는 이유는, 어템프트 조회가 받는 것이 ID뿐이기 때문이다.
+ * 문제를 못 실으면 지어낸 어템프트가 어느 랭킹에서 왔든 같은 문제를 말하게 되고,
+ * 그러면 문제 3의 랭킹에서 연 피드백 화면이 "이 문제 풀어보기"로 문제 1을 가리킨다.
+ * 목이 실서버와 어긋나는 자리가 되므로 ID로 되짚을 수 있게 둔다.
  */
-const MY_RANKED_ATTEMPT_ID = 4100;
-const RANKED_ATTEMPT_ID_BASE = 4200;
+const RANKED_ATTEMPT_ID_BASE = 4000;
+const RANKED_SLOTS_PER_PROBLEM = 100;
+
+/** 문제마다 0번 자리는 내 줄이다. 그래야 조회가 ID만 보고 주인을 되돌려 준다. */
+const MY_RANKED_SLOT = 0;
 
 /**
- * 실행 기록이 하나도 없는 남의 제출. 랭킹에 오르려면 마지막 턴이 채점을 통과해야 해서
- * 보통은 기록이 있지만, 랭킹 밖의 제출은 한 번도 돌려 보지 않고 낼 수 있다. 그 화면을
- * 열어 볼 자리가 없으면 기록 없는 경우를 목으로 확인할 수 없다.
+ * 실행 기록이 하나도 없는 남의 제출 자리(어느 문제에서든 99번). 랭킹에 오르려면 마지막
+ * 턴이 채점을 통과해야 해서 보통은 기록이 있지만, 랭킹 밖의 제출은 한 번도 돌려 보지
+ * 않고 낼 수 있다. 그 화면을 열어 볼 자리가 없으면 기록 없는 경우를 목으로 확인할 수 없다.
  */
-const RANKED_ATTEMPT_ID_WITHOUT_RUNS = 4299;
+const RANKED_SLOT_WITHOUT_RUNS = 99;
+
+function rankedAttemptId(problemId: number, slot: number): number {
+  return RANKED_ATTEMPT_ID_BASE + problemId * RANKED_SLOTS_PER_PROBLEM + slot;
+}
+
+/** 지어낸 랭킹 어템프트가 아니면 null. 그때 조회는 404가 된다. */
+function decodeRankedAttemptId(
+  attemptId: number,
+): { problemId: number; slot: number } | null {
+  const offset = attemptId - RANKED_ATTEMPT_ID_BASE;
+  // 문제 ID는 1부터다. 한 칸 아래(offset < 칸수)는 문제 0이라 지어낼 수 없다.
+  if (offset < RANKED_SLOTS_PER_PROBLEM) return null;
+
+  const problemId = Math.floor(offset / RANKED_SLOTS_PER_PROBLEM);
+  // getMockProblemDetail이 404를 내는 대역이면 어템프트도 있을 수 없다.
+  if (problemId >= 100) return null;
+
+  return { problemId, slot: offset % RANKED_SLOTS_PER_PROBLEM };
+}
 
 /**
  * 랭킹 한 줄을 만든다. 비용·토큰은 등수로 계산해 동점 줄이 같은 값을 갖게 한다 —
  * 등수와 비용이 어긋나면 표가 목에서만 이상해 보인다.
  */
 function buildMockRankingEntry(
+  problemId: number,
   rank: number,
   index: number,
   mineIndex: number | null,
@@ -147,7 +174,7 @@ function buildMockRankingEntry(
     rank,
     // attemptId는 모든 줄에 온다 — 랭킹에 오른 제출은 모두 공개라 남의 줄에서도
     // 피드백으로 갈 수 있다. 등수는 동점으로 겹치므로 자리(index)로 ID를 가른다.
-    attemptId: mine ? MY_RANKED_ATTEMPT_ID : RANKED_ATTEMPT_ID_BASE + index + 1,
+    attemptId: rankedAttemptId(problemId, mine ? MY_RANKED_SLOT : index + 1),
     mine,
     ownerLabel: mine ? MY_MOCK_OWNER_LABEL : nickname,
     cost: 0.0012 + (rank - 1) * 0.00037,
@@ -167,7 +194,7 @@ function buildMockRanking(
   totalCount = ranks.length,
 ): ProblemRanking {
   const entries = ranks.map((rank, index) =>
-    buildMockRankingEntry(rank, index, mineIndex),
+    buildMockRankingEntry(problemId, rank, index, mineIndex),
   );
 
   return {
@@ -256,8 +283,11 @@ function mockAttemptNotFound(attemptId: number): ApiError {
  * 손으로 만들 수 없어, 목에서 그 화면을 여는 유일한 길이다. 주인은 ID 대역으로 가른다.
  */
 function buildRankedMockAttempt(attemptId: number): Attempt | null {
-  const mine = attemptId === MY_RANKED_ATTEMPT_ID;
-  if (!mine && attemptId < RANKED_ATTEMPT_ID_BASE) return null;
+  const decoded = decodeRankedAttemptId(attemptId);
+  if (!decoded) return null;
+
+  const { problemId, slot } = decoded;
+  const mine = slot === MY_RANKED_SLOT;
 
   const builtTurns = [
     '게시글 엔티티와 CRUD API 계층을 만들어 주세요.',
@@ -266,16 +296,16 @@ function buildRankedMockAttempt(attemptId: number): Attempt | null {
 
   return {
     id: attemptId,
-    problemId: problemDetail.id,
+    // 이 어템프트가 실제로 푼 문제다. 랭킹 줄에서 왔으면 그 랭킹의 문제이므로,
+    // 피드백 화면의 "이 문제 풀어보기"가 엉뚱한 문제로 가지 않는다.
+    problemId,
     baseFiles: problemDetail.files,
     files: [...problemDetail.files, ...builtTurns.map((built) => built.addedFile)],
     turns: builtTurns.map((built) => built.turn),
     status: 'SUBMITTED',
     ownerLabel: mine
       ? MY_MOCK_OWNER_LABEL
-      : mockRankingNicknames[
-          (attemptId - RANKED_ATTEMPT_ID_BASE - 1) % mockRankingNicknames.length
-        ],
+      : mockRankingNicknames[(slot - 1) % mockRankingNicknames.length],
     mine,
   };
 }
@@ -288,7 +318,7 @@ function buildRankedMockAttempt(attemptId: number): Attempt | null {
  * 링크를 받아 들어온 사람이 확인하러 오는 것도 그 사실이다.
  */
 function seedRankedMockCodeRuns(attemptId: number): void {
-  if (attemptId === RANKED_ATTEMPT_ID_WITHOUT_RUNS) return;
+  if (decodeRankedAttemptId(attemptId)?.slot === RANKED_SLOT_WITHOUT_RUNS) return;
   if (mockCodeRuns.has(attemptId)) return;
 
   mockCodeRuns.set(attemptId, [
@@ -411,6 +441,8 @@ export async function addMockTurn(attemptId: number, prompt: string): Promise<At
   if (!attempt) {
     throw mockAttemptNotFound(attemptId);
   }
+  // 턴 추가도 쓰기다 — 실행 요청과 같은 이유로 주인만 할 수 있다.
+  if (!attempt.mine) throw mockAttemptNotFound(attemptId);
 
   const { addedFile, turn, usage: turnUsage } = buildMockTurn(
     prompt,
@@ -575,11 +607,35 @@ export async function getMockCodeRun(
 const PATTERN_SOURCE_NOTE =
   '\n\n---\n여기 쓴 용어는 AI Coding Dictionary에서 가져왔어요. https://aicodingdictionary.com';
 
+/** 턴 기록으로 피드백 본문을 짓는다. 제출과 조회가 같은 내용을 돌려주게 하는 자리다. */
+function buildMockFeedback(turns: Turn[]): AttemptFeedback {
+  const patternNames = turns.map((_, index) => mockPatternName(index + 1));
+
+  return {
+    turns: turns.map((turn, index) => ({
+      turn: index + 1,
+      feedbackMd: `## 관찰\n\n${index + 1}번째 프롬프트는 "${turn.prompt.slice(0, 30)}…" 형태로 요청했습니다.\n\n## 개선 제안\n\nHTTP 메서드와 경로, 요청·응답 형식을 함께 명시하면 의도가 더 정확히 전달됩니다.`,
+      patternMd: mockPatternMd(index + 1, patternNames[index]),
+    })),
+    overallMd: `## 세션 총평\n\n총 ${turns.length}개의 턴으로 문제를 풀었습니다.\n\n초반 프롬프트에서 도메인 모델과 API 계층을 한 번에 요구하기보다, 단계를 나눠 요청하면 AI가 의도를 덜 추측합니다.`,
+    patternOverallMd: mockPatternOverallMd(patternNames),
+  };
+}
+
+/**
+ * 제출은 쓰기다. 제출 여부와 무관하게 주인만 할 수 있고, 남이 부르면 실서버와 같이
+ * 없는 어템프트로 답한다 — 목이 받아 주면 남의 풀이를 내 이름으로 낼 수 있는 것처럼
+ * 보이고, 그 착각은 실서버에서만 404로 드러난다.
+ *
+ * 피드백 조회와 한 함수였던 것을 가른 이유가 이것이다. 실서버에서 그 둘은 쓰기와
+ * 공개 읽기로 갈리므로, 목이 하나로 묶으면 어느 쪽 규칙도 흉내 낼 수 없다.
+ */
 export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedback> {
   await delay(600);
 
-  // 피드백 조회도 이 함수로 오므로, 랭킹에서 열린 남의 어템프트까지 같이 집는다.
   const attempt = resolveMockAttempt(attemptId);
+  if (attempt && !attempt.mine) throw mockAttemptNotFound(attemptId);
+
   const turns = attempt?.turns ?? [];
 
   mockAttempts.set(attemptId, {
@@ -596,17 +652,30 @@ export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedb
     status: 'SUBMITTED',
   });
 
-  const patternNames = turns.map((_, index) => mockPatternName(index + 1));
+  return buildMockFeedback(turns);
+}
 
-  return {
-    turns: turns.map((turn, index) => ({
-      turn: index + 1,
-      feedbackMd: `## 관찰\n\n${index + 1}번째 프롬프트는 "${turn.prompt.slice(0, 30)}…" 형태로 요청했습니다.\n\n## 개선 제안\n\nHTTP 메서드와 경로, 요청·응답 형식을 함께 명시하면 의도가 더 정확히 전달됩니다.`,
-      patternMd: mockPatternMd(index + 1, patternNames[index]),
-    })),
-    overallMd: `## 세션 총평\n\n총 ${turns.length}개의 턴으로 문제를 풀었습니다.\n\n초반 프롬프트에서 도메인 모델과 API 계층을 한 번에 요구하기보다, 단계를 나눠 요청하면 AI가 의도를 덜 추측합니다.`,
-    patternOverallMd: mockPatternOverallMd(patternNames),
-  };
+/**
+ * 피드백 조회는 공개 읽기다. 제출된 어템프트면 주인이 아니어도 200이고, 제출 전이면
+ * 실서버와 같이 feedback-not-found다 — 화면이 그 code로 "아직 제출하지 않았습니다"
+ * 안내를 고르므로 attempt-not-found로 뭉뚱그리면 목에서만 다른 화면이 나온다.
+ */
+export async function getMockAttemptFeedback(
+  attemptId: number,
+): Promise<AttemptFeedback> {
+  await delay(600);
+
+  const attempt = resolveMockAttempt(attemptId);
+  if (!attempt) throw mockAttemptNotFound(attemptId);
+
+  if (attempt.status !== 'SUBMITTED') {
+    throw new ApiError(404, {
+      code: API_ERROR_CODES.feedbackNotFound,
+      message: `목 어템프트 ${attemptId}는 아직 제출되지 않았습니다.`,
+    });
+  }
+
+  return buildMockFeedback(attempt.turns);
 }
 
 /**
