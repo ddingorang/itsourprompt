@@ -7,7 +7,7 @@ import {
   type RefObject,
 } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useBlocker, useNavigate, useParams } from 'react-router-dom';
 
 import { useAuth } from '../features/auth/AuthContext';
 import PromptFeedback from '../features/feedback/PromptFeedback';
@@ -199,6 +199,41 @@ function RelayRoomScreen({
     return () => controller.abort();
   }, [problemId]);
 
+  // 뒤로가기(및 앱 내 다른 화면으로의 이동) 가드. 소켓만 조용히 끊기면 서버가 이탈로
+  // 처리하지 못해, 게임 중이라면 남은 참가자들이 이 주자의 턴 마감을 통째로 기다리게
+  // 된다. 확답을 받고, 나간다면 명시적 leave를 호출해 즉시 스킵되게 한다.
+  // 나가기 버튼 경로는 이미 leave를 마친 뒤라 state.skipLeaveGuard로 가드를 지나간다.
+  const guardActive =
+    room !== null &&
+    room.status !== 'FINISHED' &&
+    !joinError &&
+    socketStatus !== 'replaced' &&
+    socketStatus !== 'rejected';
+  const blocker = useBlocker(
+    ({ nextLocation }) =>
+      guardActive &&
+      !(nextLocation.state as { skipLeaveGuard?: boolean } | null)?.skipLeaveGuard,
+  );
+  const roomStatus = room?.status;
+
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+
+    const message =
+      roomStatus === 'WAITING'
+        ? '대기실에서 나가시겠습니까?'
+        : '게임에서 나가시겠습니까?\n나가면 다시 입장할 수 없으며, 남은 내 차례는 모두 건너뛰어집니다.';
+
+    if (window.confirm(message)) {
+      // leave 실패로 이동까지 막지는 않는다 — 서버의 턴 마감 스킵이 최종 안전망이다.
+      void leaveRelayRoom(roomId)
+        .catch(() => {})
+        .finally(() => blocker.proceed());
+    } else {
+      blocker.reset();
+    }
+  }, [blocker, roomId, roomStatus]);
+
   if (joinError) {
     return (
       <div className={`relay-page ${centeredNoticeClasses}`} data-color-mode={colorMode}>
@@ -263,7 +298,9 @@ function RelayRoomScreen({
           rtc={rtc}
         />
       )}
-      <Footer />
+      {/* 게임 중에는 워크스페이스 화면(ProblemDetailPage와 같은 형태)이라 footer를 그리지
+          않는다 — 헤더가 default로 돌아오는 대기실/결과 화면에서만 보인다. */}
+      {(isWaiting || isFinished) && <Footer />}
       <PeerAudios peers={rtc.peers} />
     </div>
   );
@@ -307,7 +344,8 @@ function WaitingView({
     try {
       await leaveRelayRoom(room.roomId);
     } finally {
-      navigate('/relay');
+      // 이미 leave를 마쳤으므로 뒤로가기 가드의 확인창을 다시 띄우지 않는다.
+      navigate('/relay', { state: { skipLeaveGuard: true } });
     }
   };
 
@@ -368,6 +406,13 @@ function WaitingView({
                 <span className="text-[10px] text-[#777]">(나)</span>
               )}
               <VoiceDot peer={rtc.peers.get(participant.userId)} self={participant.userId === myUserId} />
+              <SpeakingBadge
+                speaking={
+                  participant.userId === myUserId
+                    ? rtc.mySpeaking
+                    : (rtc.peers.get(participant.userId)?.speaking ?? false)
+                }
+              />
             </li>
           ))}
         </ul>
@@ -455,17 +500,27 @@ function GameView({
     [room.participants],
   );
 
+  // 모든 턴을 소진하면 서버의 currentTurnIndex는 totalTurns와 같아지고(0-based의
+  // one-past-the-end) currentLap은 null이 된다. 그대로 그리면 피드백 생성 동안
+  // "TURN 9 / 8 · LAP 1 / 2"처럼 보이므로 마지막 턴/바퀴로 고정한다.
+  const relayOver = room.totalTurns !== null && room.currentTurnIndex >= room.totalTurns;
+  const displayTurn = relayOver ? room.totalTurns : room.currentTurnIndex + 1;
+  const displayLap = relayOver ? room.totalLaps : (room.currentLap ?? 0) + 1;
+
   return (
-    <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[290px_minmax(320px,1fr)_minmax(380px,440px)] max-[900px]:block max-[900px]:overflow-visible">
+    <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[320px_minmax(320px,1fr)_minmax(380px,440px)] max-[900px]:block max-[900px]:overflow-visible">
       {/* 좌: 좌석과 점수 */}
-      <aside className="flex min-h-0 flex-col gap-5 overflow-hidden border-r border-[#343434] px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-r-0 max-[900px]:border-b">
+      {/* 참가자가 많거나 파일 트리가 길면 내용이 열 높이를 넘는다 — 잘라내지 않고
+          세로 스크롤로 넘긴다. 파일 탐색기가 최소 높이(아래 min-h) 밑으로 줄지 않아야
+          스크롤이 생긴다. */}
+      <aside className="workspace-scrollbar flex min-h-0 flex-col gap-5 overflow-x-hidden overflow-y-auto border-r border-[#343434] px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-r-0 max-[900px]:border-b">
         <div>
           <div className="font-mono text-[16px] leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]">
             {room.name ?? `ROOM #${room.roomId}`}
           </div>
           <p className="mt-1 mb-0 font-mono text-[12px] text-[#777]">
-            {room.name ? `#${room.roomId} · ` : ''}TURN {room.currentTurnIndex + 1} /{' '}
-            {room.totalTurns ?? '?'} · LAP {(room.currentLap ?? 0) + 1} / {room.totalLaps}
+            {room.name ? `#${room.roomId} · ` : ''}TURN {displayTurn} /{' '}
+            {room.totalTurns ?? '?'} · LAP {displayLap} / {room.totalLaps}
           </p>
         </div>
 
@@ -483,6 +538,11 @@ function GameView({
               participant={participant}
               peer={rtc.peers.get(participant.userId)}
               score={scores.get(participant.userId) ?? null}
+              speaking={
+                participant.userId === myUserId
+                  ? rtc.mySpeaking
+                  : (rtc.peers.get(participant.userId)?.speaking ?? false)
+              }
               turnTimeLimitSeconds={room.turnTimeLimitSeconds}
             />
           ))}
@@ -593,9 +653,9 @@ function GameView({
 }
 
 /**
- * 게임 중 퇴장. 대기실 퇴장과 달리 좌석이 남고 내 차례가 자동으로 건너뛰어지므로,
- * 실수 클릭 한 번으로 나가지 않게 인라인 확인을 한 단계 거친다. 서버는 게임이 끝나기
- * 전에 다시 입장하면 이탈 표시를 지워 주므로(rejoin) 복귀 가능함을 함께 안내한다.
+ * 게임 중 퇴장. 이탈은 최종 결정이다 — 서버가 재입장을 거절하고 남은 차례는 전부
+ * 건너뛰어진다. 되돌릴 수 없는 만큼 실수 클릭 한 번으로 나가지 않게 인라인 확인을
+ * 한 단계 거치고, 복귀 불가함을 문구로 못박는다.
  */
 function LeaveGameButton({ roomId }: { roomId: number }) {
   const navigate = useNavigate();
@@ -607,7 +667,8 @@ function LeaveGameButton({ roomId }: { roomId: number }) {
     try {
       await leaveRelayRoom(roomId);
     } finally {
-      navigate('/relay');
+      // 이미 leave를 마쳤으므로 뒤로가기 가드의 확인창을 다시 띄우지 않는다.
+      navigate('/relay', { state: { skipLeaveGuard: true } });
     }
   };
 
@@ -622,8 +683,8 @@ function LeaveGameButton({ roomId }: { roomId: number }) {
   return (
     <div className="mt-auto grid gap-2">
       <p className="m-0 font-mono text-[10px] leading-[1.7] text-[#ffb86b]">
-        게임 중에 나가면 내 차례는 건너뛰어집니다. 게임이 끝나기 전에 다시
-        입장하면 이어서 참여할 수 있습니다.
+        게임 중에 나가면 다시 입장할 수 없으며, 남은 내 차례는 모두
+        건너뛰어집니다.
       </p>
       <div className="flex gap-2">
         <Button disabled={leaving} onClick={() => void handleLeave()} variant="secondary">
@@ -644,6 +705,7 @@ function SeatCard({
   participant,
   peer,
   score,
+  speaking,
   turnTimeLimitSeconds,
 }: {
   current: boolean;
@@ -652,6 +714,7 @@ function SeatCard({
   participant: RelayParticipant;
   peer: RelayPeerView | undefined;
   score: number | null;
+  speaking: boolean;
   turnTimeLimitSeconds: number;
 }) {
   return (
@@ -670,19 +733,28 @@ function SeatCard({
         {me && <span className="text-[9px] text-[#777]">(나)</span>}
         {participant.left && <span className="text-[9px] text-[#ff786b]">이탈</span>}
         <VoiceDot peer={peer} self={me} />
+        <SpeakingBadge speaking={speaking} />
         {peer?.reaction && <span className="text-base">{peer.reaction}</span>}
-        <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] text-[#777]">
-          <span>기여도:</span>
+        <span
+          className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] text-[#777]"
+          title="기여도"
+        >
+          {/* ⏱·🎤와 같은 이모지 아이콘 체계. 텍스트 라벨은 title/aria-label로 남긴다. */}
+          <span aria-label="기여도" role="img">
+            ⚡
+          </span>
           <strong className="text-xs text-[#c7c7c2]">
             {score === null ? '—' : score > 0 ? `+${score}` : `${score}`}
           </strong>
           <span>점</span>
         </span>
-        <span className="inline-flex w-[62px] shrink-0 justify-end">
+        {/* 고정 폭을 두지 않는다 — 남는 폭이 전부 점수와 타이머 사이 간격으로 보였다.
+            m:ss는 모노스페이스라 초가 줄어도 폭이 흔들리지 않는다. */}
+        <span className="inline-flex shrink-0 justify-end">
           {current && deadline ? (
             <TurnCountdown deadline={deadline} />
           ) : (
-            <span className="font-mono text-[11px] font-bold text-[#777]">
+            <span className="font-mono text-[12px] font-bold text-[#777]">
               ⏱ {formatSeconds(turnTimeLimitSeconds)}
             </span>
           )}
@@ -716,7 +788,7 @@ function TurnCountdown({ deadline }: { deadline: string }) {
   // 무슨 일이 일어날지 말해주는 편이 낫다.
   if (remainingMs <= 0) {
     return (
-      <span className="font-mono text-[11px] whitespace-nowrap text-[#ff786b]">
+      <span className="font-mono text-[12px] whitespace-nowrap text-[#ff786b]">
         ⏱ 시간 초과
       </span>
     );
@@ -727,7 +799,7 @@ function TurnCountdown({ deadline }: { deadline: string }) {
 
   return (
     <span
-      className={`font-mono text-[11px] font-bold whitespace-nowrap ${urgent ? 'text-[#ff786b]' : 'text-[#d6ff50]'}`}
+      className={`font-mono text-[12px] font-bold whitespace-nowrap ${urgent ? 'text-[#ff786b]' : 'text-[#d6ff50]'}`}
     >
       ⏱ {formatSeconds(totalSeconds)}
     </span>
@@ -966,8 +1038,10 @@ function RelayFileExplorer({
       );
     });
 
+  // min-h-0이면 사이드바가 빡빡할 때 탐색기가 0까지 쪼그라들어 사라진다 — 최소
+  // 높이를 지키고, 넘치는 몫은 사이드바의 세로 스크롤로 넘긴다.
   return (
-    <section className="flex min-h-0 flex-1 flex-col border-t border-[#343434] pt-4 max-[900px]:max-h-[320px] max-[900px]:min-h-[180px]">
+    <section className="flex min-h-[180px] flex-1 flex-col border-t border-[#343434] pt-4 max-[900px]:max-h-[320px]">
       <div className={labelClasses}>FILE EXPLORER</div>
       <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-auto">
         {fileTree.length > 0 ? (
@@ -1337,6 +1411,22 @@ function VoicePanel({
         <p className="m-0 font-mono text-[10px] text-[#ff786b]">{rtc.audioError}</p>
       )}
     </section>
+  );
+}
+
+/**
+ * 발화 중 표시. 자리를 항상 차지해(고정 폭) 나타났다 사라져도 옆 요소가 밀리지 않는다.
+ * 판정은 useRelayRtc가 음량으로 한다 — 이 컴포넌트는 boolean을 그릴 뿐이다.
+ */
+function SpeakingBadge({ speaking }: { speaking: boolean }) {
+  return (
+    <span className="inline-flex w-4 shrink-0 justify-center text-[11px]">
+      {speaking && (
+        <span aria-label="발화 중" role="img">
+          🔊
+        </span>
+      )}
+    </span>
   );
 }
 

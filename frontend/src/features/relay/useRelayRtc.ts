@@ -26,6 +26,8 @@ export interface RelayPeerView {
   reaction: string | null;
   /** 이 피어의 음성 스트림. 오디오를 켠 피어만 값이 있다. */
   stream: MediaStream | null;
+  /** 지금 말하는 중인가. 수신 스트림의 음량을 로컬에서 재서 판정한다. */
+  speaking: boolean;
 }
 
 interface PeerEntry {
@@ -36,6 +38,22 @@ interface PeerEntry {
 
 const REACTION_VISIBLE_MS = 3000;
 
+/* 발화 감지. 임계값 하나로 켜고 끄면 말끝마다 깜빡이므로,
+   임계값을 넘긴 시각을 기억했다가 일정 시간 조용해야 끈다(히스테리시스). */
+const SPEAKING_LEVEL = 0.02;
+const SPEAKING_HOLD_MS = 400;
+const SPEAKING_POLL_MS = 200;
+/** 내 마이크의 probe 키. 피어 userId와 겹치지 않는 값이면 된다. */
+const SELF_PROBE_KEY = -1;
+
+interface VoiceProbe {
+  source: MediaStreamAudioSourceNode;
+  analyser: AnalyserNode;
+  buffer: Uint8Array<ArrayBuffer>;
+  lastLoudAt: number;
+  speaking: boolean;
+}
+
 export function useRelayRtc(
   myUserId: number | null,
   sendSignal: (type: RelaySignalType, targetUserId: number, payload: unknown) => void,
@@ -43,12 +61,16 @@ export function useRelayRtc(
   const [peers, setPeers] = useState<Map<number, RelayPeerView>>(new Map());
   const [audioOn, setAudioOn] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
+  /** 내가 말하는 중인가. 내 항목은 peers에 없으므로 따로 든다 — 마이크가 실제로 잡히는지의 셀프 모니터. */
+  const [mySpeaking, setMySpeaking] = useState(false);
 
   const entriesRef = useRef<Map<number, PeerEntry>>(new Map());
   const iceServersRef = useRef<RTCIceServer[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const myIdRef = useRef<number | null>(myUserId);
   const reactionTimersRef = useRef<Map<number, number>>(new Map());
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const probesRef = useRef<Map<number, VoiceProbe>>(new Map());
 
   useEffect(() => {
     myIdRef.current = myUserId;
@@ -75,12 +97,16 @@ export function useRelayRtc(
 
     const entries = entriesRef.current;
     const timers = reactionTimersRef.current;
+    const probes = probesRef.current;
 
     return () => {
       entries.forEach((entry) => entry.connection.close());
       entries.clear();
       timers.forEach((timer) => window.clearTimeout(timer));
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
+      probes.clear();
+      void audioContextRef.current?.close().catch(() => {});
+      audioContextRef.current = null;
     };
   }, []);
 
@@ -91,6 +117,7 @@ export function useRelayRtc(
         const current = next.get(userId) ?? {
           connectionState: 'new' as RTCPeerConnectionState,
           reaction: null,
+          speaking: false,
           stream: null,
           typing: '',
           userId,
@@ -102,15 +129,80 @@ export function useRelayRtc(
     [],
   );
 
-  const dropPeer = useCallback((userId: number) => {
-    entriesRef.current.get(userId)?.connection.close();
-    entriesRef.current.delete(userId);
-    setPeers((prev) => {
-      const next = new Map(prev);
-      next.delete(userId);
-      return next;
-    });
+  const detachProbe = useCallback((key: number) => {
+    const probe = probesRef.current.get(key);
+    if (!probe) return;
+    probe.source.disconnect();
+    probesRef.current.delete(key);
   }, []);
+
+  const attachProbe = useCallback(
+    (key: number, stream: MediaStream) => {
+      detachProbe(key);
+      if (stream.getAudioTracks().length === 0) return;
+
+      // 사용자 제스처 밖(ontrack)에서 만들어지면 suspended일 수 있다 — 폴링 쪽에서 되살린다.
+      audioContextRef.current ??= new AudioContext();
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      const analyser = audioContextRef.current.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser); // destination에는 잇지 않는다 — 재생은 PeerAudios의 몫이다.
+      probesRef.current.set(key, {
+        analyser,
+        buffer: new Uint8Array(analyser.fftSize),
+        lastLoudAt: 0,
+        source,
+        speaking: false,
+      });
+    },
+    [detachProbe],
+  );
+
+  // 발화 판정 폴링. 음량(RMS)이 임계값을 넘긴 지 SPEAKING_HOLD_MS 안이면 발화 중으로 본다.
+  // 상태 갱신은 판정이 뒤집힐 때만 — 200ms마다 리렌더가 나지 않게.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const context = audioContextRef.current;
+      if (!context || probesRef.current.size === 0) return;
+      if (context.state === 'suspended') void context.resume();
+
+      const now = Date.now();
+      probesRef.current.forEach((probe, key) => {
+        probe.analyser.getByteTimeDomainData(probe.buffer);
+        let sum = 0;
+        for (const sample of probe.buffer) {
+          const deviation = (sample - 128) / 128;
+          sum += deviation * deviation;
+        }
+        if (Math.sqrt(sum / probe.buffer.length) >= SPEAKING_LEVEL) {
+          probe.lastLoudAt = now;
+        }
+
+        const speaking = now - probe.lastLoudAt < SPEAKING_HOLD_MS;
+        if (speaking === probe.speaking) return;
+        probe.speaking = speaking;
+
+        if (key === SELF_PROBE_KEY) setMySpeaking(speaking);
+        else patchPeer(key, { speaking });
+      });
+    }, SPEAKING_POLL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [patchPeer]);
+
+  const dropPeer = useCallback(
+    (userId: number) => {
+      detachProbe(userId);
+      entriesRef.current.get(userId)?.connection.close();
+      entriesRef.current.delete(userId);
+      setPeers((prev) => {
+        const next = new Map(prev);
+        next.delete(userId);
+        return next;
+      });
+    },
+    [detachProbe],
+  );
 
   const wireChannel = useCallback(
     (userId: number, channel: RTCDataChannel) => {
@@ -171,7 +263,9 @@ export function useRelayRtc(
 
       connection.ondatachannel = ({ channel }) => wireChannel(userId, channel);
       connection.ontrack = ({ streams }) => {
-        patchPeer(userId, { stream: streams[0] ?? null });
+        const stream = streams[0] ?? null;
+        patchPeer(userId, { stream });
+        if (stream) attachProbe(userId, stream);
       };
 
       if (initiator) {
@@ -301,6 +395,8 @@ export function useRelayRtc(
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
       localStreamRef.current = null;
+      detachProbe(SELF_PROBE_KEY);
+      setMySpeaking(false);
       setAudioOn(false);
       // 트랙 제거로 재협상을 걸기보다 연결은 유지한다 — 끈 마이크는 무음 트랙일 뿐이다.
       return;
@@ -309,6 +405,7 @@ export function useRelayRtc(
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
+      attachProbe(SELF_PROBE_KEY, stream);
       setAudioError(null);
       setAudioOn(true);
       entriesRef.current.forEach((entry) => {
@@ -319,12 +416,13 @@ export function useRelayRtc(
     } catch {
       setAudioError('마이크를 사용할 수 없습니다. 브라우저 권한을 확인해 주세요.');
     }
-  }, []);
+  }, [attachProbe, detachProbe]);
 
   return {
     audioError,
     audioOn,
     handleEvent,
+    mySpeaking,
     peers,
     sendReaction,
     sendTyping,
