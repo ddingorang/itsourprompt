@@ -29,12 +29,12 @@ final class PatternSchema {
                         "minItems": 0,
                         "maxItems": 5,
                         "items": { "type": "string" },
-                        "description": "이 턴의 판정을 뒷받침하는 근거. 이 턴의 입력 태그 안 문장을 한 글자도 바꾸지 말고 그대로 복사한다. 짚을 것이 없는 턴은 빈 배열."
+                        "description": "이 턴의 판정을 뒷받침하는 근거. 이 턴의 입력 태그와 앞 턴의 changed_file 태그 안 문장을 한 글자도 바꾸지 말고 그대로 복사한다. 짚을 것이 없는 턴은 빈 배열."
                       },
                       "name": {
                         "type": "string",
                         "enum": ["vibe coding", "human review", ""],
-                        "description": "이 턴의 이름. next_prompt_names_changed_file 태그의 named 값을 그대로 옮긴다 — true면 human review, false면 vibe coding. 그 턴의 줄이 없는 마지막 턴만 빈 문자열."
+                        "description": "이 턴의 이름. prompt_names_previous_changed_file 태그의 named 값을 그대로 옮긴다 — true면 human review, false면 vibe coding. 줄이 없는 턴(첫 턴, 앞 턴에 변경 파일이 없는 턴)만 빈 문자열."
                       },
                       "gloss": {
                         "type": "string",

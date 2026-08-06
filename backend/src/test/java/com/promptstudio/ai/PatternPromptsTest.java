@@ -190,7 +190,31 @@ class PatternPromptsTest {
                 .contains("`named=true` → `human review`")
                 .contains("`named=false` → `vibe coding`")
                 .contains("Never overrule that value from your own reading of the prompts")
-                .contains("Whether the AI stayed inside what was asked has no bearing on the name");
+                .contains("Whether the AI stayed inside what was asked has no bearing on the name")
+                .contains("did this turn's prompt come back to what the previous turn changed")
+                .contains("turn 1 has no line")
+                .contains("whose previous turn changed no files");
+    }
+
+    /**
+     * 턴 K의 절이 턴 K+1을 사실로 주장하면 사용자가 아직 읽지 않은 턴을 근거로 받는다. 근거 범위를
+     * 앞 턴 변경과 이 턴 프롬프트 둘로 못 박는다.
+     */
+    @Test
+    void 시스템_프롬프트는_뒤_턴을_근거에서_제외한다() {
+        assertThat(PatternPrompts.systemPrompt())
+                .contains("Turns after this one do not exist")
+                .contains("Use only the previous turn's changed files");
+    }
+
+    /**
+     * 기법도 뒤를 보면 안 된다 — 다음 턴에서 무엇을 하라는 처방은 사용자가 아직 읽지 않은 턴을 가리킨다.
+     */
+    @Test
+    void 시스템_프롬프트는_쓸_기법을_회고형으로_적게_한다() {
+        assertThat(PatternPrompts.systemPrompt())
+                .contains("would have looked like before this turn's prompt was sent")
+                .contains("never a turn the user has not read yet");
     }
 
     /**
@@ -297,14 +321,14 @@ class PatternPromptsTest {
     }
 
     /**
-     * 마지막 턴은 다음 프롬프트가 없어 이름이 빈 문자열로 온다. 그때는 모델이 쓴 문장만 남는다.
+     * 첫 턴은 앞선 결과가 없어 이름이 빈 문자열로 온다. 그때는 모델이 쓴 문장만 남는다.
      */
     @Test
     void 이름이_비면_제목_줄을_붙이지_않는다() {
         String rendered = PatternPrompts.renderTurn(new OpenAiFeedbackGenerator.TurnEntry(
-                List.of(), "", "", "이 턴이 마지막이라 다음 프롬프트가 없어요."));
+                List.of(), "", "", "첫 턴이라 앞선 결과가 없어요."));
 
-        assertThat(rendered).isEqualTo("이 턴이 마지막이라 다음 프롬프트가 없어요.");
+        assertThat(rendered).isEqualTo("첫 턴이라 앞선 결과가 없어요.");
     }
 
     @Test
