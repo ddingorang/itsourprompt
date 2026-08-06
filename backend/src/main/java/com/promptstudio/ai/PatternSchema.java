@@ -31,12 +31,21 @@ final class PatternSchema {
                         "items": { "type": "string" },
                         "description": "이 턴의 판정을 뒷받침하는 근거. 이 턴의 입력 태그 안 문장을 한 글자도 바꾸지 말고 그대로 복사한다. 짚을 것이 없는 턴은 빈 배열."
                       },
+                      "name": {
+                        "type": "string",
+                        "enum": ["vibe coding", "human review", ""],
+                        "description": "이 턴의 이름. next_prompt_names_changed_file 태그의 named 값을 그대로 옮긴다 — true면 human review, false면 vibe coding. 그 턴의 줄이 없는 마지막 턴만 빈 문자열."
+                      },
+                      "gloss": {
+                        "type": "string",
+                        "description": "이 턴에 맞춘 이름의 한국어 뜻풀이 한 줄. 사전 문장을 그대로 베끼지 않는다. 이름이 빈 문자열이면 이것도 빈 문자열."
+                      },
                       "feedback": {
                         "type": "string",
-                        "description": "이 턴의 패턴·쓸 기법 두 절의 한국어 Markdown."
+                        "description": "근거 문장들과 필요하면 `### 쓸 기법` 절. `### 이 턴의 패턴` 제목과 이름 줄은 쓰지 않는다 — 그건 BE가 붙인다."
                       }
                     },
-                    "required": ["quotes", "feedback"],
+                    "required": ["quotes", "name", "gloss", "feedback"],
                     "additionalProperties": false
                   }
                 },

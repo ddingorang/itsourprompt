@@ -251,6 +251,30 @@ class PatternPromptsTest {
                 .doesNotContain("<" + PatternPrompts.REVIEW_TAG + ">turn=1 named=true</");
     }
 
+    /**
+     * 이름을 자유 텍스트에 맡겼더니 계산값을 주고도 호출의 40%가 세션 전체에서 이름을 빼먹었다.
+     * 틀리게 쓴 적은 없고 안 쓴 것이라, 제목 줄을 BE가 조립한다.
+     */
+    @Test
+    void 제목_줄을_이름과_뜻풀이로_조립한다() {
+        String rendered = PatternPrompts.renderTurn(new OpenAiFeedbackGenerator.TurnEntry(
+                List.of(), "vibe coding", "AI가 낸 코드를 안 열고 넘긴 방식", "턴 3 프롬프트에 그 파일이 안 나와요."));
+
+        assertThat(rendered).isEqualTo(
+                "### 이 턴의 패턴\nvibe coding — AI가 낸 코드를 안 열고 넘긴 방식\n턴 3 프롬프트에 그 파일이 안 나와요.");
+    }
+
+    /**
+     * 마지막 턴은 다음 프롬프트가 없어 이름이 빈 문자열로 온다. 그때는 모델이 쓴 문장만 남는다.
+     */
+    @Test
+    void 이름이_비면_제목_줄을_붙이지_않는다() {
+        String rendered = PatternPrompts.renderTurn(new OpenAiFeedbackGenerator.TurnEntry(
+                List.of(), "", "", "이 턴이 마지막이라 다음 프롬프트가 없어요."));
+
+        assertThat(rendered).isEqualTo("이 턴이 마지막이라 다음 프롬프트가 없어요.");
+    }
+
     @Test
     void 시스템_프롬프트는_턴과_총평의_절_제목을_고정한다() {
         assertThat(PatternPrompts.systemPrompt())

@@ -583,7 +583,7 @@ class LiveFeedbackHarnessTest {
                     quotes.add(quote.asText());
                 }
 
-                entries.add(new OpenAiFeedbackGenerator.TurnEntry(quotes, turn.path("feedback").asText()));
+                entries.add(new OpenAiFeedbackGenerator.TurnEntry(quotes, null, null, turn.path("feedback").asText()));
             }
         } catch (IOException exception) {
             return QuoteMetrics.NONE;
@@ -630,7 +630,8 @@ class LiveFeedbackHarnessTest {
                 "OPENAI PATTERN",
                 PatternPrompts.systemPrompt(),
                 (problem, attempt, testResults) -> PatternPrompts.userPrompt(problem, attempt),
-                optionsFactory::forPatternFeedback);
+                optionsFactory::forPatternFeedback,
+                PatternPrompts::renderTurn);
     }
 
     /**

@@ -155,9 +155,14 @@ final class PatternPrompts {
 
                 # Output
                 Return JSON with two fields.
-                - turnFeedbacks: one object per turn, in turn order. Its length must equal the number of turns in the session. Each object carries `quotes` and `feedback`.
+                - turnFeedbacks: one object per turn, in turn order. Its length must equal the number of turns in the session. Each object carries `quotes`, `name`, `gloss` and `feedback`.
                 - overall: one Korean Markdown string about the session as a whole.
-                Inside each `feedback` string use `###` headings. Do not wrap the JSON in code fences.
+                Do not wrap the JSON in code fences.
+
+                ## name and gloss
+                `name` is not yours to choose. Copy it off the computed tag: `named=false` → `vibe coding`, `named=true` → `human review`, and the last turn — the one with no line — gets `""`.
+                `gloss` is the Korean one-liner that follows it, written for what happened in this turn. Never paste the dictionary line back. When `name` is `""`, `gloss` is `""` too.
+                **The heading line is assembled from these two, so do not write it yourself.**
 
                 ## quotes
                 The lines from this turn's own input tags that the name you gave rests on, at most five.
@@ -166,11 +171,12 @@ final class PatternPrompts {
                 Write an empty array when this turn gives you nothing to point at. An empty array is a correct answer; an invented line is not.
 
                 # Each turn's feedback
-                Write these two sections in this order, with the Korean headings `### 이 턴의 패턴` and `### 쓸 기법`.
+                The turn's Markdown is `### 이 턴의 패턴` + the name line + your `feedback` string. Only the last part is yours.
 
-                ## 이 턴의 패턴
-                Open with the term, then the evidence. Name the file, the class, the tool call or the turn number that shows it — a name the user cannot check reads as a label you stuck on.
-                Two or three sentences. When the turn shows nothing to name, write that one sentence here and write no `### 쓸 기법` section at all.
+                ## `feedback` — the evidence, and only that
+                `### 이 턴의 패턴` and the name line are already there; your string continues under them. Start with the evidence, never with the heading or the term.
+                Name the file, the class, the tool call or the turn number that shows it — a name the user cannot check reads as a label you stuck on. Two or three sentences.
+                The last turn has no name, so there its string is the one sentence saying the next prompt does not exist, and nothing else.
 
                 ## 쓸 기법
                 **This section exists only when `### 이 턴의 패턴` named `vibe coding`.** Any other name — `human review`, or no name at all — means this turn has nothing to answer, so the turn's string ends after `### 이 턴의 패턴`. Handing a technique to a turn that already went well reads as a complaint about it.
@@ -227,6 +233,27 @@ final class PatternPrompts {
         }
 
         return message.toString();
+    }
+
+    /**
+     * 제목 줄은 BE가 조립한다.
+     *
+     * <p>이름을 자유 텍스트에 맡겼더니 모델이 계산값을 받고도 호출의 40%에서 세션 전체의 이름을
+     * 통째로 빼먹었다 — 틀린 이름을 쓴 적은 한 번도 없고 안 쓴 것이다. 스키마 enum으로 받으면
+     * 빼먹을 자리가 없어지고, 제목 줄의 모양도 호출마다 흔들리지 않는다.
+     *
+     * <p>마지막 턴은 이름이 빈 문자열이라 모델이 쓴 문장만 남는다.
+     */
+    static String renderTurn(OpenAiFeedbackGenerator.TurnEntry entry) {
+        String name = entry.name();
+
+        if (name == null || name.isBlank()) {
+            return entry.feedback();
+        }
+
+        String gloss = entry.gloss() == null || entry.gloss().isBlank() ? "" : " — " + entry.gloss().trim();
+
+        return "### 이 턴의 패턴\n" + name + gloss + "\n" + entry.feedback();
     }
 
     /**
