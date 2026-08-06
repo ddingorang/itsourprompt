@@ -51,11 +51,7 @@ public record ProblemRankingResponse(
                     + "있다. 상단 목록과 myBest의 중복 표시도 이 값으로 판단한다", example = "false")
             boolean mine,
 
-            @Schema(description = "주인 유형", example = "USER", allowableValues = {"USER", "GUEST"})
-            RankingOwnerType ownerType,
-
-            @Schema(description = "표시 이름. USER는 닉네임, GUEST는 세션 UUID 앞 네 자다"
-                    + "('게스트' 같은 접두어는 화면이 붙인다)", example = "프롬프트왕")
+            @Schema(description = "표시 이름. 닉네임이다", example = "프롬프트왕")
             String ownerLabel,
 
             @Schema(description = "현재 단가로 다시 잰 비용(USD)", example = "0.00300000")
@@ -93,7 +89,6 @@ public record ProblemRankingResponse(
                     entry.rank(),
                     mine ? entry.attemptId() : null,
                     mine,
-                    RankingOwnerType.USER,
                     entry.nickname(),
                     entry.cost(),
                     entry.uncachedInputTokens(),

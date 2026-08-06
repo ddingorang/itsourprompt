@@ -14,8 +14,6 @@ import com.promptstudio.user.domain.User;
 import com.promptstudio.user.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.jooq.DSLContext;
-import org.jooq.Field;
-import org.jooq.impl.SQLDataType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -29,7 +27,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
@@ -71,7 +68,6 @@ class RankingApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.totalCount").value(2))
                 .andExpect(jsonPath("$.entries.length()").value(2))
                 .andExpect(jsonPath("$.entries[0].rank").value(1))
-                .andExpect(jsonPath("$.entries[0].ownerType").value("USER"))
                 .andExpect(jsonPath("$.entries[0].ownerLabel").value("test owner"))
                 .andExpect(jsonPath("$.entries[0].cost").value(0.003))
                 .andExpect(jsonPath("$.entries[0].turns").value(1))
@@ -271,16 +267,6 @@ class RankingApiTest extends DatabaseTest {
         String setCookie = result.getResponse().getHeader(HttpHeaders.SET_COOKIE);
 
         return new Cookie("GUEST_SESSION", setCookie.substring("GUEST_SESSION=".length(), setCookie.indexOf(';')));
-    }
-
-    private String guestSessionIdOf(Long attemptId) {
-        Field<UUID> guestSessionId = field(name("attempt", "guest_session_id"), SQLDataType.UUID);
-
-        return dsl.select(guestSessionId)
-                .from(table(name("attempt")))
-                .where(field(name("attempt", "id"), SQLDataType.BIGINT).eq(attemptId))
-                .fetchOne(guestSessionId)
-                .toString();
     }
 
     private void succeedRun(Long attemptId, int turnOrdinal) {
