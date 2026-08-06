@@ -554,8 +554,13 @@ export default function ProblemDetailPage() {
       }
 
       if (loadedAttempt?.status === 'SUBMITTED') {
+        // 제출된 어템프트는 누구나 열 수 있으므로 "이미 제출된"이 늘 참은 아니다 —
+        // 남의 기록에서는 내가 제출한 적이 없다. 파생 플래그가 아니라 방금 받은
+        // 응답의 mine을 본다(이 시점의 attempt 상태는 아직 갱신 전이다).
         setStatus({
-          message: '이미 제출된 어템프트입니다. 피드백만 확인할 수 있습니다.',
+          message: loadedAttempt.mine
+            ? '이미 제출된 어템프트입니다. 피드백만 확인할 수 있습니다.'
+            : '다른 사람이 제출한 풀이입니다. 읽기만 할 수 있습니다.',
           type: 'normal',
         });
       }
@@ -1612,9 +1617,11 @@ export default function ProblemDetailPage() {
                 onChange={(event) => setPrompt(event.target.value)}
                 onKeyDown={handlePromptKeyDown}
                 placeholder={
-                  isSubmitted
-                    ? '제출이 완료된 어템프트입니다.'
-                    : '문제를 해결할 프롬프트를 입력하세요.'
+                  isOthersAttempt
+                    ? '다른 사람의 풀이라 프롬프트를 쓸 수 없습니다.'
+                    : isSubmitted
+                      ? '제출이 완료된 어템프트입니다.'
+                      : '문제를 해결할 프롬프트를 입력하세요.'
                 }
                 rows={1}
                 value={prompt}
@@ -1689,8 +1696,18 @@ export default function ProblemDetailPage() {
                 fullWidth
                 onClick={handleSubmit}
               >
+                {/*
+                  남의 풀이에서는 제출을 말하지 않는다. 버튼은 활성인 채로 두는데,
+                  랭킹에서 이 주소로 들어온 사람에게 그 사람 피드백으로 가는 길이
+                  여기뿐이기 때문이다 — handleSubmit도 제출된 어템프트면 바로
+                  피드백으로 넘긴다. 문구만 실제로 하는 일에 맞춘다.
+                */}
                 <span className="text-[14px]">
-                  {isSubmitting ? 'LOADING…' : '최종 제출 & 피드백 확인하기 ↗'}
+                  {isSubmitting
+                    ? 'LOADING…'
+                    : isOthersAttempt
+                      ? '이 풀이의 피드백 보기 ↗'
+                      : '최종 제출 & 피드백 확인하기 ↗'}
                 </span>
               </Button>
             </div>
