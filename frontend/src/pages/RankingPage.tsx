@@ -76,7 +76,13 @@ const DURATION_UNITS = [
  * 아니라 얼마나 걸렸는지 훑는 값이라, 두 칸이면 크기를 읽기에 충분하다. 값이 없으면 '--'.
  */
 function formatDuration(durationSeconds: number | null): string {
-  if (durationSeconds === null || durationSeconds < 0) return '--';
+  // 타입은 null만 말하지만 실제로는 undefined도 온다 — durationSeconds를 싣지 않는 옛 백엔드가
+  // 붙어 있으면 그렇다(apiRequest는 응답을 검증 없이 캐스팅한다). null만 걸러내면 그때 표
+  // 전체가 "NaN초"가 된다. 유한한 수가 아니면 전부 모름으로 본다.
+  if (typeof durationSeconds !== 'number' || !Number.isFinite(durationSeconds)) {
+    return '--';
+  }
+  if (durationSeconds < 0) return '--';
 
   // 0초는 어느 단위에도 못 미쳐 -1이 온다 — 마지막 칸(초)으로 떨어뜨린다.
   const found = DURATION_UNITS.findIndex(
