@@ -34,11 +34,17 @@ interface RankingNotice {
   isError: boolean;
 }
 
+/**
+ * 머리글이 한글이라 font-mono와 넓은 자간을 뺀다 — 등폭 글꼴에는 한글 자형이 없어
+ * 낱자마다 대체 글꼴로 떨어지고, 0.06em은 그렇게 벌어진 낱자를 더 벌린다. 페이지
+ * 루트의 Noto Sans KR을 상속시켜 이름 셀·탭 제목과 같은 결로 둔다.
+ */
 const headCellClasses =
-  'border-b border-[var(--ranking-border)] px-2 py-3 text-left font-mono text-[13px] font-bold tracking-[0.06em] text-[var(--ranking-subtle)]';
-/** MY BEST 항목 제목. 표 머리글과 같은 글자 스타일에서 셀 테두리·여백만 뺀 것. */
+  'border-b border-[var(--ranking-border)] px-2 py-3 text-left text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-subtle)]';
+/** MY BEST 항목 제목. 표 머리글과 같은 글자 스타일에서 셀 테두리·여백만 뺀 것.
+    감싼 밴드가 font-mono라 상속만으로는 벗어날 수 없어 글꼴을 직접 적는다. */
 const myBestLabelClasses =
-  'font-mono text-[13px] font-bold tracking-[0.06em] text-[var(--ranking-subtle)]';
+  "[font-family:Arial,'Noto_Sans_KR',sans-serif] text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-subtle)]";
 const cellClasses =
   'border-b border-[var(--ranking-border)] px-2 py-3 font-mono text-[13px] max-[860px]:border-b-0 max-[860px]:py-1';
 
@@ -54,6 +60,46 @@ function formatSubmittedAt(submittedAt: string | null): string {
     String(date.getMonth() + 1).padStart(2, '0'),
     String(date.getDate()).padStart(2, '0'),
   ].join('.');
+}
+
+/** 소요 시간 표기 단위. 큰 것부터 늘어놓아 앞에서부터 첫 0 아닌 칸을 찾는다. */
+const DURATION_UNITS = [
+  { seconds: 86400, label: '일' },
+  { seconds: 3600, label: '시간' },
+  { seconds: 60, label: '분' },
+  { seconds: 1, label: '초' },
+];
+
+/**
+ * 소요 시간을 한글 단위로, 큰 쪽 두 칸까지만 적는다. 42초 / 4분 12초 / 1시간 23분 /
+ * 2일 5시간. 아래 칸이 0이면 생략한다(정확히 2시간이면 "2시간") — 등수를 가르는 숫자가
+ * 아니라 얼마나 걸렸는지 훑는 값이라, 두 칸이면 크기를 읽기에 충분하다. 값이 없으면 '--'.
+ */
+function formatDuration(durationSeconds: number | null): string {
+  // 타입은 null만 말하지만 실제로는 undefined도 온다 — durationSeconds를 싣지 않는 옛 백엔드가
+  // 붙어 있으면 그렇다(apiRequest는 응답을 검증 없이 캐스팅한다). null만 걸러내면 그때 표
+  // 전체가 "NaN초"가 된다. 유한한 수가 아니면 전부 모름으로 본다.
+  if (typeof durationSeconds !== 'number' || !Number.isFinite(durationSeconds)) {
+    return '--';
+  }
+  if (durationSeconds < 0) return '--';
+
+  // 0초는 어느 단위에도 못 미쳐 -1이 온다 — 마지막 칸(초)으로 떨어뜨린다.
+  const found = DURATION_UNITS.findIndex(
+    (unit) => durationSeconds >= unit.seconds,
+  );
+  const headIndex = found === -1 ? DURATION_UNITS.length - 1 : found;
+  const head = DURATION_UNITS[headIndex];
+  const parts = [`${Math.floor(durationSeconds / head.seconds)}${head.label}`];
+
+  if (headIndex + 1 < DURATION_UNITS.length) {
+    const next = DURATION_UNITS[headIndex + 1];
+    const rest = Math.floor((durationSeconds % head.seconds) / next.seconds);
+
+    if (rest > 0) parts.push(`${rest}${next.label}`);
+  }
+
+  return parts.join(' ');
 }
 
 /**
@@ -346,8 +392,10 @@ export default function RankingPage() {
         )}
 
         {tabProblems.length > 0 && (
+          // 표를 한참 내려다보다가도 문제를 갈아탈 수 있게 헤더(66px) 아래 붙인다.
+          // 배경이 이미 불투명해 밑줄이 비쳐 오르지는 않는다.
           <section
-            className="border border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)]"
+            className="sticky top-[66px] z-40 border border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)]"
             aria-label="문제 선택"
           >
             <div className="relative">
@@ -489,27 +537,31 @@ export default function RankingPage() {
                 <col className="w-[132px]" />
                 <col className="w-[168px]" />
                 <col className="w-[84px]" />
+                <col className="w-[104px]" />
                 <col className="w-[100px]" />
               </colgroup>
               <thead className="max-[860px]:hidden" role="rowgroup">
                 <tr role="row">
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    RANK
+                    등수
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    OWNER
+                    이름
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    COST
+                    비용
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    IN·CACHE·OUT
+                    입력·캐시·출력
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    TURNS
+                    턴
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    DATE
+                    소요 시간
+                  </th>
+                  <th className={headCellClasses} role="columnheader" scope="col">
+                    제출일
                   </th>
                 </tr>
               </thead>
@@ -561,7 +613,7 @@ export default function RankingPage() {
                         {significantCost}
                         <span className="text-[var(--ranking-faint)]">{trailingZeros}</span>
                       </td>
-                      {/* 접힌 줄은 "등수·이름·비용·턴"만 남긴다 — 토큰과 날짜는 숨긴다. */}
+                      {/* 접힌 줄은 "등수·이름·비용·턴"만 남긴다 — 토큰·소요 시간·날짜는 숨긴다. */}
                       <td
                         className={`${cellClasses} text-[12px] whitespace-nowrap text-[var(--ranking-muted)] max-[860px]:hidden`}
                         role="cell"
@@ -577,6 +629,16 @@ export default function RankingPage() {
                         role="cell"
                       >
                         <TurnCount turns={entry.turns} />
+                      </td>
+                      {/*
+                        값이 한글이라 머리글과 같은 이유로 등폭 글꼴을 벗긴다 — 모노에는 한글
+                        자형이 없어 "4분 12초"의 숫자와 낱자가 서로 다른 글꼴로 갈린다.
+                      */}
+                      <td
+                        className={`${cellClasses} whitespace-nowrap [font-family:Arial,'Noto_Sans_KR',sans-serif] text-[var(--ranking-muted)] max-[860px]:hidden`}
+                        role="cell"
+                      >
+                        {formatDuration(entry.durationSeconds)}
                       </td>
                       <td
                         className={`${cellClasses} whitespace-nowrap text-[var(--ranking-subtle)] max-[860px]:hidden`}
@@ -614,13 +676,13 @@ export default function RankingPage() {
               <div className="mt-3.5 flex flex-wrap items-end justify-between gap-4">
                 <div className="flex flex-wrap gap-x-8 gap-y-3 font-mono text-[15px]">
                   <div>
-                    <div className={myBestLabelClasses}>RANK</div>
+                    <div className={myBestLabelClasses}>등수</div>
                     <div className="mt-1.5">
                       {String(ranking.myBest.rank).padStart(2, '0')}
                     </div>
                   </div>
                   <div>
-                    <div className={myBestLabelClasses}>COST</div>
+                    <div className={myBestLabelClasses}>비용</div>
                     <div className="mt-1.5">
                       <span className="text-[var(--ranking-subtle)]">$</span>
                       {splitCost(ranking.myBest.cost)[0]}
@@ -630,7 +692,7 @@ export default function RankingPage() {
                     </div>
                   </div>
                   <div>
-                    <div className={myBestLabelClasses}>IN·CACHE·OUT</div>
+                    <div className={myBestLabelClasses}>입력·캐시·출력</div>
                     <div className="mt-1.5 text-[14px] leading-[1.6] text-[var(--ranking-muted)]">
                       {formatTokens(ranking.myBest.uncachedInputTokens)}
                       <span className="text-[var(--ranking-faint)]">/</span>
@@ -640,13 +702,19 @@ export default function RankingPage() {
                     </div>
                   </div>
                   <div>
-                    <div className={myBestLabelClasses}>TURNS</div>
+                    <div className={myBestLabelClasses}>턴</div>
                     <div className="mt-1.5 text-[var(--ranking-muted)]">
                       <TurnCount turns={ranking.myBest.turns} />
                     </div>
                   </div>
                   <div>
-                    <div className={myBestLabelClasses}>DATE</div>
+                    <div className={myBestLabelClasses}>소요 시간</div>
+                    <div className="mt-1.5 [font-family:Arial,'Noto_Sans_KR',sans-serif] text-[var(--ranking-muted)]">
+                      {formatDuration(ranking.myBest.durationSeconds)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={myBestLabelClasses}>제출일</div>
                     <div className="mt-1.5 text-[var(--ranking-subtle)]">
                       {formatSubmittedAt(ranking.myBest.submittedAt)}
                     </div>

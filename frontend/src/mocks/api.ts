@@ -184,6 +184,9 @@ function buildMockRankingEntry(
     turns: 1 + (rank % 4),
     rounds: 2 + (rank % 5),
     submittedAt: `2026-08-0${(rank % 3) + 1}T0${rank % 9}:1${rank % 9}:32Z`,
+    // 표기 네 구간(초·분·시간·일)을 목에서 전부 보여준다. rank 9는 null — 제출 시각을
+    // 모르는 옛 기록의 '--'를 그린다.
+    durationSeconds: rank === 9 ? null : [190800, 42, 252, 4980][rank % 4],
   };
 }
 
