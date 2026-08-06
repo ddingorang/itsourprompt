@@ -42,7 +42,7 @@ final class PatternPrompts {
                     "턴 2에서 diff를 안 여셨어요. 턴 3 프롬프트에도 OrderValidator가 안 나와요"),
             new Example("AI가 만든 걸 안 보셨어요", "AI가 만든 OrderValidator를 턴 3에서 안 부르셨어요"),
             new Example("확인이 부족해요", "AI가 고친 세 파일 중 턴 3에서 부르신 것은 OrderService 하나예요"),
-            new Example("바뀐 파일을 확인하셨어야 해요", "다음 턴에는 바뀐 파일을 먼저 열어 보세요")
+            new Example("바뀐 파일을 확인하셨어야 해요", "바뀐 파일을 먼저 여세요")
     );
 
     /**

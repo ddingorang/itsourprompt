@@ -368,7 +368,7 @@ class PatternPromptsTest {
     void 문체_예문은_pattern_렌즈의_소재를_쓴다() {
         assertThat(PatternPrompts.systemPrompt())
                 .contains("AI가 고친 OrderValidator를 안 읽으셨어요")
-                .contains("다음 턴에는 바뀐 파일을 먼저 열어 보세요")
+                .contains("바뀐 파일을 먼저 여세요")
                 .doesNotContain("AI가 PostService 밖의 AttemptController를 고쳤어요");
     }
 

@@ -31,7 +31,7 @@ final class FeedbackPrompts {
                     "제약 칸이 비어 있어요. 그래서 AI가 PostService 밖까지 고쳤어요"),
             new Example("범위가 넘어갔어요", "AI가 PostService 밖의 AttemptController를 고쳤어요"),
             new Example("제약이 부족해요", "제약 칸에 '어느 파일을 건드리면 안 되는지'가 없어요"),
-            new Example("수정 범위를 적으셨어야 해요", "다음 턴에는 제약 칸에 수정 범위를 적어 보세요")
+            new Example("수정 범위를 적으셨어야 해요", "제약 칸에 수정 범위를 적으세요")
     );
 
     /**
