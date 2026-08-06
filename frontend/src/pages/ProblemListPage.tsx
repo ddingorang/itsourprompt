@@ -121,8 +121,8 @@ export default function ProblemListPage() {
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-16 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
         <header className="flex items-end justify-between gap-6 pb-10 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-4 max-[640px]:pb-8">
-          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--problem-list-acid)]">
-            PROBLEM LIST
+          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--problem-list-acid)]">
+            문제 목록
           </h1>
           <IconLegend />
         </header>
@@ -131,8 +131,8 @@ export default function ProblemListPage() {
           className="border-y border-t-[var(--problem-list-text)] border-b-[var(--problem-list-border)] py-[15px]"
           aria-label="문제 목록 정보"
         >
-          <div className="whitespace-nowrap font-mono text-[11px] font-bold tracking-[0.06em] text-[var(--problem-list-muted)]">
-            AVAILABLE PROBLEMS / {String(problems.length).padStart(2, '0')}
+          <div className="whitespace-nowrap text-[11px] font-bold text-[var(--problem-list-muted)]">
+            전체 문제 / {String(problems.length).padStart(2, '0')}
           </div>
         </section>
 
