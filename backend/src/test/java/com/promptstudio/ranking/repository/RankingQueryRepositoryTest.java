@@ -3,6 +3,7 @@ package com.promptstudio.ranking.repository;
 import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.service.AttemptService;
+import com.promptstudio.guest.repository.GuestAttemptOwnershipRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
@@ -50,6 +51,9 @@ class RankingQueryRepositoryTest extends DatabaseTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private GuestAttemptOwnershipRepository guestAttemptOwnershipRepository;
 
     @Autowired
     private DSLContext dsl;
@@ -227,6 +231,22 @@ class RankingQueryRepositoryTest extends DatabaseTest {
         assertThat(page.entries()).extracting(RankingEntry::attemptId).containsExactly(mine);
         assertThat(page.entries()).extracting(RankingEntry::rank).containsExactly(1);
         assertThat(page.totalCount()).isEqualTo(1);
+    }
+
+    /** 랭킹에서 빠진 게스트에게 남은 길은 로그인 하나뿐이라, 그 길이 열려 있는지를 여기서 지킨다. */
+    @Test
+    void 게스트가_로그인하면_그때까지_푼_기록이_랭킹에_오른다() {
+        Problem problem = newProblem();
+        UUID guestSessionId = newGuestSession();
+        Long attemptId = submittedAttempt(problem, AttemptOwner.guest(guestSessionId), 1);
+        assertThat(top(problem.id(), 10)).isEmpty();
+
+        guestAttemptOwnershipRepository.transferToUser(guestSessionId, ownerId);
+
+        RankingEntry entry = top(problem.id(), 10).getFirst();
+        assertThat(entry.attemptId()).isEqualTo(attemptId);
+        assertThat(entry.userId()).isEqualTo(ownerId);
+        assertThat(entry.nickname()).isEqualTo("test owner");
     }
 
     @Test
