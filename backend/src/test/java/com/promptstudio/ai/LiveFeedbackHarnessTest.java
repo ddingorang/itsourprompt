@@ -298,7 +298,8 @@ class LiveFeedbackHarnessTest {
                 pattern.techniqueScored(),
                 pattern.techniqueHits(),
                 pattern.techniqueOnNonVibe(),
-                pattern.attributionMisses());
+                pattern.attributionMisses(),
+                draft.turnFeedbacks());
     }
 
     /**
@@ -408,6 +409,11 @@ class LiveFeedbackHarnessTest {
 
     /**
      * 절 제목 뒤 첫 줄이 어느 사전 용어로 시작하는지. 절이 없거나 용어로 시작하지 않으면 null이다.
+     *
+     * <p>여는 백틱은 벗기고 본다. 모델은 같은 용어를 {@code automated check}로도
+     * {@code `automated check`}로도 쓰는데, 그 차이를 "절이 없다"로 세면 지표가 모델이 아니라
+     * 마크업을 잰다 — 실제로 그렇게 세어 `쓸 기법`이 30턴 중 13턴에서 없는 것으로 잡혔고,
+     * 본문을 열어 보니 서른 턴 모두에 있었다.
      */
     private String termAfter(Pattern section, String feedback) {
         if (feedback == null) {
@@ -421,6 +427,10 @@ class LiveFeedbackHarnessTest {
         }
 
         String line = matcher.group(1).trim();
+
+        if (line.startsWith("`")) {
+            line = line.substring(1);
+        }
 
         for (String term : TERMS) {
             if (line.startsWith(term)) {
@@ -472,7 +482,8 @@ class LiveFeedbackHarnessTest {
                 0,
                 0,
                 0,
-                0);
+                0,
+                List.of());
     }
 
     /**
@@ -917,6 +928,8 @@ class LiveFeedbackHarnessTest {
      * @param judgementScored 정답을 아는 턴 수(프롬프트 렌즈만)
      * @param decisiveScored  신호가 판정을 뒤집는 턴 수
      * @param ownerships      판정 2의 턴별 문장(프롬프트 렌즈만). 채점하지 않고 기록만 한다
+     * @param turnTexts       모델이 실제로 쓴 턴별 본문. 지표가 떨어졌을 때 원인을 추측하지 않으려면
+     *                        생성물 자체가 있어야 한다 — 지표는 무엇이 빠졌는지만 알려 주고 왜인지는 못 말한다
      */
     record CallRecord(
             String phase,
@@ -948,7 +961,8 @@ class LiveFeedbackHarnessTest {
             int techniqueScored,
             int techniqueHits,
             int techniqueOnNonVibe,
-            int attributionMisses
+            int attributionMisses,
+            List<String> turnTexts
     ) {
     }
 }
