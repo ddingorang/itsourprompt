@@ -511,14 +511,14 @@ function mockPatternOverallMd(names: MockPatternName[]): string {
  */
 function mockPatternMd(turn: number, name: MockPatternName): string {
   if (name === null) {
-    return `### 이 턴의 패턴\n\n이 턴이 마지막이라, AI가 만든 Post${turn}.java를 확인하셨는지는 알 수 없어요.`;
+    return `### 이 턴의 이름\n\n이 턴이 마지막이라, AI가 만든 Post${turn}.java를 확인하셨는지는 알 수 없어요.`;
   }
 
   if (name === 'vibe coding') {
-    return `### 이 턴의 패턴\n\n\`vibe coding\` — AI가 낸 코드를 읽지 않고 받는 방식이에요. AI가 Post${turn}.java를 새로 만들었는데, 턴 ${turn + 1} 프롬프트에 Post${turn}이 안 나와요. AI가 정한 필드 이름을 그대로 두셨어요.\n\n### 쓸 기법\n\n\`human review\` — 사람이 바뀐 코드를 읽고 판단하는 기법이에요. 턴 ${turn + 1}을 보내기 전에 Post${turn}.java를 열고, 필드가 문제에서 요구한 것과 맞는지 확인하세요.`;
+    return `### 이 턴의 이름\n\n\`vibe coding\` — AI가 낸 코드를 읽지 않고 받는 방식이에요. AI가 Post${turn}.java를 새로 만들었는데, 턴 ${turn + 1} 프롬프트에 Post${turn}이 안 나와요. AI가 정한 필드 이름을 그대로 두셨어요.\n\n### 쓸 기법\n\n\`human review\` — 사람이 바뀐 코드를 읽고 판단하는 기법이에요. 턴 ${turn + 1}을 보내기 전에 Post${turn}.java를 열고, 필드가 문제에서 요구한 것과 맞는지 확인하세요.`;
   }
 
-  return `### 이 턴의 패턴\n\n\`human review\` — 사람이 바뀐 코드를 읽고 판단하는 방식이에요. AI가 Post${turn}.java를 새로 만들었고, 턴 ${turn + 1} 프롬프트가 Post${turn}을 다시 불러 고칠 곳을 짚었어요. AI가 정한 것을 그대로 두지 않으셨어요.\n\n### 쓸 기법\n\n\`design concept\` — 무엇을 만들지 사람과 AI가 미리 맞춘 그림이에요. 턴 ${turn + 1}에서 Post${turn + 1}을 요청할 때 Post${turn}과 어떤 관계인지 한 문장으로 함께 적어 보세요.`;
+  return `### 이 턴의 이름\n\n\`human review\` — 사람이 바뀐 코드를 읽고 판단하는 방식이에요. AI가 Post${turn}.java를 새로 만들었고, 턴 ${turn + 1} 프롬프트가 Post${turn}을 다시 불러 고칠 곳을 짚었어요. AI가 정한 것을 그대로 두지 않으셨어요.\n\n### 쓸 기법\n\n\`design concept\` — 무엇을 만들지 사람과 AI가 미리 맞춘 그림이에요. 턴 ${turn + 1}에서 Post${turn + 1}을 요청할 때 Post${turn}과 어떤 관계인지 한 문장으로 함께 적어 보세요.`;
 }
 
 function delay(milliseconds: number): Promise<void> {
