@@ -258,7 +258,9 @@ public class RelayWebSocketHandler extends TextWebSocketHandler {
     private boolean isParticipant(RelayRoomView room, Long userId) {
         for (RelayRoomView.RelayParticipantView participant : room.participants()) {
             if (participant.userId().equals(userId)) {
-                return true;
+                // 게임 중 이탈은 최종 결정이다. REST 입장(join)이 거절하므로 정상 경로로는
+                // 여기 닿지 않지만, 소켓만 직접 여는 우회도 같은 규칙으로 막는다.
+                return !participant.left();
             }
         }
 

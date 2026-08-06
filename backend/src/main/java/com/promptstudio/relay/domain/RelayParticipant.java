@@ -74,14 +74,6 @@ public class RelayParticipant {
         }
     }
 
-    /**
-     * 이탈했던 참가자가 돌아왔다. 지우지 않으면 돌아온 사람이 계속 이탈자로 보여
-     * 자기 차례가 오는 족족 스킵된다.
-     */
-    public void rejoin() {
-        this.leftAt = null;
-    }
-
     public boolean hasLeft() {
         return leftAt != null;
     }
