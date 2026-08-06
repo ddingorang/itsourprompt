@@ -1159,10 +1159,6 @@ export default function ProblemDetailPage() {
           </div>
 
           <div className="workspace-scrollbar min-h-0 flex-1 overflow-auto border border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-bg)] max-[700px]:min-h-[360px]">
-            <div
-              aria-hidden="true"
-              className="sticky top-0 z-[2] h-8 min-w-full border-b border-[var(--problem-detail-border)] bg-[var(--problem-detail-code-header)]"
-            />
             <CodeViewer
               code={selectedCode}
               diff={selectedDiff}
