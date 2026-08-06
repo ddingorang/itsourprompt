@@ -2,6 +2,7 @@ package com.promptstudio.ranking.repository;
 
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.CodeRunStatus;
+import com.promptstudio.attempt.domain.LlmCallPurpose;
 import com.promptstudio.pricing.LlmPricingProperties;
 import com.promptstudio.ranking.domain.RankedPage;
 import com.promptstudio.ranking.domain.RankingEntry;
@@ -32,6 +33,7 @@ import static org.jooq.impl.DSL.count;
 import static org.jooq.impl.DSL.exists;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.max;
+import static org.jooq.impl.DSL.min;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.rank;
 import static org.jooq.impl.DSL.round;
@@ -78,6 +80,10 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
             field(name("attempt_llm_call", "output_tokens"), SQLDataType.BIGINT);
     private static final Field<Long> CALL_CACHED_INPUT_TOKENS =
             field(name("attempt_llm_call", "cached_input_tokens"), SQLDataType.BIGINT);
+    private static final Field<String> CALL_PURPOSE =
+            field(name("attempt_llm_call", "purpose"), SQLDataType.VARCHAR);
+    private static final Field<Instant> CALL_CREATED_AT =
+            field(name("attempt_llm_call", "created_at"), SQLDataType.INSTANT);
 
     private static final Table<?> CODE_RUN = table(name("code_run"));
     private static final Field<Long> RUN_ATTEMPT_ID = field(name("code_run", "attempt_id"), SQLDataType.BIGINT);
@@ -109,6 +115,17 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
             sum(coalesce(CALL_CACHED_INPUT_TOKENS, 0L)).as("cached_input_tokens"),
             sum(CALL_OUTPUT_TOKENS).as("output_tokens"),
             field(select(count()).from(ATTEMPT_TURN).where(TURN_ATTEMPT_ID.eq(ATTEMPT_ID))).as("turns"),
+            // 소요 시간(초) = 제출 시각 − 첫 CODE 호출 시각. 실패한 호출도 시작으로 친다 — 첫 시도가
+            // LLM 오류로 터졌다면 그때부터가 진짜 풀이 시간이기 때문이다. 위 JOIN은 turn_ordinal이
+            // 있는 호출만 통과시켜 실패 호출이 빠지므로, turns처럼 별도 서브쿼리로 잰다.
+            // 피드백 호출은 제출 뒤에 나는 것이라 purpose로 거른다.
+            field("floor(extract(epoch from ({0} - {1})))", SQLDataType.BIGINT,
+                    ATTEMPT_SUBMITTED_AT,
+                    field(select(min(CALL_CREATED_AT))
+                            .from(ATTEMPT_LLM_CALL)
+                            .where(CALL_ATTEMPT_ID.eq(ATTEMPT_ID))
+                            .and(CALL_PURPOSE.eq(LlmCallPurpose.CODE.name()))))
+                    .as("duration_seconds"),
             count().as("rounds"),
             // 등수는 cost만 본다. 동점은 같은 등수를 받고 다음 등수는 건너뛴다.
             rank().over().orderBy(COST_SCALED_EXPR).as("rank"),
@@ -132,6 +149,8 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
     private static final Field<BigDecimal> RANKED_OUTPUT_TOKENS =
             field(name("ranked", "output_tokens"), SQLDataType.DECIMAL);
     private static final Field<Integer> RANKED_TURNS = field(name("ranked", "turns"), SQLDataType.INTEGER);
+    private static final Field<Long> RANKED_DURATION_SECONDS =
+            field(name("ranked", "duration_seconds"), SQLDataType.BIGINT);
     private static final Field<Integer> RANKED_ROUNDS = field(name("ranked", "rounds"), SQLDataType.INTEGER);
     private static final Field<Integer> RANKED_RANK = field(name("ranked", "rank"), SQLDataType.INTEGER);
     private static final Field<Integer> RANKED_SEQ = field(name("ranked", "seq"), SQLDataType.INTEGER);
@@ -145,7 +164,7 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
     private static final List<SelectFieldOrAsterisk> ENTRY_FIELDS = List.of(
             RANKED_RANK, RANKED_ATTEMPT_ID, RANKED_USER_ID, USER_NICKNAME,
             COST, RANKED_UNCACHED_INPUT_TOKENS, RANKED_CACHED_INPUT_TOKENS, RANKED_OUTPUT_TOKENS,
-            RANKED_TURNS, RANKED_ROUNDS, RANKED_SUBMITTED_AT, RANKED_TOTAL_COUNT);
+            RANKED_TURNS, RANKED_ROUNDS, RANKED_SUBMITTED_AT, RANKED_DURATION_SECONDS, RANKED_TOTAL_COUNT);
 
     private final DSLContext dsl;
 
@@ -232,7 +251,8 @@ public class JooqRankingQueryRepository implements RankingQueryRepository {
                 record.get(RANKED_OUTPUT_TOKENS).longValue(),
                 record.get(RANKED_TURNS),
                 record.get(RANKED_ROUNDS),
-                record.get(RANKED_SUBMITTED_AT)
+                record.get(RANKED_SUBMITTED_AT),
+                record.get(RANKED_DURATION_SECONDS)
         );
     }
 }

@@ -14,6 +14,7 @@ import java.time.Instant;
  * @param nickname 주인의 닉네임
  * @param cost     저장된 지출 기록이 아니라 <b>현재 단가로 다시 잰</b> 값이다(USD)
  * @param rounds   턴에 속한 LLM 호출 건수. 턴 하나가 여러 라운드를 쓸 수 있다
+ * @param durationSeconds 소요 시간(초). 제출 시각 − 첫 CODE 호출 시각. 제출 시각을 모르는 옛 기록은 null
  */
 public record RankingEntry(
         int rank,
@@ -26,6 +27,7 @@ public record RankingEntry(
         long outputTokens,
         int turns,
         int rounds,
-        Instant submittedAt
+        Instant submittedAt,
+        Long durationSeconds
 ) {
 }

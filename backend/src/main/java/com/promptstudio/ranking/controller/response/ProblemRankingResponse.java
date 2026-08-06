@@ -73,7 +73,11 @@ public record ProblemRankingResponse(
             int rounds,
 
             @Schema(description = "제출 시각(ISO-8601). 기존 기록은 null일 수 있음", example = "2026-08-03T05:10:32Z")
-            Instant submittedAt
+            Instant submittedAt,
+
+            @Schema(description = "소요 시간(초). 제출 시각 − 첫 CODE 호출 시각. 실패한 코드 생성 호출도 "
+                    + "시작으로 친다. 제출 시각을 모르는 옛 기록은 null", example = "252")
+            Long durationSeconds
     ) {
 
         /**
@@ -98,7 +102,8 @@ public record ProblemRankingResponse(
                     entry.outputTokens(),
                     entry.turns(),
                     entry.rounds(),
-                    entry.submittedAt()
+                    entry.submittedAt(),
+                    entry.durationSeconds()
             );
         }
     }
