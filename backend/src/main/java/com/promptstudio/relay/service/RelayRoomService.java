@@ -176,6 +176,7 @@ public class RelayRoomService {
                     headcount,
                     room.maxParticipants(),
                     room.totalLaps(),
+                    room.turnTimeLimitSeconds(),
                     room.createdAt()
             ));
         }
