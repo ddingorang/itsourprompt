@@ -43,13 +43,13 @@ class AttemptApiTest extends DatabaseTest {
     private UserRepository userRepository;
 
     @Test
-    void 로그인하지_않으면_어템프트_API를_호출할_수_없다() throws Exception {
+    void 익명_사용자가_없는_어템프트를_조회해도_404다() throws Exception {
         mockMvc.perform(get("/api/attempts/1").with(anonymous()))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void 다른_사용자는_어템프트를_조회할_수_없다() throws Exception {
+    void 다른_사용자는_진행_중인_어템프트를_조회할_수_없다() throws Exception {
         Long attemptId = createAttempt();
         User otherUser = userRepository.save(User.create(
                 "other-user", "{noop}password", "other", "other@example.com"));

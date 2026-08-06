@@ -1,5 +1,6 @@
 package com.promptstudio.attempt.service;
 
+import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.CodeRunCaseTally;
@@ -185,6 +186,43 @@ public class CodeRunService {
         return withTallies;
     }
 
+    /**
+     * 읽기 전용 목록 조회 — 제출 완료(SUBMITTED)면 누구나, 아니면 소유자만.
+     *
+     * <p>실행 요청과 같은 소유자 조회를 쓰지 않고 갈라 둔 이유는 {@code AttemptService.readAttempt}와 같다:
+     * 쓰기 경로가 소유권을 보장하는 자리에 "제출 상태 검사"를 얹으면 공개 범위를 넓히는 변경이
+     * 조용히 쓰기까지 넓힌다. 조회는 어느 턴까지 통과했는지를 보여 주므로 공개 대상이다.
+     */
+    public List<CodeRunSummary> readRuns(Long attemptId, AttemptOwner requester) {
+        // getRuns와 같은 이유로 먼저 회수한다 — 좌초된 QUEUED가 "실행 중"으로 보이면 안 된다.
+        expireStaleRuns();
+
+        findReadableAttempt(attemptId, requester)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        List<CodeRunSummary> runs = codeRunRepository.findAllByAttemptId(attemptId);
+
+        return withTallies(runs);
+    }
+
+    /**
+     * 읽기 전용 단건 조회 — 공개 규칙은 {@link #readRuns}와 같다.
+     */
+    public CodeRunView readRun(Long attemptId, AttemptOwner requester, UUID runId) {
+        expireStaleRuns();
+
+        findReadableAttempt(attemptId, requester)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        CodeRunView run = codeRunRepository.findByIdAndAttemptId(runId, attemptId)
+                .orElseThrow(() -> new CodeRunNotFoundException(attemptId, runId));
+
+        // 케이스는 별도 테이블이라 따로 읽는다. 진행 중(QUEUED)이면 아직 없으니 조회하지 않는다.
+        return run.status() == CodeRunStatus.QUEUED
+                ? run
+                : run.withCases(codeRunRepository.findCasesByRunId(runId));
+    }
+
     public CodeRunView getRun(Long attemptId, Long userId, UUID runId) {
         return getRun(attemptId, AttemptOwner.user(userId), runId);
     }
@@ -239,5 +277,14 @@ public class CodeRunService {
             return attemptQueryRepository.findByIdAndUserId(attemptId, owner.userId());
         }
         return attemptQueryRepository.findByIdAndGuestSessionId(attemptId, owner.guestSessionId());
+    }
+
+    /**
+     * 읽기 경로가 보는 어템프트 — 내 것이거나, 제출 완료라 누구에게나 열린 것.
+     */
+    private java.util.Optional<AttemptView> findReadableAttempt(Long attemptId, AttemptOwner requester) {
+        return findAttempt(attemptId, requester)
+                .or(() -> attemptQueryRepository.findById(attemptId)
+                        .filter(attempt -> attempt.status() == AttemptStatus.SUBMITTED));
     }
 }

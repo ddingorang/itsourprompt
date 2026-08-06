@@ -109,6 +109,39 @@ public class AttemptService {
         return attempt;
     }
 
+    /**
+     * 읽기 전용 조회 — 제출 완료(SUBMITTED)면 누구나, 아니면 소유자만.
+     *
+     * <p>{@link #getAttempt(Long, AttemptOwner)}를 완화하지 않고 따로 두는 이유: getAttempt는
+     * 턴 추가(generateTurnWhileGuarded)가 소유권 관문으로 재사용한다. 거기서 SUBMITTED까지 함께 열면
+     * 쓰기의 소유권 보장이 "제출 상태 검사"라는 무관한 조건에 얹히고, 제출 후 재개 같은 기능이 생기는
+     * 순간 남의 attemptId로 LLM 비용을 태울 수 있다.
+     *
+     * <p>남의 진행 중 어템프트는 403이 아니라 404다 — 존재를 알리지 않는다.
+     *
+     * <p>소유자 조회를 먼저 타므로 자기 어템프트는 상태와 무관하게 1쿼리다. 남의 SUBMITTED만 2쿼리를 쓴다.
+     */
+    public AttemptView readAttempt(Long attemptId, AttemptOwner requester) {
+        return findAttempt(attemptId, requester)
+                .or(() -> attemptQueryRepository.findById(attemptId)
+                        .filter(attempt -> attempt.status() == AttemptStatus.SUBMITTED))
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+    }
+
+    /**
+     * 피드백도 제출 완료면 누구나 읽는다. 공개 범위는 {@link #readAttempt}와 같다 —
+     * 피드백은 제출된 어템프트에만 있으므로 상태 검사가 한 번 더 걸릴 뿐이다.
+     */
+    public AttemptView readFeedback(Long attemptId, AttemptOwner requester) {
+        AttemptView attempt = readAttempt(attemptId, requester);
+
+        if (attempt.status() != AttemptStatus.SUBMITTED) {
+            throw new FeedbackNotFoundException(attemptId);
+        }
+
+        return attempt;
+    }
+
     public AttemptView addTurn(Long attemptId, Long userId, String userPrompt) {
         return addTurn(attemptId, AttemptOwner.user(userId), userPrompt, null);
     }

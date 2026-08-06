@@ -51,7 +51,7 @@ class GuestAttemptApiTest extends DatabaseTest {
     }
 
     @Test
-    void 다른_게스트는_attemptId만_알아도_풀이를_조회할_수_없다() throws Exception {
+    void 다른_게스트는_진행_중인_풀이를_조회할_수_없다() throws Exception {
         Long attemptId = createGuestAttempt(issueGuestCookie());
 
         mockMvc.perform(get("/api/attempts/{id}", attemptId))
@@ -59,7 +59,7 @@ class GuestAttemptApiTest extends DatabaseTest {
     }
 
     @Test
-    void 다른_게스트는_실행_목록도_조회할_수_없다() throws Exception {
+    void 다른_게스트는_진행_중인_풀이의_실행_목록도_조회할_수_없다() throws Exception {
         Long attemptId = createGuestAttempt(issueGuestCookie());
 
         mockMvc.perform(get("/api/attempts/{id}/runs", attemptId))
