@@ -34,11 +34,17 @@ interface RankingNotice {
   isError: boolean;
 }
 
+/**
+ * 머리글이 한글이라 font-mono와 넓은 자간을 뺀다 — 등폭 글꼴에는 한글 자형이 없어
+ * 낱자마다 대체 글꼴로 떨어지고, 0.06em은 그렇게 벌어진 낱자를 더 벌린다. 페이지
+ * 루트의 Noto Sans KR을 상속시켜 이름 셀·탭 제목과 같은 결로 둔다.
+ */
 const headCellClasses =
-  'border-b border-[var(--ranking-border)] px-2 py-3 text-left font-mono text-[13px] font-bold tracking-[0.06em] text-[var(--ranking-subtle)]';
-/** MY BEST 항목 제목. 표 머리글과 같은 글자 스타일에서 셀 테두리·여백만 뺀 것. */
+  'border-b border-[var(--ranking-border)] px-2 py-3 text-left text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-subtle)]';
+/** MY BEST 항목 제목. 표 머리글과 같은 글자 스타일에서 셀 테두리·여백만 뺀 것.
+    감싼 밴드가 font-mono라 상속만으로는 벗어날 수 없어 글꼴을 직접 적는다. */
 const myBestLabelClasses =
-  'font-mono text-[13px] font-bold tracking-[0.06em] text-[var(--ranking-subtle)]';
+  "[font-family:Arial,'Noto_Sans_KR',sans-serif] text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-subtle)]";
 const cellClasses =
   'border-b border-[var(--ranking-border)] px-2 py-3 font-mono text-[13px] max-[860px]:border-b-0 max-[860px]:py-1';
 
@@ -494,22 +500,22 @@ export default function RankingPage() {
               <thead className="max-[860px]:hidden" role="rowgroup">
                 <tr role="row">
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    RANK
+                    등수
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    OWNER
+                    이름
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    COST
+                    비용
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    IN·CACHE·OUT
+                    입력·캐시·출력
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    TURNS
+                    턴
                   </th>
                   <th className={headCellClasses} role="columnheader" scope="col">
-                    DATE
+                    제출일
                   </th>
                 </tr>
               </thead>
@@ -614,13 +620,13 @@ export default function RankingPage() {
               <div className="mt-3.5 flex flex-wrap items-end justify-between gap-4">
                 <div className="flex flex-wrap gap-x-8 gap-y-3 font-mono text-[15px]">
                   <div>
-                    <div className={myBestLabelClasses}>RANK</div>
+                    <div className={myBestLabelClasses}>등수</div>
                     <div className="mt-1.5">
                       {String(ranking.myBest.rank).padStart(2, '0')}
                     </div>
                   </div>
                   <div>
-                    <div className={myBestLabelClasses}>COST</div>
+                    <div className={myBestLabelClasses}>비용</div>
                     <div className="mt-1.5">
                       <span className="text-[var(--ranking-subtle)]">$</span>
                       {splitCost(ranking.myBest.cost)[0]}
@@ -630,7 +636,7 @@ export default function RankingPage() {
                     </div>
                   </div>
                   <div>
-                    <div className={myBestLabelClasses}>IN·CACHE·OUT</div>
+                    <div className={myBestLabelClasses}>입력·캐시·출력</div>
                     <div className="mt-1.5 text-[14px] leading-[1.6] text-[var(--ranking-muted)]">
                       {formatTokens(ranking.myBest.uncachedInputTokens)}
                       <span className="text-[var(--ranking-faint)]">/</span>
@@ -640,13 +646,13 @@ export default function RankingPage() {
                     </div>
                   </div>
                   <div>
-                    <div className={myBestLabelClasses}>TURNS</div>
+                    <div className={myBestLabelClasses}>턴</div>
                     <div className="mt-1.5 text-[var(--ranking-muted)]">
                       <TurnCount turns={ranking.myBest.turns} />
                     </div>
                   </div>
                   <div>
-                    <div className={myBestLabelClasses}>DATE</div>
+                    <div className={myBestLabelClasses}>제출일</div>
                     <div className="mt-1.5 text-[var(--ranking-subtle)]">
                       {formatSubmittedAt(ranking.myBest.submittedAt)}
                     </div>
