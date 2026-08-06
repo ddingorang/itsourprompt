@@ -175,8 +175,11 @@ final class LiveSessions {
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
                         graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
                         graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
-                // 턴마다 다음 프롬프트가 앞 결과를 짚고 이어 간다. 마지막 턴은 다음 프롬프트가 없다.
-                List.of(PatternExpected.reviewed(), PatternExpected.reviewed(), PatternExpected.unscored()));
+                // 다음 프롬프트가 결과를 말로만 확인하고 파일도 클래스도 부르지 않는다 — 계산값이 named=false다.
+                List.of(
+                        new PatternExpected("vibe coding", null),
+                        new PatternExpected("vibe coding", null),
+                        PatternExpected.unscored()));
     }
 
     /**
@@ -247,10 +250,10 @@ final class LiveSessions {
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
                         graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
                         graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
-                // 턴 2는 채점하지 않는다 — OrderController는 안 짚혔는데 배송 검사는 짚혀서 양쪽으로 읽힌다.
+                // 턴 3 프롬프트의 제약이 Inventory와 OrderService를 이름으로 불러 턴 2는 named=true다.
                 List.of(
                         new PatternExpected("vibe coding", null),
-                        PatternExpected.unscored(),
+                        PatternExpected.reviewed(),
                         PatternExpected.unscored()));
     }
 
@@ -327,11 +330,11 @@ final class LiveSessions {
                         graded(1, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, RESTORED),
                         graded(2, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, RESTORED),
                         graded(3, CodeRunStatus.TEST_FAILED, 5, RESTORED)), baseline()),
-                // 턴 2·3은 다음 프롬프트가 결과를 고쳐 달라고 한다 — 되돌리기도 읽은 증거다.
+                // 고쳐 달라고는 하지만 파일도 클래스도 부르지 않는다 — 계산값이 셋 다 named=false다.
                 List.of(
-                        PatternExpected.reviewed(),
-                        PatternExpected.reviewed(),
-                        PatternExpected.reviewed(),
+                        new PatternExpected("vibe coding", null),
+                        new PatternExpected("vibe coding", null),
+                        new PatternExpected("vibe coding", null),
                         PatternExpected.unscored()));
     }
 
@@ -396,7 +399,10 @@ final class LiveSessions {
                 TurnTestResults.of(List.of(
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
                         new Graded(1, CodeRunStatus.RUNNER_ERROR, null, List.of())), baseline()),
-                List.of(PatternExpected.reviewed(), PatternExpected.reviewed(), PatternExpected.unscored()));
+                List.of(
+                        new PatternExpected("vibe coding", null),
+                        new PatternExpected("vibe coding", null),
+                        PatternExpected.unscored()));
     }
 
     /**
@@ -477,9 +483,9 @@ final class LiveSessions {
                         graded(2, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, DELIVERED_BLOCKED),
                         graded(3, CodeRunStatus.SUCCEEDED, 6)), baseline()),
                 List.of(
-                        PatternExpected.reviewed(),
-                        PatternExpected.reviewed(),
-                        PatternExpected.reviewed(),
+                        new PatternExpected("vibe coding", null),
+                        new PatternExpected("vibe coding", null),
+                        new PatternExpected("vibe coding", null),
                         PatternExpected.unscored()));
     }
 
@@ -559,11 +565,14 @@ final class LiveSessions {
     }
 
     /**
-     * S7 실행으로만 확인. 매 턴 돌려 본 결과를 말하지만 파일도 코드도 한 번도 짚지 않는다.
-     * 사전의 `human review`는 diff를 읽는 것이므로 이름은 `vibe coding`이고, 답은 `human review`다.
+     * S7 실행으로만 확인. 매 턴 돌려 본 결과를 말하지만 파일 이름도 코드도 한 번도 짚지 않는다.
      *
-     * <p>이 판정이 실호출에서 가장 흔들린 자리다 — 프롬프트를 고치기 전에는 `human review`가 나왔다.
-     * 흔들림을 재려고 넣은 세션이므로 어긋나면 그 자체가 지표다.
+     * <p>이름은 `vibe coding`이다. 파일 이름을 안 불렀으므로 계산값이 named=false이고, 사전의
+     * `vibe coding`이 "diff를 안 열고 동작만 본다"라 뜻도 그대로 맞는다.
+     *
+     * <p><b>이 세션의 값어치는 기법에 있다.</b> S6과 이름은 같고 기법이 갈려야 한다 — 이쪽은 돌려는
+     * 봤으니 `human review`(이제 코드를 열어라), 저쪽은 아무것도 안 했으니 `automated check`
+     * (먼저 돌려 봐라). 이름이 하나로 묶인 두 사람에게 다른 답을 주는지가 여기서 드러난다.
      */
     private static Session 실행확인() {
         List<AttemptView.TurnView> turns = List.of(

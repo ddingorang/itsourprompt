@@ -376,7 +376,11 @@ class LiveFeedbackHarnessTest {
                     continue;
                 }
 
-                Matcher matcher = BACKTICKED.matcher(sentence);
+                // 한 문장이 AI와 사용자를 같이 말할 수 있다. `사용자` 뒤만 본다 —
+                // `AI가 OrderService에 cancel을 넣었고, 사용자가 요구를 이어 가셨어요`에서
+                // 앞 절의 이름은 AI의 것이라 사용자 오귀속이 아니다.
+                int subject = sentence.lastIndexOf("사용자");
+                Matcher matcher = BACKTICKED.matcher(subject < 0 ? sentence : sentence.substring(subject));
 
                 while (matcher.find()) {
                     // 백틱 안의 사전 용어는 이름이지 사용자가 쓴 말이 아니다. 세면 전부 위반이 된다.
