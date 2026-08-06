@@ -208,6 +208,7 @@ export default function ProblemListPage() {
  * 문제의 성격 아이콘. game 문제는 게임 아이콘 하나로(게임이라는 사실이 언어보다
  * 중요하다), 그 외에는 풀이 언어 아이콘으로 표시한다. 아이콘이 없는 언어는 텍스트
  * 칩으로 물러난다 — 새 언어가 추가됐을 때 빈칸보다 낫다.
+ * 목록 요약에 type·language가 아예 없으면(두 필드를 싣지 않는 BE 응답) 배지 자리를 비운다.
  *
  * 아이콘은 currentColor를 따르는 인라인 SVG(ProblemIcons)라, 글자색만 바꾸면
  * 라이트/다크 모드와 행 hover 반전(라임 배경 → 검정 아이콘)이 전부 함께 맞는다.
@@ -246,15 +247,21 @@ function IconLegend() {
 }
 
 function ProblemBadge({ problem }: { problem: ProblemSummary }) {
-  const known =
-    problem.type === 'game'
-      ? PROBLEM_ICONS.game
-      : PROBLEM_ICONS[problem.language.toLowerCase()];
+  // game 문제는 언어 대신 게임 아이콘 키로 흘린다 — 게임이라는 사실이 언어보다 중요하다.
+  const iconKey = problem.type === 'game' ? 'game' : problem.language;
+
+  // type·language를 싣지 않는 BE 응답이면 둘 다 없다. 모르는 문제에 배지를
+  // 지어내는 대신 자리를 비운다 — 아래 칩 폴백은 "아는데 아이콘만 없는 언어"용이다.
+  if (iconKey === undefined) {
+    return null;
+  }
+
+  const known = PROBLEM_ICONS[iconKey.toLowerCase()];
 
   if (!known) {
     return (
       <span className="justify-self-end border border-[var(--problem-list-border)] px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.08em] whitespace-nowrap text-[var(--problem-list-muted)] transition-colors duration-200 group-hover:border-[#090909] group-hover:text-[#090909] group-focus-visible:border-[#090909] group-focus-visible:text-[#090909]">
-        {problem.language.toUpperCase()}
+        {iconKey.toUpperCase()}
       </span>
     );
   }
