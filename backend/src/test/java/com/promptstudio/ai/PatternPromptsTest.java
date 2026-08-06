@@ -59,8 +59,7 @@ class PatternPromptsTest {
                         "요청하셨지만 AI가 하지 않았어요")
                 .doesNotContain(
                         "방향을 정하셨어요",
-                        "AI에 맡기고 다음 턴에서 확인하셨어요",
-                        "AI에 맡기고 확인하지 않으셨어요")
+                        "AI에 맡기셨어요")
                 .doesNotContain("프롬프트 정리하기", "결과와 비교하기", "다음 프롬프트 쓰기");
     }
 

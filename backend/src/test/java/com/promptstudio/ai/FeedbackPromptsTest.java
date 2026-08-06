@@ -105,8 +105,7 @@ class FeedbackPromptsTest {
                         "요청하셨지만 AI가 하지 않았어요")
                 .contains(
                         "방향을 정하셨어요",
-                        "AI에 맡기고 다음 턴에서 확인하셨어요",
-                        "AI에 맡기고 확인하지 않으셨어요",
+                        "AI에 맡기셨어요",
                         "이 턴에는 판단할 만한 결정 지점이 없었어요")
                 .contains("프롬프트 정리하기", "결과와 비교하기", "다음 프롬프트 쓰기");
     }
@@ -117,11 +116,15 @@ class FeedbackPromptsTest {
                 .doesNotContain("축 1", "축 2", "요구 반영", "방향 소유");
     }
 
+    /**
+     * 축 2의 판정 근거가 이 턴 안에서 끝나므로 마지막 턴에 둘 전용 문장이 없다. 다음 턴 반응을
+     * 읽던 동안은 마지막 턴의 칸이 죽어 있었고, 1턴 세션은 축 2가 통째로 죽어 있었다.
+     */
     @Test
-    void 시스템_프롬프트는_마지막_턴의_방향_판정을_전용_문장으로_고정한다() {
+    void 시스템_프롬프트는_마지막_턴을_특별_취급하지_않는다() {
         assertThat(FeedbackPrompts.systemPrompt())
-                .contains("last turn")
-                .contains("이 턴이 마지막이라, AI가 정한 것을 확인하셨는지는 알 수 없어요");
+                .doesNotContain("이 턴이 마지막이라")
+                .doesNotContain("AI에 맡기고 다음 턴에서 확인하셨어요", "AI에 맡기고 확인하지 않으셨어요");
     }
 
     @Test
