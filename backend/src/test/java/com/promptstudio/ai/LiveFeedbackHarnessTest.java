@@ -223,6 +223,7 @@ class LiveFeedbackHarnessTest {
             long startedAt
     ) {
         List<String> judgements = new ArrayList<>();
+        List<String> ownerships = new ArrayList<>();
         List<String> expected = new ArrayList<>();
         int scored = 0;
         int hits = 0;
@@ -232,6 +233,10 @@ class LiveFeedbackHarnessTest {
         for (int index = 0; index < draft.turnFeedbacks().size(); index++) {
             String judgement = judgementOf(draft.turnFeedbacks().get(index));
             judgements.add(judgement);
+
+            if (lens == Lens.PROMPT) {
+                ownerships.add(ownershipOf(draft.turnFeedbacks().get(index)));
+            }
 
             Expected turnExpectation = index < session.turns().size() ? session.turns().get(index) : null;
             String wanted = lens == Lens.PROMPT && turnExpectation != null
@@ -280,7 +285,7 @@ class LiveFeedbackHarnessTest {
                 hits,
                 decisiveScored,
                 decisiveHits,
-                lens == Lens.PROMPT && lastTurnSentencePresent(draft.turnFeedbacks()),
+                ownerships,
                 lens == Lens.PROMPT ? scoreLeaks(draft) : 0,
                 quotes.total(),
                 quotes.rawMiss(),
@@ -454,7 +459,7 @@ class LiveFeedbackHarnessTest {
                 0,
                 0,
                 0,
-                false,
+                List.of(),
                 0,
                 0,
                 0,
@@ -529,12 +534,32 @@ class LiveFeedbackHarnessTest {
         return leaks;
     }
 
-    private boolean lastTurnSentencePresent(List<String> turnFeedbacks) {
-        if (turnFeedbacks.isEmpty()) {
-            return false;
+    /**
+     * 판정 2의 고정 문장 3종을 {@link #judgementOf}와 같은 방식으로 찾는다. 기록만 하고 채점은 하지
+     * 않는다 — 마지막 턴이 실제 판정을 받는지는 사람이 분포를 보고 읽는다.
+     */
+    private String ownershipOf(String turnFeedback) {
+        if (turnFeedback == null) {
+            return null;
         }
 
-        return turnFeedbacks.getLast().contains(LiveSessions.LAST_TURN_OWNERSHIP);
+        for (String line : turnFeedback.split("\n")) {
+            String trimmed = line.trim();
+
+            for (String ownership : LiveSessions.OWNERSHIP_JUDGEMENTS) {
+                if (trimmed.equals(ownership)) {
+                    return ownership;
+                }
+            }
+        }
+
+        for (String ownership : LiveSessions.OWNERSHIP_JUDGEMENTS) {
+            if (turnFeedback.contains(ownership)) {
+                return ownership;
+            }
+        }
+
+        return null;
     }
 
     private Integer completionTokensOf(List<LlmCallUsage> llmCalls) {
@@ -732,8 +757,28 @@ class LiveFeedbackHarnessTest {
         System.out.printf(
                 "[harness] 채점 문장 누출 %d건 | 누출 포함 호출 %d/%d (프롬프트 렌즈)%n",
                 leaks, callsWithLeak, promptCalls);
+        summarizeOwnership(records);
         summarizePattern(records);
         System.out.printf("[harness] 완성 토큰 합계 %d%n", tokens);
+    }
+
+    /**
+     * 마지막 턴이 판정 2에서 무엇을 받았는지의 분포. 축 2가 다음 턴 반응을 읽던 동안은 마지막 턴이
+     * 전용 문장으로 빠져 판정 자체가 없었다 — 그 칸이 살아났는지를 사람이 이 줄로 읽는다.
+     */
+    private void summarizeOwnership(List<CallRecord> records) {
+        var ownerships = new java.util.TreeMap<String, Integer>();
+
+        for (CallRecord record : records) {
+            if (!"prompt".equals(record.lens()) || !record.ok() || record.ownerships().isEmpty()) {
+                continue;
+            }
+
+            String last = record.ownerships().getLast();
+            ownerships.merge(last == null ? "(없음)" : last, 1, Integer::sum);
+        }
+
+        System.out.printf("[harness] 축2 마지막 턴 판정 분포 %s%n", ownerships);
     }
 
     /**
@@ -871,6 +916,7 @@ class LiveFeedbackHarnessTest {
      *
      * @param judgementScored 정답을 아는 턴 수(프롬프트 렌즈만)
      * @param decisiveScored  신호가 판정을 뒤집는 턴 수
+     * @param ownerships      판정 2의 턴별 문장(프롬프트 렌즈만). 채점하지 않고 기록만 한다
      */
     record CallRecord(
             String phase,
@@ -889,7 +935,7 @@ class LiveFeedbackHarnessTest {
             int judgementHits,
             int decisiveScored,
             int decisiveHits,
-            boolean lastTurnSentence,
+            List<String> ownerships,
             int scoreLeaks,
             int quoteTotal,
             int rawMiss,

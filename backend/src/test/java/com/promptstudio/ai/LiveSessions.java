@@ -39,8 +39,9 @@ final class LiveSessions {
     static final String NOT_IN_PROMPT = "요청이 프롬프트에 없었어요";
     static final String NOT_DONE = "요청하셨지만 AI가 하지 않았어요";
 
-    /** 판정 2의 마지막 턴 전용 문장. 게이트에는 쓰지 않고 기록만 한다. */
-    static final String LAST_TURN_OWNERSHIP = "이 턴이 마지막이라, AI가 정한 것을 확인하셨는지는 알 수 없어요";
+    /** 판정 2의 고정 문장 셋. 하네스는 기록만 하고 합격선 판정은 사람이 한다. */
+    static final List<String> OWNERSHIP_JUDGEMENTS = List.of(
+            "방향을 정하셨어요", "AI에 맡기셨어요", "이 턴에는 판단할 만한 결정 지점이 없었어요");
 
     static final List<String> JUDGEMENTS = List.of(AS_ASKED, PARTIAL, NOT_IN_PROMPT, NOT_DONE);
 
@@ -69,9 +70,9 @@ final class LiveSessions {
     }
 
     /**
-     * pattern 렌즈의 기대값. 이름은 턴 N+1의 프롬프트가 정하고, 기법은 세션 전체가 정한다.
+     * pattern 렌즈의 기대값. 이름은 이 턴 프롬프트가 앞 턴 변경을 짚었는지가 정하고, 기법은 세션 전체가 정한다.
      *
-     * @param name      기대하는 이름. null이면 채점하지 않는다 — 마지막 턴처럼 판정할 수 없는 자리다
+     * @param name      기대하는 이름. null이면 채점하지 않는다 — 첫 턴처럼 판정할 수 없는 자리다
      * @param technique 기대하는 기법. {@link #NONE}이면 그 절이 아예 없어야 한다는 뜻이고,
      *                  null이면 채점하지 않는다
      */
@@ -175,11 +176,11 @@ final class LiveSessions {
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
                         graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
                         graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
-                // 다음 프롬프트가 결과를 말로만 확인하고 파일도 클래스도 부르지 않는다 — 계산값이 named=false다.
+                // 이 턴 프롬프트가 결과를 말로만 확인하고 앞 턴이 바꾼 파일도 클래스도 부르지 않는다 — 계산값이 named=false다.
                 List.of(
+                        PatternExpected.unscored(),
                         new PatternExpected("vibe coding", null),
-                        new PatternExpected("vibe coding", null),
-                        PatternExpected.unscored()));
+                        new PatternExpected("vibe coding", null)));
     }
 
     /**
@@ -250,11 +251,11 @@ final class LiveSessions {
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
                         graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
                         graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
-                // 턴 3 프롬프트의 제약이 Inventory와 OrderService를 이름으로 불러 턴 2는 named=true다.
+                // 턴 3 프롬프트의 제약이 턴 2가 바꾼 OrderService를 이름으로 불러 턴 3은 named=true다.
                 List.of(
+                        PatternExpected.unscored(),
                         new PatternExpected("vibe coding", null),
-                        PatternExpected.reviewed(),
-                        PatternExpected.unscored()));
+                        PatternExpected.reviewed()));
     }
 
     /**
@@ -330,12 +331,12 @@ final class LiveSessions {
                         graded(1, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, RESTORED),
                         graded(2, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, RESTORED),
                         graded(3, CodeRunStatus.TEST_FAILED, 5, RESTORED)), baseline()),
-                // 고쳐 달라고는 하지만 파일도 클래스도 부르지 않는다 — 계산값이 셋 다 named=false다.
+                // 고쳐 달라고는 하지만 앞 턴이 바꾼 파일도 클래스도 부르지 않는다 — 계산값이 셋 다 named=false다.
                 List.of(
+                        PatternExpected.unscored(),
                         new PatternExpected("vibe coding", null),
                         new PatternExpected("vibe coding", null),
-                        new PatternExpected("vibe coding", null),
-                        PatternExpected.unscored()));
+                        new PatternExpected("vibe coding", null)));
     }
 
     /**
@@ -400,14 +401,13 @@ final class LiveSessions {
                         graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
                         new Graded(1, CodeRunStatus.RUNNER_ERROR, null, List.of())), baseline()),
                 List.of(
+                        PatternExpected.unscored(),
                         new PatternExpected("vibe coding", null),
-                        new PatternExpected("vibe coding", null),
-                        PatternExpected.unscored()));
+                        new PatternExpected("vibe coding", null)));
     }
 
     /**
      * S5 퇴보. 턴 3에서 요청한 재고 복구는 들어왔는데 앞 턴이 통과시킨 배송 검사가 깨져 델타가 음수다.
-     * 마지막 턴은 판정 2의 마지막 턴 전용 문장도 함께 본다.
      */
     private static Session 퇴보() {
         List<AttemptView.TurnView> turns = List.of(
@@ -483,10 +483,10 @@ final class LiveSessions {
                         graded(2, CodeRunStatus.TEST_FAILED, 4, SHIPPED_BLOCKED, DELIVERED_BLOCKED),
                         graded(3, CodeRunStatus.SUCCEEDED, 6)), baseline()),
                 List.of(
+                        PatternExpected.unscored(),
                         new PatternExpected("vibe coding", null),
                         new PatternExpected("vibe coding", null),
-                        new PatternExpected("vibe coding", null),
-                        PatternExpected.unscored()));
+                        new PatternExpected("vibe coding", null)));
     }
 
     private static Session session(
@@ -514,7 +514,7 @@ final class LiveSessions {
     }
 
     /**
-     * S6 안 짚음. 앞 턴이 무엇을 바꿨는지 다음 프롬프트가 한 번도 건드리지 않고, 돌려 본 이야기도
+     * S6 안 짚음. 앞 턴이 무엇을 바꿨는지 이 턴 프롬프트가 한 번도 건드리지 않고, 돌려 본 이야기도
      * 어디에도 없다. 이름은 `vibe coding`이고, 그 답은 읽는 것이 아니라 **먼저 돌려 보는 것**이다.
      *
      * <p>기존 다섯은 전부 `직전 결과 … 확인했어요`로 시작해 `vibe coding` 축을 거의 재지 못했다.
@@ -559,15 +559,15 @@ final class LiveSessions {
                         graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
                         graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
                 List.of(
+                        PatternExpected.unscored(),
                         new PatternExpected("vibe coding", "automated check"),
-                        new PatternExpected("vibe coding", "automated check"),
-                        PatternExpected.unscored()));
+                        new PatternExpected("vibe coding", "automated check")));
     }
 
     /**
      * S7 실행으로만 확인. 매 턴 돌려 본 결과를 말하지만 파일 이름도 코드도 한 번도 짚지 않는다.
      *
-     * <p>이름은 `vibe coding`이다. 파일 이름을 안 불렀으므로 계산값이 named=false이고, 사전의
+     * <p>이름은 `vibe coding`이다. 앞 턴이 바꾼 파일 이름을 안 불렀으므로 계산값이 named=false이고, 사전의
      * `vibe coding`이 "diff를 안 열고 동작만 본다"라 뜻도 그대로 맞는다.
      *
      * <p><b>이 세션의 값어치는 기법에 있다.</b> S6과 이름은 같고 기법이 갈려야 한다 — 이쪽은 돌려는
@@ -620,9 +620,9 @@ final class LiveSessions {
                         graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
                         graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
                 List.of(
+                        PatternExpected.unscored(),
                         new PatternExpected("vibe coding", "human review"),
-                        new PatternExpected("vibe coding", "human review"),
-                        PatternExpected.unscored()));
+                        new PatternExpected("vibe coding", "human review")));
     }
 
     /**
