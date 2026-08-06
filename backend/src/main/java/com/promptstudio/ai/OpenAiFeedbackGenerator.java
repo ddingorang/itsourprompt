@@ -61,6 +61,7 @@ class OpenAiFeedbackGenerator {
     private final String systemPrompt;
     private final UserPrompt userPrompt;
     private final IntFunction<OpenAiChatOptions> chatOptions;
+    private final TurnRenderer renderTurn;
 
     OpenAiFeedbackGenerator(
             ChatClient.Builder chatClientBuilder,
@@ -70,12 +71,26 @@ class OpenAiFeedbackGenerator {
             UserPrompt userPrompt,
             IntFunction<OpenAiChatOptions> chatOptions
     ) {
+        this(chatClientBuilder, aiCallExecutor, logTag, systemPrompt, userPrompt, chatOptions,
+                TurnEntry::feedback);
+    }
+
+    OpenAiFeedbackGenerator(
+            ChatClient.Builder chatClientBuilder,
+            AiCallExecutor aiCallExecutor,
+            String logTag,
+            String systemPrompt,
+            UserPrompt userPrompt,
+            IntFunction<OpenAiChatOptions> chatOptions,
+            TurnRenderer renderTurn
+    ) {
         this.chatClient = chatClientBuilder.build();
         this.aiCallExecutor = aiCallExecutor;
         this.logTag = logTag;
         this.systemPrompt = systemPrompt;
         this.userPrompt = userPrompt;
         this.chatOptions = chatOptions;
+        this.renderTurn = renderTurn;
     }
 
     private record FeedbackPayload(List<TurnEntry> turnFeedbacks, String overall) {
@@ -86,8 +101,11 @@ class OpenAiFeedbackGenerator {
      * {@link com.promptstudio.attempt.domain.AttemptFeedback}, DB, FE 응답은 그대로다.
      *
      * @param quotes 이 턴의 판정을 뒷받침한다고 모델이 주장하는 입력 문장들
+     * @param name   pattern 렌즈만 채운다. 이름은 BE가 계산해 프롬프트에 실은 값이고 모델은 그걸 되받는다 —
+     *               자유 텍스트로 두었더니 호출의 40%가 세션 전체에서 이름을 통째로 빼먹었다
+     * @param gloss  이 턴에 맞춘 한국어 뜻풀이 한 줄. 제목 줄은 이름과 이것으로 BE가 조립한다
      */
-    record TurnEntry(List<String> quotes, String feedback) {
+    record TurnEntry(List<String> quotes, String name, String gloss, String feedback) {
     }
 
     /**
@@ -121,6 +139,16 @@ class OpenAiFeedbackGenerator {
     interface UserPrompt {
 
         String render(ProblemView problem, AttemptView attempt, TurnTestResults testResults);
+    }
+
+    /**
+     * 턴 하나를 저장할 Markdown으로 만든다. 프롬프트 렌즈는 모델이 쓴 문자열을 그대로 쓰고,
+     * pattern 렌즈는 이름과 뜻풀이를 BE가 제목 줄로 조립해 앞에 붙인다.
+     */
+    @FunctionalInterface
+    interface TurnRenderer {
+
+        String render(TurnEntry entry);
     }
 
     FeedbackDraft generate(ProblemView problem, AttemptView attempt, TurnTestResults testResults) {
@@ -321,7 +349,7 @@ class OpenAiFeedbackGenerator {
         List<String> feedbacks = new ArrayList<>();
 
         for (TurnEntry entry : turnEntries) {
-            feedbacks.add(entry == null ? null : entry.feedback());
+            feedbacks.add(entry == null ? null : renderTurn.render(entry));
         }
 
         return feedbacks;

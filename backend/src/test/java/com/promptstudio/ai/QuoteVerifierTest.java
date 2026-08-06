@@ -106,7 +106,7 @@ class QuoteVerifierTest {
     @Test
     void quotes가_null이면_건너뛴다() {
         List<TurnEntry> turns = new ArrayList<>();
-        turns.add(new TurnEntry(null, "피드백"));
+        turns.add(new TurnEntry(null, null, null, "피드백"));
         turns.add(null);
 
         QuoteVerifier.Result result = QuoteVerifier.verify(INPUT, turns);
@@ -123,7 +123,7 @@ class QuoteVerifierTest {
     void 빈_인용은_세_수준_모두에서_불일치다() {
         List<TurnEntry> turns = new ArrayList<>();
         turns.add(entry("   \n  "));
-        turns.add(new TurnEntry(singletonNull(), "피드백"));
+        turns.add(new TurnEntry(singletonNull(), null, null, "피드백"));
 
         QuoteVerifier.Result result = QuoteVerifier.verify(INPUT, turns);
 
@@ -141,7 +141,7 @@ class QuoteVerifierTest {
     }
 
     private TurnEntry entry(String... quotes) {
-        return new TurnEntry(List.of(quotes), "피드백");
+        return new TurnEntry(List.of(quotes), null, null, "피드백");
     }
 
     /** {@code List.of}는 null 원소를 못 담는다. 모델은 담아 보낼 수 있다. */

@@ -49,7 +49,8 @@ public class FeedbackGenerators implements FeedbackGenerator {
                 "OPENAI PATTERN",
                 PatternPrompts.systemPrompt(),
                 (problem, attempt, testResults) -> PatternPrompts.userPrompt(problem, attempt),
-                chatOptionsFactory::forPatternFeedback
+                chatOptionsFactory::forPatternFeedback,
+                PatternPrompts::renderTurn
         );
     }
 
