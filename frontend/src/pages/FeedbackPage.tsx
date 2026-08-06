@@ -20,7 +20,8 @@ import Header from '../shared/components/Header';
 interface LoadNotice {
   message: string;
   actionLabel: string;
-  actionTo: string;
+  /** 돌아갈 경로. null이면 브라우저 히스토리로 한 걸음 되돌아간다. */
+  actionTo: string | null;
   isError: boolean;
 }
 
@@ -137,8 +138,8 @@ export default function FeedbackPage() {
     if (!Number.isInteger(attemptId) || attemptId <= 0) {
       setNotice({
         message: '잘못된 어템프트 주소입니다.',
-        actionLabel: 'BACK TO PROBLEMS ↗',
-        actionTo: '/problems',
+        actionLabel: '이전 페이지로 돌아가기',
+        actionTo: null,
         isError: true,
       });
       setIsLoading(false);
@@ -194,8 +195,8 @@ export default function FeedbackPage() {
             error instanceof ApiError
               ? error.message
               : '피드백을 불러오지 못했습니다.',
-          actionLabel: 'BACK TO PROBLEMS ↗',
-          actionTo: '/problems',
+          actionLabel: '이전 페이지로 돌아가기',
+          actionTo: null,
           isError: true,
         });
       } finally {
@@ -298,9 +299,26 @@ export default function FeedbackPage() {
             ].join(' ')}
           >
             <div>{notice.message}</div>
-            <Button className="feedback-page-primary-action mt-5" to={notice.actionTo}>
-              {notice.actionLabel}
-            </Button>
+            {notice.actionTo !== null ? (
+              <Button
+                className="feedback-page-primary-action mt-5"
+                to={notice.actionTo}
+              >
+                {notice.actionLabel}
+              </Button>
+            ) : (
+              <Button
+                className="feedback-page-primary-action mt-5"
+                onClick={() => {
+                  // 링크로 바로 열려 히스토리에 이전 페이지가 없으면(key가 초기값
+                  // 'default') 뒤로 갈 곳이 없다 — 문제 목록으로 보낸다.
+                  if (location.key !== 'default') navigate(-1);
+                  else navigate('/problems');
+                }}
+              >
+                {notice.actionLabel}
+              </Button>
+            )}
           </section>
         )}
 
