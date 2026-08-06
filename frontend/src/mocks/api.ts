@@ -125,6 +125,13 @@ const MY_RANKED_ATTEMPT_ID = 4100;
 const RANKED_ATTEMPT_ID_BASE = 4200;
 
 /**
+ * 실행 기록이 하나도 없는 남의 제출. 랭킹에 오르려면 마지막 턴이 채점을 통과해야 해서
+ * 보통은 기록이 있지만, 랭킹 밖의 제출은 한 번도 돌려 보지 않고 낼 수 있다. 그 화면을
+ * 열어 볼 자리가 없으면 기록 없는 경우를 목으로 확인할 수 없다.
+ */
+const RANKED_ATTEMPT_ID_WITHOUT_RUNS = 4299;
+
+/**
  * 랭킹 한 줄을 만든다. 비용·토큰은 등수로 계산해 동점 줄이 같은 값을 갖게 한다 —
  * 등수와 비용이 어긋나면 표가 목에서만 이상해 보인다.
  */
@@ -274,6 +281,51 @@ function buildRankedMockAttempt(attemptId: number): Attempt | null {
 }
 
 /**
+ * 지어낸 어템프트에 통과한 실행 기록을 함께 심는다. 남의 제출을 여는 화면은 실행을
+ * 요청할 수 없고 기록만 읽으므로, 기록이 없으면 그 화면이 목에서 늘 비어 보인다.
+ *
+ * 두 케이스를 모두 PASSED로 둔다 — 랭킹에 오르려면 마지막 턴이 채점을 통과해야 하고,
+ * 링크를 받아 들어온 사람이 확인하러 오는 것도 그 사실이다.
+ */
+function seedRankedMockCodeRuns(attemptId: number): void {
+  if (attemptId === RANKED_ATTEMPT_ID_WITHOUT_RUNS) return;
+  if (mockCodeRuns.has(attemptId)) return;
+
+  mockCodeRuns.set(attemptId, [
+    {
+      createdAt: '2026-08-05T09:12:34Z',
+      readyAt: Date.parse('2026-08-05T09:12:35Z'),
+      run: {
+        runId: `recorded-${attemptId}`,
+        // 마지막 턴(0-based)의 실행이다. 지어낸 어템프트의 턴은 둘이다.
+        turnOrdinal: 1,
+        status: 'SUCCEEDED',
+        exitCode: 0,
+        stdout: 'JUnit Platform Suite\nPostTest: 2 passed, 0 failed',
+        stderr: null,
+        durationMs: 1188,
+        cases: [
+          {
+            className: 'PostTest',
+            name: '게시글을_생성한다()',
+            status: 'PASSED',
+            message: null,
+            durationMs: 11,
+          },
+          {
+            className: 'PostTest',
+            name: '존재하지_않는_게시글은_예외를_반환한다()',
+            status: 'PASSED',
+            message: null,
+            durationMs: 14,
+          },
+        ],
+      },
+    },
+  ]);
+}
+
+/**
  * 메모리에 있으면 그것을, 없으면 랭킹이 가리키는 어템프트를 지어내 담아 둔다 —
  * 조회와 피드백이 같은 어템프트를 집어야 두 응답이 어긋나지 않는다.
  */
@@ -285,6 +337,7 @@ function resolveMockAttempt(attemptId: number): Attempt | undefined {
   if (!ranked) return undefined;
 
   mockAttempts.set(attemptId, ranked);
+  seedRankedMockCodeRuns(attemptId);
   return ranked;
 }
 
@@ -445,6 +498,10 @@ export async function requestMockCodeRun(
 
   const attempt = mockAttempts.get(attemptId);
   if (!attempt) throw mockAttemptNotFound(attemptId);
+  // 쓰기는 제출 여부와 무관하게 주인만 할 수 있다. 남이 부르면 실서버와 같이
+  // 없는 어템프트로 답한다 — 목이 실행시켜 주면 화면이 남의 풀이를 돌릴 수 있는
+  // 것처럼 보이고, 그 착각은 실서버에서만 404로 드러난다.
+  if (!attempt.mine) throw mockAttemptNotFound(attemptId);
 
   const entries = mockCodeRuns.get(attemptId) ?? [];
   if (entries.some((entry) => completeMockCodeRun(entry).status === 'QUEUED')) {
