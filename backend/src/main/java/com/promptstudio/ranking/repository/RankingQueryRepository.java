@@ -1,6 +1,5 @@
 package com.promptstudio.ranking.repository;
 
-import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.ranking.domain.RankedPage;
 import com.promptstudio.ranking.domain.RankingEntry;
 
@@ -16,6 +15,6 @@ public interface RankingQueryRepository {
      */
     RankedPage findTop(Long problemId, int limit);
 
-    /** 주어진 소유자의 가장 좋은 줄. 자격을 갖춘 어템프트가 없으면 비어 있다. */
-    Optional<RankingEntry> findBestOf(Long problemId, AttemptOwner owner);
+    /** 주어진 사용자의 가장 좋은 줄. 자격을 갖춘 어템프트가 없으면 비어 있다. */
+    Optional<RankingEntry> findBestOf(Long problemId, Long userId);
 }

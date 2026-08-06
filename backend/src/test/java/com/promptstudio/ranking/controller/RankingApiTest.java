@@ -14,8 +14,6 @@ import com.promptstudio.user.domain.User;
 import com.promptstudio.user.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.jooq.DSLContext;
-import org.jooq.Field;
-import org.jooq.impl.SQLDataType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -29,7 +27,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
@@ -71,7 +68,6 @@ class RankingApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.totalCount").value(2))
                 .andExpect(jsonPath("$.entries.length()").value(2))
                 .andExpect(jsonPath("$.entries[0].rank").value(1))
-                .andExpect(jsonPath("$.entries[0].ownerType").value("USER"))
                 .andExpect(jsonPath("$.entries[0].ownerLabel").value("test owner"))
                 .andExpect(jsonPath("$.entries[0].cost").value(0.003))
                 .andExpect(jsonPath("$.entries[0].turns").value(1))
@@ -140,20 +136,17 @@ class RankingApiTest extends DatabaseTest {
     }
 
     @Test
-    void 게스트_쿠키로도_내_최고_기록을_찾는다() throws Exception {
+    void 게스트_쿠키가_있어도_내_최고_기록은_없다() throws Exception {
         Problem problem = newProblem();
         Cookie guestCookie = issueGuestCookie();
-        Long guestAttemptId = createGuestAttempt(problem, guestCookie);
+        createGuestAttempt(problem, guestCookie);
 
-        String guestSessionId = guestSessionIdOf(guestAttemptId);
-
+        // 자격 조건은 모두 갖췄지만 게스트라 랭킹에 들지 않는다. 남은 길은 로그인뿐이다.
         mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).cookie(guestCookie).with(anonymous()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.myBest.attemptId").value(guestAttemptId))
-                .andExpect(jsonPath("$.myBest.mine").value(true))
-                .andExpect(jsonPath("$.myBest.ownerType").value("GUEST"))
-                // 이름이 없는 게스트는 세션 ID 앞 네 자로 서로 구분한다.
-                .andExpect(jsonPath("$.myBest.ownerLabel").value(guestSessionId.substring(0, 4)));
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.entries").isEmpty())
+                .andExpect(jsonPath("$.myBest").doesNotExist());
     }
 
     @Test
@@ -274,16 +267,6 @@ class RankingApiTest extends DatabaseTest {
         String setCookie = result.getResponse().getHeader(HttpHeaders.SET_COOKIE);
 
         return new Cookie("GUEST_SESSION", setCookie.substring("GUEST_SESSION=".length(), setCookie.indexOf(';')));
-    }
-
-    private String guestSessionIdOf(Long attemptId) {
-        Field<UUID> guestSessionId = field(name("attempt", "guest_session_id"), SQLDataType.UUID);
-
-        return dsl.select(guestSessionId)
-                .from(table(name("attempt")))
-                .where(field(name("attempt", "id"), SQLDataType.BIGINT).eq(attemptId))
-                .fetchOne(guestSessionId)
-                .toString();
     }
 
     private void succeedRun(Long attemptId, int turnOrdinal) {
