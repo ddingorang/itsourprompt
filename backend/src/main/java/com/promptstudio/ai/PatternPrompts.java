@@ -25,7 +25,7 @@ final class PatternPrompts {
             "\n\n---\n여기 쓴 용어는 AI Coding Dictionary에서 가져왔어요. https://aicodingdictionary.com";
 
     /** BE가 계산한 대조 결과를 싣는 태그. 이 렌즈의 이름은 이것 하나로 정해진다. */
-    static final String REVIEW_TAG = "next_prompt_names_changed_file";
+    static final String REVIEW_TAG = "prompt_names_previous_changed_file";
 
     /**
      * 문체 규칙은 프롬프트 코치와 공유하고 예문만 이 렌즈의 소재로 갖는다. 소재는 사용자가 무엇을 읽고
@@ -273,33 +273,33 @@ final class PatternPrompts {
 
         StringBuilder lines = new StringBuilder();
 
-        for (int index = 0; index < turns.size() - 1; index++) {
+        for (int index = 1; index < turns.size(); index++) {
             if (!lines.isEmpty()) {
                 lines.append("\n");
             }
 
             lines.append("turn=").append(index + 1)
-                    .append(" named=").append(namedInNextPrompt(turns.get(index), turns.get(index + 1)));
+                    .append(" named=").append(namesPreviousChange(turns.get(index), turns.get(index - 1)));
         }
 
         FeedbackPrompts.appendTag(message, REVIEW_TAG, lines.toString());
     }
 
     /**
-     * 턴 N이 바꾼 파일이 턴 N+1 프롬프트에 이름으로 나오는가. 셋 다 본다 — 전체 경로,
+     * 턴 K의 프롬프트가 턴 K-1이 바꾼 파일을 이름으로 부르는가. 셋 다 본다 — 전체 경로,
      * 파일명, 확장자를 뗀 이름. 사람은 {@code src/main/java/com/shop/OrderService.java}보다
      * {@code OrderService}라고 쓴다.
      */
-    private static boolean namedInNextPrompt(AttemptView.TurnView turn, AttemptView.TurnView next) {
-        String nextPrompt = next.userPrompt();
+    private static boolean namesPreviousChange(AttemptView.TurnView turn, AttemptView.TurnView previous) {
+        String prompt = turn.userPrompt();
 
-        for (FileChange change : turn.changes()) {
+        for (FileChange change : previous.changes()) {
             String path = change.path();
             String fileName = path.substring(path.lastIndexOf('/') + 1);
             int dot = fileName.lastIndexOf('.');
             String bareName = dot < 0 ? fileName : fileName.substring(0, dot);
 
-            if (nextPrompt.contains(path) || nextPrompt.contains(fileName) || nextPrompt.contains(bareName)) {
+            if (prompt.contains(path) || prompt.contains(fileName) || prompt.contains(bareName)) {
                 return true;
             }
         }

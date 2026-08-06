@@ -213,15 +213,15 @@ class PatternPromptsTest {
                 new AttemptView.TurnView("Main.java를 고쳐 줘", "두 번째 요약", List.of(), List.of(), null, null, null)
         ));
 
-        assertThat(prompt).startsWith("<" + PatternPrompts.REVIEW_TAG + ">\nturn=1 named=true");
+        assertThat(prompt).startsWith("<" + PatternPrompts.REVIEW_TAG + ">\nturn=2 named=true");
     }
 
     /**
-     * 파일명만 써도 짚은 것이고, 아무것도 안 쓰면 안 짚은 것이다. 마지막 턴은 다음 프롬프트가 없어
+     * 파일명만 써도 짚은 것이고, 아무것도 안 쓰면 안 짚은 것이다. 첫 턴은 앞 프롬프트가 없어
      * 줄 자체를 만들지 않는다.
      */
     @Test
-    void 다음_프롬프트가_바뀐_파일을_안_부르면_named가_거짓이다() {
+    void 프롬프트가_앞_턴의_바뀐_파일을_안_부르면_named가_거짓이다() {
         String prompt = PatternPrompts.userPrompt(problem, attemptWith(
                 new AttemptView.TurnView("첫 프롬프트", "첫 요약", List.of(
                         new FileChange("src/main/html/index.html", FileChange.ChangeType.MODIFIED, "<html>")
@@ -230,8 +230,8 @@ class PatternPromptsTest {
         ));
 
         assertThat(prompt)
-                .contains("turn=1 named=false")
-                .doesNotContain("turn=2 named=");
+                .contains("turn=2 named=false")
+                .doesNotContain("turn=1 named=");
     }
 
     /**
