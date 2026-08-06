@@ -84,9 +84,10 @@ class LiveFeedbackHarnessTest {
      * <p>둘을 뺀다. `~세요`는 사용자에게 하는 권유라 주장이 아니고, 부정문은 이 렌즈의 정답이다 —
      * `사용자가 AI가 고친 index.html을 턴 2에서 안 부르셨어요`에서 그 경로는 `<changed_file>`에서
      * 온 정당한 근거이고, 문장이 말하는 것은 사용자가 그것을 말하지 **않았다**는 사실이다.
+     * 부정은 `안`·`못`뿐 아니라 `않`도 온다 — `짚지 않고 넘어가셨어요`가 실호출에서 나왔다.
      */
     private static final Pattern USER_CLAIM = Pattern.compile("(셨어요|하셨|짚으셨)");
-    private static final Pattern NEGATED = Pattern.compile("(안|못)\\s|없");
+    private static final Pattern NEGATED = Pattern.compile("(안|못)\\s|않|없");
     private static final Pattern BACKTICKED = Pattern.compile("`([^`]+)`");
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -378,6 +379,11 @@ class LiveFeedbackHarnessTest {
                 Matcher matcher = BACKTICKED.matcher(sentence);
 
                 while (matcher.find()) {
+                    // 백틱 안의 사전 용어는 이름이지 사용자가 쓴 말이 아니다. 세면 전부 위반이 된다.
+                    if (TERMS.contains(matcher.group(1))) {
+                        continue;
+                    }
+
                     if (!userText.contains(matcher.group(1))) {
                         System.out.printf(
                                 "[harness] %s 사용자 오귀속 | name=%s | 문장=%s%n",
