@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType, type SVGProps } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { getProblems } from '../features/problem/api';
+import { GameIcon, JavaIcon, PythonIcon } from '../features/problem/ProblemIcons';
 import type { ProblemSummary } from '../features/problem/types';
 import { useTheme } from '../features/theme/ThemeContext';
 import { ApiError } from '../shared/api/apiClient';
@@ -123,6 +124,7 @@ export default function ProblemListPage() {
           <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--problem-list-acid)]">
             PROBLEM LIST
           </h1>
+          <IconLegend />
         </header>
 
         <section
@@ -160,7 +162,7 @@ export default function ProblemListPage() {
             >
             {visibleProblems.map((problem) => (
               <Link
-                className="group grid min-h-18 grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 border-t border-[var(--problem-list-border)] py-3 text-inherit no-underline transition-[padding,background,color] duration-200 first:border-t-0 hover:bg-[var(--problem-list-acid)] hover:px-3.5 hover:text-[#090909] focus-visible:bg-[var(--problem-list-acid)] focus-visible:px-3.5 focus-visible:text-[#090909] focus-visible:outline-none max-[640px]:grid-cols-[42px_minmax(0,1fr)_auto] max-[640px]:gap-3"
+                className="group grid min-h-18 grid-cols-[56px_minmax(0,1fr)_auto_auto] items-center gap-4 border-t border-[var(--problem-list-border)] py-3 text-inherit no-underline transition-[padding,background,color] duration-200 first:border-t-0 hover:bg-[var(--problem-list-acid)] hover:px-3.5 hover:text-[#090909] focus-visible:bg-[var(--problem-list-acid)] focus-visible:px-3.5 focus-visible:text-[#090909] focus-visible:outline-none max-[640px]:grid-cols-[42px_minmax(0,1fr)_auto_auto] max-[640px]:gap-3"
                 key={problem.id}
                 to={`/problems/${problem.id}`}
               >
@@ -170,6 +172,7 @@ export default function ProblemListPage() {
                 <span className="min-w-0 text-[clamp(16px,1.5vw,20px)] font-bold tracking-[-0.03em] [word-break:keep-all]">
                   {problem.title}
                 </span>
+                <ProblemBadge problem={problem} />
                 <span
                   className="justify-self-end text-2xl text-[var(--problem-list-acid)] transition-[color,transform] duration-200 group-hover:translate-x-[3px] group-hover:-translate-y-[3px] group-hover:text-[#090909] group-focus-visible:translate-x-[3px] group-focus-visible:-translate-y-[3px] group-focus-visible:text-[#090909]"
                   aria-hidden="true"
@@ -198,5 +201,72 @@ export default function ProblemListPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+/**
+ * 문제의 성격 아이콘. game 문제는 게임 아이콘 하나로(게임이라는 사실이 언어보다
+ * 중요하다), 그 외에는 풀이 언어 아이콘으로 표시한다. 아이콘이 없는 언어는 텍스트
+ * 칩으로 물러난다 — 새 언어가 추가됐을 때 빈칸보다 낫다.
+ *
+ * 아이콘은 currentColor를 따르는 인라인 SVG(ProblemIcons)라, 글자색만 바꾸면
+ * 라이트/다크 모드와 행 hover 반전(라임 배경 → 검정 아이콘)이 전부 함께 맞는다.
+ */
+const PROBLEM_ICONS: Record<
+  string,
+  { Icon: ComponentType<SVGProps<SVGSVGElement>>; label: string }
+> = {
+  game: { Icon: GameIcon, label: '게임 문제' },
+  java: { Icon: JavaIcon, label: 'Java 문제' },
+  python: { Icon: PythonIcon, label: 'Python 문제' },
+};
+
+/**
+ * 아이콘 범례. 목록 구분선 위 오른쪽 끝에 앉아 각 행의 아이콘이 무엇을 뜻하는지
+ * 알려준다. 라벨은 리스트의 대문자 모노 표기를 따른다.
+ */
+function IconLegend() {
+  return (
+    <div
+      aria-label="아이콘 범례"
+      className="flex shrink-0 items-center gap-4 font-mono text-[12px] font-bold tracking-[0.08em] text-[var(--problem-list-muted)]"
+    >
+      {[
+        { Icon: JavaIcon, label: 'JAVA' },
+        { Icon: PythonIcon, label: 'PYTHON' },
+        { Icon: GameIcon, label: 'GAME' },
+      ].map(({ Icon, label }) => (
+        <span className="inline-flex items-center gap-1.5" key={label}>
+          <Icon className="h-5 w-5" />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ProblemBadge({ problem }: { problem: ProblemSummary }) {
+  const known =
+    problem.type === 'game'
+      ? PROBLEM_ICONS.game
+      : PROBLEM_ICONS[problem.language.toLowerCase()];
+
+  if (!known) {
+    return (
+      <span className="justify-self-end border border-[var(--problem-list-border)] px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-[0.08em] whitespace-nowrap text-[var(--problem-list-muted)] transition-colors duration-200 group-hover:border-[#090909] group-hover:text-[#090909] group-focus-visible:border-[#090909] group-focus-visible:text-[#090909]">
+        {problem.language.toUpperCase()}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      aria-label={known.label}
+      className="justify-self-end text-[var(--problem-list-muted)] transition-colors duration-200 group-hover:text-[#090909] group-focus-visible:text-[#090909]"
+      role="img"
+      title={known.label}
+    >
+      <known.Icon className="block h-5 w-5" />
+    </span>
   );
 }

@@ -103,10 +103,12 @@ export default function RankingPage() {
   const [problemsError, setProblemsError] = useState<string | null>(null);
   const [ranking, setRanking] = useState<ProblemRanking | null>(null);
   const [notice, setNotice] = useState<RankingNotice | null>(null);
-  /** 목록에 없는 문제(비활성)를 골랐을 때 단건 조회로 채운 제목. */
-  const [unlistedProblem, setUnlistedProblem] = useState<ProblemSummary | null>(
-    null,
-  );
+  /** 목록에 없는 문제(비활성)를 골랐을 때 단건 조회로 채운 제목. 탭 이름에는
+      id·title만 쓰이므로 요약의 나머지(타입·언어)는 요구하지 않는다. */
+  const [unlistedProblem, setUnlistedProblem] = useState<Pick<
+    ProblemSummary,
+    'id' | 'title'
+  > | null>(null);
   const [hasTabOverflow, setHasTabOverflow] = useState(false);
   const tabNavRef = useRef<HTMLDivElement>(null);
   const selectedTabRef = useRef<HTMLAnchorElement>(null);

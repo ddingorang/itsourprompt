@@ -75,11 +75,11 @@ export async function getMockProblems(): Promise<ProblemListResponse> {
   await delay(250);
   return {
     problems: [
-      { id: 1, title: '게시판 API 구현' },
-      { id: 2, title: 'Todo 입력 예외 처리' },
-      { id: 3, title: '사용자 프로필 컴포넌트' },
-      { id: 4, title: '상품 목록 필터링' },
-      { id: 5, title: '주문 상태 전이 검증' },
+      { id: 1, language: 'java', title: '게시판 API 구현', type: 'coding' },
+      { id: 2, language: 'java', title: 'Todo 입력 예외 처리', type: 'coding' },
+      { id: 3, language: 'python', title: '사용자 프로필 컴포넌트', type: 'coding' },
+      { id: 4, language: 'python', title: '상품 목록 필터링', type: 'coding' },
+      { id: 5, language: 'java', title: '주문 상태 전이 검증', type: 'game' },
     ],
   };
 }
