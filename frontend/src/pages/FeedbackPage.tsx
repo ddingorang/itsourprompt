@@ -241,15 +241,39 @@ export default function FeedbackPage() {
       <Header mobileBreakpoint="760" />
 
       <main className="mx-auto w-[calc(100%_-_10vw)] max-w-[1840px] flex-1 pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
-        <section className="flex items-center justify-between gap-[18px] bg-[var(--feedback-acid)] px-[22px] py-5 text-[#090909] max-[760px]:flex-col max-[760px]:items-start">
-          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em]">
-            SESSION FEEDBACK
+        <section className="bg-[var(--feedback-acid)] px-[22px] py-5 text-[#090909]">
+          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em]">
+            풀이 피드백
           </h1>
-          <span className="text-right font-mono text-sm leading-[1.5] font-bold tracking-[0.05em] max-[760px]:text-left">
-            INTENT RECONSTRUCTION
-            <br />+ WORK PATTERNS
-          </span>
         </section>
+
+        {/*
+          이 화면은 랭킹에서 남의 기록으로도 열린다. 주인이 어디에도 없으면 링크를
+          받아 바로 들어온 사람은 누구 기록인지 알 수 없다. 배너 바로 아래에 세 면만
+          두른 띠로 붙여 제목의 일부처럼 읽히게 한다.
+        */}
+        {attempt && (
+          <section
+            aria-label="이 기록의 주인"
+            className="flex flex-wrap items-center gap-x-3 gap-y-2 border-x border-b border-[var(--feedback-border)] px-[22px] py-3.5"
+          >
+            <span className="font-mono text-[13px] font-bold tracking-[0.06em] text-[var(--feedback-muted)]">
+              OWNER
+            </span>
+            <span className="text-[15px] tracking-[-0.02em]">
+              {attempt.ownerLabel ?? '(이름을 불러오지 못했습니다.)'}
+            </span>
+            {attempt.mine && (
+              <span className="border border-[var(--feedback-acid)] px-1.5 py-0.5 font-mono text-[10px] leading-none font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
+                YOU
+              </span>
+            )}
+            {/* 배너와 같은 배치다 — 이름은 왼쪽, 부연은 오른쪽 끝. */}
+            <span className="ml-auto font-mono text-[11px] leading-[1.5] tracking-[0.04em] text-[var(--feedback-muted)] max-[760px]:ml-0">
+              제출된 기록은 누구나 볼 수 있습니다
+            </span>
+          </section>
+        )}
 
         {isLoading && (
           <section className="border-b border-[var(--feedback-border)] py-12 font-mono text-xs leading-[1.7] text-[var(--feedback-muted)]">
@@ -458,7 +482,13 @@ export default function FeedbackPage() {
                   className="max-[760px]:w-full"
                   to={`/problems/${attempt.problemId}`}
                 >
-                  <span className="text-[14px]">이전 문제로 돌아가기 ↗</span>
+                  {/*
+                    목적지는 같은 작업장이지만 남의 기록에서는 "돌아갈" 곳이 아니다 —
+                    거기서 열리는 것은 그 사람의 풀이가 아니라 내 새 어템프트다.
+                  */}
+                  <span className="text-[14px]">
+                    {attempt.mine ? '이전 문제로 돌아가기 ↗' : '이 문제 풀어보기 ↗'}
+                  </span>
                 </Button>
               )}
             </div>

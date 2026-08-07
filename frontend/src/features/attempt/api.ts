@@ -2,6 +2,7 @@ import {
   createMockAttempt,
   addMockTurn,
   getMockAttempt,
+  getMockAttemptFeedback,
   getMockCodeRun,
   getMockCodeRuns,
   requestMockCodeRun,
@@ -86,7 +87,7 @@ export async function getAttemptFeedback(
   attemptId: number,
   signal?: AbortSignal,
 ): Promise<AttemptFeedback> {
-  if (useMocks) return submitMockAttempt(attemptId);
+  if (useMocks) return getMockAttemptFeedback(attemptId);
 
   return apiRequest<AttemptFeedback>(`/attempts/${attemptId}/feedback`, { signal });
 }

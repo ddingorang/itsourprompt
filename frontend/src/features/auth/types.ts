@@ -10,7 +10,7 @@ export interface User {
   username: string;
   nickname: string;
   email: string;
-  /** 가입 시각(ISO-8601 문자열). 마이페이지의 MEMBER SINCE 표기에 사용한다. */
+  /** 가입 시각(ISO-8601 문자열). 마이페이지의 가입일 표기에 사용한다. */
   createdAt: string;
 }
 

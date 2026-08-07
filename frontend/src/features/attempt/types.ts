@@ -65,6 +65,21 @@ export interface Attempt {
   files: RepositoryFile[];
   turns: Turn[];
   status: AttemptStatus;
+  /**
+   * 주인의 표시 이름. 로그인 사용자는 닉네임, 게스트는 세션 UUID 앞 네 자다 —
+   * 응답만으로는 둘을 구분할 수 없으므로 `게스트` 같은 접두어는 붙이지 않는다.
+   *
+   * null이 되는 경우가 둘이다. **생성(POST /api/attempts) 응답은 항상 null이다** —
+   * 그 경로는 방금 쓴 엔티티로 응답을 만들어 닉네임을 조인하지 않는다(턴 추가와
+   * 조회는 채워 준다). 그래서 생성 직후 화면에서 이름을 그리면 로그인 사용자에게도
+   * 빈칸이 나온다. 나머지 하나는 **소유자 없는 과거 기록** — 소유자 컬럼이 생기기
+   * 전에 쌓인 행이라 주인을 알 수 없다.
+   *
+   * 즉 조회 응답이라고 해서 값이 있다고 단정할 수 없다.
+   */
+  ownerLabel: string | null;
+  /** 요청자 본인의 어템프트인지. 모든 경로에서 정확하다. */
+  mine: boolean;
   usage?: AttemptTokenUsage | null;
 }
 

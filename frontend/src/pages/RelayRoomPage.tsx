@@ -40,14 +40,16 @@ import Header from '../shared/components/Header';
 const labelClasses =
   'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
 
+const koreanLabelClasses = 'text-sm leading-[1.5] font-bold text-[#d6ff50]';
+
 const waitingTitleClasses =
-  'font-mono text-[clamp(32px,4vw,44px)] leading-[0.9] font-bold ' +
+  'text-[clamp(32px,4vw,44px)] leading-[0.9] font-bold ' +
   'tracking-[-0.04em] whitespace-nowrap text-[#d6ff50]';
 
-const smallLabelClasses = 'font-mono text-[14px] font-bold tracking-[0.12em] text-[#777]';
+const smallLabelClasses = 'text-[14px] font-bold text-[#777]';
 
 const waitingSectionLabelClasses =
-  'font-mono text-[16px] font-bold tracking-[0.12em] text-[#d6ff50]';
+  'text-[16px] font-bold text-[#d6ff50]';
 
 const pageClasses =
   'flex h-screen min-w-80 flex-col overflow-hidden bg-[#090909] text-[#f5f5ef] ' +
@@ -354,8 +356,8 @@ function WaitingView({
     <main className="mx-auto grid w-full max-w-[720px] flex-1 content-start gap-7 px-6 py-10">
       <div>
         <div className="flex items-end justify-between gap-6 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-3">
-          <div className={waitingTitleClasses}>ROOM #{room.roomId}</div>
-          <div className="shrink-0 text-right font-mono text-[12px] leading-[1.6] tracking-[0.04em] text-[#a3a3a3] max-[640px]:text-left">
+          <div className={waitingTitleClasses}>방 #{room.roomId}</div>
+          <div className="shrink-0 text-right text-[12px] leading-[1.6] text-[#a3a3a3] max-[640px]:text-left">
             {problem ? `「${problem.title}」` : `문제 ${room.problemId}번`} ·{' '}
             {room.totalLaps}바퀴 · 정원 {room.maxParticipants}명
           </div>
@@ -376,7 +378,7 @@ function WaitingView({
       {problem && (
         <section className="border border-[#343434]">
           <div className="border-b border-[#343434] px-4 py-3">
-            <span className={waitingSectionLabelClasses}>PROBLEM</span>
+            <span className={waitingSectionLabelClasses}>문제</span>
           </div>
           <div className="max-h-[320px] overflow-y-auto px-5 py-4">
             <ProblemSpec specMd={problem.specMd} />
@@ -387,20 +389,20 @@ function WaitingView({
       <section className="border border-[#343434]">
         <div className="border-b border-[#343434] px-4 py-3">
           <span className={waitingSectionLabelClasses}>
-            PLAYERS: {room.participants.length} / {room.maxParticipants}
+            참가자 {room.participants.length} / {room.maxParticipants}
           </span>
         </div>
         <ul className="m-0 grid list-none gap-0 p-0">
           {room.participants.map((participant, index) => (
             <li
-              className="flex items-center gap-3 border-b border-[#222] px-4 py-3 font-mono text-sm last:border-b-0"
+              className="flex items-center gap-3 border-b border-[#222] px-4 py-3 text-sm last:border-b-0"
               key={participant.userId}
             >
               <span className="text-[#666]">{index + 1}</span>
               <span>{participant.nickname}</span>
               {participant.userId === room.hostUserId && (
                 <span className="border border-[#d6ff50] px-1.5 py-0.5 text-[9px] text-[#d6ff50]">
-                  HOST
+                  방장
                 </span>
               )}
               {participant.userId === myUserId && (
@@ -504,7 +506,7 @@ function GameView({
 
   // 모든 턴을 소진하면 서버의 currentTurnIndex는 totalTurns와 같아지고(0-based의
   // one-past-the-end) currentLap은 null이 된다. 그대로 그리면 피드백 생성 동안
-  // "TURN 9 / 8 · LAP 1 / 2"처럼 보이므로 마지막 턴/바퀴로 고정한다.
+  // "턴 9 / 8 · 바퀴 1 / 2"처럼 보이므로 마지막 턴/바퀴로 고정한다.
   const relayOver = room.totalTurns !== null && room.currentTurnIndex >= room.totalTurns;
   const displayTurn = relayOver ? room.totalTurns : room.currentTurnIndex + 1;
   const displayLap = relayOver ? room.totalLaps : (room.currentLap ?? 0) + 1;
@@ -517,12 +519,12 @@ function GameView({
           스크롤이 생긴다. */}
       <aside className="workspace-scrollbar flex min-h-0 flex-col gap-5 overflow-x-hidden overflow-y-auto border-r border-[#343434] px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-r-0 max-[900px]:border-b">
         <div>
-          <div className="font-mono text-[16px] leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]">
-            {room.name ?? `ROOM #${room.roomId}`}
+          <div className="text-[16px] leading-[1.5] font-bold text-[#d6ff50]">
+            {room.name ?? `방 #${room.roomId}`}
           </div>
-          <p className="mt-1 mb-0 font-mono text-[12px] text-[#777]">
-            {room.name ? `#${room.roomId} · ` : ''}TURN {displayTurn} /{' '}
-            {room.totalTurns ?? '?'} · LAP {displayLap} / {room.totalLaps}
+          <p className="mt-1 mb-0 text-[12px] text-[#777]">
+            {room.name ? `#${room.roomId} · ` : ''}턴 {displayTurn} /{' '}
+            {room.totalTurns ?? '?'} · 바퀴 {displayLap} / {room.totalLaps}
           </p>
         </div>
 
@@ -577,14 +579,14 @@ function GameView({
         <div className="grid shrink-0 grid-cols-2 border border-[#3f3f3f]" role="tablist">
           {(
             [
-              ['problem', 'PROBLEM'],
-              ['live', 'LIVE'],
+              ['problem', '문제'],
+              ['live', '실시간'],
             ] as const
           ).map(([tab, label]) => (
             <button
               aria-selected={panelTab === tab}
               className={[
-                'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm leading-[1.5] font-bold tracking-[0.08em]',
+                'min-h-10 cursor-pointer border-0 bg-transparent px-3 text-sm leading-[1.5] font-bold',
                 tab === 'problem' ? 'border-r border-[#3f3f3f]' : '',
                 panelTab === tab
                   ? 'border-b-2 border-b-[#d6ff50] text-[#d6ff50]'
@@ -613,8 +615,8 @@ function GameView({
             <div className="grid gap-4">
               {lastSkip && (
                 <section className="border border-[#4a3a1e] bg-[#171207] px-4 py-3">
-                  <p className="m-0 font-mono text-[11px] font-bold text-[#ffb86b]">
-                    TURN {String(lastSkip.turnIndex + 1).padStart(2, '0')} 건너뜀 —{' '}
+                  <p className="m-0 text-[11px] font-bold text-[#ffb86b]">
+                    턴 {lastSkip.turnIndex + 1} 건너뜀 —{' '}
                     {room.participants.find((p) => p.userId === lastSkip.authorUserId)
                       ?.nickname ?? `user ${lastSkip.authorUserId}`}{' '}
                     님 (이탈 또는 시간 초과)
@@ -624,8 +626,8 @@ function GameView({
               {lastGrading && <GradingCard outcome={lastGrading} room={room} />}
               {lastTurn && (
                 <section className="border-l-2 border-[#d6ff50] pl-3">
-                  <div className="font-mono text-[11px] font-bold text-[#d6ff50]">
-                    TURN {String(lastTurn.turnIndex + 1).padStart(2, '0')} 완료
+                  <div className="text-[11px] font-bold text-[#d6ff50]">
+                    턴 {lastTurn.turnIndex + 1} 완료
                   </div>
                   <p className="my-2 whitespace-pre-wrap text-[12px] leading-[1.6] text-[#8f8f8f]">
                     {lastTurn.aiSummary}
@@ -822,9 +824,9 @@ function GradingCard({
 
   return (
     <section className="border border-[#3f3f3f] px-4 py-3">
-      <div className="flex items-baseline justify-between font-mono text-[11px] font-bold">
+      <div className="flex items-baseline justify-between text-[11px] font-bold">
         <span className="text-[#d6ff50]">
-          채점 — TURN {String(outcome.turnIndex + 1).padStart(2, '0')} (
+          채점 — 턴 {outcome.turnIndex + 1} (
           {author?.nickname ?? `user ${outcome.authorUserId}`})
         </span>
         {outcome.skipped ? (
@@ -910,8 +912,8 @@ function PromptForm({
       className="mt-auto grid gap-2 border-t border-[#343434] pt-4"
       onSubmit={handleSubmit}
     >
-      <label className={labelClasses} htmlFor="relay-prompt">
-        PROMPT / MAX 4,000
+      <label className={koreanLabelClasses} htmlFor="relay-prompt">
+        프롬프트 / 최대 4,000자
       </label>
       <textarea
         aria-keyshortcuts="Control+Enter Meta+Enter"
@@ -1045,7 +1047,7 @@ function RelayFileExplorer({
   // 높이를 지키고, 넘치는 몫은 사이드바의 세로 스크롤로 넘긴다.
   return (
     <section className="flex min-h-[180px] flex-1 flex-col border-t border-[#343434] pt-4 max-[900px]:max-h-[320px]">
-      <div className={labelClasses}>FILE EXPLORER</div>
+      <div className={koreanLabelClasses}>파일 탐색기</div>
       <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-auto">
         {fileTree.length > 0 ? (
           <div className="w-max min-w-full">{renderNodes(fileTree)}</div>
@@ -1084,9 +1086,9 @@ function CodePanel({
   return (
     <section className="flex min-h-0 flex-col overflow-hidden border-r border-[#343434] px-6 py-[22px] max-[900px]:min-h-[420px] max-[900px]:border-r-0 max-[900px]:border-b">
       <div className="mb-5 flex items-start justify-between gap-[18px]">
-        <div className={labelClasses}>{selected?.path ?? 'FILE'}</div>
-        <div className="flex shrink-0 gap-2 font-mono text-[9px] text-[#a3a3a3]">
-          <span className="border border-[#494949] px-2 py-1.5">READ ONLY</span>
+        <div className={selected ? labelClasses : koreanLabelClasses}>{selected?.path ?? '파일'}</div>
+        <div className="flex shrink-0 gap-2 text-[9px] text-[#a3a3a3]">
+          <span className="border border-[#494949] px-2 py-1.5">읽기 전용</span>
           <span className="border border-[#494949] px-2 py-1.5">
             {code ? `${code.appliedTurns}턴 반영` : '로딩 중'}
           </span>
@@ -1184,12 +1186,12 @@ function FinishedView({
       style={{ width: contentWidth }}
     >
       <header className="flex items-baseline justify-between gap-6 max-[640px]:gap-4">
-        <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-          RELAY FEEDBACK
+        <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+          릴레이 피드백
         </h1>
         <div className="flex min-w-0 items-baseline justify-end gap-3">
-          <span className="shrink-0 font-mono text-[28px] font-bold tracking-[0.06em] text-[#f5f5ef]">
-            ROOM #{room.roomId}
+          <span className="shrink-0 text-[28px] font-bold text-[#f5f5ef]">
+            방 #{room.roomId}
           </span>
           {/* 이름 도입 전에 만들어진 방은 name이 없다 — 그때는 방 번호만으로 충분하다. */}
           {room.name && (
@@ -1209,8 +1211,8 @@ function FinishedView({
       >
         <section className="border border-[#393939] bg-transparent">
           <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
-            <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
-              SCOREBOARD
+            <h2 className="m-0 text-xl leading-[1.4] font-bold text-[#d6ff50]">
+              점수판
             </h2>
           </div>
           <div className="px-6 py-5 max-[760px]:px-5">
@@ -1245,8 +1247,8 @@ function FinishedView({
         {feedback && (
           <section className="border border-[#393939] bg-transparent [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]">
             <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
-              <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
-                OVERALL.MD
+              <h2 className="m-0 text-xl leading-[1.4] font-bold text-[#d6ff50]">
+                총평
               </h2>
             </div>
             <div className="px-6 pb-7 [&>div>h2:first-child]:border-t-0 [&>div>h2:first-child]:pt-0 max-[760px]:px-5 max-[760px]:pb-5">
@@ -1281,8 +1283,8 @@ function FinishedView({
           className="border border-[#393939] bg-[#121212] [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]"
         >
           <div className="grid min-h-[58px] grid-cols-[220px_40px_minmax(0,1fr)_40px] border-b border-[#393939] max-[760px]:grid-cols-[40px_minmax(0,1fr)_40px]">
-            <span className="grid place-items-center border-r border-[#393939] bg-[#121212] px-[22px] text-center font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] max-[760px]:hidden">
-              TURN FEEDBACK
+            <span className="grid place-items-center border-r border-[#393939] bg-[#121212] px-[22px] text-center text-xl leading-[1.4] font-bold text-[#d6ff50] max-[760px]:hidden">
+              턴별 피드백
             </span>
             <button
               aria-label="이전 턴 피드백 보기"
@@ -1303,7 +1305,7 @@ function FinishedView({
                 return (
                   <button
                     aria-selected={selected}
-                    className={`relative min-h-[58px] min-w-[100px] shrink-0 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm font-bold tracking-[0.06em] whitespace-nowrap hover:text-[#f5f5ef] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:h-[3px] ${
+                    className={`relative min-h-[58px] min-w-[100px] shrink-0 cursor-pointer border-0 bg-transparent px-3 text-sm font-bold whitespace-nowrap hover:text-[#f5f5ef] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:h-[3px] ${
                       selected
                         ? 'text-[#d6ff50] after:bg-[#d6ff50]'
                         : 'text-[#a3a3a3] after:bg-transparent'
@@ -1314,7 +1316,7 @@ function FinishedView({
                     tabIndex={selected ? 0 : -1}
                     type="button"
                   >
-                    TURN {String(turn.turnIndex + 1).padStart(2, '0')}
+                    턴 {turn.turnIndex + 1}
                   </button>
                 );
               })}
@@ -1341,9 +1343,8 @@ function FinishedView({
                 role="tabpanel"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-                  <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
-                    TURN {String(selectedFeedbackTurn.turnIndex + 1).padStart(2, '0')}{' '}
-                    FEEDBACK
+                  <h2 className="m-0 text-lg leading-[1.4] font-bold text-[#d6ff50]">
+                    턴 {selectedFeedbackTurn.turnIndex + 1} 피드백
                   </h2>
                   <div className="ml-auto flex flex-wrap items-baseline justify-end gap-3 font-mono text-[13px] font-bold">
                     <span className="text-[#f5f5ef]">{selectedFeedbackTurn.nickname}</span>
@@ -1411,10 +1412,10 @@ function VoicePanel({
         compact ? 'grid gap-2' : 'grid gap-2 border border-[#2c2c2c] px-4 py-3'
       }
     >
-      {!compact && <span className={labelClassName}>VOICE</span>}
+      {!compact && <span className={labelClassName}>음성</span>}
       <button
         className={[
-          'cursor-pointer border px-3 py-2 font-mono text-[11px] font-bold',
+          'cursor-pointer border px-3 py-2 text-[11px] font-bold',
           rtc.audioOn
             ? 'border-[#d6ff50] bg-[#d6ff50] text-[#090909]'
             : 'border-[#3f3f3f] bg-transparent text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]',
