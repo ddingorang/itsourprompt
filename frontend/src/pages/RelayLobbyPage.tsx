@@ -307,25 +307,8 @@ export default function RelayLobbyPage() {
               </select>
             </label>
 
-            <div className="grid grid-cols-2 gap-4 max-[480px]:grid-cols-1">
-              <label className="grid gap-1.5">
-                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                  LAPS — 인원 × 바퀴 = 총 턴 수
-                </span>
-                <select
-                  className={fieldClasses}
-                  onChange={(event) => setTotalLaps(Number(event.target.value))}
-                  value={totalLaps}
-                >
-                  {LAP_CHOICES.map((laps) => (
-                    <option key={laps} value={laps}>
-                      {laps}바퀴
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="grid gap-1.5">
+            <div className="grid grid-cols-3 gap-4 max-[760px]:grid-cols-1">
+              <label className="grid content-start gap-1.5">
                 <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
                   MAX PLAYERS
                 </span>
@@ -343,26 +326,43 @@ export default function RelayLobbyPage() {
                   ))}
                 </select>
               </label>
-            </div>
 
-            <label className="grid gap-1.5">
-              <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                TURN TIME LIMIT — 주자 한 명의 입력 제한시간
-              </span>
-              <select
-                className={fieldClasses}
-                onChange={(event) =>
-                  setTurnTimeLimitSeconds(Number(event.target.value))
-                }
-                value={turnTimeLimitSeconds}
-              >
-                {TURN_TIME_LIMIT_CHOICES.map((seconds) => (
-                  <option key={seconds} value={seconds}>
-                    {formatTurnTimeLimit(seconds)}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <label className="grid content-start gap-1.5">
+                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
+                  LAPS — 인원 × 바퀴 = 총 턴 수
+                </span>
+                <select
+                  className={fieldClasses}
+                  onChange={(event) => setTotalLaps(Number(event.target.value))}
+                  value={totalLaps}
+                >
+                  {LAP_CHOICES.map((laps) => (
+                    <option key={laps} value={laps}>
+                      {laps}바퀴
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid content-start gap-1.5">
+                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
+                  TURN TIME LIMIT — 턴당 제한시간
+                </span>
+                <select
+                  className={fieldClasses}
+                  onChange={(event) =>
+                    setTurnTimeLimitSeconds(Number(event.target.value))
+                  }
+                  value={turnTimeLimitSeconds}
+                >
+                  {TURN_TIME_LIMIT_CHOICES.map((seconds) => (
+                    <option key={seconds} value={seconds}>
+                      {formatTurnTimeLimit(seconds)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
             <Button
               disabled={!roomName.trim() || problemId === null || creating}
