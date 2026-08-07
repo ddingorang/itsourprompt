@@ -117,6 +117,9 @@ class LiveFeedbackHarnessTest {
     /**
      * 두 렌즈를 세션마다 병렬로 굽는다. 세션은 순차로 돈다 — 열 호출을 한꺼번에 던지면 레이트 리밋 실패가
      * 계약 실패로 잘못 잡힌다.
+     *
+     * <p>pattern 렌즈만 페이즈와 무관하게 실행 기록을 받는다. 거기서 프롬프트로 나가는 것은 턴마다
+     * 실행이 끝났는지 불리언 하나뿐이라, 0·A 페이즈의 무신호 계약(프롬프트 렌즈 것)과 겹치지 않는다.
      */
     private List<CallRecord> runBothLenses(String phase, int reps) {
         OpenAiChatModel chatModel = chatModel();
@@ -128,7 +131,7 @@ class LiveFeedbackHarnessTest {
                 Future<CallRecord> promptCall = executor.submit(
                         () -> call(phase, currentRep, session, Lens.PROMPT, chatModel));
                 Future<CallRecord> patternCall = executor.submit(
-                        () -> call(phase, currentRep, session, Lens.PATTERN, chatModel));
+                        () -> call(phase, currentRep, session, Lens.PATTERN, session.testResults(), chatModel));
 
                 records.add(await(promptCall));
                 records.add(await(patternCall));
@@ -139,8 +142,9 @@ class LiveFeedbackHarnessTest {
     }
 
     /**
-     * B 페이즈는 프롬프트 렌즈만 반복한다 — 채점 결과를 싣는 것은 그 렌즈뿐이다. pattern 렌즈는 첫 회에
-     * 다섯 세션만 무신호로 돌려 어휘와 계약이 무너지지 않았는지 회귀로 확인한다.
+     * B 페이즈는 프롬프트 렌즈만 반복한다 — 통과 수와 델타를 싣는 것은 그 렌즈뿐이고, 그 신호가 판정을
+     * 뒤집는지가 이 페이즈의 질문이다. pattern 렌즈는 첫 회에만 한 번씩 돌려 어휘와 계약이 무너지지
+     * 않았는지 회귀로 확인한다.
      */
     private List<CallRecord> runSignalPhase(int reps) {
         OpenAiChatModel chatModel = chatModel();
@@ -158,7 +162,7 @@ class LiveFeedbackHarnessTest {
                 }
 
                 Future<CallRecord> patternCall = executor.submit(
-                        () -> call("B", currentRep, session, Lens.PATTERN, TurnTestResults.EMPTY, chatModel));
+                        () -> call("B", currentRep, session, Lens.PATTERN, session.testResults(), chatModel));
 
                 records.add(await(promptCall));
                 records.add(await(patternCall));
@@ -646,7 +650,7 @@ class LiveFeedbackHarnessTest {
             return FeedbackPrompts.userPrompt(session.problem(), session.attempt(), testResults);
         }
 
-        return PatternPrompts.userPrompt(session.problem(), session.attempt());
+        return PatternPrompts.userPrompt(session.problem(), session.attempt(), testResults);
     }
 
     private OpenAiFeedbackGenerator generatorFor(Lens lens, ChatClient.Builder builder) {
@@ -665,7 +669,7 @@ class LiveFeedbackHarnessTest {
                 executor,
                 "OPENAI PATTERN",
                 PatternPrompts.systemPrompt(),
-                (problem, attempt, testResults) -> PatternPrompts.userPrompt(problem, attempt),
+                PatternPrompts::userPrompt,
                 optionsFactory::forPatternFeedback,
                 PatternPrompts::renderTurn);
     }

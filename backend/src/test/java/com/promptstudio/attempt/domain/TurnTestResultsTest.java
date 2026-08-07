@@ -137,6 +137,31 @@ class TurnTestResultsTest {
                 .containsExactly("배송_시작된_주문은_취소할_수_없다", "취소하면_재고가_복구된다");
     }
 
+    /**
+     * pattern 렌즈의 실행 신호 태그가 이 판정 하나에 걸린다. 부르는 쪽에서 다시 판단하면 규칙이
+     * 두 곳이 되므로 여기가 유일한 정본이다.
+     */
+    @Test
+    void 끝났고_인프라_사고가_아닌_실행만_실행으로_센다() {
+        assertThat(result(CodeRunStatus.SUCCEEDED).ran()).isTrue();
+        assertThat(result(CodeRunStatus.TEST_FAILED).ran()).isTrue();
+        assertThat(result(CodeRunStatus.RUNTIME_ERROR).ran()).isTrue();
+        assertThat(result(CodeRunStatus.TIMEOUT).ran()).isTrue();
+
+        // 컴파일이 깨져도 사용자는 자기 코드에 대해 무언가를 본 것이다.
+        assertThat(result(CodeRunStatus.COMPILE_ERROR).ran()).isTrue();
+
+        // 아직 안 끝났다. 저장소가 걸러 주지만 그건 다른 클래스의 성질이라 여기서도 막는다.
+        assertThat(result(CodeRunStatus.QUEUED).ran()).isFalse();
+
+        // 끝났지만 사용자가 본 것은 코드가 아니라 채점 인프라의 사고다.
+        assertThat(result(CodeRunStatus.RUNNER_ERROR).ran()).isFalse();
+    }
+
+    private TurnTestResult result(CodeRunStatus status) {
+        return new TurnTestResult(0, status, null, null, null, null, List.of());
+    }
+
     private Graded graded(Integer turnOrdinal, CodeRunStatus status, CodeRunCaseTally tally) {
         return new Graded(turnOrdinal, status, tally, List.of());
     }
