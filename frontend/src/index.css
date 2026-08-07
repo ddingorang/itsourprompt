@@ -30,6 +30,8 @@ html { scroll-behavior: smooth; }
   --relay-subtle: var(--relay-muted);
   --relay-border: #393939;
   --relay-acid: #d6ff50;
+  /* 섹션 머리줄 제목. 랭킹 페이지 상단바의 미선택 탭(--ranking-tab-idle)과 같은 값이다. */
+  --relay-label: #8f8f8f;
   /* 공통 컴포넌트(Header/Footer/Button/Pagination)가 읽는 공용 별칭 —
      페이지 변수를 가리키므로 라이트 값도 자동으로 따라간다. */
   --acid: var(--relay-acid);
@@ -48,6 +50,7 @@ html { scroll-behavior: smooth; }
   --relay-subtle: var(--relay-muted);
   --relay-border: #c7c7c1;
   --relay-acid: #bee034;
+  --relay-label: #70706a;
   background: var(--relay-bg) !important;
   color: var(--relay-text) !important;
   color-scheme: light;

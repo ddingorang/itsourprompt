@@ -12,8 +12,9 @@ import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
+/** 섹션 머리줄 제목. 색은 랭킹 페이지 상단바의 미선택 탭과 같은 값을 쓴다. */
 const labelClasses =
-  'text-[20px] leading-[1.5] font-bold text-[#d6ff50]';
+  'text-[20px] leading-[1.5] font-bold text-[var(--relay-label)]';
 
 const fieldClasses =
   'w-full border border-[#3f3f3f] bg-[#151515] px-3 py-2.5 text-sm ' +
@@ -207,7 +208,7 @@ export default function RelayLobbyPage() {
         )}
 
         <section className="border border-[#343434]">
-          <div className="flex items-center justify-between border-b border-[#343434] px-6 py-3">
+          <div className="flex items-center justify-between border-b border-[#343434] bg-[var(--relay-surface)] px-6 py-3">
             <span className={labelClasses}>방 목록</span>
             <div className="flex items-center gap-2">
               <button
@@ -338,10 +339,13 @@ export default function RelayLobbyPage() {
           )}
         </section>
 
-        <section className="border border-[#343434] p-6">
-          <div className={labelClasses}>방 만들기</div>
+        <section className="border border-[#343434]">
+          {/* 방 목록과 같은 머리줄 — 제목 아래 구분선을 긋고 배경으로 한 단 띄운다. */}
+          <div className="border-b border-[#343434] bg-[var(--relay-surface)] px-6 py-3">
+            <span className={labelClasses}>방 만들기</span>
+          </div>
 
-          <div className="mt-5 grid gap-4">
+          <div className="grid gap-4 p-6">
             <label className="grid gap-1.5">
               <span className="text-[12px] text-[#a3a3a3]">
                 방 이름 — 로비 목록에 그대로 보입니다 (최대 {ROOM_NAME_MAX_LENGTH}자)
