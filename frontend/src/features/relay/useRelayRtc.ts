@@ -28,6 +28,10 @@ export interface RelayPeerView {
   stream: MediaStream | null;
   /** 지금 말하는 중인가. 수신 스트림의 음량을 로컬에서 재서 판정한다. */
   speaking: boolean;
+  /** 보이스 채널에 참가 중인가. DataChannel의 voice 메시지로 안다. */
+  voiceJoined: boolean;
+  /** 참가 중일 때 마이크를 켰는가. */
+  micOn: boolean;
 }
 
 interface PeerEntry {
@@ -59,7 +63,10 @@ export function useRelayRtc(
   sendSignal: (type: RelaySignalType, targetUserId: number, payload: unknown) => void,
 ) {
   const [peers, setPeers] = useState<Map<number, RelayPeerView>>(new Map());
-  const [audioOn, setAudioOn] = useState(false);
+  /* 보이스 채널 모델: 참가(voiceJoined)해야 남의 소리가 들리고, 참가 중에만
+     마이크(micOn)를 껐다 켠다. */
+  const [voiceJoined, setVoiceJoined] = useState(false);
+  const [micOn, setMicOn] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   /** 내가 말하는 중인가. 내 항목은 peers에 없으므로 따로 든다 — 마이크가 실제로 잡히는지의 셀프 모니터. */
   const [mySpeaking, setMySpeaking] = useState(false);
@@ -71,6 +78,8 @@ export function useRelayRtc(
   const reactionTimersRef = useRef<Map<number, number>>(new Map());
   const audioContextRef = useRef<AudioContext | null>(null);
   const probesRef = useRef<Map<number, VoiceProbe>>(new Map());
+  /** 브로드캐스트용 내 보이스 상태. 새로 열리는 채널(onopen)에도 이 값을 알린다. */
+  const voiceStateRef = useRef({ joined: false, micOn: false });
 
   useEffect(() => {
     myIdRef.current = myUserId;
@@ -116,11 +125,13 @@ export function useRelayRtc(
         const next = new Map(prev);
         const current = next.get(userId) ?? {
           connectionState: 'new' as RTCPeerConnectionState,
+          micOn: false,
           reaction: null,
           speaking: false,
           stream: null,
           typing: '',
           userId,
+          voiceJoined: false,
         };
         next.set(userId, { ...current, ...patch });
         return next;
@@ -209,11 +220,23 @@ export function useRelayRtc(
       const entry = entriesRef.current.get(userId);
       if (entry) entry.channel = channel;
 
+      // 채널이 열리면 내 보이스 상태를 알린다 — 뒤늦게 붙은 피어도 내 🎧 표시를 본다.
+      channel.onopen = () => {
+        const { joined, micOn: micState } = voiceStateRef.current;
+        if (!joined) return;
+        channel.send(JSON.stringify({ joined, kind: 'voice', micOn: micState }));
+      };
+
       channel.onmessage = (message: MessageEvent<string>) => {
         const data = JSON.parse(message.data) as RelayDataMessage;
 
         if (data.kind === 'typing') {
           patchPeer(userId, { typing: data.text });
+          return;
+        }
+
+        if (data.kind === 'voice') {
+          patchPeer(userId, { micOn: data.micOn, voiceJoined: data.joined });
           return;
         }
 
@@ -391,14 +414,62 @@ export function useRelayRtc(
     [broadcastData, myUserId, patchPeer],
   );
 
-  const toggleAudio = useCallback(async () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      localStreamRef.current = null;
+  const broadcastVoiceState = useCallback(
+    (joined: boolean, micState: boolean) => {
+      voiceStateRef.current = { joined, micOn: micState };
+      broadcastData({ joined, kind: 'voice', micOn: micState });
+    },
+    [broadcastData],
+  );
+
+  /** 마이크 캡처를 완전히 놓는다. 브라우저의 "마이크 사용 중" 표시도 함께 꺼진다. */
+  const releaseMic = useCallback(() => {
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current = null;
+    detachProbe(SELF_PROBE_KEY);
+    setMySpeaking(false);
+    setMicOn(false);
+    // 트랙 제거로 재협상을 걸기보다 연결은 유지한다 — 끊긴 트랙은 무음일 뿐이다.
+  }, [detachProbe]);
+
+  /** 듣기 전용으로 채널에 들어간다. 마이크 권한은 처음 마이크를 켤 때에야 묻는다. */
+  const joinVoice = useCallback(() => {
+    setVoiceJoined(true);
+    broadcastVoiceState(true, voiceStateRef.current.micOn);
+    // 참가 클릭이 사용자 제스처다 — 여기서 되살려 두면 발화 감지가 확실히 돈다.
+    void audioContextRef.current?.resume();
+  }, [broadcastVoiceState]);
+
+  const leaveVoice = useCallback(() => {
+    releaseMic();
+    setVoiceJoined(false);
+    broadcastVoiceState(false, false);
+  }, [broadcastVoiceState, releaseMic]);
+
+  /**
+   * 채널 참가 중의 마이크 토글. 끌 때 캡처를 놓지 않고 트랙만 무음으로 둔다 —
+   * 다시 켤 때 권한 팝업도 재협상도 없다. 캡처 해제는 leaveVoice가 한다.
+   */
+  const toggleMic = useCallback(async () => {
+    if (micOn) {
+      localStreamRef.current?.getAudioTracks().forEach((track) => {
+        track.enabled = false;
+      });
       detachProbe(SELF_PROBE_KEY);
       setMySpeaking(false);
-      setAudioOn(false);
-      // 트랙 제거로 재협상을 걸기보다 연결은 유지한다 — 끈 마이크는 무음 트랙일 뿐이다.
+      setMicOn(false);
+      broadcastVoiceState(voiceStateRef.current.joined, false);
+      return;
+    }
+
+    const held = localStreamRef.current;
+    if (held) {
+      held.getAudioTracks().forEach((track) => {
+        track.enabled = true;
+      });
+      attachProbe(SELF_PROBE_KEY, held);
+      setMicOn(true);
+      broadcastVoiceState(voiceStateRef.current.joined, true);
       return;
     }
 
@@ -407,25 +478,29 @@ export function useRelayRtc(
       localStreamRef.current = stream;
       attachProbe(SELF_PROBE_KEY, stream);
       setAudioError(null);
-      setAudioOn(true);
+      setMicOn(true);
       entriesRef.current.forEach((entry) => {
         stream.getTracks().forEach((track) => {
           entry.connection.addTrack(track, stream); // 재협상 유발
         });
       });
+      broadcastVoiceState(voiceStateRef.current.joined, true);
     } catch {
       setAudioError('마이크를 사용할 수 없습니다. 브라우저 권한을 확인해 주세요.');
     }
-  }, [attachProbe, detachProbe]);
+  }, [attachProbe, broadcastVoiceState, detachProbe, micOn]);
 
   return {
     audioError,
-    audioOn,
     handleEvent,
+    joinVoice,
+    leaveVoice,
+    micOn,
     mySpeaking,
     peers,
     sendReaction,
     sendTyping,
-    toggleAudio,
+    toggleMic,
+    voiceJoined,
   };
 }

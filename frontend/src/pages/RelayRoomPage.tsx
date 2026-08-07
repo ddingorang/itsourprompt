@@ -304,7 +304,8 @@ function RelayRoomScreen({
       {/* 게임 중에는 워크스페이스 화면(ProblemDetailPage와 같은 형태)이라 footer를 그리지
           않는다 — 헤더가 default로 돌아오는 대기실/결과 화면에서만 보인다. */}
       {(isWaiting || isFinished) && <Footer />}
-      <PeerAudios peers={rtc.peers} />
+      {/* 화면과 무관하게 보이스 채널 참가자만 듣는다. */}
+      <PeerAudios enabled={rtc.voiceJoined} peers={rtc.peers} />
     </div>
   );
 }
@@ -386,42 +387,64 @@ function WaitingView({
         </section>
       )}
 
-      <section className="border border-[#343434]">
-        <div className="border-b border-[#343434] px-4 py-3">
-          <span className={waitingSectionLabelClasses}>
-            참가자 {room.participants.length} / {room.maxParticipants}
-          </span>
-        </div>
-        <ul className="m-0 grid list-none gap-0 p-0">
-          {room.participants.map((participant, index) => (
-            <li
-              className="flex items-center gap-3 border-b border-[#222] px-4 py-3 text-sm last:border-b-0"
-              key={participant.userId}
-            >
-              <span className="text-[#666]">{index + 1}</span>
-              <span>{participant.nickname}</span>
-              {participant.userId === room.hostUserId && (
-                <span className="border border-[#d6ff50] px-1.5 py-0.5 text-[9px] text-[#d6ff50]">
-                  방장
-                </span>
-              )}
-              {participant.userId === myUserId && (
-                <span className="text-[10px] text-[#777]">(나)</span>
-              )}
-              <VoiceDot peer={rtc.peers.get(participant.userId)} self={participant.userId === myUserId} />
-              <SpeakingBadge
-                speaking={
-                  participant.userId === myUserId
-                    ? rtc.mySpeaking
-                    : (rtc.peers.get(participant.userId)?.speaking ?? false)
-                }
-              />
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <VoicePanel labelClassName={waitingSectionLabelClasses} rtc={rtc} />
+      {/* 참가자 목록과 음성 박스를 한 행에 나란히 둔다 — 좁은 화면에서는 세로로 풀린다.
+          음성 박스는 self-start로 높이가 고정이고, 참가자 박스는 행 높이(둘 중 큰 쪽)를
+          따라 늘어난다 — 인원이 적을 땐 음성 박스 높이와 같고, 많아지면 그만큼 자란다. */}
+      <div className="flex items-stretch gap-3 max-[640px]:flex-col">
+        <section className="min-w-0 flex-1 border border-[#343434]">
+          <div className="border-b border-[#343434] px-4 py-3">
+            <span className={waitingSectionLabelClasses}>
+              참가자 {room.participants.length} / {room.maxParticipants}
+            </span>
+          </div>
+          <ul className="m-0 grid list-none gap-0 p-0">
+            {room.participants.map((participant, index) => (
+              <li
+                className="flex items-center gap-3 border-b border-[#222] px-4 py-3 text-sm last:border-b-0"
+                key={participant.userId}
+              >
+                <span className="text-[#666]">{index + 1}</span>
+                <span>{participant.nickname}</span>
+                {participant.userId === room.hostUserId && (
+                  <span className="border border-[#d6ff50] px-1.5 py-0.5 text-[9px] text-[#d6ff50]">
+                    방장
+                  </span>
+                )}
+                {participant.userId === myUserId && (
+                  <span className="text-[10px] text-[#777]">(나)</span>
+                )}
+                <VoiceDot peer={rtc.peers.get(participant.userId)} self={participant.userId === myUserId} />
+                <VoiceChannelBadge
+                  joined={
+                    participant.userId === myUserId
+                      ? rtc.voiceJoined
+                      : (rtc.peers.get(participant.userId)?.voiceJoined ?? false)
+                  }
+                  micOn={
+                    participant.userId === myUserId
+                      ? rtc.micOn
+                      : (rtc.peers.get(participant.userId)?.micOn ?? false)
+                  }
+                />
+                <SpeakingBadge
+                  speaking={
+                    participant.userId === myUserId
+                      ? rtc.mySpeaking
+                      : (rtc.peers.get(participant.userId)?.speaking ?? false)
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+        <VoiceChannelPanel
+          className="self-start max-[640px]:self-stretch"
+          framed
+          labelClassName={waitingSectionLabelClasses}
+          rtc={rtc}
+          stacked
+        />
+      </div>
 
       {actionError && (
         <p className="m-0 font-mono text-xs text-[#ff786b]">{actionError}</p>
@@ -548,11 +571,19 @@ function GameView({
                   : (rtc.peers.get(participant.userId)?.speaking ?? false)
               }
               turnTimeLimitSeconds={room.turnTimeLimitSeconds}
+              voice={
+                participant.userId === myUserId
+                  ? { joined: rtc.voiceJoined, micOn: rtc.micOn }
+                  : {
+                      joined: rtc.peers.get(participant.userId)?.voiceJoined ?? false,
+                      micOn: rtc.peers.get(participant.userId)?.micOn ?? false,
+                    }
+              }
             />
           ))}
         </div>
 
-        <VoicePanel compact rtc={rtc} />
+        <VoiceChannelPanel rtc={rtc} />
 
         <ReactionBar rtc={rtc} />
 
@@ -712,6 +743,7 @@ function SeatCard({
   score,
   speaking,
   turnTimeLimitSeconds,
+  voice,
 }: {
   current: boolean;
   deadline: string | null;
@@ -721,6 +753,7 @@ function SeatCard({
   score: number | null;
   speaking: boolean;
   turnTimeLimitSeconds: number;
+  voice: { joined: boolean; micOn: boolean };
 }) {
   return (
     <div
@@ -738,6 +771,7 @@ function SeatCard({
         {me && <span className="text-[9px] text-[#777]">(나)</span>}
         {participant.left && <span className="text-[9px] text-[#ff786b]">이탈</span>}
         <VoiceDot peer={peer} self={me} />
+        <VoiceChannelBadge joined={voice.joined} micOn={voice.micOn} />
         <SpeakingBadge speaking={speaking} />
         {peer?.reaction && <span className="text-base">{peer.reaction}</span>}
         <span
@@ -1397,39 +1431,149 @@ function FinishedView({
 
 /* ---------- 음성 ---------- */
 
-function VoicePanel({
-  compact = false,
+/**
+ * 보이스 채널 패널. 참가해야 남의 소리가 들리고, 참가 후에는 마이크를
+ * 자유로 껐다 켠다. 참가 클릭(사용자 제스처)이 차단됐던 자동재생도 되살린다.
+ *
+ * 대기실은 framed(테두리 + "음성" 라벨) + stacked로 그린다 — 참가 버튼이 두 버튼
+ * 높이의 자리를 통째로 차지하다가, 참가하면 위(마이크)/아래(나가기)로 갈라진다.
+ * 자리 크기가 그대로라 참가 전후로 주변 레이아웃이 흔들리지 않는다.
+ */
+function VoiceChannelPanel({
+  className = '',
+  framed = false,
   labelClassName = smallLabelClasses,
   rtc,
+  stacked = false,
 }: {
-  compact?: boolean;
+  className?: string;
+  framed?: boolean;
   labelClassName?: string;
+  rtc: ReturnType<typeof useRelayRtc>;
+  stacked?: boolean;
+}) {
+  const controls = stacked ? (
+    <div className="grid h-[76px] w-[200px] grid-rows-2 gap-1 max-[640px]:w-full">
+      {rtc.voiceJoined ? (
+        <>
+          <VoiceMicButton rtc={rtc} />
+          <VoiceLeaveButton rtc={rtc} />
+        </>
+      ) : (
+        <VoiceJoinButton className="row-span-2" rtc={rtc} />
+      )}
+    </div>
+  ) : rtc.voiceJoined ? (
+    <div className="flex gap-2">
+      <VoiceMicButton className="flex-1" rtc={rtc} />
+      <VoiceLeaveButton rtc={rtc} />
+    </div>
+  ) : (
+    <VoiceJoinButton rtc={rtc} />
+  );
+
+  return (
+    <section
+      className={`${
+        framed
+          ? 'grid content-start gap-2 border border-[#2c2c2c] px-4 py-3'
+          : 'grid gap-2'
+      } ${className}`}
+    >
+      {framed && <span className={labelClassName}>음성</span>}
+      {controls}
+      {/* 안내와 에러가 한 줄을 늘 차지한다 — 참가 전후로 박스 높이가 변하지 않게. */}
+      <p
+        className={`m-0 min-h-[16px] font-mono text-[10px] ${
+          rtc.audioError ? 'text-[#ff786b]' : 'text-[#777]'
+        }`}
+      >
+        {rtc.audioError ??
+          (rtc.voiceJoined ? '' : '참가하면 방 사람들의 음성이 들립니다.')}
+      </p>
+    </section>
+  );
+}
+
+function VoiceJoinButton({
+  className = '',
+  rtc,
+}: {
+  className?: string;
   rtc: ReturnType<typeof useRelayRtc>;
 }) {
   return (
-    <section
-      className={
-        compact ? 'grid gap-2' : 'grid gap-2 border border-[#2c2c2c] px-4 py-3'
-      }
+    <button
+      className={`${voiceButtonClasses(false)} ${className}`}
+      onClick={() => rtc.joinVoice()}
+      type="button"
     >
-      {!compact && <span className={labelClassName}>음성</span>}
-      <button
-        className={[
-          'cursor-pointer border px-3 py-2 text-[11px] font-bold',
-          rtc.audioOn
-            ? 'border-[#d6ff50] bg-[#d6ff50] text-[#090909]'
-            : 'border-[#3f3f3f] bg-transparent text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]',
-        ].join(' ')}
-        onClick={() => void rtc.toggleAudio()}
-        type="button"
-      >
-        {rtc.audioOn ? '🎤 마이크 끄기' : '🎤 마이크 켜기'}
-      </button>
-      {rtc.audioError && (
-        <p className="m-0 font-mono text-[10px] text-[#ff786b]">{rtc.audioError}</p>
-      )}
-    </section>
+      🎧 보이스 채널 참가
+    </button>
   );
+}
+
+function VoiceMicButton({
+  className = '',
+  rtc,
+}: {
+  className?: string;
+  rtc: ReturnType<typeof useRelayRtc>;
+}) {
+  return (
+    <button
+      className={`${voiceButtonClasses(rtc.micOn)} ${className}`}
+      onClick={() => void rtc.toggleMic()}
+      type="button"
+    >
+      {rtc.micOn ? '🎤 마이크 끄기' : '🔇 마이크 켜기'}
+    </button>
+  );
+}
+
+function VoiceLeaveButton({
+  className = '',
+  rtc,
+}: {
+  className?: string;
+  rtc: ReturnType<typeof useRelayRtc>;
+}) {
+  return (
+    <button
+      className={`${voiceButtonClasses(false)} ${className}`}
+      onClick={() => rtc.leaveVoice()}
+      title="보이스 채널 나가기"
+      type="button"
+    >
+      🎧 나가기
+    </button>
+  );
+}
+
+/** 보이스 채널 참가 표시. 마이크를 끈 참가자는 흐리게 그린다. */
+function VoiceChannelBadge({ joined, micOn }: { joined: boolean; micOn: boolean }) {
+  if (!joined) return null;
+
+  const label = micOn ? '보이스 참가 중 · 마이크 켬' : '보이스 참가 중 · 마이크 끔';
+  return (
+    <span
+      aria-label={label}
+      className={micOn ? 'text-[11px]' : 'text-[11px] opacity-40'}
+      role="img"
+      title={label}
+    >
+      🎧
+    </span>
+  );
+}
+
+function voiceButtonClasses(active: boolean): string {
+  return [
+    'cursor-pointer border px-3 py-2 text-[11px] font-bold',
+    active
+      ? 'border-[#d6ff50] bg-[#d6ff50] text-[#090909]'
+      : 'border-[#3f3f3f] bg-transparent text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]',
+  ].join(' ');
 }
 
 /**
@@ -1476,32 +1620,48 @@ function VoiceDot({
 
 /**
  * 피어들의 음성 출력. 화면에 보이지 않지만 stream이 있는 피어마다 하나씩 재생한다.
- * ref 콜백에서 srcObject를 잇는다 — audio 엘리먼트는 속성으로 스트림을 못 받는다.
+ * enabled가 꺼져 있으면 음소거로 돌린다 — 엘리먼트를 떼지 않아야 채널 참가 순간
+ * 이미 흐르던 스트림이 그대로 들린다.
  */
-function PeerAudios({ peers }: { peers: Map<number, RelayPeerView> }) {
+function PeerAudios({
+  enabled,
+  peers,
+}: {
+  enabled: boolean;
+  peers: Map<number, RelayPeerView>;
+}) {
   return (
     <>
       {[...peers.values()]
         .filter((peer) => peer.stream !== null)
         .map((peer) => (
-          <PeerAudio key={peer.userId} stream={peer.stream as MediaStream} />
+          <PeerAudio
+            enabled={enabled}
+            key={peer.userId}
+            stream={peer.stream as MediaStream}
+          />
         ))}
     </>
   );
 }
 
-function PeerAudio({ stream }: { stream: MediaStream }) {
+function PeerAudio({ enabled, stream }: { enabled: boolean; stream: MediaStream }) {
   const ref: RefObject<HTMLAudioElement | null> = useRef(null);
 
+  // ref 콜백이 아니라 effect에서 잇는다 — audio 엘리먼트는 속성으로 스트림을 못 받는다.
+  // enabled가 켜질 때 play를 다시 시도한다: 채널 참가 클릭이 사용자 제스처라
+  // 그전에 자동재생이 차단됐던 스트림도 이 재시도에서 살아난다.
   useEffect(() => {
     const audio = ref.current;
-    if (audio) {
-      audio.srcObject = stream;
+    if (!audio) return;
+    audio.srcObject = stream;
+    audio.muted = !enabled;
+    if (enabled) {
       void audio.play().catch(() => {
-        // 자동재생이 차단된 경우다. 사용자가 페이지와 상호작용하면 다음 스트림부터 재생된다.
+        // 여전히 차단된 경우다. 다음 상호작용 뒤의 enabled/stream 변화가 살린다.
       });
     }
-  }, [stream]);
+  }, [enabled, stream]);
 
-  return <audio autoPlay ref={ref} />;
+  return <audio autoPlay muted={!enabled} ref={ref} />;
 }
