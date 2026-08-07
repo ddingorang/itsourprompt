@@ -985,6 +985,20 @@ function PromptForm({
             <span>{typerText.length.toLocaleString('ko-KR')} / 4,000</span>
           </div>
         </>
+      ) : roomStatus !== 'PLAYING' ? (
+        // 생성·채점 단계. 비활성 textarea의 placeholder는 opacity-40까지 겹쳐
+        // 거의 안 보였다 — 같은 자리에 밝은 상태 박스를 그린다.
+        <>
+          <span className={koreanLabelClasses}>프롬프트 / 턴 진행 중</span>
+          <div className="grid h-[108px] w-full place-items-center border border-dashed border-[#3f3f3f] bg-[#111111] px-3">
+            <span className="animate-pulse text-center font-mono text-[12px] leading-[1.7] font-bold text-[#d6ff50]">
+              {statusBanners[roomStatus]}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 px-1 font-mono text-[10px] text-[#666]">
+            <span>진행 상황은 자동으로 갱신됩니다</span>
+          </div>
+        </>
       ) : (
         <>
           <label className={koreanLabelClasses} htmlFor="relay-prompt">
@@ -1010,9 +1024,7 @@ function PromptForm({
             placeholder={
               isMyTurn
                 ? '문제를 해결할 프롬프트를 입력하세요.'
-                : roomStatus === 'PLAYING'
-                  ? '내 차례가 되면 입력할 수 있습니다'
-                  : statusBanners[roomStatus]
+                : '내 차례가 되면 입력할 수 있습니다'
             }
             value={prompt}
           />
