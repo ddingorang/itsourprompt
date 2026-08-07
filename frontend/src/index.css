@@ -73,6 +73,7 @@ html { scroll-behavior: smooth; }
 
 .relay-page[data-color-mode='light'] [class~="bg-[#090909]"],
 .relay-page[data-color-mode='light'] [class~="bg-[#121212]"] { background-color: var(--relay-bg) !important; }
+.relay-page[data-color-mode='light'] [class~="bg-[#111111]"],
 .relay-page[data-color-mode='light'] [class~="bg-[#151515]"],
 .relay-page[data-color-mode='light'] [class~="bg-[#171717]"],
 .relay-page[data-color-mode='light'] [class~="bg-[#202020]"],
