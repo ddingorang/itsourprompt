@@ -51,7 +51,7 @@ final class PatternSchema {
                 },
                 "overall": {
                   "type": "string",
-                  "description": "세션 전체에 붙인 이름과 다음 세션에 가져갈 기법의 한국어 Markdown."
+                  "description": "세션 전체에 붙인 이름과 다음 문제에 가져갈 기법의 한국어 Markdown."
                 }
               },
               "required": ["turnFeedbacks", "overall"],

@@ -154,6 +154,21 @@ public record TurnTestResults(
             Integer deltaBaseOrdinal,
             List<String> failedTestNames
     ) {
+
+        /**
+         * 이 턴의 코드가 실제로 돌아 사용자에게 동작을 보여 줬는가.
+         *
+         * <p>두 가지를 함께 본다. {@code QUEUED}는 아직 안 끝났고, {@code RUNNER_ERROR}는 끝났지만
+         * 사용자가 본 것이 코드의 동작이 아니라 채점 인프라의 사고다. 나머지는 전부 참이다 —
+         * {@code COMPILE_ERROR}도 사용자가 자기 코드에 대해 무언가를 본 것이다.
+         *
+         * <p>이 판단을 부르는 쪽에 두면 안 된다. {@link com.promptstudio.attempt.service.TurnTestResultLoader}가
+         * {@code QUEUED}를 걸러 주는 것에 기대게 되는데, 그건 다른 클래스의 성질이고 픽스처는 그 경로를
+         * 거치지 않는다. 여기 두면 {@code TurnTestResult}를 어디서 만들든 답이 하나다.
+         */
+        public boolean ran() {
+            return status.isTerminal() && status != CodeRunStatus.RUNNER_ERROR;
+        }
     }
 
     /** 델타 기준 한 자리. ordinal이 null이면 베이스라인이다. */

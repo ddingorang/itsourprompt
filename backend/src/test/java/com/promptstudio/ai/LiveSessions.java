@@ -21,8 +21,8 @@ import java.util.List;
  * S1 정석, S2 범위 초과, S3 결정적 턴(파일에는 변경이 있는데 테스트가 계속 실패), S4 인프라 사고,
  * S5 퇴보(앞 턴이 통과시킨 테스트가 깨짐).
  *
- * <p>뒤의 둘은 pattern 렌즈를 겨냥한다 — S6 안 짚음, S7 실행으로만 확인. 앞의 다섯이 전부
- * {@code 직전 결과 … 확인했어요}로 시작해 {@code vibe coding} 축을 거의 재지 못했기 때문이다.
+ * <p>뒤의 셋은 pattern 렌즈를 겨냥한다 — S6 안 짚음, S7 실행으로만 확인, S8 돌려만 봄. 앞의 다섯이
+ * 전부 {@code 직전 결과 … 확인했어요}로 시작해 {@code vibe coding} 축을 거의 재지 못했기 때문이다.
  *
  * <p>턴마다 기대 판정을 둘 들고 있다. {@code withoutSignal}은 실행 데이터 없이 파일만 보고 내릴 수 있는
  * 판정이고, {@code withSignal}은 턴별 채점 결과를 함께 실었을 때 맞는 판정이다. 둘이 갈리는 턴이
@@ -93,7 +93,9 @@ final class LiveSessions {
     }
 
     /**
-     * @param testResults B 페이즈에서만 프롬프트에 실린다. 0·A 페이즈는 {@link TurnTestResults#EMPTY}로 부른다
+     * @param testResults 프롬프트 렌즈는 B 페이즈에서만 싣고(0·A 페이즈는 {@link TurnTestResults#EMPTY}로
+     *                    부른다), pattern 렌즈는 페이즈와 무관하게 늘 싣는다 — 거기서 뽑아 쓰는 것은
+     *                    턴마다 실행이 끝났는지 불리언 하나뿐이라 무신호 계약과 무관하다
      * @param patternTurns pattern 렌즈의 턴별 기대값. 턴 수와 길이가 같다
      */
     record Session(
@@ -107,7 +109,7 @@ final class LiveSessions {
     }
 
     static List<Session> all() {
-        return List.of(정석(), 범위초과(), 결정적턴(), 인프라사고(), 퇴보(), 안짚음(), 실행확인());
+        return List.of(정석(), 범위초과(), 결정적턴(), 인프라사고(), 퇴보(), 안짚음(), 실행확인(), 돌려만봄());
     }
 
     /**
@@ -515,13 +517,13 @@ final class LiveSessions {
     }
 
     /**
-     * S6 안 짚음. 앞 턴이 무엇을 바꿨는지 이 턴 프롬프트가 한 번도 건드리지 않고, 돌려 본 이야기도
-     * 어디에도 없다. 이름은 `vibe coding`이고, 그 답은 읽는 것이 아니라 **먼저 돌려 보는 것**이다.
+     * S6와 S8이 함께 쓰는 턴 셋. 앞 턴이 무엇을 바꿨는지도, 돌려 본 이야기도 프롬프트에 없다.
      *
-     * <p>기존 다섯은 전부 `직전 결과 … 확인했어요`로 시작해 `vibe coding` 축을 거의 재지 못했다.
+     * <p>두 세션은 <b>실행 기록만</b> 달라야 한다 — 그 한 가지 차이가 기법을 가르는지가 재려는 것
+     * 자체다. 턴 본문을 한쪽만 손대면 무엇이 갈림을 만들었는지 더는 말할 수 없다.
      */
-    private static Session 안짚음() {
-        List<AttemptView.TurnView> turns = List.of(
+    private static List<AttemptView.TurnView> 안짚음턴들() {
+        return List.of(
                 turn("""
                         목표
                         - 주문 취소를 만들어 줘
@@ -550,15 +552,28 @@ final class LiveSessions {
                         List.of(
                                 new ToolCallEntry(ToolCallEntry.EDIT_FILE, INVENTORY),
                                 new ToolCallEntry(ToolCallEntry.EDIT_FILE, ORDER_SERVICE))));
+    }
 
+    /**
+     * S6 안 짚음. 앞 턴이 무엇을 바꿨는지 이 턴 프롬프트가 한 번도 건드리지 않고, 돌려 본 이야기도
+     * 어디에도 없다. 이름은 `vibe coding`이고, 그 답은 읽는 것이 아니라 **먼저 돌려 보는 것**이다.
+     *
+     * <p>기존 다섯은 전부 `직전 결과 … 확인했어요`로 시작해 `vibe coding` 축을 거의 재지 못했다.
+     *
+     * <p><b>실행 기록을 비운다.</b> 채점 결과를 들고 있으면 pattern 프롬프트의 실행 태그가 전 턴
+     * {@code ran=true}로 나가, 이 세션이 "한 번도 안 돌려 봤다"가 아니라 "돌려는 봤는데 말하지
+     * 않았다"가 된다. 그 칸은 S8이 맡는다 — 여기서 기대하는 것은 {@code automated check}다.
+     *
+     * <p>B 페이즈 파급: 프롬프트 렌즈 입력에서 이 세션의 채점 태그가 통째로 빠진다. 다만 이 세션은
+     * 전 턴이 {@link Expected#same}(AS_ASKED)이라 결정적 턴이 없다 — 판정 지표는 안 움직이고 입력만
+     * 준다. B 페이즈 수치가 흔들리면 모델이 아니라 이 변경을 먼저 의심할 것.
+     */
+    private static Session 안짚음() {
         return session(
                 "S6-안짚음",
-                turns,
+                안짚음턴들(),
                 List.of(Expected.same(AS_ASKED), Expected.same(AS_ASKED), Expected.same(AS_ASKED)),
-                TurnTestResults.of(List.of(
-                        graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
-                        graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
-                        graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
+                TurnTestResults.EMPTY,
                 List.of(
                         PatternExpected.unscored(),
                         new PatternExpected("vibe coding", "automated check"),
@@ -624,6 +639,32 @@ final class LiveSessions {
                         PatternExpected.unscored(),
                         new PatternExpected("vibe coding", "human review"),
                         new PatternExpected("vibe coding", "human review")));
+    }
+
+    /**
+     * S8 돌려만 봄. 턴은 S6과 글자 하나까지 같고 <b>실행 기록만 다르다</b>. 사용자는 세션 옆에 붙어
+     * 매 턴 실행이 끝나는 것을 봤지만, 본 것을 프롬프트에 한 줄도 옮기지 않았다.
+     *
+     * <p>이름은 S6·S7과 같은 `vibe coding`인데 기법은 셋이 갈려야 한다 — S6은 `automated check`
+     * (먼저 돌려 봐라), S7은 `human review`(이제 코드를 열어라), 이쪽은 `human-in-the-loop`
+     * (본 것을 프롬프트로 옮겨라). 이미 돌려 본 사람에게 돌려 보라고 하는 것이 지금까지의 오답이다.
+     *
+     * <p>이 칸은 이 제품 고유다. 실행이 보여 준 것은 사용자가 프롬프트로 옮겨야만 이 AI에 도달하므로,
+     * 실행 태그가 없으면 "안 돌려 봤다"와 "봤지만 말하지 않았다"를 가릴 방법이 아예 없다.
+     */
+    private static Session 돌려만봄() {
+        return session(
+                "S8-돌려만봄",
+                안짚음턴들(),
+                List.of(Expected.same(AS_ASKED), Expected.same(AS_ASKED), Expected.same(AS_ASKED)),
+                TurnTestResults.of(List.of(
+                        graded(0, CodeRunStatus.TEST_FAILED, 3, SHIPPED_BLOCKED, DELIVERED_BLOCKED, RESTORED),
+                        graded(1, CodeRunStatus.TEST_FAILED, 5, RESTORED),
+                        graded(2, CodeRunStatus.SUCCEEDED, 6)), baseline()),
+                List.of(
+                        PatternExpected.unscored(),
+                        new PatternExpected("vibe coding", "human-in-the-loop"),
+                        new PatternExpected("vibe coding", "human-in-the-loop")));
     }
 
     /**
