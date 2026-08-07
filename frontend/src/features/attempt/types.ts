@@ -116,6 +116,29 @@ export interface AttemptFeedback {
   turns: TurnFeedback[];
   overallMd: string;
   patternOverallMd: string | null;
+  /** 걸리는 습관이 없는 세션이면 null이다. 그때는 아무것도 그리지 않는다. */
+  carry: CarryLine | null;
+}
+
+/**
+ * 다음 문제의 상시 지시 파일에 붙여넣을 규칙 한 줄.
+ *
+ * 두 렌즈와 다르다 — 저 둘은 LLM이 쓴 문장이고 이건 어템프트를 읽은 순수 계산의 결과다.
+ * 읽는 사람도 다르다. 렌즈는 사용자에게 말하고, rule은 사용자의 AI에게 할 지시다.
+ * 그래서 문단이 아니라 복사해 갈 물건으로 그린다.
+ */
+export interface CarryLine {
+  /** 이 줄을 고른 신호의 키. 화면에 쓰지 않는다. */
+  signal: string;
+  /**
+   * 지시 파일에 그대로 붙여넣을 한 줄. 도구 중립이라 파일 이름이 들어 있지 않다.
+   *
+   * 다른 피드백 필드와 달리 Markdown이 아니다 — 사용자가 그대로 복사해 가므로 화면에 보이는
+   * 것과 클립보드에 담기는 것이 같아야 한다. Markdown으로 렌더하지 말 것.
+   */
+  rule: string;
+  /** 왜 이 줄인지. BE가 센 값으로 조립하는 평문 한 문장이다. */
+  reason: string;
 }
 
 export type CodeRunStatus =

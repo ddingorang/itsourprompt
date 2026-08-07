@@ -8,6 +8,7 @@
 import type {
   Attempt,
   AttemptFeedback,
+  CarryLine,
   CodeRun,
   CodeRunListResponse,
   CodeRunTally,
@@ -611,7 +612,7 @@ const PATTERN_SOURCE_NOTE =
   '\n\n---\n여기 쓴 용어는 AI Coding Dictionary에서 가져왔어요. https://aicodingdictionary.com';
 
 /** 턴 기록으로 피드백 본문을 짓는다. 제출과 조회가 같은 내용을 돌려주게 하는 자리다. */
-function buildMockFeedback(turns: Turn[]): AttemptFeedback {
+function buildMockFeedback(attemptId: number, turns: Turn[]): AttemptFeedback {
   const patternNames = turns.map((_, index) => mockPatternName(index + 1));
 
   return {
@@ -622,6 +623,48 @@ function buildMockFeedback(turns: Turn[]): AttemptFeedback {
     })),
     overallMd: `## 세션 총평\n\n총 ${turns.length}개의 턴으로 문제를 풀었습니다.\n\n초반 프롬프트에서 도메인 모델과 API 계층을 한 번에 요구하기보다, 단계를 나눠 요청하면 AI가 의도를 덜 추측합니다.`,
     patternOverallMd: mockPatternOverallMd(patternNames),
+    carry: mockCarryLine(attemptId, turns.length),
+  };
+}
+
+/** 문안은 BE가 실측으로 고른 s5b다. 목에서도 한 글자도 바꾸지 않는다. */
+const CARRY_RULE =
+  '무엇을 바꿨다고만 말하지 마라. 그 변경이 실제로 동작하는지 사람이 확인할 방법을 요약에 반드시 함께 적어라.';
+
+/**
+ * BE의 `CarryLine.of`를 그대로 흉내 낸다 — 실행 결과를 못 본 턴을 세고, 하나도 없으면 null이다.
+ *
+ * <p>하드코딩하면 안 되는 자리다. 랭킹용 목 어템프트에는 실행 기록이 미리 깔려 있고
+ * (`seedRankedMockCodeRuns`) 화면에서 직접 돌릴 수도 있어, 고정값을 두면 목만 BE와 다른 문장을
+ * 보여 준다. 무엇보다 <b>줄이 안 나오는 세션</b>을 목에서 아예 볼 수 없게 된다.
+ */
+function mockCarryLine(attemptId: number, turnCount: number): CarryLine | null {
+  if (turnCount <= 0) return null;
+
+  const confirmed = new Set<number>();
+
+  for (const entry of mockCodeRuns.get(attemptId) ?? []) {
+    const run = completeMockCodeRun(entry);
+    // BE의 ran(): 아직 안 끝났거나 채점 인프라가 사고 난 실행은 확인으로 치지 않는다.
+    if (run.status === 'QUEUED' || run.status === 'RUNNER_ERROR') continue;
+    if (run.turnOrdinal === null) continue;
+    if (run.turnOrdinal < 0 || run.turnOrdinal >= turnCount) continue;
+
+    confirmed.add(run.turnOrdinal);
+  }
+
+  const unconfirmed = turnCount - confirmed.size;
+  if (unconfirmed === 0) return null;
+
+  const counted =
+    unconfirmed === turnCount
+      ? `이번 세션의 ${turnCount}턴에서 한 번도 코드를 실행해 결과를 확인하지 않으셨어요.`
+      : `${turnCount}턴 중 ${unconfirmed}턴에서 코드를 실행해 결과를 확인하지 않으셨어요.`;
+
+  return {
+    signal: 'turn_has_no_finished_run',
+    rule: CARRY_RULE,
+    reason: `${counted} AI가 확인 방법을 요약에 함께 적어 두면 다음엔 무엇을 돌려 봐야 할지 바로 알 수 있어요.`,
   };
 }
 
@@ -655,7 +698,7 @@ export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedb
     status: 'SUBMITTED',
   });
 
-  return buildMockFeedback(turns);
+  return buildMockFeedback(attemptId, turns);
 }
 
 /**
@@ -678,7 +721,7 @@ export async function getMockAttemptFeedback(
     });
   }
 
-  return buildMockFeedback(attempt.turns);
+  return buildMockFeedback(attemptId, attempt.turns);
 }
 
 /**
