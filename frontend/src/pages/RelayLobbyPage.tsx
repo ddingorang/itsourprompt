@@ -47,11 +47,15 @@ const roomRowColumnsClasses =
 /**
  * 행의 각 칸에 공통으로 걸리는 스타일. 칸 사이는 gap 대신 padding-right로 벌린다 —
  * gap을 쓰면 아래 구분선이 열 사이에서 끊겨 점선처럼 보인다.
+ *
+ * 칸은 행 높이까지 늘어나야(stretch) 아래 구분선이 한 줄로 이어진다. 격자에
+ * items-center를 주면 칸마다 높이가 제 내용만큼이라 구분선이 층층이 어긋난다 —
+ * 세로 가운데 정렬은 칸 안쪽에서 flex로 해결한다.
  */
 const roomRowCellsClasses =
-  'contents [&>*]:min-w-0 [&>*]:border-b [&>*]:border-[#222] ' +
-  '[&>*]:py-3 [&>*]:pr-4 [&>*:first-child]:pl-6 [&>*:last-child]:pr-6 ' +
-  'last:[&>*]:border-b-0';
+  'contents [&>*]:flex [&>*]:min-w-0 [&>*]:items-center [&>*]:border-b ' +
+  '[&>*]:border-[#222] [&>*]:py-3 [&>*]:pr-4 ' +
+  '[&>*:first-child]:pl-6 [&>*:last-child]:pr-6 last:[&>*]:border-b-0';
 
 const LAP_CHOICES = [1, 2, 3] as const;
 const SIZE_CHOICES = [2, 3, 4, 5, 6] as const;
@@ -177,7 +181,7 @@ export default function RelayLobbyPage() {
 
       <main className="mx-auto grid w-full max-w-[880px] gap-8 px-6 py-12">
         <div>
-          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+          <h1 className="page-title m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--relay-acid)]">
             릴레이 모드
           </h1>
           <p className="mt-5 mb-0 text-[15px] leading-[1.7] text-[#a3a3a3]">
@@ -238,7 +242,7 @@ export default function RelayLobbyPage() {
               입장을 기다리는 방이 없습니다. 아래에서 새 방을 만들어 보세요.
             </p>
           ) : (
-            <ul className={`m-0 grid list-none items-center p-0 ${roomRowColumnsClasses}`}>
+            <ul className={`m-0 grid list-none p-0 ${roomRowColumnsClasses}`}>
               {visibleRooms.map((room) => {
                 const full = room.participantCount >= room.maxParticipants;
 
@@ -249,23 +253,28 @@ export default function RelayLobbyPage() {
                     </span>
                     {/* 이름 도입 전에 만들어진 방은 name이 없어 문제 제목이 그 자리를 대신한다.
                         그때도 문제 이름 칸은 빈 칸으로 남겨 뒤 열의 위치를 지킨다. */}
+                    {/* 칸이 flex 상자가 되어 줄임표는 안쪽 블록에 걸어야 먹는다. */}
                     <span
-                      className="truncate text-[17px] font-bold"
+                      className="text-[17px] font-bold"
                       title={room.name ?? undefined}
                     >
-                      {room.name
-                        ? truncateRoomName(room.name)
-                        : (room.problemTitle ?? `문제 ${room.problemId}번`)}
+                      <span className="min-w-0 flex-1 truncate">
+                        {room.name
+                          ? truncateRoomName(room.name)
+                          : (room.problemTitle ?? `문제 ${room.problemId}번`)}
+                      </span>
                     </span>
                     <span
-                      className="truncate text-[11px] text-[#a3a3a3]"
+                      className="text-[11px] text-[#a3a3a3]"
                       title={room.problemTitle ?? undefined}
                     >
-                      {room.name
-                        ? (room.problemTitle ?? `문제 ${room.problemId}번`)
-                        : ''}
+                      <span className="min-w-0 flex-1 truncate">
+                        {room.name
+                          ? (room.problemTitle ?? `문제 ${room.problemId}번`)
+                          : ''}
+                      </span>
                     </span>
-                    <span className="truncate text-[11px] text-[#a3a3a3]">
+                    <span className="text-[11px] whitespace-nowrap text-[#a3a3a3]">
                       {room.hostNickname} 님의 방
                     </span>
                     <span className="text-[11px] text-[#a3a3a3]">

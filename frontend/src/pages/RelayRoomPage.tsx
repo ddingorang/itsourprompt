@@ -1375,7 +1375,7 @@ function FinishedView({
       style={{ width: contentWidth }}
     >
       <header className="flex items-baseline justify-between gap-6 max-[640px]:gap-4">
-        <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+        <h1 className="page-title m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--relay-acid)]">
           릴레이 피드백
         </h1>
         <div className="flex min-w-0 items-baseline justify-end gap-3">

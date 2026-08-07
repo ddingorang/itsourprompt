@@ -105,6 +105,9 @@ html { scroll-behavior: smooth; }
 .relay-page[data-color-mode='light'] [class~="border-[#4b4b4b]"],
 .relay-page[data-color-mode='light'] [class~="border-[#535353]"] { border-color: var(--relay-border) !important; }
 .relay-page[data-color-mode='light'] [class~="border-[#777]"] { border-color: var(--relay-border) !important; }
+/* 방 목록 행은 칸마다 구분선을 그린다. 그 클래스 토큰이 `[&>*]:border-[#222]` 형태라
+   위의 hex 매핑(`border-[#222]`)에 걸리지 않아, 라이트 모드에서도 검은 선이 남았다. */
+.relay-page[data-color-mode='light'] [class~="[&>*]:border-[#222]"] > * { border-color: var(--relay-border) !important; }
 .relay-page[data-color-mode='light'] [class~="border-[#5a2c28]"] { border-color: #d94336 !important; }
 /* 건너뜀 경고 박스 — 크림 배경(#fff9e8) 위에서 읽히도록 앰버 계열을 어둡게. */
 .relay-page[data-color-mode='light'] [class~="border-[#4a3a1e]"] { border-color: #d29922 !important; }
@@ -1027,4 +1030,22 @@ html { scroll-behavior: smooth; }
     padding: 0.75rem;
     text-align: left;
   }
+}
+
+/*
+ * 페이지 제목. 다크 모드에서는 강조색 글자 그대로 두고, 라이트 모드에서만 강조색을
+ * 배경으로 돌려 검은 글자를 얹는다 — 흰 바탕 위의 연두 글자는 대비가 낮아 읽기 어렵다.
+ * 글자를 감싸는 만큼만 칠해 선택 하이라이트처럼 보이게 한다.
+ */
+/* 상자 크기는 두 모드가 같아야 한다 — 라이트에서만 padding·line-height를 주면
+   모드를 바꿀 때마다 제목 높이가 변해 아래 내용이 통째로 오르내린다. */
+.page-title {
+  display: inline-block;
+  line-height: 1;
+  padding: 0.08em 0.12em;
+}
+/* 바뀌는 것은 색뿐이다. */
+[data-color-mode='light'] .page-title {
+  background: var(--acid);
+  color: #090909;
 }

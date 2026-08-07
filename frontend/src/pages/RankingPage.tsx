@@ -392,7 +392,7 @@ export default function RankingPage() {
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-16 max-[1200px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
         <header className="pb-10 max-[640px]:pb-8">
-          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--ranking-acid)]">
+          <h1 className="page-title m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--ranking-acid)]">
             랭킹
           </h1>
           <p className="mt-5 mb-0 text-[15px] leading-[1.7] text-[var(--ranking-muted)]">

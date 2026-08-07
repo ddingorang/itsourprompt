@@ -123,7 +123,7 @@ export default function ProblemListPage() {
           양옆 24px. 화면마다 본문 시작선이 달라 보이던 것을 맞춘다. */}
       <main className="mx-auto w-full max-w-[880px] flex-1 px-6 pt-[clamp(28px,4vw,44px)] pb-16 max-[640px]:pt-8">
         <header className="flex items-end justify-between gap-6 pb-10 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-4 max-[640px]:pb-8">
-          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--problem-list-acid)]">
+          <h1 className="page-title m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--problem-list-acid)]">
             문제 목록
           </h1>
           <IconLegend />
