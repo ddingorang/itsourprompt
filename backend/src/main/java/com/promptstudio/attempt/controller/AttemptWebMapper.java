@@ -7,10 +7,12 @@ import com.promptstudio.attempt.controller.response.FeedbackResponse;
 import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptOwnerLabel;
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.CarryLine;
 import com.promptstudio.attempt.domain.CodeRunCase;
 import com.promptstudio.attempt.domain.CodeRunCaseTally;
 import com.promptstudio.attempt.domain.CodeRunSummary;
 import com.promptstudio.attempt.domain.CodeRunView;
+import com.promptstudio.attempt.domain.FeedbackView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.attempt.domain.LlmUsageSummary;
 import com.promptstudio.attempt.domain.LlmUsageTotals;
@@ -58,7 +60,8 @@ public class AttemptWebMapper {
      * <p>가드는 프롬프트 피드백만 본다. 두 스타일 모두 필수라 pattern만 있는 상태는 생기지 않고,
      * pattern 도입 이전에 제출된 어템프트는 pattern 자리가 null로 나간다.
      */
-    public FeedbackResponse toFeedbackResponse(AttemptView attempt) {
+    public FeedbackResponse toFeedbackResponse(FeedbackView feedback) {
+        AttemptView attempt = feedback.attempt();
         List<AttemptView.TurnView> turnViews = attempt.turns();
         List<FeedbackResponse.TurnFeedback> turns = new ArrayList<>();
 
@@ -70,7 +73,16 @@ public class AttemptWebMapper {
             }
         }
 
-        return new FeedbackResponse(turns, attempt.feedback(), attempt.patternFeedback());
+        return new FeedbackResponse(
+                turns, attempt.feedback(), attempt.patternFeedback(), toCarryResponse(feedback.carry()));
+    }
+
+    private FeedbackResponse.CarryLineResponse toCarryResponse(CarryLine carry) {
+        if (carry == null) {
+            return null;
+        }
+
+        return new FeedbackResponse.CarryLineResponse(carry.signal(), carry.rule(), carry.reason());
     }
 
     public CodeRunListResponse toCodeRunListResponse(List<CodeRunSummary> runs) {
