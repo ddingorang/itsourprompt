@@ -1,8 +1,11 @@
 export interface RankingEntry {
   /** 등수. 동점은 같은 값을 받고 다음 등수는 건너뛴다(1, 1, 3). */
   rank: number;
-  /** 내 줄일 때만 채워진다. 남의 줄은 null이라 피드백 링크를 걸 수 없다. */
-  attemptId: number | null;
+  /**
+   * 이 줄의 어템프트 ID. 모든 줄에 채워진다 — 랭킹에 오른 어템프트는 모두 제출
+   * 완료라 누구나 읽을 수 있으므로, 남의 줄에서도 그 제출의 피드백을 열 수 있다.
+   */
+  attemptId: number;
   mine: boolean;
   /** 닉네임. 랭킹은 로그인 사용자의 제출만 세므로 항상 닉네임이 온다. */
   ownerLabel: string;
@@ -23,6 +26,12 @@ export interface RankingEntry {
    */
   rounds: number;
   submittedAt: string | null;
+  /**
+   * 소요 시간(초). 제출 시각 − 첫 CODE 호출 시각을 서버가 계산한 값이다 — "첫 CODE
+   * 호출부터"라는 정의가 서버 한곳에만 살아야 하므로 화면이 두 시각을 빼지 않는다.
+   * submittedAt이 null인 옛 기록은 null이다.
+   */
+  durationSeconds: number | null;
 }
 
 export interface ProblemRanking {

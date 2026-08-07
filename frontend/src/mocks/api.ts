@@ -16,6 +16,7 @@ import type {
 import type {
   ProblemDetail,
   ProblemListResponse,
+  RepositoryFile,
 } from '../features/problem/types';
 import type { ProblemRanking, RankingEntry } from '../features/ranking/types';
 import { ApiError, API_ERROR_CODES } from '../shared/api/apiClient';
@@ -102,6 +103,9 @@ export async function getMockProblemDetail(problemId: number): Promise<ProblemDe
   return { ...problemDetail, id: problemId };
 }
 
+/** 목에서 나를 부르는 이름. 랭킹의 내 줄과 어템프트 주인이 같은 이름이어야 한다. */
+const MY_MOCK_OWNER_LABEL = '내닉네임';
+
 const mockRankingNicknames = [
   '프롬프트왕',
   '토큰줍는사람',
@@ -114,10 +118,51 @@ const mockRankingNicknames = [
 ];
 
 /**
+ * 랭킹 줄이 가리키는 목 어템프트 ID를 `기준 + 문제ID*칸수 + 자리`로 짠다.
+ *
+ * ID 하나에 문제까지 실어야 하는 이유는, 어템프트 조회가 받는 것이 ID뿐이기 때문이다.
+ * 문제를 못 실으면 지어낸 어템프트가 어느 랭킹에서 왔든 같은 문제를 말하게 되고,
+ * 그러면 문제 3의 랭킹에서 연 피드백 화면이 "이 문제 풀어보기"로 문제 1을 가리킨다.
+ * 목이 실서버와 어긋나는 자리가 되므로 ID로 되짚을 수 있게 둔다.
+ */
+const RANKED_ATTEMPT_ID_BASE = 4000;
+const RANKED_SLOTS_PER_PROBLEM = 100;
+
+/** 문제마다 0번 자리는 내 줄이다. 그래야 조회가 ID만 보고 주인을 되돌려 준다. */
+const MY_RANKED_SLOT = 0;
+
+/**
+ * 실행 기록이 하나도 없는 남의 제출 자리(어느 문제에서든 99번). 랭킹에 오르려면 마지막
+ * 턴이 채점을 통과해야 해서 보통은 기록이 있지만, 랭킹 밖의 제출은 한 번도 돌려 보지
+ * 않고 낼 수 있다. 그 화면을 열어 볼 자리가 없으면 기록 없는 경우를 목으로 확인할 수 없다.
+ */
+const RANKED_SLOT_WITHOUT_RUNS = 99;
+
+function rankedAttemptId(problemId: number, slot: number): number {
+  return RANKED_ATTEMPT_ID_BASE + problemId * RANKED_SLOTS_PER_PROBLEM + slot;
+}
+
+/** 지어낸 랭킹 어템프트가 아니면 null. 그때 조회는 404가 된다. */
+function decodeRankedAttemptId(
+  attemptId: number,
+): { problemId: number; slot: number } | null {
+  const offset = attemptId - RANKED_ATTEMPT_ID_BASE;
+  // 문제 ID는 1부터다. 한 칸 아래(offset < 칸수)는 문제 0이라 지어낼 수 없다.
+  if (offset < RANKED_SLOTS_PER_PROBLEM) return null;
+
+  const problemId = Math.floor(offset / RANKED_SLOTS_PER_PROBLEM);
+  // getMockProblemDetail이 404를 내는 대역이면 어템프트도 있을 수 없다.
+  if (problemId >= 100) return null;
+
+  return { problemId, slot: offset % RANKED_SLOTS_PER_PROBLEM };
+}
+
+/**
  * 랭킹 한 줄을 만든다. 비용·토큰은 등수로 계산해 동점 줄이 같은 값을 갖게 한다 —
  * 등수와 비용이 어긋나면 표가 목에서만 이상해 보인다.
  */
 function buildMockRankingEntry(
+  problemId: number,
   rank: number,
   index: number,
   mineIndex: number | null,
@@ -127,10 +172,11 @@ function buildMockRankingEntry(
 
   return {
     rank,
-    // attemptId는 내 줄에만 온다 — 남의 줄에 링크가 생기면 목이 실서버와 어긋난다.
-    attemptId: mine ? 4200 + rank : null,
+    // attemptId는 모든 줄에 온다 — 랭킹에 오른 제출은 모두 공개라 남의 줄에서도
+    // 피드백으로 갈 수 있다. 등수는 동점으로 겹치므로 자리(index)로 ID를 가른다.
+    attemptId: rankedAttemptId(problemId, mine ? MY_RANKED_SLOT : index + 1),
     mine,
-    ownerLabel: mine ? '내닉네임' : nickname,
+    ownerLabel: mine ? MY_MOCK_OWNER_LABEL : nickname,
     cost: 0.0012 + (rank - 1) * 0.00037,
     uncachedInputTokens: 1500 + (rank - 1) * 220,
     cachedInputTokens: 400 + (rank - 1) * 130,
@@ -138,6 +184,9 @@ function buildMockRankingEntry(
     turns: 1 + (rank % 4),
     rounds: 2 + (rank % 5),
     submittedAt: `2026-08-0${(rank % 3) + 1}T0${rank % 9}:1${rank % 9}:32Z`,
+    // 표기 네 구간(초·분·시간·일)을 목에서 전부 보여준다. rank 9는 null — 제출 시각을
+    // 모르는 옛 기록의 '--'를 그린다.
+    durationSeconds: rank === 9 ? null : [190800, 42, 252, 4980][rank % 4],
   };
 }
 
@@ -148,7 +197,7 @@ function buildMockRanking(
   totalCount = ranks.length,
 ): ProblemRanking {
   const entries = ranks.map((rank, index) =>
-    buildMockRankingEntry(rank, index, mineIndex),
+    buildMockRankingEntry(problemId, rank, index, mineIndex),
   );
 
   return {
@@ -211,6 +260,10 @@ export async function createMockAttempt(problemId: number): Promise<Attempt> {
     files: problemDetail.files,
     status: 'IN_PROGRESS',
     turns: [],
+    // 생성 응답만 ownerLabel이 null이다 — 실서버가 이 경로에서만 닉네임을 조인하지
+    // 않는다. 목이 채워 주면 생성 직후 빈칸이 나는 화면을 목에서 못 잡는다.
+    ownerLabel: null,
+    mine: true,
   };
 
   mockAttempts.set(attempt.id, attempt);
@@ -228,26 +281,113 @@ function mockAttemptNotFound(attemptId: number): ApiError {
   });
 }
 
+/**
+ * 랭킹이 가리키는 어템프트를 ID만 보고 지어낸다. 남이 제출한 어템프트를 읽는 상태는
+ * 손으로 만들 수 없어, 목에서 그 화면을 여는 유일한 길이다. 주인은 ID 대역으로 가른다.
+ */
+function buildRankedMockAttempt(attemptId: number): Attempt | null {
+  const decoded = decodeRankedAttemptId(attemptId);
+  if (!decoded) return null;
+
+  const { problemId, slot } = decoded;
+  const mine = slot === MY_RANKED_SLOT;
+
+  const builtTurns = [
+    '게시글 엔티티와 CRUD API 계층을 만들어 주세요.',
+    '앞 턴에서 만든 레코드에 작성 시각을 넣고 목록을 최신순으로 정렬해 주세요.',
+  ].map((prompt, index) => buildMockTurn(prompt, index + 1));
+
+  return {
+    id: attemptId,
+    // 이 어템프트가 실제로 푼 문제다. 랭킹 줄에서 왔으면 그 랭킹의 문제이므로,
+    // 피드백 화면의 "이 문제 풀어보기"가 엉뚱한 문제로 가지 않는다.
+    problemId,
+    baseFiles: problemDetail.files,
+    files: [...problemDetail.files, ...builtTurns.map((built) => built.addedFile)],
+    turns: builtTurns.map((built) => built.turn),
+    status: 'SUBMITTED',
+    ownerLabel: mine
+      ? MY_MOCK_OWNER_LABEL
+      : mockRankingNicknames[(slot - 1) % mockRankingNicknames.length],
+    mine,
+  };
+}
+
+/**
+ * 지어낸 어템프트에 통과한 실행 기록을 함께 심는다. 남의 제출을 여는 화면은 실행을
+ * 요청할 수 없고 기록만 읽으므로, 기록이 없으면 그 화면이 목에서 늘 비어 보인다.
+ *
+ * 두 케이스를 모두 PASSED로 둔다 — 랭킹에 오르려면 마지막 턴이 채점을 통과해야 하고,
+ * 링크를 받아 들어온 사람이 확인하러 오는 것도 그 사실이다.
+ */
+function seedRankedMockCodeRuns(attemptId: number): void {
+  if (decodeRankedAttemptId(attemptId)?.slot === RANKED_SLOT_WITHOUT_RUNS) return;
+  if (mockCodeRuns.has(attemptId)) return;
+
+  mockCodeRuns.set(attemptId, [
+    {
+      createdAt: '2026-08-05T09:12:34Z',
+      readyAt: Date.parse('2026-08-05T09:12:35Z'),
+      run: {
+        runId: `recorded-${attemptId}`,
+        // 마지막 턴(0-based)의 실행이다. 지어낸 어템프트의 턴은 둘이다.
+        turnOrdinal: 1,
+        status: 'SUCCEEDED',
+        exitCode: 0,
+        stdout: 'JUnit Platform Suite\nPostTest: 2 passed, 0 failed',
+        stderr: null,
+        durationMs: 1188,
+        cases: [
+          {
+            className: 'PostTest',
+            name: '게시글을_생성한다()',
+            status: 'PASSED',
+            message: null,
+            durationMs: 11,
+          },
+          {
+            className: 'PostTest',
+            name: '존재하지_않는_게시글은_예외를_반환한다()',
+            status: 'PASSED',
+            message: null,
+            durationMs: 14,
+          },
+        ],
+      },
+    },
+  ]);
+}
+
+/**
+ * 메모리에 있으면 그것을, 없으면 랭킹이 가리키는 어템프트를 지어내 담아 둔다 —
+ * 조회와 피드백이 같은 어템프트를 집어야 두 응답이 어긋나지 않는다.
+ */
+function resolveMockAttempt(attemptId: number): Attempt | undefined {
+  const stored = mockAttempts.get(attemptId);
+  if (stored) return stored;
+
+  const ranked = buildRankedMockAttempt(attemptId);
+  if (!ranked) return undefined;
+
+  mockAttempts.set(attemptId, ranked);
+  seedRankedMockCodeRuns(attemptId);
+  return ranked;
+}
+
 export async function getMockAttempt(attemptId: number): Promise<Attempt> {
   await delay(200);
 
-  const attempt = mockAttempts.get(attemptId);
+  const attempt = resolveMockAttempt(attemptId);
   if (!attempt) {
     throw mockAttemptNotFound(attemptId);
   }
-  return attempt;
+  // 조회는 생성과 달리 주인 이름을 채워 준다.
+  return { ...attempt, ownerLabel: attempt.ownerLabel ?? MY_MOCK_OWNER_LABEL };
 }
 
-export async function addMockTurn(attemptId: number, prompt: string): Promise<Attempt> {
-  await delay(800);
-
-  const attempt = mockAttempts.get(attemptId);
-  if (!attempt) {
-    throw mockAttemptNotFound(attemptId);
-  }
-
-  const turnNumber = attempt.turns.length + 1;
-  const turnUsage = {
+/** 한 턴의 사용량. 총계를 더하는 쪽이 null을 만나지 않도록 항목을 모두 채운다. */
+function buildMockTurnUsage(turnNumber: number) {
+  return {
     inputTokens: 2500 + (turnNumber - 1) * 320,
     uncachedInputTokens: 1500 + (turnNumber - 1) * 200,
     cachedInputTokens: 1000 + (turnNumber - 1) * 120,
@@ -256,6 +396,18 @@ export async function addMockTurn(attemptId: number, prompt: string): Promise<At
     latencyMs: 260 + (turnNumber - 1) * 35,
     cost: 0.003 + (turnNumber - 1) * 0.0004,
   };
+}
+
+/** 턴 하나와 그 턴이 새로 만든 파일. 턴을 쌓는 자리와 지어내는 자리가 같이 쓴다. */
+function buildMockTurn(
+  prompt: string,
+  turnNumber: number,
+): {
+  addedFile: RepositoryFile;
+  turn: Turn;
+  usage: ReturnType<typeof buildMockTurnUsage>;
+} {
+  const turnUsage = buildMockTurnUsage(turnNumber);
   const addedFile = {
     path: `src/main/java/Post${turnNumber}.java`,
     content: `package com.example.board;
@@ -282,8 +434,28 @@ public record Post${turnNumber}(Long id, String title, String content) {}`,
     usage: turnUsage,
   };
 
+  return { addedFile, turn, usage: turnUsage };
+}
+
+export async function addMockTurn(attemptId: number, prompt: string): Promise<Attempt> {
+  await delay(800);
+
+  const attempt = mockAttempts.get(attemptId);
+  if (!attempt) {
+    throw mockAttemptNotFound(attemptId);
+  }
+  // 턴 추가도 쓰기다 — 실행 요청과 같은 이유로 주인만 할 수 있다.
+  if (!attempt.mine) throw mockAttemptNotFound(attemptId);
+
+  const { addedFile, turn, usage: turnUsage } = buildMockTurn(
+    prompt,
+    attempt.turns.length + 1,
+  );
+
   const updated: Attempt = {
     ...attempt,
+    // 턴 추가는 커밋 뒤 다시 읽으므로 생성과 달리 주인 이름이 채워져 온다.
+    ownerLabel: attempt.ownerLabel ?? MY_MOCK_OWNER_LABEL,
     files: [...attempt.files, addedFile],
     turns: [...attempt.turns, turn],
     usage: {
@@ -361,6 +533,10 @@ export async function requestMockCodeRun(
 
   const attempt = mockAttempts.get(attemptId);
   if (!attempt) throw mockAttemptNotFound(attemptId);
+  // 쓰기는 제출 여부와 무관하게 주인만 할 수 있다. 남이 부르면 실서버와 같이
+  // 없는 어템프트로 답한다 — 목이 실행시켜 주면 화면이 남의 풀이를 돌릴 수 있는
+  // 것처럼 보이고, 그 착각은 실서버에서만 404로 드러난다.
+  if (!attempt.mine) throw mockAttemptNotFound(attemptId);
 
   const entries = mockCodeRuns.get(attemptId) ?? [];
   if (entries.some((entry) => completeMockCodeRun(entry).status === 'QUEUED')) {
@@ -434,24 +610,8 @@ export async function getMockCodeRun(
 const PATTERN_SOURCE_NOTE =
   '\n\n---\n여기 쓴 용어는 AI Coding Dictionary에서 가져왔어요. https://aicodingdictionary.com';
 
-export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedback> {
-  await delay(600);
-
-  const attempt = mockAttempts.get(attemptId);
-  const turns = attempt?.turns ?? [];
-
-  mockAttempts.set(attemptId, {
-    ...(attempt ?? {
-      id: attemptId,
-      problemId: problemDetail.id,
-      baseFiles: problemDetail.files,
-      files: problemDetail.files,
-      turns: [],
-      status: 'IN_PROGRESS',
-    }),
-    status: 'SUBMITTED',
-  });
-
+/** 턴 기록으로 피드백 본문을 짓는다. 제출과 조회가 같은 내용을 돌려주게 하는 자리다. */
+function buildMockFeedback(turns: Turn[]): AttemptFeedback {
   const patternNames = turns.map((_, index) => mockPatternName(index + 1));
 
   return {
@@ -463,6 +623,62 @@ export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedb
     overallMd: `## 세션 총평\n\n총 ${turns.length}개의 턴으로 문제를 풀었습니다.\n\n초반 프롬프트에서 도메인 모델과 API 계층을 한 번에 요구하기보다, 단계를 나눠 요청하면 AI가 의도를 덜 추측합니다.`,
     patternOverallMd: mockPatternOverallMd(patternNames),
   };
+}
+
+/**
+ * 제출은 쓰기다. 제출 여부와 무관하게 주인만 할 수 있고, 남이 부르면 실서버와 같이
+ * 없는 어템프트로 답한다 — 목이 받아 주면 남의 풀이를 내 이름으로 낼 수 있는 것처럼
+ * 보이고, 그 착각은 실서버에서만 404로 드러난다.
+ *
+ * 피드백 조회와 한 함수였던 것을 가른 이유가 이것이다. 실서버에서 그 둘은 쓰기와
+ * 공개 읽기로 갈리므로, 목이 하나로 묶으면 어느 쪽 규칙도 흉내 낼 수 없다.
+ */
+export async function submitMockAttempt(attemptId: number): Promise<AttemptFeedback> {
+  await delay(600);
+
+  const attempt = resolveMockAttempt(attemptId);
+  if (attempt && !attempt.mine) throw mockAttemptNotFound(attemptId);
+
+  const turns = attempt?.turns ?? [];
+
+  mockAttempts.set(attemptId, {
+    ...(attempt ?? {
+      id: attemptId,
+      problemId: problemDetail.id,
+      baseFiles: problemDetail.files,
+      files: problemDetail.files,
+      turns: [],
+      status: 'IN_PROGRESS',
+      ownerLabel: MY_MOCK_OWNER_LABEL,
+      mine: true,
+    }),
+    status: 'SUBMITTED',
+  });
+
+  return buildMockFeedback(turns);
+}
+
+/**
+ * 피드백 조회는 공개 읽기다. 제출된 어템프트면 주인이 아니어도 200이고, 제출 전이면
+ * 실서버와 같이 feedback-not-found다 — 화면이 그 code로 "아직 제출하지 않았습니다"
+ * 안내를 고르므로 attempt-not-found로 뭉뚱그리면 목에서만 다른 화면이 나온다.
+ */
+export async function getMockAttemptFeedback(
+  attemptId: number,
+): Promise<AttemptFeedback> {
+  await delay(600);
+
+  const attempt = resolveMockAttempt(attemptId);
+  if (!attempt) throw mockAttemptNotFound(attemptId);
+
+  if (attempt.status !== 'SUBMITTED') {
+    throw new ApiError(404, {
+      code: API_ERROR_CODES.feedbackNotFound,
+      message: `목 어템프트 ${attemptId}는 아직 제출되지 않았습니다.`,
+    });
+  }
+
+  return buildMockFeedback(attempt.turns);
 }
 
 /**
