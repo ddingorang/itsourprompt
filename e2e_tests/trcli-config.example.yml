@@ -1,0 +1,4 @@
+host: https://your-domain.testrail.io
+project: YOUR_PROJECT_NAME
+username: your-email@example.com
+verify: true

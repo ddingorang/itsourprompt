@@ -1,0 +1,19 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test:e2e": "playwright test --project=chromium",
+    "testrail:upload": "trcli -y -c trcli-config.yml parse_junit -f ./test-results/junit-report.xml --run-id 16 --case-matcher property",
+    "test:testrail": "node ./scripts/test-testrail.cjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^26.1.2"
+  }
+}
