@@ -78,8 +78,13 @@ export interface Attempt {
    * 즉 조회 응답이라고 해서 값이 있다고 단정할 수 없다.
    */
   ownerLabel: string | null;
-  /** 요청자 본인의 어템프트인지. 모든 경로에서 정확하다. */
-  mine: boolean;
+  /**
+   * 요청자 본인의 어템프트인지. **현재 백엔드 AttemptResponse는 이 필드를 싣지 않아
+   * undefined가 온다** — apiRequest는 응답을 검증 없이 캐스팅하므로 타입만 믿으면
+   * 모든 풀이가 남의 것으로 보인다. 값이 없으면 "모른다"로 다루고, 남의 것이라고
+   * 명시(false)될 때만 잠근다.
+   */
+  mine?: boolean;
   usage?: AttemptTokenUsage | null;
 }
 

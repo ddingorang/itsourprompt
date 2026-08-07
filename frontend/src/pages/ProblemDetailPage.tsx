@@ -7,6 +7,7 @@ import {
 } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useNavigate, useParams } from 'react-router-dom';
+import remarkGfm from 'remark-gfm';
 
 import {
   addTurn,
@@ -44,6 +45,7 @@ import {
 } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Header from '../shared/components/Header';
+import Spinner from '../shared/components/Spinner';
 import type { ErrorPageState } from '../shared/types/error';
 
 type StatusType = 'normal' | 'error';
@@ -380,7 +382,9 @@ export default function ProblemDetailPage() {
    * 프롬프트·제출 UI는 이미 isSubmitted가 막고 있다. 남은 자리는 코드 실행뿐이다 —
    * 실행은 제출 뒤에도 주인에게 열려 있어 isSubmitted로는 가릴 수 없다.
    */
-  const isOthersAttempt = attempt !== null && !attempt.mine;
+  // mine을 싣지 않는 백엔드가 붙어 있으면 undefined가 온다 — 그때 !mine으로 판정하면
+  // 자기 풀이가 전부 남의 것으로 잠긴다. 남의 것이라고 명시(false)될 때만 잠근다.
+  const isOthersAttempt = attempt !== null && attempt.mine === false;
   const canSubmit = turns.length > 0 && !isSubmitted;
   const visibleCodeRunTally =
     codeRunTally && codeRunTally.total > 0 ? codeRunTally : null;
@@ -561,9 +565,10 @@ export default function ProblemDetailPage() {
         // 남의 기록에서는 내가 제출한 적이 없다. 파생 플래그가 아니라 방금 받은
         // 응답의 mine을 본다(이 시점의 attempt 상태는 아직 갱신 전이다).
         setStatus({
-          message: loadedAttempt.mine
-            ? '이미 제출된 어템프트입니다. 피드백만 확인할 수 있습니다.'
-            : '다른 사람이 제출한 풀이입니다. 읽기만 할 수 있습니다.',
+          message:
+            loadedAttempt.mine === false
+              ? '다른 사람이 제출한 풀이입니다. 읽기만 할 수 있습니다.'
+              : '이미 제출된 어템프트입니다. 피드백만 확인할 수 있습니다.',
           type: 'normal',
         });
       }
@@ -1243,11 +1248,6 @@ export default function ProblemDetailPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid shrink-0 gap-2 border-t border-[var(--problem-detail-border)] pt-4 font-mono text-[9px] text-[var(--problem-detail-subtle)]">
-            <span>A / 추가</span>
-            <span>M / 수정</span>
-            <span>D / 삭제</span>
-          </div>
         </aside>
 
         <section className="flex min-h-0 min-w-0 flex-col overflow-hidden border-r border-[var(--problem-detail-border)] px-7 py-[22px] max-[1080px]:border-r-0 max-[700px]:block max-[700px]:overflow-visible max-[700px]:border-b max-[700px]:px-4 max-[700px]:pt-5 max-[700px]:pb-[30px]">
@@ -1318,7 +1318,7 @@ export default function ProblemDetailPage() {
             >
               {activeTab === 'problem' ? (
                 <>
-                  <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[var(--problem-detail-muted)] [word-break:keep-all]">
+                  <div className="m-0 whitespace-pre-wrap text-[13px] leading-[1.7] text-[var(--problem-detail-muted)] [word-break:keep-all] [&_pre_code]:bg-transparent [&_pre_code]:p-0">
                     <ReactMarkdown
                       components={{
                         h1: ({ children }) => (
@@ -1331,7 +1331,53 @@ export default function ProblemDetailPage() {
                         h4: ({ children }) => <h4 className="font-bold text-[var(--problem-detail-text)]">{children}</h4>,
                         h5: ({ children }) => <h5 className="font-bold text-[var(--problem-detail-text)]">{children}</h5>,
                         h6: ({ children }) => <h6 className="font-bold text-[var(--problem-detail-text)]">{children}</h6>,
+                        // preflight가 목록의 불릿·번호·들여쓰기를 지운다 — 매핑이 없으면
+                        // 명세의 조건 나열이 그냥 줄글로 보인다.
+                        ul: ({ children }) => <ul className="my-2 list-disc pl-5">{children}</ul>,
+                        ol: ({ children }) => <ol className="my-2 list-decimal pl-5">{children}</ol>,
+                        li: ({ children }) => <li className="my-1">{children}</li>,
+                        blockquote: ({ children }) => (
+                          <blockquote className="my-3 border-0 border-l-2 border-[var(--problem-detail-border)] pl-3">
+                            {children}
+                          </blockquote>
+                        ),
+                        // preflight가 a의 색과 밑줄도 지워 링크가 본문에 묻힌다.
+                        a: ({ children, href }) => (
+                          <a
+                            className="text-[var(--problem-detail-acid)] underline"
+                            href={href}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            {children}
+                          </a>
+                        ),
+                        code: ({ children }) => (
+                          <code className="bg-[var(--problem-detail-code-bg)] px-1 py-0.5 text-[12px] text-[var(--problem-detail-code-text)]">
+                            {children}
+                          </code>
+                        ),
+                        // 감싼 div가 whitespace-pre-wrap이라 표 안에서는 원문 줄바꿈이
+                        // 그대로 살아난다 — 표만 normal로 되돌리고 가로 스크롤시킨다.
+                        table: ({ children }) => (
+                          <div className="my-3 max-w-full overflow-x-auto">
+                            <table className="w-full border-collapse text-[12px] whitespace-normal">
+                              {children}
+                            </table>
+                          </div>
+                        ),
+                        th: ({ children }) => (
+                          <th className="border border-[var(--problem-detail-border)] px-2.5 py-1.5 text-left font-bold text-[var(--problem-detail-text)]">
+                            {children}
+                          </th>
+                        ),
+                        td: ({ children }) => (
+                          <td className="border border-[var(--problem-detail-border)] px-2.5 py-1.5 align-top">
+                            {children}
+                          </td>
+                        ),
                       }}
+                      remarkPlugins={[remarkGfm]}
                     >
                       {problem.specMd}
                     </ReactMarkdown>
@@ -1446,6 +1492,8 @@ export default function ProblemDetailPage() {
                   {/* 남의 제출에서는 우리가 채점을 시킨 적이 없다 — 읽는 중일 뿐이다. */}
                   {isOthersAttempt ? (
                     <div>
+                      {/* 멈춘 화면처럼 보이면 오류로 오해한다 — 도는 표시를 함께 둔다. */}
+                      <Spinner className="mb-3 text-[var(--problem-detail-muted)]" />
                       <div className="text-[var(--problem-detail-acid)]">
                         기록을 불러오는 중…
                       </div>
@@ -1455,6 +1503,7 @@ export default function ProblemDetailPage() {
                     </div>
                   ) : (
                     <div>
+                      <Spinner className="mb-3 text-[var(--problem-detail-muted)]" />
                       <div className="text-[var(--problem-detail-acid)]">채점 중…</div>
                       <div className="mt-2 text-[9px] text-[var(--problem-detail-subtle)]">
                         완료될 때까지 잠시 기다려주세요.
@@ -1632,7 +1681,7 @@ export default function ProblemDetailPage() {
                 type="button"
               >
                 {isRunning ? (
-                  '…'
+                  <Spinner size={15} />
                 ) : (
                   <svg
                     aria-hidden="true"
@@ -1659,13 +1708,15 @@ export default function ProblemDetailPage() {
             </div>
 
             <div className="mt-auto pt-2">
+              {/* 색을 덧칠하지 않고 상태마다 한 벌씩 고른다 — 같은 속성을 두 번
+                  적으면 어느 쪽이 이길지는 Tailwind가 CSS를 찍은 순서가 정한다. */}
               {status && (
                 <div
                   className={[
-                    'mb-2 border border-[var(--problem-detail-border-strong)] p-2 font-mono text-[10px] leading-[1.5] text-[var(--problem-detail-muted)]',
+                    'mb-2 border p-2 font-mono text-[10px] leading-[1.5]',
                     status.type === 'error'
                       ? 'border-[#ff786b] text-[#ff786b]'
-                      : '',
+                      : 'border-[var(--problem-detail-border-strong)] text-[var(--problem-detail-muted)]',
                   ].join(' ')}
                   role="status"
                 >
@@ -1699,6 +1750,7 @@ export default function ProblemDetailPage() {
                   여기뿐이기 때문이다 — handleSubmit도 제출된 어템프트면 바로
                   피드백으로 넘긴다. 문구만 실제로 하는 일에 맞춘다.
                 */}
+                {isSubmitting && <Spinner size={15} />}
                 <span className="text-[14px]">
                   {isSubmitting
                     ? '제출 중…'

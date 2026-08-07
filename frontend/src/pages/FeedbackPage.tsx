@@ -5,6 +5,7 @@ import { getAttempt, getAttemptFeedback } from '../features/attempt/api';
 import type { Attempt, AttemptFeedback } from '../features/attempt/types';
 import { useAuth } from '../features/auth/AuthContext';
 import PromptFeedback from '../features/feedback/PromptFeedback';
+import { getProblemDetail } from '../features/problem/api';
 import { useTheme } from '../features/theme/ThemeContext';
 import CodeViewer from '../features/workspace/CodeViewer';
 import { nextTabIndex } from '../shared/a11y/tabKeyboard';
@@ -70,18 +71,25 @@ function toPatternFeedback(
  * 세션 전체를 다루는 총평 한 벌. 렌즈마다 하나씩 쌓이므로 테두리와 제목 줄을 여기서만 그린다.
  */
 function OverallPanel({
+  description,
   markdown,
   title,
 }: {
+  /** 이 렌즈가 무엇을 보는지. 제목 옆에 붙어 총평과 턴별 피드백 양쪽을 함께 설명한다. */
+  description: string;
   markdown: string;
   title: string;
 }) {
   return (
-    <section className="mt-4 border border-[var(--feedback-border)] bg-transparent">
-      <div className="flex min-h-[58px] items-center border-b border-[var(--feedback-border)] px-6 max-[760px]:px-5">
+    <section className="min-w-0 border border-[var(--feedback-border)] bg-transparent">
+      {/* min-h만 두면 줄이 위로 붙는다 — content-center로 여백을 위아래 같게 나눈다. */}
+      <div className="flex min-h-[58px] flex-wrap content-center items-baseline gap-x-3 gap-y-1 border-b border-[var(--feedback-border)] px-6 py-2 max-[760px]:px-5">
         <h2 className="m-0 text-xl leading-[1.4] font-bold text-[var(--feedback-acid)]">
           {title}
         </h2>
+        <p className="m-0 text-[13px] leading-[1.6] text-[var(--feedback-muted)]">
+          {description}
+        </p>
       </div>
       <div className="px-6 pb-7 [&>div>h2:first-child]:border-t-0 [&>div>h2:first-child]:pt-0 max-[760px]:px-5 max-[760px]:pb-5">
         <PromptFeedback feedback={markdown} />
@@ -107,6 +115,8 @@ export default function FeedbackPage() {
   const { refresh } = useAuth();
 
   const [attempt, setAttempt] = useState<Attempt | null>(null);
+  /** 어떤 문제의 피드백인지. 어템프트 응답에는 problemId만 있어 따로 읽어 온다. */
+  const [problemTitle, setProblemTitle] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<AttemptFeedback | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notice, setNotice] = useState<LoadNotice | null>(null);
@@ -193,6 +203,28 @@ export default function FeedbackPage() {
     };
   }, [attemptId, location.pathname, navigate, refresh]);
 
+  // 문제 이름은 어템프트를 읽은 뒤에야 어느 문제인지 알 수 있어 두 번째 요청으로 받는다.
+  // 실패해도 이름만 비우고 피드백 본문은 그대로 보여 준다.
+  useEffect(() => {
+    const problemId = attempt?.problemId;
+    if (problemId === undefined) return;
+
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        const problem = await getProblemDetail(problemId, controller.signal);
+        setProblemTitle(problem.title);
+      } catch {
+        // 제목은 부가 정보라 화면을 오류로 덮지 않는다.
+      }
+    })();
+
+    return () => {
+      controller.abort();
+    };
+  }, [attempt?.problemId]);
+
   const turnSections = (feedback?.turns ?? []).map((turnFeedback) => ({
     ...turnFeedback,
     prompt: attempt?.turns[turnFeedback.turn - 1]?.prompt ?? '',
@@ -241,39 +273,54 @@ export default function FeedbackPage() {
       <Header mobileBreakpoint="760" />
 
       <main className="mx-auto w-[calc(100%_-_10vw)] max-w-[1840px] flex-1 pt-[clamp(32px,5vw,56px)] pb-20 max-[760px]:w-[min(calc(100%_-_32px),680px)] max-[760px]:pt-8">
-        <section className="bg-[var(--feedback-acid)] px-[22px] py-5 text-[#090909]">
-          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em]">
-            풀이 피드백
-          </h1>
-        </section>
-
         {/*
           이 화면은 랭킹에서 남의 기록으로도 열린다. 주인이 어디에도 없으면 링크를
-          받아 바로 들어온 사람은 누구 기록인지 알 수 없다. 배너 바로 아래에 세 면만
-          두른 띠로 붙여 제목의 일부처럼 읽히게 한다.
+          받아 바로 들어온 사람은 누구 기록인지 알 수 없다 — 제목 배너 오른쪽에
+          함께 둔다. 좁은 화면에서는 제목 아래로 내려온다.
         */}
-        {attempt && (
-          <section
-            aria-label="이 기록의 주인"
-            className="flex flex-wrap items-center gap-x-3 gap-y-2 border-x border-b border-[var(--feedback-border)] px-[22px] py-3.5"
-          >
-            <span className="font-mono text-[13px] font-bold tracking-[0.06em] text-[var(--feedback-muted)]">
-              OWNER
-            </span>
-            <span className="text-[15px] tracking-[-0.02em]">
-              {attempt.ownerLabel ?? '(이름을 불러오지 못했습니다.)'}
-            </span>
-            {attempt.mine && (
-              <span className="border border-[var(--feedback-acid)] px-1.5 py-0.5 font-mono text-[10px] leading-none font-bold tracking-[0.08em] text-[var(--feedback-acid)]">
-                YOU
+        {/* 오른쪽 정보 묶음이 제목보다 높아 items-end로는 제목이 아래로 붙는다 —
+            위아래 여백이 같아 보이도록 가운데로 맞춘다. */}
+        <section className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 bg-[var(--feedback-acid)] px-[22px] py-5 text-[#090909]">
+          <h1 className="m-0 text-[clamp(34px,6vw,62px)] leading-[0.82] font-bold tracking-[-0.04em]">
+            프롬프트 피드백
+          </h1>
+          {/* 묶음 자체는 배너 오른쪽에 두되, 안쪽 세 줄은 왼쪽 끝을 맞춘다 —
+              줄마다 오른쪽으로 붙이면 문제 이름 길이에 따라 시작점이 흔들린다. */}
+          {attempt && (
+            <div
+              aria-label="이 기록의 주인"
+              className="grid justify-items-start gap-1"
+            >
+              {/* 두 줄이 같은 결로 읽히도록 라벨만 굵게, 값은 보통 굵기로 맞춘다. */}
+              {problemTitle && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="text-[15px] font-bold tracking-[-0.01em]">
+                    문제
+                  </span>
+                  <span className="text-[15px] tracking-[-0.02em]">
+                    {problemTitle}
+                  </span>
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="text-[15px] font-bold tracking-[-0.01em]">
+                  작성자
+                </span>
+                <span className="text-[15px] tracking-[-0.02em]">
+                  {attempt.ownerLabel ?? '(이름을 불러오지 못했습니다.)'}
+                </span>
+                {attempt.mine && (
+                  <span className="border border-[#090909] px-1.5 py-0.5 font-mono text-[10px] leading-none font-bold tracking-[0.08em]">
+                    YOU
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] leading-[1.5] tracking-[-0.01em]">
+                제출된 기록은 누구나 볼 수 있습니다
               </span>
-            )}
-            {/* 배너와 같은 배치다 — 이름은 왼쪽, 부연은 오른쪽 끝. */}
-            <span className="ml-auto font-mono text-[11px] leading-[1.5] tracking-[0.04em] text-[var(--feedback-muted)] max-[760px]:ml-0">
-              제출된 기록은 누구나 볼 수 있습니다
-            </span>
-          </section>
-        )}
+            </div>
+          )}
+        </section>
 
         {isLoading && (
           <section className="border-b border-[var(--feedback-border)] py-12 font-mono text-xs leading-[1.7] text-[var(--feedback-muted)]">
@@ -316,23 +363,38 @@ export default function FeedbackPage() {
 
         {!isLoading && !notice && feedback && (
           <>
-            <OverallPanel
-              markdown={feedback.overallMd}
-              title="프롬프트 진단 총평"
-            />
+            {/* 두 총평은 같은 세션을 다른 각도에서 본 것이라 나란히 두고 견주게 한다.
+                pattern이 없는 옛 제출은 총평이 하나뿐이라 그때는 한 칸을 다 쓴다. */}
+            <div
+              className={`mt-4 grid gap-4 ${
+                pattern ? 'grid-cols-2 max-[760px]:grid-cols-1' : 'grid-cols-1'
+              }`}
+            >
+              <OverallPanel
+                description="프롬프트에서 무엇을 전달했고, 무엇이 부족한지"
+                markdown={feedback.overallMd}
+                title="프롬프트 총평"
+              />
 
-            {pattern && (
-              <OverallPanel markdown={pattern.overallMd} title="작업 방식 총평" />
-            )}
+              {pattern && (
+                <OverallPanel
+                  description="이 턴에 드러난 작업 패턴과, 다음에 써 볼 기법"
+                  markdown={pattern.overallMd}
+                  title="작업 패턴 총평"
+                />
+              )}
+            </div>
 
             {selectedSection && (
               <section
                 className="mt-4 border border-[var(--feedback-border)] bg-[var(--feedback-surface)]"
                 aria-label="턴별 피드백"
               >
-                <div className="sticky top-[66px] z-40 border-b border-[var(--feedback-border)] bg-[var(--feedback-surface)]">
+                {/* 겹쳐 놓인 제목·좌우 화살표가 이 상자를 기준으로 배치되므로 relative는
+                    남겨 둔다 — sticky만 걷어내 스크롤에 따라 함께 올라가게 한다. */}
+                <div className="relative border-b border-[var(--feedback-border)] bg-[var(--feedback-surface)]">
                   <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[220px] place-items-center border-r border-[var(--feedback-border)] bg-[var(--feedback-surface)] text-xl leading-[1.4] font-bold text-[var(--feedback-acid)] max-[760px]:hidden">
-                    턴 고르기
+                    턴별 피드백
                   </span>
                   <button
                     aria-label="이전 턴 보기"
@@ -406,7 +468,7 @@ export default function FeedbackPage() {
                       생성된 코드
                     </h2>
                     {selectedSection.changedFiles.length > 0 ? (
-                      <div className="workspace-scrollbar mt-[18px] grid max-h-[520px] gap-3 overflow-y-auto max-[760px]:max-h-none max-[760px]:overflow-y-visible">
+                      <div className="workspace-scrollbar mt-[18px] -mr-[22px] grid max-h-[520px] gap-3 overflow-y-auto pr-[22px] max-[760px]:mr-0 max-[760px]:max-h-none max-[760px]:overflow-y-visible max-[760px]:pr-0">
                         {selectedSection.changedFiles.map((file) => (
                           <div
                             className="overflow-hidden border border-[var(--feedback-border)] bg-[var(--feedback-code-bg)]"
@@ -435,7 +497,7 @@ export default function FeedbackPage() {
                     <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-acid)]">
                       작성한 프롬프트
                     </h2>
-                    <p className="mt-[18px] min-h-[110px] whitespace-pre-wrap border border-[var(--feedback-border)] bg-[var(--feedback-prompt-bg)] p-[18px] font-mono text-[15px] leading-[1.9] text-[var(--feedback-code-text)] [word-break:keep-all] max-[760px]:min-h-40">
+                    <p className="workspace-scrollbar mt-[18px] max-h-[520px] min-h-[110px] overflow-y-auto whitespace-pre-wrap border border-[var(--feedback-border)] bg-[var(--feedback-prompt-bg)] p-[18px] font-mono text-[15px] leading-[1.9] text-[var(--feedback-code-text)] [word-break:keep-all] max-[760px]:max-h-none max-[760px]:min-h-40 max-[760px]:overflow-y-visible">
                       {selectedSection.prompt || '(프롬프트 원문을 불러오지 못했습니다.)'}
                     </p>
                   </article>
@@ -446,21 +508,23 @@ export default function FeedbackPage() {
                     <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-acid)]">
                       프롬프트 진단
                     </h2>
-                    <p className="m-0 mt-1.5 text-[13px] leading-[1.6] text-[var(--feedback-muted)]">
-                      프롬프트가 무엇을 전달했고 무엇이 빠졌는지
-                    </p>
-                    <PromptFeedback feedback={selectedSection.feedbackMd} />
+                    {/* 본문 길이에 따라 페이지가 끝없이 늘어나던 자리다 — 옆의 생성된
+                        코드와 같은 높이로 묶고 넘치는 만큼은 안에서 스크롤시킨다.
+                        음수 마진으로 칸의 오른쪽 패딩을 걷어내 스크롤바를 테두리에 붙이고,
+                        같은 크기의 패딩을 안쪽에 다시 줘 본문은 스크롤바와 떨어뜨린다. */}
+                    <div className="workspace-scrollbar mt-[18px] -mr-[22px] max-h-[520px] overflow-y-auto pr-[22px] max-[760px]:mr-0 max-[760px]:max-h-none max-[760px]:overflow-y-visible max-[760px]:pr-0">
+                      <PromptFeedback feedback={selectedSection.feedbackMd} />
+                    </div>
                   </article>
 
                   {pattern && (
                     <article className="min-w-0 border-t border-l border-[var(--feedback-border)] p-[22px] max-[760px]:border-l-0">
                       <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-acid)]">
-                        작업 방식
+                        작업 패턴
                       </h2>
-                      <p className="m-0 mt-1.5 text-[13px] leading-[1.6] text-[var(--feedback-muted)]">
-                        이 턴에 일한 방식과, 다음에 써 볼 기법
-                      </p>
-                      <PromptFeedback feedback={pattern.turnMd[selectedSection.turn]} />
+                      <div className="workspace-scrollbar mt-[18px] -mr-[22px] max-h-[520px] overflow-y-auto pr-[22px] max-[760px]:mr-0 max-[760px]:max-h-none max-[760px]:overflow-y-visible max-[760px]:pr-0">
+                        <PromptFeedback feedback={pattern.turnMd[selectedSection.turn]} />
+                      </div>
                     </article>
                   )}
                 </div>

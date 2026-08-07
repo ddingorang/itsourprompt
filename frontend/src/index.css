@@ -27,7 +27,7 @@ html { scroll-behavior: smooth; }
   --relay-surface-raised: #151515;
   --relay-text: #f5f5ef;
   --relay-muted: #a3a3a3;
-  --relay-subtle: #777;
+  --relay-subtle: var(--relay-muted);
   --relay-border: #393939;
   --relay-acid: #d6ff50;
   /* 공통 컴포넌트(Header/Footer/Button/Pagination)가 읽는 공용 별칭 —
@@ -45,7 +45,7 @@ html { scroll-behavior: smooth; }
   --relay-surface-raised: #f3f3ee;
   --relay-text: #090909;
   --relay-muted: #585858;
-  --relay-subtle: #70706a;
+  --relay-subtle: var(--relay-muted);
   --relay-border: #c7c7c1;
   --relay-acid: #bee034;
   background: var(--relay-bg) !important;
@@ -338,7 +338,7 @@ html { scroll-behavior: smooth; }
   --ranking-bg: #090909;
   --ranking-text: #f5f5ef;
   --ranking-muted: #a3a3a3;
-  --ranking-subtle: #777;
+  --ranking-subtle: var(--ranking-muted);
   --ranking-faint: #555;
   --ranking-border: #343434;
   --ranking-surface: #121212;
@@ -358,7 +358,7 @@ html { scroll-behavior: smooth; }
   --ranking-bg: #fff;
   --ranking-text: #090909;
   --ranking-muted: #585858;
-  --ranking-subtle: #70706a;
+  --ranking-subtle: var(--ranking-muted);
   --ranking-faint: #a8a8a2;
   --ranking-border: #c7c7c1;
   --ranking-surface: #f7f7f2;
@@ -422,7 +422,7 @@ html { scroll-behavior: smooth; }
   --problem-detail-bg: #090909;
   --problem-detail-text: #f5f5ef;
   --problem-detail-muted: #a3a3a3;
-  --problem-detail-subtle: #777;
+  --problem-detail-subtle: var(--problem-detail-muted);
   --problem-detail-border: #343434;
   --problem-detail-border-strong: #555;
   --problem-detail-acid: #d6ff50;
@@ -443,7 +443,7 @@ html { scroll-behavior: smooth; }
   --problem-detail-bg: #fff;
   --problem-detail-text: #090909;
   --problem-detail-muted: #585858;
-  --problem-detail-subtle: #70706a;
+  --problem-detail-subtle: var(--problem-detail-muted);
   --problem-detail-border: #c7c7c1;
   --problem-detail-border-strong: #9c9c95;
   --problem-detail-acid: #bee034;
@@ -504,7 +504,7 @@ html { scroll-behavior: smooth; }
   --my-page-bg: #090909;
   --my-page-text: #f5f5ef;
   --my-page-muted: #a3a3a3;
-  --my-page-subtle: #777;
+  --my-page-subtle: var(--my-page-muted);
   --my-page-border: #343434;
   --my-page-acid: #d6ff50;
   --acid: var(--my-page-acid);
@@ -519,7 +519,7 @@ html { scroll-behavior: smooth; }
   --my-page-bg: #fff;
   --my-page-text: #090909;
   --my-page-muted: #585858;
-  --my-page-subtle: #70706a;
+  --my-page-subtle: var(--my-page-muted);
   --my-page-border: #c7c7c1;
   --my-page-acid: #bee034;
 }
@@ -664,7 +664,7 @@ html { scroll-behavior: smooth; }
   --feedback-bg: #090909;
   --feedback-text: #f5f5ef;
   --feedback-muted: #a3a3a3;
-  --feedback-subtle: #777;
+  --feedback-subtle: var(--feedback-muted);
   --feedback-border: #393939;
   --feedback-acid: #d6ff50;
   --acid: var(--feedback-acid);
@@ -684,7 +684,7 @@ html { scroll-behavior: smooth; }
   --feedback-bg: #fff;
   --feedback-text: #090909;
   --feedback-muted: #585858;
-  --feedback-subtle: #70706a;
+  --feedback-subtle: var(--feedback-muted);
   --feedback-border: #c7c7c1;
   --feedback-acid: #bee034;
   --feedback-surface: #f7f7f2;
@@ -725,11 +725,13 @@ html { scroll-behavior: smooth; }
   background: transparent;
   color: var(--feedback-text);
 }
+/* 옆의 주 버튼은 hover에서 배경이 빠지고 강조색 글자만 남는다 — 이 버튼만 반대로
+   채워지면 나란히 둔 두 버튼이 hover마다 생김새를 맞바꾼다. 같은 방향으로 맞춘다. */
 .feedback-page .feedback-page-secondary-action:hover,
 .feedback-page .feedback-page-secondary-action:focus-visible {
   border-color: var(--feedback-acid);
-  background: var(--feedback-acid);
-  color: #090909;
+  background: transparent;
+  color: var(--feedback-acid);
 }
 .feedback-page .workspace-scrollbar {
   scrollbar-color: var(--feedback-subtle) var(--feedback-code-bg);
@@ -759,7 +761,7 @@ html { scroll-behavior: smooth; }
   --error-page-bg: #090909;
   --error-page-text: #f5f5ef;
   --error-page-muted: #a3a3a3;
-  --error-page-subtle: #777;
+  --error-page-subtle: var(--error-page-muted);
   --error-page-border: #343434;
   --error-page-acid: #d6ff50;
   --acid: var(--error-page-acid);
@@ -774,7 +776,7 @@ html { scroll-behavior: smooth; }
   --error-page-bg: #fff;
   --error-page-text: #090909;
   --error-page-muted: #585858;
-  --error-page-subtle: #70706a;
+  --error-page-subtle: var(--error-page-muted);
   --error-page-border: #c7c7c1;
   --error-page-acid: #bee034;
 }

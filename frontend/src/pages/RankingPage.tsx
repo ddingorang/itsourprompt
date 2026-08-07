@@ -41,7 +41,7 @@ interface RankingNotice {
  */
 const headCellClasses =
   'border-b border-[var(--ranking-border)] px-2 py-3 text-left text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-subtle)]';
-/** MY BEST 항목 제목. 표 머리글과 같은 글자 스타일에서 셀 테두리·여백만 뺀 것.
+/** 나의 최고 기록 항목 제목. 표 머리글과 같은 글자 스타일에서 셀 테두리·여백만 뺀 것.
     감싼 밴드가 font-mono라 상속만으로는 벗어날 수 없어 글꼴을 직접 적는다. */
 const myBestLabelClasses =
   "[font-family:Arial,'Noto_Sans_KR',sans-serif] text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-subtle)]";
@@ -121,7 +121,7 @@ function formatTokens(tokens: number): string {
 
 /**
  * 턴 수. 단위를 값에 붙인다 — 860px 미만에서는 thead가 숨어 머리글이 사라지고,
- * MY BEST 밴드에는 머리글이 애초에 없다. 숫자만 두면 무엇을 센 것인지 알 수 없다.
+ * 나의 최고 기록 밴드에는 머리글이 애초에 없다. 숫자만 두면 무엇을 센 것인지 알 수 없다.
  */
 function TurnCount({ turns }: { turns: number }) {
   return (
@@ -392,11 +392,15 @@ export default function RankingPage() {
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-16 max-[1200px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
         <header className="pb-10 max-[640px]:pb-8">
-          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--ranking-acid)]">
-            RANKING
+          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--ranking-acid)]">
+            랭킹
           </h1>
-          <p className="mt-2 mb-0 text-[13px] leading-[1.7] text-[var(--ranking-muted)]">
-            가장 적은 비용으로 푼 순서
+          <p className="mt-5 mb-0 text-[15px] leading-[1.7] text-[var(--ranking-muted)]">
+            같은 문제를 푼 사람들의 기록을 견주어 보세요!
+            <br />
+            순위는 AI를 사용하는데 든 비용이 적은 순서입니다 — 같은 답에 도달했다면 더 적은 토큰을 사용한 쪽이 앞섭니다.
+            <br />
+            표에서 몇 번의 턴으로, 얼마나 걸려 풀었는지까지 확인할 수 있어요.
           </p>
         </header>
 
@@ -414,13 +418,14 @@ export default function RankingPage() {
             aria-label="문제 선택"
           >
             <div className="relative">
-              <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[180px] place-items-center border-r border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--ranking-acid)] max-[760px]:hidden">
-                PROBLEMS
+              {/* 오른쪽 끝 「전체 N」 버튼과 같은 120px 고정폭 — 조작부가 좌우 대칭이 된다. */}
+              <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[120px] place-items-center border-r border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] [font-family:Arial,'Noto_Sans_KR',sans-serif] text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--ranking-acid)] max-[760px]:hidden">
+                문제 선택
               </span>
               {hasTabOverflow && (
                 <button
                   aria-label="이전 문제 보기"
-                  className="absolute top-0 bottom-0 left-[180px] z-20 w-10 cursor-pointer border-0 border-r border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-2xl font-bold text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
+                  className="absolute top-0 bottom-0 left-[120px] z-20 w-10 cursor-pointer border-0 border-r border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-2xl font-bold text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
                   onClick={() => scrollTabNav(-1)}
                   type="button"
                 >
@@ -432,8 +437,8 @@ export default function RankingPage() {
                   'turn-tab-scrollbar flex items-stretch overflow-x-auto scroll-smooth',
                   // 오른쪽 여백은 겹쳐 놓인 조작부(화살표 + 전체 목록 버튼)만큼 비운다.
                   hasTabOverflow
-                    ? 'pr-[152px] pl-[220px] max-[760px]:pl-[42px]'
-                    : 'pr-[112px] pl-[180px] max-[760px]:pl-0',
+                    ? 'pr-[160px] pl-[160px] max-[760px]:pl-[42px]'
+                    : 'pr-[120px] pl-[120px] max-[760px]:pl-0',
                 ].join(' ')}
                 ref={tabNavRef}
               >
@@ -475,7 +480,7 @@ export default function RankingPage() {
                     건너뛰는 길이다 — 문제가 늘어날수록 탭만으로는 닿지 않는다. */}
                 <button
                   aria-expanded={isProblemListOpen}
-                  className="flex w-28 cursor-pointer items-center justify-center gap-1.5 border-0 border-l border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px]"
+                  className="flex w-[120px] cursor-pointer items-center justify-center gap-1.5 border-0 border-l border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px]"
                   onClick={() => setIsProblemListOpen((open) => !open)}
                   type="button"
                 >
@@ -541,8 +546,8 @@ export default function RankingPage() {
           className="mt-6 border-y border-t-[var(--ranking-text)] border-b-[var(--ranking-border)] py-[15px]"
           aria-label="랭킹 정보"
         >
-          <div className="font-mono text-[13px] font-bold tracking-[0.06em] text-[var(--ranking-muted)]">
-            RANKED SUBMISSIONS /{' '}
+          <div className="text-[13px] font-bold tracking-[0.06em] text-[var(--ranking-muted)]">
+            전체 기록 /{' '}
             {String(ranking?.totalCount ?? 0).padStart(2, '0')}
             {ranking && ranking.totalCount > RANKING_LIMIT && (
               <span> · 상위 {RANKING_LIMIT}위까지 표시</span>
@@ -748,8 +753,8 @@ export default function RankingPage() {
             className="mt-6 border border-[var(--ranking-border)] p-5 max-[640px]:p-4"
             aria-label="내 최고 기록"
           >
-            <div className="font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--ranking-acid)]">
-              MY BEST
+            <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif] text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--ranking-acid)]">
+              나의 최고 기록
             </div>
             {ranking.myBest ? (
               <div className="mt-3.5 flex flex-wrap items-end justify-between gap-4">

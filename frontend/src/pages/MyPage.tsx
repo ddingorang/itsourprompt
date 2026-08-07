@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { getMySubmittedAttempts } from '../features/me/api';
 import type { SubmittedAttempt } from '../features/me/types';
+import { getProblems } from '../features/problem/api';
 import { useTheme } from '../features/theme/ThemeContext';
 import {
   ApiError,
@@ -18,12 +19,6 @@ import { usePagination } from '../shared/hooks/usePagination';
 const SUBMISSIONS_PER_PAGE = 5;
 const PAGES_PER_GROUP = 5;
 
-/** 가입 시각(ISO 문자열)을 "YYYY.MM" 형태로 바꾼다. (가입일 표기용) */
-function formatMemberSince(createdAt: string): string {
-  const date = new Date(createdAt);
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
-
 /** 제출 시각(ISO 문자열)을 "YYYY.MM.DD" 형태로 바꾼다. */
 function formatSubmittedAt(submittedAt: string | null): string {
   if (!submittedAt) return '--';
@@ -36,6 +31,73 @@ function formatSubmittedAt(submittedAt: string | null): string {
     String(date.getMonth() + 1).padStart(2, '0'),
     String(date.getDate()).padStart(2, '0'),
   ].join('.');
+}
+
+/**
+ * 칸 너비에 맞을 때까지 글자 크기를 줄여 한 줄로 담는다. 글자 수로 크기를 정하면
+ * 한글 10자와 숫자 10자의 폭이 두 배 넘게 차이 나 어느 한쪽이 늘 어긋나므로,
+ * 실제로 그려진 폭(scrollWidth)을 재서 맞춘다. 최소 크기로도 넘치면 줄임표로 접는다.
+ */
+function FitText({
+  children,
+  maxPx,
+  minPx,
+}: {
+  children: string;
+  maxPx: number;
+  minPx: number;
+}) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const text = textRef.current;
+    if (!box || !text) return;
+
+    const fit = () => {
+      const available = box.clientWidth;
+      if (available <= 0) return;
+
+      text.style.fontSize = `${maxPx}px`;
+      if (text.scrollWidth <= available) return;
+
+      // 폭은 글자 크기에 거의 비례한다 — 비율로 한 번에 줄인 뒤 1px씩 다듬는다.
+      let size = Math.max(
+        minPx,
+        Math.floor((maxPx * available) / text.scrollWidth),
+      );
+      text.style.fontSize = `${size}px`;
+
+      while (size > minPx && text.scrollWidth > available) {
+        size -= 1;
+        text.style.fontSize = `${size}px`;
+      }
+    };
+
+    fit();
+
+    // 창 크기가 바뀌면 칸 너비도 바뀐다 — 그때마다 다시 맞춘다.
+    const observer = new ResizeObserver(fit);
+    observer.observe(box);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [children, maxPx, minPx]);
+
+  return (
+    <div className="min-w-0 overflow-hidden" ref={boxRef}>
+      <span
+        className="block overflow-hidden text-ellipsis whitespace-nowrap"
+        ref={textRef}
+        style={{ fontSize: `${maxPx}px` }}
+        title={children}
+      >
+        {children}
+      </span>
+    </div>
+  );
 }
 
 function normalizePageParam(
@@ -59,6 +121,7 @@ export default function MyPage() {
   const [submittedAttempts, setSubmittedAttempts] = useState<SubmittedAttempt[]>(
     [],
   );
+  const [problemCount, setProblemCount] = useState<number | null>(null);
   const [isLoadingAttempts, setIsLoadingAttempts] = useState(true);
   const [attemptsError, setAttemptsError] = useState<string | null>(null);
   const submissionHistorySectionRef = useRef<HTMLElement>(null);
@@ -145,6 +208,24 @@ export default function MyPage() {
     };
   }, [location.pathname, navigate, refresh]);
 
+  // 진도(푼 문제 / 전체 문제)의 분모. 실패해도 진도만 '--'로 두고 나머지는 그대로 보인다.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        const { problems } = await getProblems(controller.signal);
+        setProblemCount(problems.length);
+      } catch {
+        // 진도는 부가 정보라 화면 전체를 오류로 덮지 않는다.
+      }
+    })();
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
   useEffect(() => {
     const normalizedSubmissionPage =
       !isLoadingAttempts && !attemptsError
@@ -199,18 +280,16 @@ export default function MyPage() {
   const solvedCount = new Set(
     submittedAttempts.map((attempt) => attempt.problemId),
   ).size;
-  const stats = [
-    {
-      label: '풀어낸 문제',
-      value: isLoadingAttempts ? '--' : String(solvedCount),
-      suffix: null,
-    },
-    {
-      label: '제출 횟수',
-      value: isLoadingAttempts ? '--' : String(submittedAttempts.length),
-      suffix: null,
-    },
-  ];
+  /** 진도 비율(%). 분모를 아직 모르거나 0이면 막대와 수치를 그리지 않는다. */
+  const progressPercent =
+    isLoadingAttempts || problemCount === null || problemCount === 0
+      ? null
+      : Math.round((solvedCount / problemCount) * 100);
+  /** 같은 문제를 몇 번 고쳐 냈는지 — 제출 횟수만으로는 알 수 없는 값이다. */
+  const averagePerProblem =
+    isLoadingAttempts || solvedCount === 0
+      ? null
+      : `한 문제당 평균 ${(submittedAttempts.length / solvedCount).toFixed(1)}회`;
 
   return (
     <div
@@ -224,55 +303,72 @@ export default function MyPage() {
           내 정보
         </h1>
 
-        <section className="grid grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)] border-y border-[var(--my-page-text)] max-[1200px]:grid-cols-1">
-          <div className="flex min-h-[180px] flex-col justify-between border-r border-[var(--my-page-border)] p-[clamp(20px,3vw,32px)] max-[1200px]:min-h-[170px] max-[1200px]:border-r-0 max-[1200px]:border-b">
-            <div className="flex items-center gap-5">
+        {/* 닉네임·진도·제출 횟수를 한 줄에 나란히 둔다. 1200px 아래에서는 세 칸이
+            위아래로 쌓이고, 그때는 칸 사이 구분선이 오른쪽에서 아래로 옮겨간다. */}
+        <section className="grid grid-cols-3 border-y border-[var(--my-page-text)] max-[1200px]:grid-cols-1">
+          <div className="flex min-h-[150px] min-w-0 flex-col justify-between gap-3 border-r border-[var(--my-page-border)] p-[clamp(16px,2vw,24px)] max-[1200px]:border-r-0 max-[1200px]:border-b">
+            <span className="text-[15px] text-[var(--my-page-muted)]">
+              닉네임
+            </span>
+            {/* 칸이 늘어나는 대신 글자가 줄어든다 — 닉네임 길이와 무관하게 한 줄이다. */}
+            <h2 className="m-0 text-right leading-[1.1] font-black tracking-[-0.05em]">
+              <FitText maxPx={34} minPx={14}>
+                {user.nickname}
+              </FitText>
+            </h2>
+          </div>
+
+          {/* 퍼센트는 막대가 어디까지 찼는지 읽는 값이라 막대 바로 위 시작점에 붙인다. */}
+          <div className="flex min-h-[150px] min-w-0 flex-col justify-between gap-3 border-r border-[var(--my-page-border)] p-[clamp(16px,2vw,24px)] max-[1200px]:border-r-0 max-[1200px]:border-b">
+            {/* 라벨을 칸 맨 위에 붙여 양옆 칸의 제목과 같은 줄에 오게 한다 —
+                가운데 정렬이면 옆의 큰 숫자 높이만큼 아래로 내려간다. */}
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-[15px] text-[var(--my-page-muted)]">
+                전체 문제 진도
+              </span>
+              <span className="text-right font-mono leading-none tracking-[-0.08em]">
+                <strong className="text-[clamp(28px,4vw,44px)]">
+                  {isLoadingAttempts ? '--' : solvedCount}
+                </strong>
+                <span className="text-[clamp(16px,2vw,22px)] text-[var(--my-page-muted)]">
+                  {' / '}
+                  {problemCount ?? '--'}
+                </span>
+              </span>
+            </div>
+            <div>
+              <span className="font-mono text-[15px] text-[var(--my-page-acid)]">
+                {progressPercent === null ? '--' : `${progressPercent}%`}
+              </span>
+              {/* 막대는 수치를 한 번 더 말하는 장식이라 화면 낭독에서는 뺀다. */}
               <div
-                className="grid size-16 shrink-0 place-items-center rounded-full bg-[var(--my-page-acid)] text-2xl font-black text-[#090909]"
+                className="mt-1.5 h-1.5 bg-[var(--my-page-border)]"
                 aria-hidden="true"
               >
-                {/* 아바타 이니셜: 로그인 사용자 닉네임의 첫 글자 */}
-                {user.nickname.charAt(0).toUpperCase()}
+                <div
+                  className="h-full bg-[var(--my-page-acid)]"
+                  style={{ width: `${progressPercent ?? 0}%` }}
+                />
               </div>
-              <div>
-                <p className="mb-1 text-[13px] text-[var(--my-page-subtle)]">
-                  닉네임
-                </p>
-                <h2 className="text-[clamp(28px,4vw,42px)] leading-none font-black tracking-[-0.05em]">
-                  {user.nickname}
-                </h2>
-              </div>
-            </div>
-
-            <div>
-              <span className="inline-flex items-center gap-2 text-[13px] text-[var(--my-page-subtle)]">
-                <span className="size-1.5 rounded-full bg-[var(--my-page-acid)]" />
-                가입일 {formatMemberSince(user.createdAt)}
-              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 max-[520px]:grid-cols-1">
-            {stats.map((stat, index) => (
-              <div
-                className="flex min-h-[130px] flex-col justify-between border-r border-[var(--my-page-border)] p-[clamp(16px,2vw,24px)] last:border-r-0 max-[520px]:min-h-[110px] max-[520px]:border-r-0 max-[520px]:border-b max-[520px]:last:border-b-0"
-                key={stat.label}
-              >
-                <span className="text-[13px] text-[var(--my-page-subtle)]">
-                  0{index + 1} / {stat.label}
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <strong className="font-mono text-[clamp(32px,5vw,60px)] leading-none tracking-[-0.08em]">
-                    {stat.value}
-                  </strong>
-                  {stat.suffix && (
-                    <span className="font-mono text-[clamp(15px,2vw,22px)] leading-none tracking-[-0.04em] text-[var(--my-page-subtle)]">
-                      {stat.suffix}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+          {/* 라벨은 왼쪽 위, 값은 오른쪽 아래. 평균은 값에 딸린 설명이라 같은 줄
+              왼쪽에 붙이고 숫자와 밑선을 맞춘다. */}
+          <div className="flex min-h-[150px] min-w-0 flex-col justify-between gap-3 p-[clamp(16px,2vw,24px)]">
+            <span className="text-[15px] text-[var(--my-page-muted)]">
+              제출 횟수
+            </span>
+            <div className="flex items-baseline justify-end gap-3">
+              {averagePerProblem && (
+                <p className="m-0 min-w-0 text-right text-[12px] text-[var(--my-page-muted)]">
+                  {averagePerProblem}
+                </p>
+              )}
+              <strong className="font-mono text-[clamp(28px,4vw,44px)] leading-none tracking-[-0.08em]">
+                {isLoadingAttempts ? '--' : submittedAttempts.length}
+              </strong>
+            </div>
           </div>
         </section>
 
@@ -354,13 +450,13 @@ export default function MyPage() {
                 className="grid min-h-18 grid-cols-[52px_110px_minmax(0,1fr)_auto] items-center gap-4 border-b border-[var(--my-page-border)] px-2 py-3 last:border-b-0 max-[680px]:grid-cols-[38px_minmax(0,1fr)] max-[680px]:gap-3"
                 key={submittedAttempt.attemptId}
               >
-                <span className="font-mono text-[17px] text-[var(--my-page-subtle)]">
+                <span className="font-mono text-[17px] text-[var(--my-page-muted)]">
                   {String(submissionPagination.pageStart + index + 1).padStart(
                     2,
                     '0',
                   )}
                 </span>
-                <span className="font-mono text-[13px] text-[var(--my-page-subtle)] max-[680px]:hidden">
+                <span className="font-mono text-[13px] text-[var(--my-page-muted)] max-[680px]:hidden">
                   {formatSubmittedAt(submittedAttempt.submittedAt)}
                 </span>
                 <strong className="truncate text-[clamp(15px,2vw,20px)] tracking-[-0.02em]">
