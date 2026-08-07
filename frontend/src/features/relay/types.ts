@@ -230,4 +230,5 @@ export type RelaySignalType = 'signal.offer' | 'signal.answer' | 'signal.ice';
 /** DataChannel로 피어끼리 직접 주고받는 메시지. 서버는 이 채널을 모른다. */
 export type RelayDataMessage =
   | { kind: 'typing'; text: string }
-  | { kind: 'reaction'; emoji: string };
+  | { kind: 'reaction'; emoji: string }
+  | { kind: 'voice'; joined: boolean; micOn: boolean };
