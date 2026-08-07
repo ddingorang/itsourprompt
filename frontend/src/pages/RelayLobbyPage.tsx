@@ -143,11 +143,13 @@ export default function RelayLobbyPage() {
             릴레이 모드
           </h1>
           <p className="mt-2 mb-0 text-[13px] leading-[1.7] text-[#a3a3a3]">
-            여러 명이 한 문제를 정해진 순서대로 이어 풉니다. 각자 프롬프트 한 번씩 —
-            앞사람이 만든 코드 위에서 다음 사람이 이어갑니다.
+            릴레이 모드로 프롬프트를 연습하세요! 
             <br />
-            턴이 끝날 때마다
-            자동 채점되고, 직전 대비 통과 증가분이 그 사람의 기여도가 됩니다.
+            여러 명이 하나의 문제에 대해 정해진 순서대로 프롬프트를 제출하고, 빌드/테스트 결과와 수정된 코드를 확인합니다.
+            <br />
+            각자 프롬프트 한 번씩 —
+            앞사람이 만든 코드 위에서 다음 사람이 이어가며 문제를 해결해 보세요!
+            <br />
           </p>
         </div>
 
@@ -293,22 +295,43 @@ export default function RelayLobbyPage() {
               />
             </label>
 
-            <label className="grid gap-1.5">
-              <span className="text-[12px] text-[#777]">
-                문제
-              </span>
-              <select
-                className={fieldClasses}
-                onChange={(event) => setProblemId(Number(event.target.value))}
-                value={problemId ?? ''}
-              >
-                {problems.map((problem) => (
-                  <option key={problem.id} value={problem.id}>
-                    {problem.id}. {problem.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="grid grid-cols-2 gap-4 max-[480px]:grid-cols-1">
+              <label className="grid gap-1.5">
+                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
+                  PROBLEM
+                </span>
+                <select
+                  className={fieldClasses}
+                  onChange={(event) => setProblemId(Number(event.target.value))}
+                  value={problemId ?? ''}
+                >
+                  {problems.map((problem) => (
+                    <option key={problem.id} value={problem.id}>
+                      {problem.id}. {problem.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-1.5">
+                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
+                  TURN TIME LIMIT — 주자 한 명의 입력 제한시간
+                </span>
+                <select
+                  className={fieldClasses}
+                  onChange={(event) =>
+                    setTurnTimeLimitSeconds(Number(event.target.value))
+                  }
+                  value={turnTimeLimitSeconds}
+                >
+                  {TURN_TIME_LIMIT_CHOICES.map((seconds) => (
+                    <option key={seconds} value={seconds}>
+                      {formatTurnTimeLimit(seconds)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
             <div className="grid grid-cols-2 gap-4 max-[480px]:grid-cols-1">
               <label className="grid gap-1.5">
