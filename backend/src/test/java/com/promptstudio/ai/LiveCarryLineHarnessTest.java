@@ -72,8 +72,18 @@ class LiveCarryLineHarnessTest {
     /** 문안을 붙이는 자리. 대조군은 이 절이 통째로 없다. */
     private static final String RULE_SECTION = "\n# 사용자 상시 지시\n%s\n";
 
-    /** 이 라운드부터 후반으로 센다. 라운드 깊이 유지(게이트 2)의 경계다. */
+    /**
+     * 편집이 이 라운드 이후에 일어났으면 후반으로 센다.
+     *
+     * <p>원래는 라운드 깊이 감쇠(게이트 2)를 재려고 둔 경계였으나, 실측에서 <b>편집이 100% 이 경계
+     * 뒤에 몰려</b> 초반 버킷이 비었다 — 에이전트가 {@code list_files}·{@code read_file}을 거쳐야
+     * 편집할 수 있어 초반 편집이 원리적으로 불가능하다. 게이트 2는 그래서 폐기됐고
+     * ({@code carry-line-design.md} 9절), 이 상수는 이제 <b>편집 분포를 보여 주는 용도로만</b> 남는다.
+     */
     private static final int LATE_ROUND_FROM = 3;
+
+    /** 요약 앞에 이만큼 라운드가 쌓였으면 깊은 턴으로 센다. 요약 단위 검출기(D1·D5)의 구간 경계다. */
+    private static final int DEEP_ROUND_FROM = 4;
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -613,7 +623,7 @@ class LiveCarryLineHarnessTest {
                 zeroEditTurns++;
             } else {
                 bucket(rates, "D1").add(record.summaryNamesEveryEditedFile());
-                bucket(record.rounds() >= 4 ? deepRates : shallowRates, "D1")
+                bucket(record.rounds() >= DEEP_ROUND_FROM ? deepRates : shallowRates, "D1")
                         .add(record.summaryNamesEveryEditedFile());
 
                 if (record.finalizeForced()) {
@@ -628,7 +638,7 @@ class LiveCarryLineHarnessTest {
 
             boolean passed = record.howToCheck() == Verdict.PASS;
             bucket(rates, "D5").add(passed);
-            bucket(record.rounds() >= 4 ? deepRates : shallowRates, "D5").add(passed);
+            bucket(record.rounds() >= DEEP_ROUND_FROM ? deepRates : shallowRates, "D5").add(passed);
 
             if (record.finalizeForced()) {
                 bucket(finalizeRates, "D5").add(passed);

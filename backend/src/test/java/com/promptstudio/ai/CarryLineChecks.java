@@ -30,10 +30,17 @@ final class CarryLineChecks {
     /**
      * 독자에게 하는 말의 어미. 이것이 붙으면 요약이 읽는 사람에게 방법을 준 것이다.
      *
-     * <p>{@code 수 있}은 {@code 수 없}과 겹치지 않는다 — 앞뒤 한 글자가 다르다.
+     * <p><b>{@code 수 있}은 여기 넣으면 안 된다.</b> 처음에는 넣었다가 실측에서 걷어냈다 —
+     * 84턴을 재고 보니 {@code PASS} 38건 중 <b>16건이 그것 하나로</b> 통과했는데, 전부
+     * {@code 취소 응답에서 남은 재고 수량을 확인할 수 있도록 수정했습니다} 꼴이었다. 이것은 독자에게
+     * 주는 확인 방법이 아니라 <b>코드가 무엇을 하게 됐는지 보고하는 문장</b>이다. 대조군의 통과 3건이
+     * 전부 이 오탐이었다.
+     *
+     * <p>걷어낸 것이 가설에 유리해서가 아니다 — 처치군의 통과도 함께 줄었다(s5a 12→11, s5b 9→7).
+     * 줄어든 자리는 {@code FAIL}이 아니라 {@code UNSCORED}로 가므로 사람이 읽는 몫이 늘어난다.
      */
     private static final Pattern DIRECTIVE =
-            Pattern.compile("세요|시면|(면|해)\\s*(됩니다|돼요|된다|돼)|수\\s*있");
+            Pattern.compile("세요|시면|(면|해)\\s*(됩니다|돼요|된다|돼)");
 
     /**
      * AI가 자기가 한 일을 보고하는 종결. 문장 <b>끝</b>에서만 본다 — 문장 안 어딘가에 과거형이
@@ -212,13 +219,30 @@ final class CarryLineChecks {
         return new LinkedHashSet<>(List.of(path, fileName, bareName));
     }
 
+    /**
+     * 확장자를 뗀 이름은 <b>부분 문자열로 세면 안 된다.</b> 스켈레톤에 {@code Order}와
+     * {@code OrderService}가 함께 있어 {@code text.contains("Order")}가 {@code OrderService}만 적힌
+     * 요약에서도 참이 된다 — 실측에서 실제로 {@code Order.java}를 안 부른 요약이 D1을 통과한 건이
+     * 하나 나왔다. 그래서 이름 뒤에 영문자·숫자가 붙으면 다른 이름으로 본다.
+     *
+     * <p>경로와 파일명은 확장자가 경계 노릇을 하므로 그대로 {@code contains}로 본다.
+     */
     private static boolean namesFile(String text, String path) {
-        for (String form : nameForms(path)) {
-            if (text.contains(form)) {
-                return true;
-            }
+        if (path == null || path.isBlank()) {
+            return false;
         }
 
-        return false;
+        String fileName = path.substring(path.lastIndexOf('/') + 1);
+
+        if (text.contains(path) || text.contains(fileName)) {
+            return true;
+        }
+
+        int dot = fileName.lastIndexOf('.');
+        String bareName = dot < 0 ? fileName : fileName.substring(0, dot);
+
+        return bareName.equals(fileName)
+                ? text.contains(bareName)
+                : Pattern.compile(Pattern.quote(bareName) + "(?![A-Za-z0-9])").matcher(text).find();
     }
 }

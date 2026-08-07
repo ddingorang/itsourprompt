@@ -181,10 +181,16 @@ class CarryLineChecksTest {
                 .isEqualTo(Verdict.PASS);
     }
 
+    /**
+     * 이 테스트는 원래 {@code 확인할 수 있습니다}를 PASS로 단언해 <b>오탐을 못 박고 있었다.</b>
+     * 실측이 그 어미를 걷어내게 만들었으므로(같은 이름의 아래 테스트 참고) 의도만 남기고 어미를
+     * 진짜 지시형으로 바꾼다 — 이 테스트가 지키려던 것은 "접두사 없이도 PASS가 난다"이지
+     * "{@code 수 있}이 PASS다"가 아니었다.
+     */
     @Test
     void 접두사가_아니라_어미로_PASS를_가른다() {
         assertThat(CarryLineChecks.summaryStatesHowToCheck(
-                "무엇을 바꿨는지는 아래와 같습니다.\n재고가 복구되는지는 quantityOf로 확인할 수 있습니다."))
+                "무엇을 바꿨는지는 아래와 같습니다.\n재고가 복구되는지 quantityOf로 확인해 보세요."))
                 .isEqualTo(Verdict.PASS);
     }
 
@@ -213,5 +219,53 @@ class CarryLineChecksTest {
         assertThat(CarryLineChecks.summaryStatesHowToCheck(
                 "외부 라이브러리가 없어 테스트를 실행할 수 없습니다."))
                 .isNotEqualTo(Verdict.PASS);
+    }
+
+    /**
+     * 실측이 잡은 오탐. {@code 확인할 수 있도록 수정했습니다}는 <b>코드가 무엇을 하게 됐는지</b>
+     * 보고하는 문장이지 독자에게 주는 확인 방법이 아니다. 84턴에서 PASS 38건 중 16건이 이 꼴이었고
+     * 대조군의 통과 3건이 전부 여기 해당했다.
+     */
+    @Test
+    void 확인할_수_있도록_고쳤다는_보고는_PASS가_아니다() {
+        assertThat(CarryLineChecks.summaryStatesHowToCheck(
+                "취소 응답에서 취소 후 남은 재고 수량을 확인할 수 있도록 수정했습니다."))
+                .isNotEqualTo(Verdict.PASS);
+    }
+
+    @Test
+    void 확인할_수_있습니다로_끝나는_설명도_PASS가_아니다() {
+        assertThat(CarryLineChecks.summaryStatesHowToCheck(
+                "- 취소 응답에서 다음 정보를 확인할 수 있습니다."))
+                .isNotEqualTo(Verdict.PASS);
+    }
+
+    /**
+     * 실측이 잡은 오탐. 스켈레톤에 {@code Order}와 {@code OrderService}가 함께 있어
+     * 확장자를 뗀 이름을 부분 문자열로 세면 {@code OrderService}만 적힌 요약이 {@code Order.java}도
+     * 부른 것으로 잡힌다.
+     */
+    @Test
+    void 긴_이름_안에_짧은_이름이_들어있어도_짧은_쪽을_부른_것으로_세지_않는다() {
+        assertThat(CarryLineChecks.summaryNamesEveryEditedFile(
+                List.of("src/main/java/com/shop/Order.java"),
+                "OrderService와 OrderController를 고쳤습니다."))
+                .isFalse();
+    }
+
+    @Test
+    void 짧은_이름을_단독으로_부르면_센다() {
+        assertThat(CarryLineChecks.summaryNamesEveryEditedFile(
+                List.of("src/main/java/com/shop/Order.java"),
+                "Order의 상태 전이를 고쳤습니다."))
+                .isTrue();
+    }
+
+    @Test
+    void 확장자를_붙인_파일명은_그대로_대조한다() {
+        assertThat(CarryLineChecks.summaryNamesEveryEditedFile(
+                List.of("src/main/java/com/shop/Order.java"),
+                "Order.java를 고쳤습니다."))
+                .isTrue();
     }
 }
