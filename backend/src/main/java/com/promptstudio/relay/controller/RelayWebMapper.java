@@ -75,6 +75,7 @@ public class RelayWebMapper {
                     summary.participantCount(),
                     summary.maxParticipants(),
                     summary.totalLaps(),
+                    summary.turnTimeLimitSeconds(),
                     summary.createdAt()
             ));
         }

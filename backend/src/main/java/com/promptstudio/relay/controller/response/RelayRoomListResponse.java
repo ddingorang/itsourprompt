@@ -31,6 +31,8 @@ public record RelayRoomListResponse(
             int maxParticipants,
             @Schema(description = "몇 바퀴를 도는지", example = "1")
             int totalLaps,
+            @Schema(description = "한 턴의 입력 제한시간(초)", example = "120")
+            int turnTimeLimitSeconds,
             @Schema(description = "방을 만든 시각", example = "2026-08-04T09:30:00Z")
             Instant createdAt
     ) {
