@@ -11,12 +11,17 @@ test(
   async ({ page }) => {
     await page.goto('/login');
 
-    await page.getByRole('textbox', { name: 'ID' }).fill('WrongId');
     await page
-      .getByRole('textbox', { name: 'PASSWORD', exact: true })
+      .getByRole('textbox', { name: '아이디' })
+      .fill('WrongId');
+
+    await page
+      .getByRole('textbox', { name: '비밀번호' })
       .fill('TestTest');
 
-    await page.getByRole('button', { name: 'LOG IN ↗' }).click();
+    await page
+      .getByRole('button', { name: '로그인 ↗' })
+      .click();
 
     await expect(
       page.getByText('아이디 또는 비밀번호가 올바르지 않습니다'),
@@ -37,12 +42,17 @@ test(
   async ({ page }) => {
     await page.goto('/login');
 
-    await page.getByRole('textbox', { name: 'ID' }).fill('Tester');
     await page
-      .getByRole('textbox', { name: 'PASSWORD', exact: true })
+      .getByRole('textbox', { name: '아이디' })
+      .fill('Tester');
+
+    await page
+      .getByRole('textbox', { name: '비밀번호' })
       .fill('WrongPassword');
 
-    await page.getByRole('button', { name: 'LOG IN ↗' }).click();
+    await page
+      .getByRole('button', { name: '로그인 ↗' })
+      .click();
 
     await expect(
       page.getByText('아이디 또는 비밀번호가 올바르지 않습니다'),
@@ -63,12 +73,17 @@ test(
   async ({ page }) => {
     await page.goto('/login');
 
-    await page.getByRole('textbox', { name: 'ID' }).fill('Tester');
     await page
-      .getByRole('textbox', { name: 'PASSWORD', exact: true })
+      .getByRole('textbox', { name: '아이디' })
+      .fill('Tester');
+
+    await page
+      .getByRole('textbox', { name: '비밀번호' })
       .fill('password123');
 
-    await page.getByRole('button', { name: 'LOG IN ↗' }).click();
+    await page
+      .getByRole('button', { name: '로그인 ↗' })
+      .click();
 
     await expect(page).toHaveURL(/\/my$/);
   },

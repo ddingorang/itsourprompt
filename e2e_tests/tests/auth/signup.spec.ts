@@ -11,7 +11,7 @@ test(
   async ({ page }) => {
     await page.goto('/signup');
 
-    await page.getByRole('textbox', { name: 'ID' }).fill('e2');
+    await page.getByRole('textbox', { name: '아이디' }).fill('e2');
 
     await expect(
       page.getByText('아이디는 3~30자로 입력해주세요.'),
@@ -30,7 +30,7 @@ test(
   async ({ page }) => {
     await page.goto('/signup');
 
-    const idInput = page.getByRole('textbox', { name: 'ID' });
+    const idInput = page.getByRole('textbox', { name: '아이디' });
 
     await idInput.fill('a'.repeat(31));
 
@@ -49,18 +49,22 @@ test(
   async ({ page }) => {
     await page.goto('/signup');
 
-    await page.getByRole('textbox', { name: 'ID' }).fill('Tester');
+    await page.getByRole('textbox', { name: '아이디' }).fill('Tester');
     await page
-      .getByRole('textbox', { name: 'PASSWORD', exact: true })
+      .getByRole('textbox', { name: '비밀번호', exact: true })
       .fill('password123');
     await page
-      .getByRole('textbox', { name: 'PASSWORD CONFIRM' })
+      .getByRole('textbox', { name: '비밀번호 확인' })
       .fill('password123');
-    await page.getByRole('textbox', { name: 'NICKNAME' }).fill('Tester');
-    await page.getByRole('textbox', { name: 'EMAIL' }).fill('test@test.com');
+    await page
+      .getByRole('textbox', { name: '닉네임' })
+      .fill('Tester');
+    await page
+      .getByRole('textbox', { name: '이메일' })
+      .fill('test@test.com');
 
     await page
-      .getByRole('button', { name: 'CREATE ACCOUNT ↗' })
+      .getByRole('button', { name: '회원가입' })
       .click();
 
     await expect(
@@ -83,7 +87,7 @@ test(
     await page.goto('/signup');
 
     await page
-      .getByRole('textbox', { name: 'PASSWORD', exact: true })
+      .getByRole('textbox', { name: '비밀번호', exact: true })
       .fill('passwor');
 
     await expect(
@@ -104,11 +108,11 @@ test(
     await page.goto('/signup');
 
     await page
-      .getByRole('textbox', { name: 'PASSWORD', exact: true })
+      .getByRole('textbox', { name: '비밀번호', exact: true })
       .fill('password123');
 
     await page
-      .getByRole('textbox', { name: 'PASSWORD CONFIRM' })
+      .getByRole('textbox', { name: '비밀번호 확인' })
       .fill('passsword124');
 
     await expect(
@@ -128,7 +132,9 @@ test(
   async ({ page }) => {
     await page.goto('/signup');
 
-    await page.getByRole('textbox', { name: 'NICKNAME' }).fill('T');
+    await page
+      .getByRole('textbox', { name: '닉네임' })
+      .fill('T');
 
     await expect(
       page.getByText('닉네임은 2~30자로 입력해주세요.'),
@@ -148,7 +154,7 @@ test(
     await page.goto('/signup');
 
     const nicknameInput = page.getByRole('textbox', {
-      name: 'NICKNAME',
+      name: '닉네임',
     });
 
     await nicknameInput.fill('a'.repeat(31));
@@ -168,7 +174,10 @@ test(
   async ({ page }) => {
     await page.goto('/signup');
 
-    const emailInput = page.getByRole('textbox', { name: 'EMAIL' });
+    const emailInput = page.getByRole('textbox', {
+      name: '이메일',
+    });
+
     const errorMessage = page.getByText(
       '올바른 이메일 형식으로 입력해주세요.',
       { exact: true },
@@ -199,18 +208,24 @@ test(
   async ({ page }) => {
     await page.goto('/signup');
 
-    await page.getByRole('textbox', { name: 'ID' }).fill('Email_Test');
     await page
-      .getByRole('textbox', { name: 'PASSWORD', exact: true })
+      .getByRole('textbox', { name: '아이디' })
+      .fill('Email_Test');
+    await page
+      .getByRole('textbox', { name: '비밀번호', exact: true })
       .fill('password123');
     await page
-      .getByRole('textbox', { name: 'PASSWORD CONFIRM' })
+      .getByRole('textbox', { name: '비밀번호 확인' })
       .fill('password123');
-    await page.getByRole('textbox', { name: 'NICKNAME' }).fill('Tester');
-    await page.getByRole('textbox', { name: 'EMAIL' }).fill('test@test.com');
+    await page
+      .getByRole('textbox', { name: '닉네임' })
+      .fill('Tester');
+    await page
+      .getByRole('textbox', { name: '이메일' })
+      .fill('test@test.com');
 
     await page
-      .getByRole('button', { name: 'CREATE ACCOUNT ↗' })
+      .getByRole('button', { name: '회원가입' })
       .click();
 
     await expect(
@@ -242,22 +257,24 @@ test(
 
     await page.goto('/signup');
 
-    await page.getByRole('textbox', { name: 'ID' }).fill(user.id);
     await page
-      .getByRole('textbox', { name: 'PASSWORD', exact: true })
+      .getByRole('textbox', { name: '아이디' })
+      .fill(user.id);
+    await page
+      .getByRole('textbox', { name: '비밀번호', exact: true })
       .fill(user.password);
     await page
-      .getByRole('textbox', { name: 'PASSWORD CONFIRM' })
+      .getByRole('textbox', { name: '비밀번호 확인' })
       .fill(user.password);
     await page
-      .getByRole('textbox', { name: 'NICKNAME' })
+      .getByRole('textbox', { name: '닉네임' })
       .fill(user.nickname);
     await page
-      .getByRole('textbox', { name: 'EMAIL' })
+      .getByRole('textbox', { name: '이메일' })
       .fill(user.email);
 
     await page
-      .getByRole('button', { name: 'CREATE ACCOUNT ↗' })
+      .getByRole('button', { name: '회원가입 ↗' })
       .click();
 
     await expect(page).toHaveURL(/\/my$/);
