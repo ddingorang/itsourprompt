@@ -4,6 +4,8 @@ import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.CarryLine;
+import com.promptstudio.attempt.domain.FeedbackView;
 import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.domain.LlmCallPurpose;
 import com.promptstudio.attempt.domain.PromptScopeDecision;
@@ -122,14 +124,26 @@ public class AttemptService {
      * 피드백도 제출 완료면 누구나 읽는다. 공개 범위는 {@link #readAttempt}와 같다 —
      * 피드백은 제출된 어템프트에만 있으므로 상태 검사가 한 번 더 걸릴 뿐이다.
      */
-    public AttemptView readFeedback(Long attemptId, AttemptOwner requester) {
+    public FeedbackView readFeedback(Long attemptId, AttemptOwner requester) {
         AttemptView attempt = readAttempt(attemptId, requester);
 
         if (attempt.status() != AttemptStatus.SUBMITTED) {
             throw new FeedbackNotFoundException(attemptId);
         }
 
-        return attempt;
+        return withCarryLine(attempt, turnTestResults(attempt));
+    }
+
+    /**
+     * 규칙 한 줄은 저장하지 않고 읽을 때마다 계산한다 — LLM을 부르지 않으므로 값이 싸고, 규칙이 생기기
+     * 전에 제출된 어템프트도 마이그레이션 없이 받는다.
+     */
+    private FeedbackView withCarryLine(AttemptView attempt, TurnTestResults testResults) {
+        return new FeedbackView(attempt, CarryLine.of(attempt.turns().size(), testResults));
+    }
+
+    private TurnTestResults turnTestResults(AttemptView attempt) {
+        return turnTestResultLoader.load(attempt.id(), attempt.turns().size());
     }
 
     public AttemptView addTurn(Long attemptId, Long userId, String userPrompt) {
@@ -258,11 +272,11 @@ public class AttemptService {
         return idempotencyKey;
     }
 
-    public AttemptView submit(Long attemptId, Long userId) {
+    public FeedbackView submit(Long attemptId, Long userId) {
         return submit(attemptId, AttemptOwner.user(userId));
     }
 
-    public AttemptView submit(Long attemptId, AttemptOwner owner) {
+    public FeedbackView submit(Long attemptId, AttemptOwner owner) {
         if (codeGenerationGuard.isGenerating(attemptId)) {
             log.warn("Feedback generation rejected because AI code generation is in progress | attemptId={}", attemptId);
             throw new CodeGenerationInProgressException(attemptId);
@@ -280,7 +294,7 @@ public class AttemptService {
             }
 
             if (attempt.status() == AttemptStatus.SUBMITTED) {
-                return attempt;
+                return withCarryLine(attempt, turnTestResults(attempt));
             }
 
             AttemptFeedback feedback;
@@ -298,7 +312,8 @@ public class AttemptService {
                 throw exception;
             }
 
-            return attemptWriter.submit(attemptId, owner, feedback);
+            // 규칙 줄은 방금 읽은 채점 결과를 그대로 쓴다 — 제출이 실행을 만들지 않으므로 다시 읽을 것이 없다.
+            return withCarryLine(attemptWriter.submit(attemptId, owner, feedback), testResults);
         } finally {
             feedbackGenerationGuard.release(attemptId);
         }

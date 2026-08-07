@@ -158,6 +158,41 @@ class TurnTestResultsTest {
         assertThat(result(CodeRunStatus.RUNNER_ERROR).ran()).isFalse();
     }
 
+    /**
+     * 결과가 없는 턴은 목록에서 아예 빠져 있으므로 분모를 받아야 셀 수 있다.
+     */
+    @Test
+    void 실행이_없는_턴도_확인하지_않은_턴으로_센다() {
+        TurnTestResults results = TurnTestResults.of(
+                List.of(graded(1, CodeRunStatus.SUCCEEDED, tally(3, 3))), null);
+
+        assertThat(results.countTurnsWithoutFinishedRun(4)).isEqualTo(3);
+        assertThat(TurnTestResults.EMPTY.countTurnsWithoutFinishedRun(4)).isEqualTo(4);
+    }
+
+    @Test
+    void 끝나지_않았거나_인프라가_사고_난_턴은_확인한_턴이_아니다() {
+        TurnTestResults results = TurnTestResults.of(
+                List.of(
+                        graded(0, CodeRunStatus.RUNNER_ERROR, null),
+                        graded(1, CodeRunStatus.QUEUED, null),
+                        graded(2, CodeRunStatus.COMPILE_ERROR, null)),
+                null);
+
+        assertThat(results.countTurnsWithoutFinishedRun(3)).isEqualTo(2);
+    }
+
+    /**
+     * 베이스라인은 스켈레톤 원본 실행이라 어느 턴에도 붙지 않는다. 그것으로 턴을 확인한 것으로 세면
+     * 사용자가 아무것도 안 돌렸는데 셈이 깎인다.
+     */
+    @Test
+    void 베이스라인은_어느_턴도_확인해_주지_않는다() {
+        TurnTestResults results = TurnTestResults.of(List.of(), graded(null, CodeRunStatus.SUCCEEDED, tally(3, 3)));
+
+        assertThat(results.countTurnsWithoutFinishedRun(2)).isEqualTo(2);
+    }
+
     private TurnTestResult result(CodeRunStatus status) {
         return new TurnTestResult(0, status, null, null, null, null, List.of());
     }

@@ -63,6 +63,27 @@ public record TurnTestResults(
     }
 
     /**
+     * 실행 결과를 못 본 채로 넘어간 턴의 수. 실행이 아예 없는 턴과, 끝났지만 채점 인프라가 사고 난
+     * 턴을 함께 센다 — 둘 다 사용자가 자기 코드의 동작을 확인하지 못한 자리다.
+     *
+     * <p>{@link TurnTestResult#ran()}과 같은 이유로 이 셈도 여기 둔다. 부르는 쪽에 두면 "결과가 없는
+     * 턴은 목록에서 빠져 있다"는 이 클래스의 성질에 기대게 되고, 그 성질을 아는 자리가 늘어난다.
+     *
+     * @param turnCount 어템프트의 턴 수. 목록에 없는 턴도 세야 하므로 분모를 받는다
+     */
+    public int countTurnsWithoutFinishedRun(int turnCount) {
+        int confirmed = 0;
+
+        for (TurnTestResult turn : turns) {
+            if (turn.ran() && turn.turnOrdinal() >= 0 && turn.turnOrdinal() < turnCount) {
+                confirmed++;
+            }
+        }
+
+        return turnCount - confirmed;
+    }
+
+    /**
      * 이 턴의 채점 결과. 없으면 null이며, 그것은 통과 0건이 아니라 실행이 없다는 뜻이다.
      */
     public TurnTestResult forTurn(int turnOrdinal) {
