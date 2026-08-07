@@ -371,25 +371,6 @@ export default function RelayLobbyPage() {
               </label>
             </div>
 
-            <label className="grid gap-1.5">
-              <span className="text-[12px] text-[#777]">
-                턴 제한시간 — 주자 한 명의 입력 제한시간
-              </span>
-              <select
-                className={fieldClasses}
-                onChange={(event) =>
-                  setTurnTimeLimitSeconds(Number(event.target.value))
-                }
-                value={turnTimeLimitSeconds}
-              >
-                {TURN_TIME_LIMIT_CHOICES.map((seconds) => (
-                  <option key={seconds} value={seconds}>
-                    {formatTurnTimeLimit(seconds)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
             <Button
               disabled={!roomName.trim() || problemId === null || creating}
               onClick={() => void handleCreate()}
