@@ -43,10 +43,11 @@ const selectArrowStyle = {
  */
 const roomRowColumnsClasses =
   'grid-cols-[auto_271px_minmax(0,1fr)_auto_auto_auto_auto_auto] ' +
-  // 1024px 아래에서는 번호·방장·바퀴·시간·인원을 감추고 세 칸만 남긴다. 감춘 칸 수만큼
-  // 열도 줄여야 한다 — 열이 남아 있으면 다음 행이 빈 열부터 이어져 격자가 어긋난다.
-  'max-[1024px]:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] ' +
-  'max-[560px]:grid-cols-[minmax(0,1fr)_auto]';
+  // 1024px 아래에서는 방장·바퀴·시간·인원을 감추고 번호·방 이름·문제 이름·버튼만 남긴다.
+  // 감춘 칸 수만큼 열도 줄여야 한다 — 열이 남아 있으면 다음 행이 빈 열부터 이어져
+  // 격자가 어긋난다. 560px 아래에서는 문제 이름까지 접는다.
+  'max-[1024px]:grid-cols-[auto_minmax(0,1.3fr)_minmax(0,1fr)_auto] ' +
+  'max-[560px]:grid-cols-[auto_minmax(0,1fr)_auto]';
 
 /**
  * 행의 각 칸에 공통으로 걸리는 스타일. 칸 사이는 gap 대신 padding-right로 벌린다 —
@@ -59,10 +60,7 @@ const roomRowColumnsClasses =
 const roomRowCellsClasses =
   'contents [&>*]:flex [&>*]:min-w-0 [&>*]:items-center [&>*]:border-b ' +
   '[&>*]:border-[#222] [&>*]:py-3 [&>*]:pr-4 ' +
-  '[&>*:first-child]:pl-6 [&>*:last-child]:pr-6 last:[&>*]:border-b-0 ' +
-  // 번호 칸이 숨어도 :first-child는 여전히 그 숨은 칸을 가리킨다 — 화면상 첫 칸이 되는
-  // 방 이름에 왼쪽 여백을 다시 준다.
-  'max-[1024px]:[&>*:nth-child(2)]:pl-6';
+  '[&>*:first-child]:pl-6 [&>*:last-child]:pr-6 last:[&>*]:border-b-0';
 
 const LAP_CHOICES = [1, 2, 3] as const;
 const SIZE_CHOICES = [2, 3, 4, 5, 6] as const;
@@ -257,8 +255,10 @@ export default function RelayLobbyPage() {
                   <li className={roomRowCellsClasses} key={room.roomId}>
                     {/* 좁아지면 방 이름·문제 이름·입장 버튼만 남긴다 — 나머지는 줄여
                         봐야 서로 침범할 뿐이고, 방을 고르는 데 꼭 필요하지도 않다. */}
-                    <span className="font-mono text-[13px] text-[#a3a3a3] max-[1024px]:hidden!">
-                      {String(room.roomId).padStart(2, '0')}
+                    {/* 방 번호는 순번이 아니라 방의 고유 번호다 — 닫힌 방이 빠져 중간이
+                        비므로, #을 붙여 목록 순서로 읽히지 않게 한다. */}
+                    <span className="font-mono text-[13px] text-[#a3a3a3]">
+                      #{String(room.roomId).padStart(2, '0')}
                     </span>
                     {/* 이름 도입 전에 만들어진 방은 name이 없어 문제 제목이 그 자리를 대신한다.
                         그때도 문제 이름 칸은 빈 칸으로 남겨 뒤 열의 위치를 지킨다. */}
