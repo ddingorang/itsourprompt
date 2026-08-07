@@ -28,6 +28,13 @@ const inputClasses =
 const fieldErrorClasses = 'mt-2 text-[11px] leading-[1.6] text-[#ff786b]';
 
 /**
+ * 닉네임 입력 제한. 백엔드 SignupRequest의 @Size(max = 30)보다 좁게 잡은 값으로,
+ * 마이페이지·랭킹·릴레이 참가자 목록에 한 줄로 들어가는 길이를 기준으로 정했다.
+ * 좁히는 방향이라 백엔드가 거부하지 않는다.
+ */
+const NICKNAME_MAX_LENGTH = 10;
+
+/**
  * 가입 실패 응답을 사용자에게 보여줄 한국어 문구로 바꾼다.
  * 백엔드가 중복 항목을 코드로 구분해 주므로(duplicate-username / duplicate-email)
  * 어느 값을 고쳐야 하는지까지 알려준다.
@@ -44,7 +51,7 @@ function toSignupErrorMessage(error: unknown): string {
       return '이미 사용 중인 아이디 또는 이메일입니다.';
     }
     if (error.status === 400) {
-      return '입력 값을 확인해주세요. (아이디 3~30자 / 비밀번호 8자 이상 / 닉네임 2~30자 / 올바른 이메일)';
+      return `입력 값을 확인해주세요. (아이디 3~30자 / 비밀번호 8자 이상 / 닉네임 2~${NICKNAME_MAX_LENGTH}자 / 올바른 이메일)`;
     }
   }
   return '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.';
@@ -67,7 +74,10 @@ export default function SignupPage() {
   const passwordError = password && password.length < 8 ? '비밀번호는 8자 이상 입력해주세요.' : '';
   const passwordConfirmError =
     passwordConfirm && password !== passwordConfirm ? '비밀번호가 일치하지 않습니다.' : '';
-  const nicknameError = nickname && nickname.length < 2 ? '닉네임은 2~30자로 입력해주세요.' : '';
+  const nicknameError =
+    nickname && nickname.length < 2
+      ? `닉네임은 2~${NICKNAME_MAX_LENGTH}자로 입력해주세요.`
+      : '';
   const emailError =
     email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
       ? '올바른 이메일 형식으로 입력해주세요.'
@@ -204,9 +214,9 @@ export default function SignupPage() {
                 className={inputClasses}
                 disabled={submitting}
                 id="signup-nickname"
-                maxLength={30}
+                maxLength={NICKNAME_MAX_LENGTH}
                 onChange={(event) => setNickname(event.target.value)}
-                placeholder="닉네임 (2~30자) — 마이페이지에 표시됩니다."
+                placeholder={`닉네임 (2~${NICKNAME_MAX_LENGTH}자) — 마이페이지에 표시됩니다.`}
                 value={nickname}
               />
               {nicknameError && (

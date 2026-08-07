@@ -119,7 +119,9 @@ export default function ProblemListPage() {
     >
       <Header />
 
-      <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-16 max-[900px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
+      {/* 좌우 여백은 릴레이 로비(RelayLobbyPage)와 같은 규칙을 쓴다 — 최대 880px 폭에
+          양옆 24px. 화면마다 본문 시작선이 달라 보이던 것을 맞춘다. */}
+      <main className="mx-auto w-full max-w-[880px] flex-1 px-6 pt-[clamp(28px,4vw,44px)] pb-16 max-[640px]:pt-8">
         <header className="flex items-end justify-between gap-6 pb-10 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-4 max-[640px]:pb-8">
           <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--problem-list-acid)]">
             문제 목록
@@ -131,8 +133,10 @@ export default function ProblemListPage() {
           className="border-y border-t-[var(--problem-list-text)] border-b-[var(--problem-list-border)] py-[15px]"
           aria-label="문제 목록 정보"
         >
-          <div className="whitespace-nowrap text-[11px] font-bold text-[var(--problem-list-muted)]">
-            전체 문제 / {String(problems.length).padStart(2, '0')}
+          {/* 랭킹 페이지의 "RANKED SUBMISSIONS / 00" 줄과 같은 글자 크기·간격을 쓴다. */}
+          <div className="whitespace-nowrap text-[13px] font-bold tracking-[0.06em] text-[var(--problem-list-muted)]">
+            전체 문제 /{' '}
+            {String(problems.length).padStart(2, '0')}
           </div>
         </section>
 
