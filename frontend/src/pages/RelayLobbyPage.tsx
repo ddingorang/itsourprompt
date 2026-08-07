@@ -295,46 +295,44 @@ export default function RelayLobbyPage() {
               />
             </label>
 
-            <div className="grid grid-cols-2 gap-4 max-[480px]:grid-cols-1">
-              <label className="grid gap-1.5">
-                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                  PROBLEM
-                </span>
-                <select
-                  className={fieldClasses}
-                  onChange={(event) => setProblemId(Number(event.target.value))}
-                  value={problemId ?? ''}
-                >
-                  {problems.map((problem) => (
-                    <option key={problem.id} value={problem.id}>
-                      {problem.id}. {problem.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            <label className="grid gap-1.5">
+              <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
+                PROBLEM
+              </span>
+              <select
+                className={fieldClasses}
+                onChange={(event) => setProblemId(Number(event.target.value))}
+                value={problemId ?? ''}
+              >
+                {problems.map((problem) => (
+                  <option key={problem.id} value={problem.id}>
+                    {problem.id}. {problem.title}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-              <label className="grid gap-1.5">
-                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                  TURN TIME LIMIT — 주자 한 명의 입력 제한시간
+            <div className="grid grid-cols-3 gap-4 max-[760px]:grid-cols-1">
+              <label className="grid content-start gap-1.5">
+                <span className="text-[12px] text-[#777]">
+                  최대 인원
                 </span>
                 <select
                   className={fieldClasses}
                   onChange={(event) =>
-                    setTurnTimeLimitSeconds(Number(event.target.value))
+                    setMaxParticipants(Number(event.target.value))
                   }
-                  value={turnTimeLimitSeconds}
+                  value={maxParticipants}
                 >
-                  {TURN_TIME_LIMIT_CHOICES.map((seconds) => (
-                    <option key={seconds} value={seconds}>
-                      {formatTurnTimeLimit(seconds)}
+                  {SIZE_CHOICES.map((size) => (
+                    <option key={size} value={size}>
+                      {size}명
                     </option>
                   ))}
                 </select>
               </label>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4 max-[480px]:grid-cols-1">
-              <label className="grid gap-1.5">
+              <label className="grid content-start gap-1.5">
                 <span className="text-[12px] text-[#777]">
                   바퀴 수 — 인원 × 바퀴 = 총 턴 수
                 </span>
@@ -351,20 +349,20 @@ export default function RelayLobbyPage() {
                 </select>
               </label>
 
-              <label className="grid gap-1.5">
+              <label className="grid content-start gap-1.5">
                 <span className="text-[12px] text-[#777]">
-                  최대 인원
+                  턴 제한시간
                 </span>
                 <select
                   className={fieldClasses}
                   onChange={(event) =>
-                    setMaxParticipants(Number(event.target.value))
+                    setTurnTimeLimitSeconds(Number(event.target.value))
                   }
-                  value={maxParticipants}
+                  value={turnTimeLimitSeconds}
                 >
-                  {SIZE_CHOICES.map((size) => (
-                    <option key={size} value={size}>
-                      {size}명
+                  {TURN_TIME_LIMIT_CHOICES.map((seconds) => (
+                    <option key={seconds} value={seconds}>
+                      {formatTurnTimeLimit(seconds)}
                     </option>
                   ))}
                 </select>

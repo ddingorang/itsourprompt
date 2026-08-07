@@ -156,6 +156,8 @@ export default function RankingPage() {
     'id' | 'title'
   > | null>(null);
   const [hasTabOverflow, setHasTabOverflow] = useState(false);
+  /** 전체 문제 목록 펼침 여부. 탭 화살표만으로는 멀리 있는 문제로 한 번에 못 간다. */
+  const [isProblemListOpen, setIsProblemListOpen] = useState(false);
   const tabNavRef = useRef<HTMLDivElement>(null);
   const selectedTabRef = useRef<HTMLAnchorElement>(null);
 
@@ -368,6 +370,19 @@ export default function RankingPage() {
     });
   }, [selectedProblemId, tabProblems.length]);
 
+  useEffect(() => {
+    if (!isProblemListOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsProblemListOpen(false);
+    };
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isProblemListOpen]);
+
   return (
     <div
       className="ranking-page flex min-h-screen min-w-80 flex-col bg-[var(--ranking-bg)] text-[var(--ranking-text)] [font-family:Arial,'Noto_Sans_KR',sans-serif]"
@@ -415,9 +430,10 @@ export default function RankingPage() {
               <div
                 className={[
                   'turn-tab-scrollbar flex items-stretch overflow-x-auto scroll-smooth',
+                  // 오른쪽 여백은 겹쳐 놓인 조작부(화살표 + 전체 목록 버튼)만큼 비운다.
                   hasTabOverflow
-                    ? 'pr-12 pl-[220px] max-[760px]:px-[42px]'
-                    : 'pl-[180px] max-[760px]:pl-0',
+                    ? 'pr-[152px] pl-[220px] max-[760px]:pl-[42px]'
+                    : 'pr-[112px] pl-[180px] max-[760px]:pl-0',
                 ].join(' ')}
                 ref={tabNavRef}
               >
@@ -444,17 +460,80 @@ export default function RankingPage() {
                   );
                 })}
               </div>
-              {hasTabOverflow && (
+              <div className="absolute top-0 right-0 bottom-0 z-20 flex items-stretch">
+                {hasTabOverflow && (
+                  <button
+                    aria-label="다음 문제 보기"
+                    className="w-10 cursor-pointer border-0 border-l border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-2xl font-bold text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px]"
+                    onClick={() => scrollTabNav(1)}
+                    type="button"
+                  >
+                    ›
+                  </button>
+                )}
+                {/* 탭은 옆 문제로 옮겨 가는 길이고, 이 버튼은 멀리 있는 문제로 바로
+                    건너뛰는 길이다 — 문제가 늘어날수록 탭만으로는 닿지 않는다. */}
                 <button
-                  aria-label="다음 문제 보기"
-                  className="absolute top-0 right-0 bottom-0 z-20 w-10 cursor-pointer border-0 border-l border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-2xl font-bold text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px]"
-                  onClick={() => scrollTabNav(1)}
+                  aria-expanded={isProblemListOpen}
+                  className="flex w-28 cursor-pointer items-center justify-center gap-1.5 border-0 border-l border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px]"
+                  onClick={() => setIsProblemListOpen((open) => !open)}
                   type="button"
                 >
-                  ›
+                  <svg
+                    aria-hidden="true"
+                    className="size-4 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <rect height="7" rx="1" stroke="currentColor" strokeWidth="2" width="7" x="3" y="3" />
+                    <rect height="7" rx="1" stroke="currentColor" strokeWidth="2" width="7" x="14" y="3" />
+                    <rect height="7" rx="1" stroke="currentColor" strokeWidth="2" width="7" x="3" y="14" />
+                    <rect height="7" rx="1" stroke="currentColor" strokeWidth="2" width="7" x="14" y="14" />
+                  </svg>
+                  <span>전체 {tabProblems.length}</span>
+                  {/* 좌우 탭 화살표와 같은 꺽쇠를 돌려 쓴다 — 같은 조작부에 두 종류의
+                      꺽쇠가 섞이면 같은 줄에서 모양이 어긋나 보인다. */}
+                  <span
+                    aria-hidden="true"
+                    className={`inline-block font-mono text-xl leading-none font-bold ${
+                      isProblemListOpen ? '-rotate-90' : 'rotate-90'
+                    }`}
+                  >
+                    ›
+                  </span>
                 </button>
-              )}
+              </div>
             </div>
+
+            {isProblemListOpen && (
+              <div className="max-h-[min(52vh,340px)] overflow-y-auto border-t border-[var(--ranking-surface-border)]">
+                <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-0 p-0 max-[520px]:grid-cols-1">
+                  {tabProblems.map((problem) => {
+                    const isSelected = problem.id === selectedProblemId;
+
+                    return (
+                      <li key={problem.id}>
+                        <Link
+                          aria-current={isSelected ? 'page' : undefined}
+                          className={`flex items-center gap-2.5 border-b border-[var(--ranking-border)] px-[22px] py-2.5 text-[13px] tracking-[-0.01em] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px] ${
+                            isSelected
+                              ? 'font-bold text-[var(--ranking-acid)]'
+                              : 'text-[var(--ranking-tab-idle)] hover:text-[var(--ranking-text)]'
+                          }`}
+                          onClick={() => setIsProblemListOpen(false)}
+                          to={`/ranking?problem=${problem.id}`}
+                        >
+                          <span className="font-mono text-[12px]">
+                            {String(problem.id).padStart(2, '0')}
+                          </span>
+                          <span className="truncate">{problem.title}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </section>
         )}
 

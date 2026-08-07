@@ -1186,20 +1186,20 @@ function FinishedView({
       style={{ width: contentWidth }}
     >
       <header className="flex items-baseline justify-between gap-6 max-[640px]:gap-4">
-        <div className="min-w-0">
-          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-            릴레이 피드백
-          </h1>
+        <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+          릴레이 피드백
+        </h1>
+        <div className="flex min-w-0 items-baseline justify-end gap-3">
+          <span className="shrink-0 text-[28px] font-bold text-[#f5f5ef]">
+            방 #{room.roomId}
+          </span>
           {/* 이름 도입 전에 만들어진 방은 name이 없다 — 그때는 방 번호만으로 충분하다. */}
           {room.name && (
-            <p className="mt-2 mb-0 truncate text-[16px] font-bold tracking-[-0.02em]">
+            <span className="truncate text-[16px] font-bold tracking-[-0.02em]">
               「{room.name}」
-            </p>
+            </span>
           )}
         </div>
-        <span className="shrink-0 text-right text-[28px] font-bold text-[#f5f5ef]">
-          방 #{room.roomId}
-        </span>
       </header>
 
       <div
