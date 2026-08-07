@@ -517,6 +517,24 @@ function GameView({
     me?.seatOrder !== undefined &&
     me.seatOrder === room.currentSeat;
 
+  // 지금 차례인 주자. 내 턴이 아닐 때 프롬프트 창 자리에 이 사람의 실시간 입력을 보여준다.
+  const currentPlayer =
+    room.currentSeat === null
+      ? undefined
+      : room.participants.find(
+          (participant) => participant.seatOrder === room.currentSeat,
+        );
+  const currentTyping =
+    currentPlayer && currentPlayer.userId !== myUserId
+      ? (rtc.peers.get(currentPlayer.userId)?.typing ?? '')
+      : '';
+
+  // 턴이 바뀌면 지난 턴의 타이핑 잔상을 지운다 — 시간 초과 스킵은 입력자가 못 비운다.
+  const resetTyping = rtc.resetTyping;
+  useEffect(() => {
+    resetTyping();
+  }, [resetTyping, room.currentTurnIndex]);
+
   const scores = useMemo(() => totalScores(turns), [turns]);
 
   const seated = useMemo(
@@ -682,6 +700,8 @@ function GameView({
           submitError={submitError}
           submitTurn={submitTurn}
           submitting={submitting}
+          typerNickname={isMyTurn ? null : (currentPlayer?.nickname ?? null)}
+          typerText={currentTyping}
         />
       </aside>
     </main>
@@ -918,6 +938,8 @@ function PromptForm({
   submitError,
   submitTurn,
   submitting,
+  typerNickname,
+  typerText,
 }: {
   isMyTurn: boolean;
   onTyping: (text: string) => void;
@@ -925,6 +947,10 @@ function PromptForm({
   submitError: string | null;
   submitTurn: (prompt: string) => Promise<void>;
   submitting: boolean;
+  /** 지금 차례인 다른 주자의 닉네임. 내 턴이거나 알 수 없으면 null. */
+  typerNickname: string | null;
+  /** 그 주자가 입력 중인 프롬프트(P2P 실시간). */
+  typerText: string;
 }) {
   const [prompt, setPrompt] = useState('');
 
@@ -940,45 +966,74 @@ function PromptForm({
   };
 
   const disabled = !isMyTurn || submitting;
+  // 남의 차례가 진행 중일 때만 미리보기 — 생성/채점 단계에서는 상태 배너를 그대로 쓴다.
+  const showPreview = !isMyTurn && roomStatus === 'PLAYING' && typerNickname !== null;
 
   return (
     <form
       className="mt-auto grid gap-2 border-t border-[#343434] pt-4"
       onSubmit={handleSubmit}
     >
-      <label className={koreanLabelClasses} htmlFor="relay-prompt">
-        프롬프트 / 최대 4,000자
-      </label>
-      <textarea
-        aria-keyshortcuts="Control+Enter Meta+Enter"
-        className="h-[108px] w-full resize-none overflow-y-auto border border-[#3f3f3f] bg-[#151515] p-3 text-[13px] leading-[1.6] text-[#f5f5ef] placeholder:text-[#555] focus:border-[#d6ff50] focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-        disabled={disabled}
-        id="relay-prompt"
-        maxLength={4000}
-        onChange={(event) => {
-          setPrompt(event.target.value);
-          // 대기자들의 화면에 실시간으로 보이는 미리보기. 서버를 지나지 않는다(P2P).
-          if (isMyTurn) onTyping(event.target.value);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-            event.preventDefault();
-            event.currentTarget.form?.requestSubmit();
-          }
-        }}
-        placeholder={
-          isMyTurn
-            ? '문제를 해결할 프롬프트를 입력하세요.'
-            : roomStatus === 'PLAYING'
-              ? '내 차례가 되면 입력할 수 있습니다'
-              : statusBanners[roomStatus]
-        }
-        value={prompt}
-      />
-      <div className="flex items-center justify-between gap-3 px-1 font-mono text-[10px] text-[#666]">
-        <span>Ctrl/Cmd + Enter 전송 · Enter 줄바꿈</span>
-        <span>{prompt.length.toLocaleString('ko-KR')} / 4,000</span>
-      </div>
+      {showPreview ? (
+        <>
+          <span className={koreanLabelClasses}>
+            프롬프트 / {typerNickname} 님의 차례
+          </span>
+          <TypingPreview text={typerText} />
+          <div className="flex items-center justify-between gap-3 px-1 font-mono text-[10px] text-[#666]">
+            <span>입력 중인 내용이 실시간으로 표시됩니다</span>
+            <span>{typerText.length.toLocaleString('ko-KR')} / 4,000</span>
+          </div>
+        </>
+      ) : roomStatus !== 'PLAYING' ? (
+        // 생성·채점 단계. 비활성 textarea의 placeholder는 opacity-40까지 겹쳐
+        // 거의 안 보였다 — 같은 자리에 밝은 상태 박스를 그린다.
+        <>
+          <span className={koreanLabelClasses}>프롬프트 / 턴 진행 중</span>
+          <div className="grid h-[108px] w-full place-items-center border border-dashed border-[#3f3f3f] bg-[#111111] px-3">
+            <span className="animate-pulse text-center font-mono text-[12px] leading-[1.7] font-bold text-[#d6ff50]">
+              {statusBanners[roomStatus]}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 px-1 font-mono text-[10px] text-[#666]">
+            <span>진행 상황은 자동으로 갱신됩니다</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <label className={koreanLabelClasses} htmlFor="relay-prompt">
+            프롬프트 / 최대 4,000자
+          </label>
+          <textarea
+            aria-keyshortcuts="Control+Enter Meta+Enter"
+            className="h-[108px] w-full resize-none overflow-y-auto border border-[#3f3f3f] bg-[#151515] p-3 text-[13px] leading-[1.6] text-[#f5f5ef] placeholder:text-[#555] focus:border-[#d6ff50] focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={disabled}
+            id="relay-prompt"
+            maxLength={4000}
+            onChange={(event) => {
+              setPrompt(event.target.value);
+              // 대기자들의 화면에 실시간으로 보이는 미리보기. 서버를 지나지 않는다(P2P).
+              if (isMyTurn) onTyping(event.target.value);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
+            placeholder={
+              isMyTurn
+                ? '문제를 해결할 프롬프트를 입력하세요.'
+                : '내 차례가 되면 입력할 수 있습니다'
+            }
+            value={prompt}
+          />
+          <div className="flex items-center justify-between gap-3 px-1 font-mono text-[10px] text-[#666]">
+            <span>Ctrl/Cmd + Enter 전송 · Enter 줄바꿈</span>
+            <span>{prompt.length.toLocaleString('ko-KR')} / 4,000</span>
+          </div>
+        </>
+      )}
       {submitError && (
         <p className="m-0 font-mono text-xs text-[#ff786b]">{submitError}</p>
       )}
@@ -986,6 +1041,41 @@ function PromptForm({
         {submitting ? '프롬프트 반영 중…' : '프롬프트 전송'}
       </Button>
     </form>
+  );
+}
+
+/**
+ * 남의 턴에 프롬프트 창 자리에서 보여주는 실시간 입력 미리보기. textarea와 같은
+ * 크기이되 점선 테두리로 "내가 입력하는 곳이 아님"을 나타낸다. 텍스트가 넘치면
+ * 최신 입력을 따라 아래로 스크롤한다.
+ */
+function TypingPreview({ text }: { text: string }) {
+  const ref: RefObject<HTMLDivElement | null> = useRef(null);
+
+  useEffect(() => {
+    const box = ref.current;
+    if (box) box.scrollTop = box.scrollHeight;
+  }, [text]);
+
+  return (
+    <div
+      aria-label="현재 차례 주자의 실시간 입력"
+      aria-live="off"
+      className="h-[108px] w-full overflow-y-auto border border-dashed border-[#3f3f3f] bg-[#111111] p-3 text-[13px] leading-[1.6] whitespace-pre-wrap text-[#a3a3a3]"
+      ref={ref}
+      role="log"
+    >
+      {text ? (
+        <>
+          {text}
+          <span aria-hidden="true" className="animate-pulse text-[#d6ff50]">
+            ▍
+          </span>
+        </>
+      ) : (
+        <span className="text-[#555]">아직 입력이 없습니다…</span>
+      )}
+    </div>
   );
 }
 

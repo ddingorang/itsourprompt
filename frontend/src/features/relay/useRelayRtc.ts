@@ -394,6 +394,21 @@ export function useRelayRtc(
     [broadcastData],
   );
 
+  /**
+   * 모든 피어의 typing을 비운다. 제출한 입력자는 스스로 ''를 보내지만, 시간 초과로
+   * 턴이 건너뛰어지면 못 비운다 — 턴 경계마다 이걸 불러 지난 턴의 잔상을 지운다.
+   */
+  const resetTyping = useCallback(() => {
+    setPeers((prev) => {
+      if (![...prev.values()].some((peer) => peer.typing !== '')) return prev;
+      const next = new Map(prev);
+      next.forEach((peer, userId) => {
+        if (peer.typing !== '') next.set(userId, { ...peer, typing: '' });
+      });
+      return next;
+    });
+  }, []);
+
   const sendReaction = useCallback(
     (emoji: string) => {
       broadcastData({ emoji, kind: 'reaction' });
@@ -498,6 +513,7 @@ export function useRelayRtc(
     micOn,
     mySpeaking,
     peers,
+    resetTyping,
     sendReaction,
     sendTyping,
     toggleMic,
