@@ -299,9 +299,14 @@ export default function MyPage() {
       <Header />
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-24 max-[1200px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
-        <h1 className="pb-5 text-[clamp(26px,4vw,48px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--my-page-acid)]">
-          내 정보
-        </h1>
+        {/* 아래 여백은 감싼 쪽이 준다 — page-title이 자기 padding을 쓰므로 제목에 직접
+            주면 그 규칙에 덮여 사라진다. 크기·자리·아래 여백은 문제 목록 페이지 제목과
+            같게 맞춘다 — 제목 아래 첫 구분선까지의 거리가 화면마다 같아야 한다. */}
+        <header className="pb-10 max-[640px]:pb-8">
+          <h1 className="page-title m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--my-page-acid)]">
+            마이 페이지
+          </h1>
+        </header>
 
         {/* 닉네임·진도·제출 횟수를 한 줄에 나란히 둔다. 1200px 아래에서는 세 칸이
             위아래로 쌓이고, 그때는 칸 사이 구분선이 오른쪽에서 아래로 옮겨간다. */}
