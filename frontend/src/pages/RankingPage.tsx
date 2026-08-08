@@ -398,7 +398,7 @@ export default function RankingPage() {
           <p className="mt-5 mb-0 text-[15px] leading-[1.7] text-[var(--ranking-muted)]">
             같은 문제를 푼 사람들의 기록을 견주어 보세요!
             <br />
-            순위는 AI를 사용하는데 든 비용이 적은 순서입니다 — 같은 답에 도달했다면 더 적은 토큰을 사용한 쪽이 앞섭니다.
+            순위는 AI를 사용하는 데 든 비용이 적은 순서입니다.
             <br />
             표에서 몇 번의 턴으로, 얼마나 걸려 풀었는지까지 확인할 수 있어요.
           </p>
