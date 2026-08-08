@@ -73,10 +73,10 @@ interface FileTreeNode {
 }
 
 const labelClasses =
-  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[var(--problem-detail-acid)]';
+  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[var(--problem-detail-label)]';
 
 const koreanLabelClasses =
-  'text-sm leading-[1.5] font-bold text-[var(--problem-detail-acid)]';
+  'text-sm leading-[1.5] font-bold text-[var(--problem-detail-label)]';
 
 const pageStateClasses =
   'grid min-h-dvh place-items-center bg-[var(--problem-detail-bg)] p-10 ' +

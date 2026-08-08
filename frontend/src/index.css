@@ -453,6 +453,9 @@ html { scroll-behavior: smooth; }
   --problem-detail-border: #343434;
   --problem-detail-border-strong: #555;
   --problem-detail-acid: #d6ff50;
+  /* 패널 머리줄 라벨(파일 탐색기·파일 경로·프롬프트). 다크는 강조색 그대로,
+     라이트는 흰 바탕 위 연두가 흐려 검정으로 바꾼다. */
+  --problem-detail-label: var(--problem-detail-acid);
   --acid: var(--problem-detail-acid);
   --theme-bg: var(--problem-detail-bg);
   --theme-text: var(--problem-detail-text);
@@ -474,6 +477,7 @@ html { scroll-behavior: smooth; }
   --problem-detail-border: #c7c7c1;
   --problem-detail-border-strong: #9c9c95;
   --problem-detail-acid: #bee034;
+  --problem-detail-label: #585858;
   --problem-detail-code-bg: #f3f3ee;
   --problem-detail-code-header: #e7e7df;
   --problem-detail-code-text: #232323;
