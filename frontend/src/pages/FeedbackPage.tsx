@@ -83,35 +83,28 @@ function toPatternFeedback(
  *
  * 바깥 여백만은 부르는 쪽 몫이다. 두 총평은 격자 칸에 들어가 격자가 간격을 주고,
  * 규칙 한 줄은 그 아래 홀로 서서 자기 여백이 필요하다.
- *
- * @param accent 테두리를 강조색으로 두를지. 읽고 넘기는 칸과 가져갈 칸을 가르는 유일한 표시다
  */
 function SessionPanel({
-  accent = false,
   bodyClassName = '',
   children,
   className = '',
   subtitle,
   title,
 }: {
-  accent?: boolean;
   bodyClassName?: string;
   children: ReactNode;
   className?: string;
   subtitle?: string;
   title: string;
 }) {
-  const edge = accent
-    ? 'border-[var(--feedback-acid)]'
-    : 'border-[var(--feedback-border)]';
-
   return (
-    <section className={`min-w-0 border bg-transparent ${edge} ${className}`}>
-      {/* min-h만 두면 줄이 위로 붙는다 — content-center로 여백을 위아래 같게 나눈다. */}
+    <section className={`min-w-0 border border-[var(--feedback-border)] bg-transparent ${className}`}>
+      {/* min-h만 두면 줄이 위로 붙는다 — content-center로 여백을 위아래 같게 나눈다.
+          머리줄은 릴레이 로비 섹션 머리줄과 같은 조합(surface 배경 + label 글씨)이다. */}
       <div
-        className={`flex min-h-[58px] flex-wrap content-center items-baseline gap-x-3 gap-y-1 border-b px-6 py-2 max-[760px]:px-5 ${edge}`}
+        className="flex min-h-[58px] flex-wrap content-center items-baseline gap-x-3 gap-y-1 border-b border-[var(--feedback-border)] bg-[var(--feedback-surface)] px-6 py-2 max-[760px]:px-5"
       >
-        <h2 className="m-0 text-xl leading-[1.4] font-bold text-[var(--feedback-acid)]">
+        <h2 className="m-0 text-xl leading-[1.4] font-bold text-[var(--feedback-label)]">
           {title}
         </h2>
         {subtitle !== undefined && (
@@ -185,10 +178,9 @@ function CarryLinePanel({ carry }: { carry: CarryLine }) {
 
   return (
     <SessionPanel
-      accent
       className="mt-4"
       subtitle="AGENTS.md·CLAUDE.md 같은 상시 지시 파일에 붙여넣으세요"
-      title="AI에게 줄 규칙 한 줄"
+      title="AI에게 전달할 규칙 한 줄"
     >
       <div className="mt-6 flex items-center gap-3 border border-[var(--feedback-border)] bg-[var(--feedback-prompt-bg)] p-[18px] max-[760px]:flex-col max-[760px]:items-stretch">
         {/*
@@ -519,18 +511,19 @@ export default function FeedbackPage() {
 
             {selectedSection && (
               <section
-                className="mt-4 border border-[var(--feedback-border)] bg-[var(--feedback-surface)]"
+                className="mt-4 border border-[var(--feedback-border)] bg-[var(--feedback-bg)]"
                 aria-label="턴별 피드백"
               >
                 {/* 겹쳐 놓인 제목·좌우 화살표가 이 상자를 기준으로 배치되므로 relative는
                     남겨 둔다 — sticky만 걷어내 스크롤에 따라 함께 올라가게 한다. */}
                 <div className="relative border-b border-[var(--feedback-border)] bg-[var(--feedback-surface)]">
-                  <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[220px] place-items-center border-r border-[var(--feedback-border)] bg-[var(--feedback-surface)] text-xl leading-[1.4] font-bold text-[var(--feedback-acid)] max-[760px]:hidden">
+                  {/* 랭킹 상단바의 「문제 선택」 라벨과 같은 조합 — surface 배경 + label 글씨. */}
+                  <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[220px] place-items-center border-r border-[var(--feedback-border)] bg-[var(--feedback-surface)] text-xl leading-[1.4] font-bold text-[var(--feedback-label)] max-[760px]:hidden">
                     턴별 피드백
                   </span>
                   <button
                     aria-label="이전 턴 보기"
-                    className="absolute top-0 bottom-0 left-[220px] z-20 w-10 cursor-pointer border-0 border-r border-[var(--feedback-border)] bg-[var(--feedback-surface)] font-mono text-2xl font-bold text-[var(--feedback-acid)] hover:bg-[var(--feedback-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
+                    className="absolute top-0 bottom-0 left-[220px] z-20 w-10 cursor-pointer border-0 border-r border-[var(--feedback-border)] bg-[var(--feedback-surface)] font-mono text-2xl font-bold text-[var(--feedback-label)] hover:bg-[var(--feedback-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
                     onClick={() => scrollTurnNav(-1)}
                     type="button"
                   >
@@ -551,7 +544,7 @@ export default function FeedbackPage() {
                           aria-selected={isSelected}
                           className={`relative min-h-[58px] min-w-[130px] shrink-0 cursor-pointer border-0 bg-transparent px-[22px] text-sm font-bold hover:text-[var(--feedback-text)] focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-4px] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:z-10 after:h-[3px] ${
                             isSelected
-                              ? 'text-[var(--feedback-acid)] after:bg-[var(--feedback-acid)]'
+                              ? 'text-[var(--feedback-text)] after:bg-[var(--feedback-text)]'
                               : 'text-[var(--feedback-muted)] after:bg-transparent'
                           } max-[760px]:min-w-[110px] max-[760px]:px-3.5`}
                           id={`feedback-turn-tab-${section.turn}`}
@@ -577,7 +570,7 @@ export default function FeedbackPage() {
                     className={[
                       'absolute top-0 right-0 bottom-0 z-20 w-10 border-0 border-l border-[var(--feedback-border)] bg-[var(--feedback-surface)] font-mono text-2xl font-bold focus-visible:outline-2 focus-visible:outline-[var(--feedback-acid)] focus-visible:outline-offset-[-3px]',
                       turnSections.length >= 8
-                        ? 'cursor-pointer text-[var(--feedback-acid)] hover:bg-[var(--feedback-surface-hover)]'
+                        ? 'cursor-pointer text-[var(--feedback-label)] hover:bg-[var(--feedback-surface-hover)]'
                         : 'cursor-not-allowed text-[var(--feedback-subtle)]',
                     ].join(' ')}
                     disabled={turnSections.length < 8}
@@ -596,7 +589,7 @@ export default function FeedbackPage() {
                   tabIndex={0}
                 >
                   <article className="min-w-0 p-[22px]">
-                    <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-acid)]">
+                    <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-label)]">
                       생성된 코드
                     </h2>
                     {selectedSection.changedFiles.length > 0 ? (
@@ -626,7 +619,7 @@ export default function FeedbackPage() {
                   </article>
 
                   <article className="min-w-0 border-l border-[var(--feedback-border)] p-[22px] max-[760px]:border-t max-[760px]:border-l-0">
-                    <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-acid)]">
+                    <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-label)]">
                       작성한 프롬프트
                     </h2>
                     <p className="workspace-scrollbar mt-[18px] max-h-[520px] min-h-[110px] overflow-y-auto whitespace-pre-wrap border border-[var(--feedback-border)] bg-[var(--feedback-prompt-bg)] p-[18px] font-mono text-[15px] leading-[1.9] text-[var(--feedback-code-text)] [word-break:keep-all] max-[760px]:max-h-none max-[760px]:min-h-40 max-[760px]:overflow-y-visible">
@@ -637,7 +630,7 @@ export default function FeedbackPage() {
                   <article
                     className={`min-w-0 border-t border-[var(--feedback-border)] p-[22px] ${pattern ? '' : 'col-span-full'}`}
                   >
-                    <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-acid)]">
+                    <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-label)]">
                       프롬프트 진단
                     </h2>
                     {/* 본문 길이에 따라 페이지가 끝없이 늘어나던 자리다 — 옆의 생성된
@@ -651,7 +644,7 @@ export default function FeedbackPage() {
 
                   {pattern && (
                     <article className="min-w-0 border-t border-l border-[var(--feedback-border)] p-[22px] max-[760px]:border-l-0">
-                      <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-acid)]">
+                      <h2 className="m-0 text-lg leading-[1.4] font-bold text-[var(--feedback-label)]">
                         작업 패턴
                       </h2>
                       <div className="workspace-scrollbar mt-[18px] -mr-[22px] max-h-[520px] overflow-y-auto pr-[22px] max-[760px]:mr-0 max-[760px]:max-h-none max-[760px]:overflow-y-visible max-[760px]:pr-0">

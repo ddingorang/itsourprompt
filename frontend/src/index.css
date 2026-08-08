@@ -721,6 +721,8 @@ html { scroll-behavior: smooth; }
   --theme-border: var(--feedback-border);
   --feedback-surface: #121212;
   --feedback-surface-hover: #202020;
+  /* 패널 머리줄 제목. 릴레이 로비 섹션 머리줄(--relay-label)과 같은 값이다. */
+  --feedback-label: #8f8f8f;
   --feedback-code-bg: #0d0d0d;
   --feedback-code-text: #d8d8d2;
   --feedback-prompt-bg: #111;
@@ -735,6 +737,7 @@ html { scroll-behavior: smooth; }
   --feedback-acid: #bee034;
   --feedback-surface: #f7f7f2;
   --feedback-surface-hover: #ecf3d7;
+  --feedback-label: #70706a;
   --feedback-code-bg: #f3f3ee;
   --feedback-code-text: #232323;
   --feedback-prompt-bg: #f7f7f2;
