@@ -1,5 +1,7 @@
 package com.promptstudio.attempt.domain;
 
+import java.util.List;
+
 /**
  * 제출한 세션에서 반복된 습관 하나를 골라, 다음 문제의 상시 지시 파일(<code>AGENTS.md</code>류)에
  * 붙여넣을 <b>규칙 한 줄</b>을 돌려준다. 근거 문장도 함께 준다.
@@ -27,6 +29,14 @@ public record CarryLine(String signal, String rule, String reason) {
     private static final String TURN_HAS_NO_FINISHED_RUN = "turn_has_no_finished_run";
 
     /**
+     * 앞 턴이 바꾼 파일을 다음 프롬프트가 이름으로 짚지 않은 턴.
+     *
+     * <p>키는 긍정형이지만 <b>"못 짚은 턴이 있다"일 때 켜진다</b> — 신호 이름은 관찰하는 행동을
+     * 가리키고, 줄이 나가는 조건은 그 행동의 부재다.
+     */
+    private static final String PROMPT_NAMES_PREVIOUS_CHANGED_FILE = "prompt_names_previous_changed_file";
+
+    /**
      * 실측으로 고른 문안(s5b)이다. 실호출 84턴에서 대조군 25% → 100%(Δ+75%p)였고, 동률이던 s5a는
      * 형식을 지정한 탓에 편집 전 파일 이름 선언을 42.9%p 떨어뜨려 탈락했다. 이 줄은 사용자의 설정
      * 파일에 영구히 남으므로 다른 행동을 덜 건드리는 쪽을 골랐다.
@@ -39,27 +49,99 @@ public record CarryLine(String signal, String rule, String reason) {
                     + "그 변경이 실제로 동작하는지 사람이 확인할 방법을 요약에 반드시 함께 적어라.";
 
     /**
+     * 실측으로 고른 문안(s1b)이다. 실호출 128턴에서 요약이 편집 파일을 다 부르는 비율이
+     * 대조군 24/32(75.0%) → 32/32(100%)로 Δ+25.0%p였고, 팔당 n=32의 2SE 20.0%p를 넘겼다.
+     * 동률이던 s1a와는 부작용이 갈랐다 — 둘 다 2SE 안이라 탈락 사유는 없었으나 s1a가 편집 전
+     * 파일 이름 선언을 13.8%p 떨어뜨려, 형식을 지정하지 않은 이쪽을 골랐다. s5a가 같은 자리를
+     * 42.9%p 떨어뜨린 것과 부호가 같다.
+     *
+     * <p><b>처방이 요약을 겨눈다.</b> 신호는 프롬프트가 앞 턴 변경을 안 짚은 것인데 규칙은 AI의
+     * 요약에 붙는다 — 사용자가 다음 프롬프트에서 무엇을 짚을지는 앞 턴 요약이 바꾼 파일을
+     * 다 보여 줘야 알 수 있어서다. 사용자의 습관을 직접 고치라고 말하지 않는다.
+     */
+    private static final String NAME_CHANGED_FILES_RULE =
+            "작업 요약에는 이번에 바꾼 모든 파일의 이름이 반드시 들어가야 한다. "
+                    + "파일 이름 없이 변경 내용을 보고하지 마라.";
+
+    /**
      * 이 세션에 줄 규칙 한 줄. 어느 신호에도 걸리지 않으면 null이고, 그때는 화면에 아무것도 올리지
      * 않는다 — 빈 절을 세우지 않는다.
      *
-     * <p>카탈로그가 아직 하나라 신호도 하나만 본다. 신호를 늘리려면 여기에 분기를 더하고 우선순위를
-     * 정하면 된다. 자격은 <b>준수를 코드가 확인할 수 있는 줄만 싣는다</b>이다.
+     * <p><b>여럿 걸려도 줄은 하나다.</b> 지시를 쌓으면 비선형으로 무너지므로 순서를 고정해 하나만
+     * 고른다. 순서는 <b>S5 &gt; (S2) &gt; S1</b>이다.
+     * <ul>
+     *   <li>S5가 최우선인 이유는 실측 Δ가 가장 크고(+75%p) 코어 루프인 실행 확인을 겨누기 때문이다.
+     *       덤으로 s5b는 S1이 겨누던 행동도 50% → 83%로 끌어올려 S1 처방을 부분 대체한다.
+     *   <li>S2는 <b>측정에서 탈락해 카탈로그에 없다</b>(증분 12.5%p가 분해능 20%p 미달). 재입장하면
+     *       S1 앞에 놓는다 — 1턴 세션에서도 켜지고 결함이 상류다. 프롬프트가 아예 파일을 안 부르면
+     *       앞 턴 변경을 짚는 습관도 성립할 수 없다.
+     * </ul>
      *
-     * @param turnCount   어템프트의 턴 수. 근거 문장의 분모다
+     * <p>"이 세션에서 더 강하게 나타난 신호"로 고르는 동적 규칙은 기각했다. 이 값은 조회할 때마다
+     * 다시 계산되므로 실행을 더 돌릴 때마다 보이는 줄이 바뀐다.
+     *
+     * @param turns       어템프트의 턴. 개수가 근거 문장의 분모이고, 프롬프트·변경 목록이 신호의 입력이다
      * @param testResults 이 어템프트에 쌓인 턴별 실행 결과
      */
-    public static CarryLine of(int turnCount, TurnTestResults testResults) {
+    public static CarryLine of(List<AttemptView.TurnView> turns, TurnTestResults testResults) {
+        int turnCount = turns.size();
+
         if (turnCount <= 0) {
             return null;
         }
 
         int unconfirmed = testResults.countTurnsWithoutFinishedRun(turnCount);
 
-        if (unconfirmed == 0) {
-            return null;
+        if (unconfirmed > 0) {
+            return new CarryLine(TURN_HAS_NO_FINISHED_RUN, RUN_RULE, runReason(turnCount, unconfirmed));
         }
 
-        return new CarryLine(TURN_HAS_NO_FINISHED_RUN, RUN_RULE, runReason(turnCount, unconfirmed));
+        int unnamed = countTurnsMissingPreviousChange(turns);
+
+        if (unnamed > 0) {
+            return new CarryLine(
+                    PROMPT_NAMES_PREVIOUS_CHANGED_FILE,
+                    NAME_CHANGED_FILES_RULE,
+                    previousChangeReason(turnCount, unnamed));
+        }
+
+        return null;
+    }
+
+    /**
+     * 앞 턴이 바꾼 파일을 프롬프트가 하나도 안 짚은 턴 수.
+     *
+     * <p>첫 턴은 분자에서 빠진다 — 앞 턴이 없어 짚을 것이 없다. 앞 턴이 아무것도 안 바꾼 자리도
+     * 빠진다. 둘 다 "안 짚었다"가 아니라 <b>짚을 대상이 없다</b>라서, 세면 습관이 없는 세션에도
+     * 줄이 붙는다.
+     */
+    private static int countTurnsMissingPreviousChange(List<AttemptView.TurnView> turns) {
+        int unnamed = 0;
+
+        for (int index = 1; index < turns.size(); index++) {
+            List<FileChange> changes = turns.get(index - 1).changes();
+
+            if (changes.isEmpty()) {
+                continue;
+            }
+
+            if (!namesAny(turns.get(index).userPrompt(), changes)) {
+                unnamed++;
+            }
+        }
+
+        return unnamed;
+    }
+
+    /** 하나라도 짚었으면 짚은 것으로 본다. 전부 나열하라는 요구는 프롬프트가 아니라 요약에 건다. */
+    private static boolean namesAny(String prompt, List<FileChange> changes) {
+        for (FileChange change : changes) {
+            if (PromptFileNames.names(prompt, change.path())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -72,5 +154,14 @@ public record CarryLine(String signal, String rule, String reason) {
                 : "%d턴 중 %d턴에서 코드를 실행해 결과를 확인하지 않으셨어요.".formatted(turnCount, unconfirmed);
 
         return counted + " AI가 확인 방법을 요약에 함께 적어 두면 다음엔 무엇을 돌려 봐야 할지 바로 알 수 있어요.";
+    }
+
+    /**
+     * 첫 턴이 분자에서 빠지므로 분자는 분모에 닿을 수 없다. 그래서 "N턴 중 N턴" 자리를 따로 두지 않는다.
+     */
+    private static String previousChangeReason(int turnCount, int unnamed) {
+        return ("%d턴 중 %d턴에서 앞 턴이 바꾼 파일을 프롬프트가 짚지 않았어요."
+                + " AI가 요약에 바꾼 파일을 전부 나열하면 다음 프롬프트에서 무엇을 짚을지 바로 보여요.")
+                .formatted(turnCount, unnamed);
     }
 }

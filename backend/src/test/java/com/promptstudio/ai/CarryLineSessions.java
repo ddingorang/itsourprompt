@@ -150,9 +150,21 @@ final class CarryLineSessions {
         return List.copyOf(runs);
     }
 
+    /** S1·S2 재측정을 한 실행에 싣는 결합 페이즈. 세 팔이 대조군 하나를 나눠 쓴다. */
+    private static final List<String> COMBINED_S1_S2 = List.of("s1a", "s1b", "s2a");
+
+    /**
+     * 팔을 하나씩 따로 돌리면 실행마다 대조군이 새로 생겨 Δ가 서로 다른 시각·레이트 리밋의 표본을
+     * 비교하게 된다. S1과 S2를 함께 재는 이유는 하나 더 있다 — s2a는 대조군이 천장(≥90%)에 걸려
+     * 죽을 수 있어서, 같은 실행에 S1을 실어 두면 s2a가 천장에 막혀도 살아남을 길이 남는다.
+     */
     private static List<Arm> armsFor(String phase) {
         if ("all".equals(phase)) {
             return CATALOG;
+        }
+
+        if ("s1s2".equals(phase)) {
+            return CATALOG.stream().filter(arm -> COMBINED_S1_S2.contains(arm.id())).toList();
         }
 
         List<Arm> matched = new ArrayList<>();
@@ -166,7 +178,7 @@ final class CarryLineSessions {
         if (matched.isEmpty()) {
             throw new IllegalArgumentException(
                     "알 수 없는 페이즈입니다: " + phase + ". 유효한 값: all, " + CONTROL
-                            + ", s1~s5, " + CATALOG.stream().map(Arm::id).toList());
+                            + ", s1s2, s1~s5, " + CATALOG.stream().map(Arm::id).toList());
         }
 
         return matched;

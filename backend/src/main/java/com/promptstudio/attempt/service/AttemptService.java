@@ -139,7 +139,7 @@ public class AttemptService {
      * 전에 제출된 어템프트도 마이그레이션 없이 받는다.
      */
     private FeedbackView withCarryLine(AttemptView attempt, TurnTestResults testResults) {
-        return new FeedbackView(attempt, CarryLine.of(attempt.turns().size(), testResults));
+        return new FeedbackView(attempt, CarryLine.of(attempt.turns(), testResults));
     }
 
     private TurnTestResults turnTestResults(AttemptView attempt) {
