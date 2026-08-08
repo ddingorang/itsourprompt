@@ -1277,8 +1277,9 @@ function CodePanel({
       <div className="mb-5 flex items-start justify-between gap-[18px]">
         <div className={selected ? labelClasses : koreanLabelClasses}>{selected?.path ?? '파일'}</div>
         <div className="flex shrink-0 gap-2 text-[9px] text-[#a3a3a3]">
-          <span className="border border-[#494949] px-2 py-1.5">읽기 전용</span>
-          <span className="border border-[#494949] px-2 py-1.5">
+          {/* 테두리 상자는 이 앱의 버튼 생김새다 — 상태 표시는 채움 배경으로 구분한다. */}
+          <span className="bg-[#202020] px-2 py-1.5">읽기 전용</span>
+          <span className="bg-[#202020] px-2 py-1.5">
             {code ? `${code.appliedTurns}턴 반영` : '로딩 중'}
           </span>
         </div>
