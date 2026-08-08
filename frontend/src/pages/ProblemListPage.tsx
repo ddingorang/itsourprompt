@@ -166,7 +166,7 @@ export default function ProblemListPage() {
             >
             {visibleProblems.map((problem) => (
               <Link
-                className="group grid min-h-18 grid-cols-[56px_minmax(0,1fr)_auto_auto] items-center gap-4 border-t border-[var(--problem-list-border)] py-3 text-inherit no-underline transition-[padding,background,color] duration-200 first:border-t-0 hover:bg-[var(--problem-list-acid)] hover:px-3.5 hover:text-[#090909] focus-visible:bg-[var(--problem-list-acid)] focus-visible:px-3.5 focus-visible:text-[#090909] focus-visible:outline-none max-[640px]:grid-cols-[42px_minmax(0,1fr)_auto_auto] max-[640px]:gap-3"
+                className="group grid min-h-18 grid-cols-[56px_minmax(0,1fr)_auto_auto] items-center gap-4 border-t border-[var(--problem-list-border)] py-3 text-inherit no-underline transition-[padding,background,color] duration-200 first:border-t-0 hover:bg-[var(--problem-list-hover-bg)] hover:px-3.5 hover:text-[#090909] focus-visible:bg-[var(--problem-list-hover-bg)] focus-visible:px-3.5 focus-visible:text-[#090909] focus-visible:outline-none max-[640px]:grid-cols-[42px_minmax(0,1fr)_auto_auto] max-[640px]:gap-3"
                 key={problem.id}
                 to={`/problems/${problem.id}`}
               >

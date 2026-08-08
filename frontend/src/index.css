@@ -119,7 +119,7 @@ html { scroll-behavior: smooth; }
 .relay-page[data-color-mode='light'] [class~="border-b-[#d6ff50]"] { border-bottom-color: var(--relay-acid) !important; }
 .relay-page[data-color-mode='light'] [class~="border-l-[#d6ff50]"] { border-left-color: var(--relay-acid) !important; }
 .relay-page[data-color-mode='light'] [class~="after:bg-[#d6ff50]"]::after { background-color: var(--relay-acid) !important; }
-.relay-page[data-color-mode='light'] [class~="hover:bg-[#202020]"]:hover { background-color: #e9efd7 !important; }
+.relay-page[data-color-mode='light'] [class~="hover:bg-[#202020]"]:hover { background-color: #ecf3d7 !important; }
 .relay-page[data-color-mode='light'] [class~="disabled:hover:bg-[#121212]"]:disabled:hover { background-color: var(--relay-bg) !important; }
 .relay-page[data-color-mode='light'] [class~="hover:border-[#d6ff50]"]:hover,
 .relay-page[data-color-mode='light'] [class~="enabled:hover:border-[#d6ff50]"]:enabled:hover,
@@ -284,6 +284,9 @@ html { scroll-behavior: smooth; }
   --problem-list-muted: #a3a3a3;
   --problem-list-border: #343434;
   --problem-list-acid: #d6ff50;
+  /* 목록 행 hover 배경. 다크는 기존대로 강조색을 채우고,
+     라이트는 랜딩 예시 문제와 같은 연한 색(#ecf3d7)으로 맞춘다. */
+  --problem-list-hover-bg: var(--problem-list-acid);
   --acid: var(--problem-list-acid);
   --theme-bg: var(--problem-list-bg);
   --theme-text: var(--problem-list-text);
@@ -298,6 +301,7 @@ html { scroll-behavior: smooth; }
   --problem-list-muted: #585858;
   --problem-list-border: #c7c7c1;
   --problem-list-acid: #bee034;
+  --problem-list-hover-bg: #ecf3d7;
 }
 .problem-list-page > header {
   --header-menu-border: var(--problem-list-border);
@@ -370,7 +374,7 @@ html { scroll-behavior: smooth; }
   --ranking-border: #c7c7c1;
   --ranking-surface: #f7f7f2;
   --ranking-surface-border: #c7c7c1;
-  --ranking-surface-hover: #e9efd7;
+  --ranking-surface-hover: #ecf3d7;
   --ranking-tab-idle: #70706a;
   --ranking-acid: #bee034;
 }
@@ -695,7 +699,7 @@ html { scroll-behavior: smooth; }
   --feedback-border: #c7c7c1;
   --feedback-acid: #bee034;
   --feedback-surface: #f7f7f2;
-  --feedback-surface-hover: #e9efd7;
+  --feedback-surface-hover: #ecf3d7;
   --feedback-code-bg: #f3f3ee;
   --feedback-code-text: #232323;
   --feedback-prompt-bg: #f7f7f2;
