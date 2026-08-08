@@ -142,6 +142,22 @@ html { scroll-behavior: smooth; }
 .relay-page[data-color-mode='light'] [class~="hover:!bg-transparent"]:hover,
 .relay-page[data-color-mode='light'] [class~="focus-visible:bg-transparent"]:focus-visible,
 .relay-page[data-color-mode='light'] [class~="focus-visible:!bg-transparent"]:focus-visible { background-color: transparent !important; }
+/* 우측 패널 탭(문제/실시간)의 선택 상태 — 문제 풀기 페이지 탭과 같은 처리.
+   결과 화면의 턴 탭(.turn-tab-scrollbar)은 밑줄형이라 제외한다.
+   !important는 위의 text-[#d6ff50]·border-b-[#d6ff50] 치환 규칙을 이기기 위해 필요하다. */
+/* 탭 바 바탕은 랭킹 상단바와 같은 베이지 — 흰 페이지 위에서 조작부임이 드러난다. */
+.relay-page[data-color-mode='light'] [role='tablist']:not(.turn-tab-scrollbar) {
+  background: #f7f7f2;
+}
+.relay-page[data-color-mode='light'] [role='tablist']:not(.turn-tab-scrollbar) [role='tab'][aria-selected='true'] {
+  color: #090909 !important;
+  border-bottom-color: #090909 !important;
+}
+/* 미선택 탭은 더 연한 회색으로 물러나 선택 탭(검정)과의 거리를 벌린다.
+   hover 시 진해지는 동작은 살리려고 :not(:hover)로 건다. */
+.relay-page[data-color-mode='light'] [role='tablist']:not(.turn-tab-scrollbar) [role='tab'][aria-selected='false']:not(:hover) {
+  color: #9c9c95 !important;
+}
 .relay-page[data-color-mode='light'] textarea,
 .relay-page[data-color-mode='light'] select,
 .relay-page[data-color-mode='light'] input {
@@ -463,6 +479,21 @@ html { scroll-behavior: smooth; }
   --problem-detail-code-text: #232323;
   --problem-detail-surface: #f7f7f2;
   --problem-detail-input-bg: #f7f7f2;
+}
+/* 우측 패널 탭의 선택 상태. 다크는 연두 글자+밑줄이 잘 읽히지만, 라이트에서는
+   흰 바탕 위 연두 글자가 흐리다 — 목록 hover와 같은 틴트로 채우고 검정 글자를 얹는다. */
+/* 탭 바 바탕은 랭킹 상단바와 같은 베이지 — 흰 페이지 위에서 조작부임이 드러난다. */
+.problem-detail-page[data-color-mode='light'] [role='tablist'] {
+  background: #f7f7f2;
+}
+.problem-detail-page[data-color-mode='light'] [role='tab'][aria-selected='true'] {
+  color: #090909;
+  border-bottom-color: #090909;
+}
+/* 미선택 탭은 더 연한 회색으로 물러나 선택 탭(검정)과의 거리를 벌린다.
+   hover 시 진해지는 동작은 살리려고 :not(:hover)로 건다. */
+.problem-detail-page[data-color-mode='light'] [role='tab'][aria-selected='false']:not(:hover) {
+  color: #9c9c95;
 }
 .problem-detail-page > header {
   --header-menu-border: var(--problem-detail-border);
