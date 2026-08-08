@@ -838,7 +838,7 @@ GET .../runs/{runId} ◀── 결과 반영 ◀── 큐 ◀──────
 | `overallMd` | string | 세션 전체에 대한 피드백 (**Markdown**) |
 | `patternOverallMd` | string \| null | 세션 전체의 **작업 방식**에 대한 피드백 (**Markdown**) |
 | `carry` | object \| null | 다음 문제의 상시 지시 파일에 붙여넣을 **규칙 한 줄**. 걸리는 습관이 없으면 `null` |
-| `carry.signal` | string | 이 줄을 고른 신호의 키. **화면에 쓰지 않는다** |
+| `carry.signal` | string | 이 줄을 고른 신호의 키. **화면에 쓰지 않는다**. 현재 값은 `turn_has_no_finished_run`(확인 없이 넘어간 턴)과 `prompt_names_previous_changed_file`(앞 턴이 바꾼 파일을 다음 프롬프트가 안 짚은 턴) 둘이고, 신호가 늘면 값도 는다 |
 | `carry.rule` | string | 지시 파일에 그대로 붙여넣을 규칙 한 줄. **평문**이다 |
 | `carry.reason` | string | 왜 이 줄인지. **평문 한 문장**이다 |
 

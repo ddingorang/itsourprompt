@@ -81,10 +81,14 @@ class CarryLineApiTest extends DatabaseTest {
 
     /**
      * 걸리는 습관이 없으면 화면에 아무것도 올리지 않는다 — 빈 절을 세우지 않는다.
+     *
+     * <p>프롬프트가 파일을 이름으로 짚는다. S1이 생기기 전에는 아무 프롬프트여도 됐지만, 이제
+     * 가짜 생성기가 매 턴 {@code Main.java}를 고치므로 짚지 않으면 S1이 켜져 무신호 케이스가
+     * 사라진다. <b>의도된 행동 변화다</b> — 그 발화를 아래 테스트가 따로 잡는다.
      */
     @Test
     void 모든_턴을_확인했으면_줄이_실리지_않는다() throws Exception {
-        Long attemptId = startedAttempt(2);
+        Long attemptId = startedAttempt(2, "Main.java에 Hello 출력해줘");
         finishRun(attemptId, 0, CodeRunStatus.SUCCEEDED);
         finishRun(attemptId, 1, CodeRunStatus.TEST_FAILED);
         attemptService.submit(attemptId, owner());
@@ -93,6 +97,24 @@ class CarryLineApiTest extends DatabaseTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.overallMd").value("생성된 피드백"))
                 .andExpect(jsonPath("$.carry").value(nullValue()));
+    }
+
+    /**
+     * S5가 꺼져야 뒤 순위 신호가 드러난다. 두 턴을 다 실행해 놓고 프롬프트만 파일을 안 짚게 둔다.
+     */
+    @Test
+    void 실행은_다_했지만_앞_턴이_바꾼_파일을_안_짚으면_S1_줄이_실린다() throws Exception {
+        Long attemptId = startedAttempt(2);
+        finishRun(attemptId, 0, CodeRunStatus.SUCCEEDED);
+        finishRun(attemptId, 1, CodeRunStatus.SUCCEEDED);
+        attemptService.submit(attemptId, owner());
+
+        mockMvc.perform(get("/api/attempts/{id}/feedback", attemptId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.carry.signal").value("prompt_names_previous_changed_file"))
+                .andExpect(jsonPath("$.carry.rule").value("작업 요약에는 이번에 바꾼 모든 파일의 이름이 "
+                        + "반드시 들어가야 한다. 파일 이름 없이 변경 내용을 보고하지 마라."))
+                .andExpect(jsonPath("$.carry.reason").value(startsWith("2턴 중 1턴에서 앞 턴이 바꾼 파일을")));
     }
 
     /**
@@ -133,10 +155,14 @@ class CarryLineApiTest extends DatabaseTest {
     }
 
     private Long startedAttempt(int turns) {
+        return startedAttempt(turns, "Hello 출력해줘");
+    }
+
+    private Long startedAttempt(int turns, String userPrompt) {
         AttemptView attempt = attemptService.startAttempt(newProblem().id(), owner(), null);
 
         for (int turn = 0; turn < turns; turn++) {
-            attemptService.addTurn(attempt.id(), owner(), "Hello 출력해줘", null);
+            attemptService.addTurn(attempt.id(), owner(), userPrompt, null);
         }
 
         return attempt.id();
