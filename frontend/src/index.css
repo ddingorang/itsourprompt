@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* mono 스택에는 한글 글리프가 없어, font-mono를 쓴 자리의 한글이 윈도우에서 굴림으로
+   떨어진다. 폰트 폴백은 글자 단위라 한글 폰트를 끼워 넣으면 영문·숫자는 mono 그대로
+   두고 한글만 본문과 같은 Noto Sans KR로 그려진다.
+   자리가 중요하다 — generic(monospace)보다 뒤에 두면 소용이 없다. 윈도우는 generic을
+   실제 폰트로 바꾸는 순간 없는 글리프를 시스템 폰트(굴림)로 메워 버려서, CSS 목록의
+   다음 폰트까지 오지 않는다. Noto Sans KR은 라틴 문자도 갖고 있으므로 mono 폰트들보다
+   앞에 두면 안 된다. */
+@theme {
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', 'Noto Sans KR', monospace;
+}
+
 html,
 body,
 #root {

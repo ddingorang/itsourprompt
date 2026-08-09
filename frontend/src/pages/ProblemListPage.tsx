@@ -14,6 +14,29 @@ import { usePagination } from '../shared/hooks/usePagination';
 const PROBLEMS_PER_PAGE = 10;
 const PAGES_PER_GROUP = 5;
 
+/**
+ * 모아보기 분류 키. game 문제는 언어 대신 game으로 묶는다 — 배지와 같은 규칙이라
+ * 행에 뜬 아이콘과 탭이 항상 짝이 맞는다. type·language를 싣지 않는 BE 응답이면
+ * 분류할 근거가 없어 null이고, 그런 문제는 전체에만 나온다.
+ */
+function getCategoryKey(problem: ProblemSummary): string | null {
+  if (problem.type === 'game') return 'game';
+  return problem.language ? problem.language.toLowerCase() : null;
+}
+
+/** 탭에 먼저 세울 언어. 제목 옆 아이콘 범례와 같은 순서다. */
+const CATEGORY_PRIORITY = ['java', 'python'];
+
+/**
+ * 탭 순서. 아는 언어를 범례 순으로 놓고, 나중에 늘어난 언어는 그 뒤에 가나다순으로
+ * 붙는다. 게임은 언어가 아니라 문제의 성격이라 맨 끝에 둔다.
+ */
+function categoryRank(key: string): number {
+  if (key === 'game') return 900;
+  const index = CATEGORY_PRIORITY.indexOf(key);
+  return index === -1 ? 500 : index;
+}
+
 export default function ProblemListPage() {
   const { colorMode } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,6 +45,25 @@ export default function ProblemListPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const pageParam = searchParams.get('page');
   const requestedPage = Number(pageParam);
+
+  const categoryCounts = new Map<string, number>();
+  problems.forEach((problem) => {
+    const key = getCategoryKey(problem);
+    if (key) categoryCounts.set(key, (categoryCounts.get(key) ?? 0) + 1);
+  });
+  const categories = [...categoryCounts.keys()].sort(
+    (a, b) => categoryRank(a) - categoryRank(b) || a.localeCompare(b),
+  );
+
+  // 목록에 없는 분류가 주소에 남아 있으면(문제가 지워졌거나 손으로 고쳤거나) 전체로
+  // 돌린다 — 빈 목록에 탭도 안 눌린 상태보다 낫다.
+  const categoryParam = searchParams.get('category');
+  const activeCategory =
+    categoryParam && categoryCounts.has(categoryParam) ? categoryParam : null;
+  const filteredProblems = activeCategory
+    ? problems.filter((problem) => getCategoryKey(problem) === activeCategory)
+    : problems;
+
   const {
     currentPage,
     pageGroupEnd,
@@ -29,15 +71,27 @@ export default function ProblemListPage() {
     pageStart,
     totalPages,
   } = usePagination({
-    itemCount: problems.length,
+    itemCount: filteredProblems.length,
     itemsPerPage: PROBLEMS_PER_PAGE,
     pagesPerGroup: PAGES_PER_GROUP,
     requestedPage,
   });
-  const visibleProblems = problems.slice(
+  const visibleProblems = filteredProblems.slice(
     pageStart,
     pageStart + PROBLEMS_PER_PAGE,
   );
+
+  /** 분류를 바꾸면 항상 1페이지로 돌아간다 — 3페이지를 보던 중 2페이지뿐인 분류를
+      고르면 빈 화면이 뜬다. */
+  const selectCategory = (key: string | null) => {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (key) nextParams.set('category', key);
+    else nextParams.delete('category');
+
+    nextParams.set('page', '1');
+    setSearchParams(nextParams);
+  };
 
   const moveToPage = (page: number) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -93,7 +147,7 @@ export default function ProblemListPage() {
 
     if (
       isLoading ||
-      problems.length === 0 ||
+      filteredProblems.length === 0 ||
       requestedPage <= totalPages
     ) {
       return;
@@ -103,9 +157,9 @@ export default function ProblemListPage() {
     nextParams.set('page', String(totalPages));
     setSearchParams(nextParams, { replace: true });
   }, [
+    filteredProblems.length,
     isLoading,
     pageParam,
-    problems.length,
     requestedPage,
     searchParams,
     setSearchParams,
@@ -134,10 +188,36 @@ export default function ProblemListPage() {
           aria-label="문제 목록 정보"
         >
           {/* 랭킹 페이지의 "RANKED SUBMISSIONS / 00" 줄과 같은 글자 크기·간격을 쓴다. */}
-          <div className="whitespace-nowrap text-[13px] font-bold tracking-[0.06em] text-[var(--problem-list-muted)]">
-            전체 문제 /{' '}
-            {String(problems.length).padStart(2, '0')}
-          </div>
+          {categories.length === 0 ? (
+            <div className="whitespace-nowrap text-[13px] font-bold tracking-[0.06em] text-[var(--problem-list-muted)]">
+              전체 문제 /{' '}
+              {String(problems.length).padStart(2, '0')}
+            </div>
+          ) : (
+            /* 분류가 하나도 없는 응답(type·language 미포함)이면 위의 개수 줄로 물러난다.
+               탭은 실제로 존재하는 분류만 세운다 — 결과가 0건인 탭은 만들지 않는다. */
+            <div
+              aria-label="문제 분류"
+              className="flex flex-wrap items-center gap-x-6 gap-y-2"
+              role="group"
+            >
+              <CategoryTab
+                count={problems.length}
+                label="전체"
+                selected={activeCategory === null}
+                onSelect={() => selectCategory(null)}
+              />
+              {categories.map((key) => (
+                <CategoryTab
+                  count={categoryCounts.get(key) ?? 0}
+                  key={key}
+                  label={key.toUpperCase()}
+                  selected={activeCategory === key}
+                  onSelect={() => selectCategory(key)}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         {isLoading && (
@@ -170,7 +250,7 @@ export default function ProblemListPage() {
                 key={problem.id}
                 to={`/problems/${problem.id}`}
               >
-                <span className="font-mono text-[17px] text-[var(--problem-list-muted)] transition-colors duration-200 group-hover:text-[#090909] group-focus-visible:text-[#090909]">
+                <span className="font-mono text-[16px] font-normal text-[var(--problem-list-muted)] transition-colors duration-200 group-hover:text-[#090909] group-focus-visible:text-[#090909]">
                   {String(problem.id).padStart(2, '0')}
                 </span>
                 <span className="min-w-0 text-[clamp(16px,1.5vw,20px)] font-bold tracking-[-0.03em] [word-break:keep-all]">
@@ -205,6 +285,37 @@ export default function ProblemListPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+/**
+ * 모아보기 탭 하나. 고른 상태를 밑줄로 표시한다 — 릴레이 결과 화면의 턴 탭 바와 같은
+ * 문법이다. 안 고른 탭도 같은 두께의 투명 밑줄을 깔아, 고를 때 줄 높이가 안 흔들린다.
+ */
+function CategoryTab({
+  count,
+  label,
+  onSelect,
+  selected,
+}: {
+  count: number;
+  label: string;
+  onSelect: () => void;
+  selected: boolean;
+}) {
+  return (
+    <button
+      aria-pressed={selected}
+      className={`cursor-pointer border-0 border-b-2 bg-transparent p-0 pb-1 font-mono text-[15px] font-bold tracking-[0.06em] whitespace-nowrap transition-colors duration-200 focus-visible:outline-none ${
+        selected
+          ? 'border-b-[var(--problem-list-acid)] text-[var(--problem-list-acid)]'
+          : 'border-b-transparent text-[var(--problem-list-muted)] hover:text-[var(--problem-list-acid)] focus-visible:text-[var(--problem-list-acid)]'
+      }`}
+      onClick={onSelect}
+      type="button"
+    >
+      {label} {String(count).padStart(2, '0')}
+    </button>
   );
 }
 
