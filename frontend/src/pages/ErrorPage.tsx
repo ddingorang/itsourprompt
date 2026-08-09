@@ -20,12 +20,12 @@ export default function ErrorPage() {
 
       <main className="mx-auto flex w-[calc(100%_-_10vw)] flex-1 items-center justify-center py-16 max-[760px]:w-[calc(100%_-_32px)]">
         <section className="w-full max-w-2xl border-y border-[var(--error-page-border)] py-12 text-center">
-          <p className="font-mono text-xs font-bold tracking-[0.12em] text-[#ff786b]">
-            REQUEST FAILED
+          <p className="text-xs font-bold text-[#ff786b]">
+            요청 실패
           </p>
 
-          <h1 className="mt-4 font-mono text-[clamp(44px,8vw,72px)] leading-none font-bold tracking-[-0.05em]">
-            ERROR
+          <h1 className="mt-4 text-[clamp(44px,8vw,72px)] leading-none font-bold tracking-[-0.05em]">
+            오류
           </h1>
 
           {errorState.problemTitle && (
@@ -46,8 +46,8 @@ export default function ErrorPage() {
                 '잠시 후 다시 시도해주세요. 문제가 계속되면 이전 페이지로 돌아가주세요.'}
             </p>
             {errorState.status && (
-              <p className="mt-2 font-mono text-xs tracking-[0.08em] text-[var(--error-page-subtle)]">
-                ERROR CODE / {errorState.status}
+              <p className="mt-2 text-xs text-[var(--error-page-subtle)]">
+                오류 코드 / {errorState.status}
               </p>
             )}
           </div>

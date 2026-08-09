@@ -40,13 +40,13 @@ const variantClasses: Record<ButtonVariant, string> = {
     'focus-visible:bg-transparent focus-visible:text-[var(--acid,#d6ff50)] focus-visible:outline-none',
 
   secondary:
-    'border-[#4b4b4b] bg-transparent text-[#f5f5ef] ' +
+    'border-[var(--theme-border,#4b4b4b)] bg-transparent text-[var(--theme-text,#f5f5ef)] ' +
     'hover:border-[var(--acid,#d6ff50)] hover:bg-[var(--acid,#d6ff50)] hover:text-[#090909] ' +
     'focus-visible:border-[var(--acid,#d6ff50)] focus-visible:bg-[var(--acid,#d6ff50)] ' +
     'focus-visible:text-[#090909] focus-visible:outline-none',
 
   ghost:
-    'border-[#535353] bg-transparent text-[#f5f5ef] ' +
+    'border-[var(--theme-border,#535353)] bg-transparent text-[var(--theme-text,#f5f5ef)] ' +
     'hover:border-[var(--acid,#d6ff50)] hover:bg-[var(--acid,#d6ff50)] hover:text-[#090909] ' +
     'focus-visible:border-[var(--acid,#d6ff50)] focus-visible:bg-[var(--acid,#d6ff50)] ' +
     'focus-visible:text-[#090909] focus-visible:outline-none',

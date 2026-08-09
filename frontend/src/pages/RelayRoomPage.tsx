@@ -7,7 +7,8 @@ import {
   type RefObject,
 } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useBlocker, useNavigate, useParams } from 'react-router-dom';
+import remarkGfm from 'remark-gfm';
 
 import { useAuth } from '../features/auth/AuthContext';
 import PromptFeedback from '../features/feedback/PromptFeedback';
@@ -19,6 +20,7 @@ import {
   retryRelayFeedback,
   startRelayGame,
 } from '../features/relay/api';
+import { formatTurnTimeLimit } from '../features/relay/format';
 import type {
   RelayEvent,
   RelayFeedback,
@@ -31,6 +33,7 @@ import { useRelayRoom } from '../features/relay/useRelayRoom';
 import { useRelayRtc, type RelayPeerView } from '../features/relay/useRelayRtc';
 import { useTheme } from '../features/theme/ThemeContext';
 import CodeViewer from '../features/workspace/CodeViewer';
+import { diffLines } from '../features/workspace/diff';
 import { ApiError } from '../shared/api/apiClient';
 import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
@@ -39,14 +42,22 @@ import Header from '../shared/components/Header';
 const labelClasses =
   'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
 
+const koreanLabelClasses = 'text-sm leading-[1.5] font-bold text-[#d6ff50]';
+
 const waitingTitleClasses =
-  'font-mono text-[clamp(32px,4vw,44px)] leading-[0.9] font-bold ' +
+  'text-[clamp(32px,4vw,44px)] leading-[0.9] font-bold ' +
   'tracking-[-0.04em] whitespace-nowrap text-[#d6ff50]';
 
-const smallLabelClasses = 'font-mono text-[14px] font-bold tracking-[0.12em] text-[#777]';
+const smallLabelClasses = 'text-[14px] font-bold text-[#a3a3a3]';
 
 const waitingSectionLabelClasses =
-  'font-mono text-[16px] font-bold tracking-[0.12em] text-[#d6ff50]';
+  'text-[16px] font-bold text-[#d6ff50]';
+
+const waitingMetaLabelClasses =
+  'text-[13px] tracking-[0.06em] text-[#a3a3a3]';
+
+const waitingMetaValueClasses =
+  'mt-1 ml-0 text-[15px] leading-[1.5] break-words text-[#f5f5ef]';
 
 const pageClasses =
   'flex h-screen min-w-80 flex-col overflow-hidden bg-[#090909] text-[#f5f5ef] ' +
@@ -199,6 +210,41 @@ function RelayRoomScreen({
     return () => controller.abort();
   }, [problemId]);
 
+  // 뒤로가기(및 앱 내 다른 화면으로의 이동) 가드. 소켓만 조용히 끊기면 서버가 이탈로
+  // 처리하지 못해, 게임 중이라면 남은 참가자들이 이 주자의 턴 마감을 통째로 기다리게
+  // 된다. 확답을 받고, 나간다면 명시적 leave를 호출해 즉시 스킵되게 한다.
+  // 나가기 버튼 경로는 이미 leave를 마친 뒤라 state.skipLeaveGuard로 가드를 지나간다.
+  const guardActive =
+    room !== null &&
+    room.status !== 'FINISHED' &&
+    !joinError &&
+    socketStatus !== 'replaced' &&
+    socketStatus !== 'rejected';
+  const blocker = useBlocker(
+    ({ nextLocation }) =>
+      guardActive &&
+      !(nextLocation.state as { skipLeaveGuard?: boolean } | null)?.skipLeaveGuard,
+  );
+  const roomStatus = room?.status;
+
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+
+    const message =
+      roomStatus === 'WAITING'
+        ? '대기실에서 나가시겠습니까?'
+        : '게임에서 나가시겠습니까?\n나가면 다시 입장할 수 없으며, 남은 내 차례는 모두 건너뛰어집니다.';
+
+    if (window.confirm(message)) {
+      // leave 실패로 이동까지 막지는 않는다 — 서버의 턴 마감 스킵이 최종 안전망이다.
+      void leaveRelayRoom(roomId)
+        .catch(() => {})
+        .finally(() => blocker.proceed());
+    } else {
+      blocker.reset();
+    }
+  }, [blocker, roomId, roomStatus]);
+
   if (joinError) {
     return (
       <div className={`relay-page ${centeredNoticeClasses}`} data-color-mode={colorMode}>
@@ -219,7 +265,7 @@ function RelayRoomScreen({
           <p className="m-0">
             다른 탭(또는 창)에서 이 방에 접속해 이 화면의 연결이 종료됐습니다.
           </p>
-          <p className="mt-2 mb-0 text-[#666]">
+          <p className="mt-2 mb-0 text-[#a3a3a3]">
             게임은 새 탭에서 계속됩니다. 이 탭에서 이어가려면 새로고침하세요.
           </p>
         </div>
@@ -263,8 +309,11 @@ function RelayRoomScreen({
           rtc={rtc}
         />
       )}
-      <Footer />
-      <PeerAudios peers={rtc.peers} />
+      {/* 게임 중에는 워크스페이스 화면(ProblemDetailPage와 같은 형태)이라 footer를 그리지
+          않는다 — 헤더가 default로 돌아오는 대기실/결과 화면에서만 보인다. */}
+      {(isWaiting || isFinished) && <Footer />}
+      {/* 화면과 무관하게 보이스 채널 참가자만 듣는다. */}
+      <PeerAudios enabled={rtc.voiceJoined} peers={rtc.peers} />
     </div>
   );
 }
@@ -307,37 +356,52 @@ function WaitingView({
     try {
       await leaveRelayRoom(room.roomId);
     } finally {
-      navigate('/relay');
+      // 이미 leave를 마쳤으므로 뒤로가기 가드의 확인창을 다시 띄우지 않는다.
+      navigate('/relay', { state: { skipLeaveGuard: true } });
     }
   };
 
   return (
     <main className="mx-auto grid w-full max-w-[720px] flex-1 content-start gap-7 px-6 py-10">
       <div>
-        <div className="flex items-end justify-between gap-6 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-3">
-          <div className={waitingTitleClasses}>ROOM #{room.roomId}</div>
-          <div className="shrink-0 text-right font-mono text-[12px] leading-[1.6] tracking-[0.04em] text-[#a3a3a3] max-[640px]:text-left">
-            {problem ? `「${problem.title}」` : `문제 ${room.problemId}번`} ·{' '}
-            {room.totalLaps}바퀴 · 정원 {room.maxParticipants}명
-          </div>
+        {/* 안내문은 방 번호 제목의 밑선에 맞춘다 — baseline 정렬이라 제목 크기가
+            clamp로 변해도 두 글줄의 바닥이 어긋나지 않는다. */}
+        <div className="flex items-baseline justify-between gap-6 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-2">
+          <div className={waitingTitleClasses}>방 #{room.roomId}</div>
+          <p className="m-0 text-[13px] leading-[1.7] text-[#a3a3a3]">
+            이 방 번호를 공유하면 다른 사람이 입장할 수 있습니다.
+          </p>
         </div>
         {/* 이름 도입 전에 만들어진 방은 name이 없다 — 그때는 방 번호 제목만으로 충분하다. */}
         {room.name && (
-          <h1 className="mt-2 mb-0 text-[22px] font-black tracking-[-0.03em]">
+          <h1 className="mt-2.5 mb-0 text-[20px] font-bold tracking-[-0.03em] break-words">
             {room.name}
           </h1>
         )}
-        <p className="mt-2 mb-0 text-[13px] leading-[1.7] text-[#a3a3a3]">
-          이 방 번호를 공유하면 다른 사람이 입장할 수 있습니다.
-          <br />
-          입장한 순서가 곧 풀이 순서가 됩니다.
-        </p>
+        {/* 문제 이름은 바로 아래 「문제」 섹션이 이미 말해주므로 넣지 않는다.
+            대신 턴 제한시간은 시작 전에 한 번 더 확인시켜준다. */}
+        <dl className="mt-3.5 mb-0 grid grid-cols-3 gap-3 border-t border-[#343434] pt-3.5">
+          <div>
+            <dt className={waitingMetaLabelClasses}>턴 제한시간</dt>
+            <dd className={waitingMetaValueClasses}>
+              {formatTurnTimeLimit(room.turnTimeLimitSeconds)}
+            </dd>
+          </div>
+          <div>
+            <dt className={waitingMetaLabelClasses}>바퀴</dt>
+            <dd className={waitingMetaValueClasses}>{room.totalLaps}바퀴</dd>
+          </div>
+          <div>
+            <dt className={waitingMetaLabelClasses}>정원</dt>
+            <dd className={waitingMetaValueClasses}>{room.maxParticipants}명</dd>
+          </div>
+        </dl>
       </div>
 
       {problem && (
         <section className="border border-[#343434]">
           <div className="border-b border-[#343434] px-4 py-3">
-            <span className={waitingSectionLabelClasses}>PROBLEM</span>
+            <span className={waitingSectionLabelClasses}>문제</span>
           </div>
           <div className="max-h-[320px] overflow-y-auto px-5 py-4">
             <ProblemSpec specMd={problem.specMd} />
@@ -345,35 +409,69 @@ function WaitingView({
         </section>
       )}
 
-      <section className="border border-[#343434]">
-        <div className="border-b border-[#343434] px-4 py-3">
-          <span className={waitingSectionLabelClasses}>
-            PLAYERS: {room.participants.length} / {room.maxParticipants}
-          </span>
-        </div>
-        <ul className="m-0 grid list-none gap-0 p-0">
-          {room.participants.map((participant, index) => (
-            <li
-              className="flex items-center gap-3 border-b border-[#222] px-4 py-3 font-mono text-sm last:border-b-0"
-              key={participant.userId}
-            >
-              <span className="text-[#666]">{index + 1}</span>
-              <span>{participant.nickname}</span>
-              {participant.userId === room.hostUserId && (
-                <span className="border border-[#d6ff50] px-1.5 py-0.5 text-[9px] text-[#d6ff50]">
-                  HOST
-                </span>
-              )}
-              {participant.userId === myUserId && (
-                <span className="text-[10px] text-[#777]">(나)</span>
-              )}
-              <VoiceDot peer={rtc.peers.get(participant.userId)} self={participant.userId === myUserId} />
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <VoicePanel labelClassName={waitingSectionLabelClasses} rtc={rtc} />
+      {/* 참가자 목록과 음성 박스를 한 행에 나란히 둔다 — 좁은 화면에서는 세로로 풀린다.
+          음성 박스는 self-start로 높이가 고정이고, 참가자 박스는 행 높이(둘 중 큰 쪽)를
+          따라 늘어난다 — 인원이 적을 땐 음성 박스 높이와 같고, 많아지면 그만큼 자란다. */}
+      <div className="flex items-stretch gap-3 max-[640px]:flex-col">
+        <section className="min-w-0 flex-1 border border-[#343434]">
+          {/* 풀이 순서 안내는 그 순서가 그려지는 목록 바로 위에 붙인다 — 박스가 좁아지면
+              제목 아래로 흘러내린다. */}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-[#343434] px-4 py-3">
+            <span className={waitingSectionLabelClasses}>
+              참가자 {room.participants.length} / {room.maxParticipants}
+            </span>
+            <span className="text-[12px] leading-[1.6] text-[#a3a3a3]">
+              입장한 순서가 곧 풀이 순서가 됩니다.
+            </span>
+          </div>
+          <ul className="m-0 grid list-none gap-0 p-0">
+            {room.participants.map((participant, index) => (
+              <li
+                className="flex items-center gap-3 border-b border-[#222] px-4 py-3 text-sm last:border-b-0"
+                key={participant.userId}
+              >
+                <span className="text-[#a3a3a3]">{index + 1}</span>
+                <span>{participant.nickname}</span>
+                {participant.userId === room.hostUserId && (
+                  <span className="border border-[#d6ff50] px-1.5 py-0.5 text-[9px] text-[#d6ff50]">
+                    방장
+                  </span>
+                )}
+                {participant.userId === myUserId && (
+                  <span className="text-[10px] text-[#a3a3a3]">(나)</span>
+                )}
+                <VoiceDot peer={rtc.peers.get(participant.userId)} self={participant.userId === myUserId} />
+                <VoiceChannelBadge
+                  joined={
+                    participant.userId === myUserId
+                      ? rtc.voiceJoined
+                      : (rtc.peers.get(participant.userId)?.voiceJoined ?? false)
+                  }
+                  micOn={
+                    participant.userId === myUserId
+                      ? rtc.micOn
+                      : (rtc.peers.get(participant.userId)?.micOn ?? false)
+                  }
+                />
+                <SpeakingBadge
+                  speaking={
+                    participant.userId === myUserId
+                      ? rtc.mySpeaking
+                      : (rtc.peers.get(participant.userId)?.speaking ?? false)
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+        <VoiceChannelPanel
+          className="self-start max-[640px]:self-stretch"
+          framed
+          labelClassName={waitingSectionLabelClasses}
+          rtc={rtc}
+          stacked
+        />
+      </div>
 
       {actionError && (
         <p className="m-0 font-mono text-xs text-[#ff786b]">{actionError}</p>
@@ -430,6 +528,7 @@ function GameView({
     lastGrading,
     lastSkip,
     lastTurn,
+    previousCode,
     submitError,
     submitTurn,
     submitting,
@@ -445,6 +544,24 @@ function GameView({
     me?.seatOrder !== undefined &&
     me.seatOrder === room.currentSeat;
 
+  // 지금 차례인 주자. 내 턴이 아닐 때 프롬프트 창 자리에 이 사람의 실시간 입력을 보여준다.
+  const currentPlayer =
+    room.currentSeat === null
+      ? undefined
+      : room.participants.find(
+          (participant) => participant.seatOrder === room.currentSeat,
+        );
+  const currentTyping =
+    currentPlayer && currentPlayer.userId !== myUserId
+      ? (rtc.peers.get(currentPlayer.userId)?.typing ?? '')
+      : '';
+
+  // 턴이 바뀌면 지난 턴의 타이핑 잔상을 지운다 — 시간 초과 스킵은 입력자가 못 비운다.
+  const resetTyping = rtc.resetTyping;
+  useEffect(() => {
+    resetTyping();
+  }, [resetTyping, room.currentTurnIndex]);
+
   const scores = useMemo(() => totalScores(turns), [turns]);
 
   const seated = useMemo(
@@ -455,17 +572,27 @@ function GameView({
     [room.participants],
   );
 
+  // 모든 턴을 소진하면 서버의 currentTurnIndex는 totalTurns와 같아지고(0-based의
+  // one-past-the-end) currentLap은 null이 된다. 그대로 그리면 피드백 생성 동안
+  // "턴 9 / 8 · 바퀴 1 / 2"처럼 보이므로 마지막 턴/바퀴로 고정한다.
+  const relayOver = room.totalTurns !== null && room.currentTurnIndex >= room.totalTurns;
+  const displayTurn = relayOver ? room.totalTurns : room.currentTurnIndex + 1;
+  const displayLap = relayOver ? room.totalLaps : (room.currentLap ?? 0) + 1;
+
   return (
-    <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[290px_minmax(320px,1fr)_minmax(380px,440px)] max-[900px]:block max-[900px]:overflow-visible">
+    <main className="grid min-h-0 flex-1 overflow-hidden grid-cols-[320px_minmax(320px,1fr)_minmax(380px,440px)] max-[900px]:block max-[900px]:overflow-visible">
       {/* 좌: 좌석과 점수 */}
-      <aside className="flex min-h-0 flex-col gap-5 overflow-hidden border-r border-[#343434] px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-r-0 max-[900px]:border-b">
+      {/* 참가자가 많거나 파일 트리가 길면 내용이 열 높이를 넘는다 — 잘라내지 않고
+          세로 스크롤로 넘긴다. 파일 탐색기가 최소 높이(아래 min-h) 밑으로 줄지 않아야
+          스크롤이 생긴다. */}
+      <aside className="workspace-scrollbar flex min-h-0 flex-col gap-5 overflow-x-hidden overflow-y-auto border-r border-[#343434] px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-r-0 max-[900px]:border-b">
         <div>
-          <div className="font-mono text-[16px] leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]">
-            {room.name ?? `ROOM #${room.roomId}`}
+          <div className="text-[16px] leading-[1.5] font-bold text-[#d6ff50]">
+            {room.name ?? `방 #${room.roomId}`}
           </div>
-          <p className="mt-1 mb-0 font-mono text-[12px] text-[#777]">
-            {room.name ? `#${room.roomId} · ` : ''}TURN {room.currentTurnIndex + 1} /{' '}
-            {room.totalTurns ?? '?'} · LAP {(room.currentLap ?? 0) + 1} / {room.totalLaps}
+          <p className="mt-1 mb-0 text-[12px] text-[#a3a3a3]">
+            {room.name ? `#${room.roomId} · ` : ''}턴 {displayTurn} /{' '}
+            {room.totalTurns ?? '?'} · 바퀴 {displayLap} / {room.totalLaps}
           </p>
         </div>
 
@@ -483,11 +610,25 @@ function GameView({
               participant={participant}
               peer={rtc.peers.get(participant.userId)}
               score={scores.get(participant.userId) ?? null}
+              speaking={
+                participant.userId === myUserId
+                  ? rtc.mySpeaking
+                  : (rtc.peers.get(participant.userId)?.speaking ?? false)
+              }
+              turnTimeLimitSeconds={room.turnTimeLimitSeconds}
+              voice={
+                participant.userId === myUserId
+                  ? { joined: rtc.voiceJoined, micOn: rtc.micOn }
+                  : {
+                      joined: rtc.peers.get(participant.userId)?.voiceJoined ?? false,
+                      micOn: rtc.peers.get(participant.userId)?.micOn ?? false,
+                    }
+              }
             />
           ))}
         </div>
 
-        <VoicePanel compact rtc={rtc} />
+        <VoiceChannelPanel rtc={rtc} />
 
         <ReactionBar rtc={rtc} />
 
@@ -504,23 +645,24 @@ function GameView({
       {/* 중: 코드 */}
       <CodePanel
         code={code}
+        previousCode={previousCode}
         selectedPath={selectedPath}
       />
 
       {/* 우: 문제/진행 패널. 프롬프트 폼은 탭과 무관하게 아래 고정 —
           주자는 명세를 읽으면서 동시에 프롬프트를 써야 한다. */}
-      <aside className="flex min-h-0 flex-col gap-4 overflow-hidden px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-t max-[900px]:border-[#343434]">
+      <aside className="flex min-h-0 flex-col gap-4 overflow-hidden px-5 py-[22px] max-[900px]:overflow-visible max-[900px]:border-t max-[900px]:border-[var(--relay-border)]">
         <div className="grid shrink-0 grid-cols-2 border border-[#3f3f3f]" role="tablist">
           {(
             [
-              ['problem', 'PROBLEM'],
-              ['live', 'LIVE'],
+              ['problem', '문제'],
+              ['live', '실시간'],
             ] as const
           ).map(([tab, label]) => (
             <button
               aria-selected={panelTab === tab}
               className={[
-                'min-h-10 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm leading-[1.5] font-bold tracking-[0.08em]',
+                'min-h-10 cursor-pointer border-0 bg-transparent px-3 text-sm leading-[1.5] font-bold',
                 tab === 'problem' ? 'border-r border-[#3f3f3f]' : '',
                 panelTab === tab
                   ? 'border-b-2 border-b-[#d6ff50] text-[#d6ff50]'
@@ -541,7 +683,7 @@ function GameView({
             problem ? (
               <ProblemSpec specMd={problem.specMd} />
             ) : (
-              <p className="m-0 font-mono text-[11px] text-[#666]">
+              <p className="m-0 font-mono text-[11px] text-[#a3a3a3]">
                 문제 명세를 불러오는 중…
               </p>
             )
@@ -549,8 +691,8 @@ function GameView({
             <div className="grid gap-4">
               {lastSkip && (
                 <section className="border border-[#4a3a1e] bg-[#171207] px-4 py-3">
-                  <p className="m-0 font-mono text-[11px] font-bold text-[#ffb86b]">
-                    TURN {String(lastSkip.turnIndex + 1).padStart(2, '0')} 건너뜀 —{' '}
+                  <p className="m-0 text-[11px] font-bold text-[#ffb86b]">
+                    턴 {lastSkip.turnIndex + 1} 건너뜀 —{' '}
                     {room.participants.find((p) => p.userId === lastSkip.authorUserId)
                       ?.nickname ?? `user ${lastSkip.authorUserId}`}{' '}
                     님 (이탈 또는 시간 초과)
@@ -560,16 +702,16 @@ function GameView({
               {lastGrading && <GradingCard outcome={lastGrading} room={room} />}
               {lastTurn && (
                 <section className="border-l-2 border-[#d6ff50] pl-3">
-                  <div className="font-mono text-[11px] font-bold text-[#d6ff50]">
-                    TURN {String(lastTurn.turnIndex + 1).padStart(2, '0')} 완료
+                  <div className="text-[11px] font-bold text-[#d6ff50]">
+                    턴 {lastTurn.turnIndex + 1} 완료
                   </div>
-                  <p className="my-2 whitespace-pre-wrap text-[12px] leading-[1.6] text-[#8f8f8f]">
+                  <p className="my-2 whitespace-pre-wrap text-[12px] leading-[1.6] text-[#a3a3a3]">
                     {lastTurn.aiSummary}
                   </p>
                 </section>
               )}
               {!lastGrading && !lastTurn && !lastSkip && (
-                <p className="m-0 font-mono text-[11px] leading-[1.7] text-[#666]">
+                <p className="m-0 font-mono text-[11px] leading-[1.7] text-[#a3a3a3]">
                   아직 완료된 턴이 없습니다. 턴이 끝나면 AI 요약과 채점 결과가
                   여기 표시됩니다.
                 </p>
@@ -585,6 +727,8 @@ function GameView({
           submitError={submitError}
           submitTurn={submitTurn}
           submitting={submitting}
+          typerNickname={isMyTurn ? null : (currentPlayer?.nickname ?? null)}
+          typerText={currentTyping}
         />
       </aside>
     </main>
@@ -592,9 +736,9 @@ function GameView({
 }
 
 /**
- * 게임 중 퇴장. 대기실 퇴장과 달리 좌석이 남고 내 차례가 자동으로 건너뛰어지므로,
- * 실수 클릭 한 번으로 나가지 않게 인라인 확인을 한 단계 거친다. 서버는 게임이 끝나기
- * 전에 다시 입장하면 이탈 표시를 지워 주므로(rejoin) 복귀 가능함을 함께 안내한다.
+ * 게임 중 퇴장. 이탈은 최종 결정이다 — 서버가 재입장을 거절하고 남은 차례는 전부
+ * 건너뛰어진다. 되돌릴 수 없는 만큼 실수 클릭 한 번으로 나가지 않게 인라인 확인을
+ * 한 단계 거치고, 복귀 불가함을 문구로 못박는다.
  */
 function LeaveGameButton({ roomId }: { roomId: number }) {
   const navigate = useNavigate();
@@ -606,7 +750,8 @@ function LeaveGameButton({ roomId }: { roomId: number }) {
     try {
       await leaveRelayRoom(roomId);
     } finally {
-      navigate('/relay');
+      // 이미 leave를 마쳤으므로 뒤로가기 가드의 확인창을 다시 띄우지 않는다.
+      navigate('/relay', { state: { skipLeaveGuard: true } });
     }
   };
 
@@ -621,8 +766,8 @@ function LeaveGameButton({ roomId }: { roomId: number }) {
   return (
     <div className="mt-auto grid gap-2">
       <p className="m-0 font-mono text-[10px] leading-[1.7] text-[#ffb86b]">
-        게임 중에 나가면 내 차례는 건너뛰어집니다. 게임이 끝나기 전에 다시
-        입장하면 이어서 참여할 수 있습니다.
+        게임 중에 나가면 다시 입장할 수 없으며, 남은 내 차례는 모두
+        건너뛰어집니다.
       </p>
       <div className="flex gap-2">
         <Button disabled={leaving} onClick={() => void handleLeave()} variant="secondary">
@@ -643,6 +788,9 @@ function SeatCard({
   participant,
   peer,
   score,
+  speaking,
+  turnTimeLimitSeconds,
+  voice,
 }: {
   current: boolean;
   deadline: string | null;
@@ -650,6 +798,9 @@ function SeatCard({
   participant: RelayParticipant;
   peer: RelayPeerView | undefined;
   score: number | null;
+  speaking: boolean;
+  turnTimeLimitSeconds: number;
+  voice: { joined: boolean; micOn: boolean };
 }) {
   return (
     <div
@@ -660,31 +811,48 @@ function SeatCard({
       ].join(' ')}
     >
       <div className="flex items-center gap-2 font-mono text-xs">
-        <span className="text-[#666]">#{(participant.seatOrder ?? 0) + 1}</span>
+        <span className="text-[#a3a3a3]">#{(participant.seatOrder ?? 0) + 1}</span>
         <span className={current ? 'font-bold text-[#d6ff50]' : ''}>
           {participant.nickname}
         </span>
-        {me && <span className="text-[9px] text-[#777]">(나)</span>}
+        {me && <span className="text-[9px] text-[#a3a3a3]">(나)</span>}
         {participant.left && <span className="text-[9px] text-[#ff786b]">이탈</span>}
         <VoiceDot peer={peer} self={me} />
+        <VoiceChannelBadge joined={voice.joined} micOn={voice.micOn} />
+        <SpeakingBadge speaking={speaking} />
         {peer?.reaction && <span className="text-base">{peer.reaction}</span>}
-        <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] text-[#777]">
-          <span>기여도:</span>
+        <span
+          className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] text-[#a3a3a3]"
+          title="기여도"
+        >
+          {/* ⏱·🎤와 같은 이모지 아이콘 체계. 텍스트 라벨은 title/aria-label로 남긴다. */}
+          <span aria-label="기여도" role="img">
+            ⚡
+          </span>
           <strong className="text-xs text-[#c7c7c2]">
             {score === null ? '—' : score > 0 ? `+${score}` : `${score}`}
           </strong>
           <span>점</span>
         </span>
-        <span className="inline-flex w-[62px] shrink-0 justify-end">
+        {/* 고정 폭을 두지 않는다 — 남는 폭이 전부 점수와 타이머 사이 간격으로 보였다.
+            m:ss는 모노스페이스라 초가 줄어도 폭이 흔들리지 않는다. */}
+        <span className="inline-flex shrink-0 justify-end">
           {current && deadline ? (
             <TurnCountdown deadline={deadline} />
           ) : (
-            <span className="font-mono text-[11px] font-bold text-[#777]">⏱ 2:00</span>
+            <span className="font-mono text-[12px] font-bold text-[#a3a3a3]">
+              ⏱ {formatSeconds(turnTimeLimitSeconds)}
+            </span>
           )}
         </span>
       </div>
     </div>
   );
+}
+
+/** m:ss로 표시한다. 카운트다운과 대기 중인 좌석의 제한시간 표시가 같은 형식을 쓴다. */
+function formatSeconds(totalSeconds: number): string {
+  return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
 }
 
 /**
@@ -706,7 +874,7 @@ function TurnCountdown({ deadline }: { deadline: string }) {
   // 무슨 일이 일어날지 말해주는 편이 낫다.
   if (remainingMs <= 0) {
     return (
-      <span className="font-mono text-[11px] whitespace-nowrap text-[#ff786b]">
+      <span className="font-mono text-[12px] whitespace-nowrap text-[#ff786b]">
         ⏱ 시간 초과
       </span>
     );
@@ -717,9 +885,9 @@ function TurnCountdown({ deadline }: { deadline: string }) {
 
   return (
     <span
-      className={`font-mono text-[11px] font-bold whitespace-nowrap ${urgent ? 'text-[#ff786b]' : 'text-[#d6ff50]'}`}
+      className={`font-mono text-[12px] font-bold whitespace-nowrap ${urgent ? 'text-[#ff786b]' : 'text-[#d6ff50]'}`}
     >
-      ⏱ {Math.floor(totalSeconds / 60)}:{String(totalSeconds % 60).padStart(2, '0')}
+      ⏱ {formatSeconds(totalSeconds)}
     </span>
   );
 }
@@ -737,9 +905,9 @@ function GradingCard({
 
   return (
     <section className="border border-[#3f3f3f] px-4 py-3">
-      <div className="flex items-baseline justify-between font-mono text-[11px] font-bold">
+      <div className="flex items-baseline justify-between text-[11px] font-bold">
         <span className="text-[#d6ff50]">
-          채점 — TURN {String(outcome.turnIndex + 1).padStart(2, '0')} (
+          채점 — 턴 {outcome.turnIndex + 1} (
           {author?.nickname ?? `user ${outcome.authorUserId}`})
         </span>
         {outcome.skipped ? (
@@ -797,6 +965,8 @@ function PromptForm({
   submitError,
   submitTurn,
   submitting,
+  typerNickname,
+  typerText,
 }: {
   isMyTurn: boolean;
   onTyping: (text: string) => void;
@@ -804,6 +974,10 @@ function PromptForm({
   submitError: string | null;
   submitTurn: (prompt: string) => Promise<void>;
   submitting: boolean;
+  /** 지금 차례인 다른 주자의 닉네임. 내 턴이거나 알 수 없으면 null. */
+  typerNickname: string | null;
+  /** 그 주자가 입력 중인 프롬프트(P2P 실시간). */
+  typerText: string;
 }) {
   const [prompt, setPrompt] = useState('');
 
@@ -819,45 +993,74 @@ function PromptForm({
   };
 
   const disabled = !isMyTurn || submitting;
+  // 남의 차례가 진행 중일 때만 미리보기 — 생성/채점 단계에서는 상태 배너를 그대로 쓴다.
+  const showPreview = !isMyTurn && roomStatus === 'PLAYING' && typerNickname !== null;
 
   return (
     <form
       className="mt-auto grid gap-2 border-t border-[#343434] pt-4"
       onSubmit={handleSubmit}
     >
-      <label className={labelClasses} htmlFor="relay-prompt">
-        PROMPT / MAX 4,000
-      </label>
-      <textarea
-        aria-keyshortcuts="Control+Enter Meta+Enter"
-        className="h-[108px] w-full resize-none overflow-y-auto border border-[#3f3f3f] bg-[#151515] p-3 text-[13px] leading-[1.6] text-[#f5f5ef] placeholder:text-[#555] focus:border-[#d6ff50] focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-        disabled={disabled}
-        id="relay-prompt"
-        maxLength={4000}
-        onChange={(event) => {
-          setPrompt(event.target.value);
-          // 대기자들의 화면에 실시간으로 보이는 미리보기. 서버를 지나지 않는다(P2P).
-          if (isMyTurn) onTyping(event.target.value);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-            event.preventDefault();
-            event.currentTarget.form?.requestSubmit();
-          }
-        }}
-        placeholder={
-          isMyTurn
-            ? '문제를 해결할 프롬프트를 입력하세요.'
-            : roomStatus === 'PLAYING'
-              ? '내 차례가 되면 입력할 수 있습니다'
-              : statusBanners[roomStatus]
-        }
-        value={prompt}
-      />
-      <div className="flex items-center justify-between gap-3 px-1 font-mono text-[10px] text-[#666]">
-        <span>Ctrl/Cmd + Enter 전송 · Enter 줄바꿈</span>
-        <span>{prompt.length.toLocaleString('ko-KR')} / 4,000</span>
-      </div>
+      {showPreview ? (
+        <>
+          <span className={koreanLabelClasses}>
+            프롬프트 / {typerNickname} 님의 차례
+          </span>
+          <TypingPreview text={typerText} />
+          <div className="flex items-center justify-between gap-3 px-1 font-mono text-[10px] text-[#a3a3a3]">
+            <span>입력 중인 내용이 실시간으로 표시됩니다</span>
+            <span>{typerText.length.toLocaleString('ko-KR')} / 4,000</span>
+          </div>
+        </>
+      ) : roomStatus !== 'PLAYING' ? (
+        // 생성·채점 단계. 비활성 textarea의 placeholder는 opacity-40까지 겹쳐
+        // 거의 안 보였다 — 같은 자리에 밝은 상태 박스를 그린다.
+        <>
+          <span className={koreanLabelClasses}>프롬프트 / 턴 진행 중</span>
+          <div className="grid h-[108px] w-full place-items-center border border-dashed border-[#3f3f3f] bg-[#111111] px-3">
+            <span className="animate-pulse text-center font-mono text-[12px] leading-[1.7] font-bold text-[#d6ff50]">
+              {statusBanners[roomStatus]}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 px-1 font-mono text-[10px] text-[#a3a3a3]">
+            <span>진행 상황은 자동으로 갱신됩니다</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <label className={koreanLabelClasses} htmlFor="relay-prompt">
+            프롬프트 / 최대 4,000자
+          </label>
+          <textarea
+            aria-keyshortcuts="Control+Enter Meta+Enter"
+            className="h-[108px] w-full resize-none overflow-y-auto border border-[#3f3f3f] bg-[#151515] p-3 text-[13px] leading-[1.6] text-[#f5f5ef] placeholder:text-[#555] focus:border-[#d6ff50] focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={disabled}
+            id="relay-prompt"
+            maxLength={4000}
+            onChange={(event) => {
+              setPrompt(event.target.value);
+              // 대기자들의 화면에 실시간으로 보이는 미리보기. 서버를 지나지 않는다(P2P).
+              if (isMyTurn) onTyping(event.target.value);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
+            placeholder={
+              isMyTurn
+                ? '문제를 해결할 프롬프트를 입력하세요.'
+                : '내 차례가 되면 입력할 수 있습니다'
+            }
+            value={prompt}
+          />
+          <div className="flex items-center justify-between gap-3 px-1 font-mono text-[10px] text-[#a3a3a3]">
+            <span>Ctrl/Cmd + Enter 전송 · Enter 줄바꿈</span>
+            <span>{prompt.length.toLocaleString('ko-KR')} / 4,000</span>
+          </div>
+        </>
+      )}
       {submitError && (
         <p className="m-0 font-mono text-xs text-[#ff786b]">{submitError}</p>
       )}
@@ -868,12 +1071,47 @@ function PromptForm({
   );
 }
 
+/**
+ * 남의 턴에 프롬프트 창 자리에서 보여주는 실시간 입력 미리보기. textarea와 같은
+ * 크기이되 점선 테두리로 "내가 입력하는 곳이 아님"을 나타낸다. 텍스트가 넘치면
+ * 최신 입력을 따라 아래로 스크롤한다.
+ */
+function TypingPreview({ text }: { text: string }) {
+  const ref: RefObject<HTMLDivElement | null> = useRef(null);
+
+  useEffect(() => {
+    const box = ref.current;
+    if (box) box.scrollTop = box.scrollHeight;
+  }, [text]);
+
+  return (
+    <div
+      aria-label="현재 차례 주자의 실시간 입력"
+      aria-live="off"
+      className="h-[108px] w-full overflow-y-auto border border-dashed border-[#3f3f3f] bg-[#111111] p-3 text-[13px] leading-[1.6] whitespace-pre-wrap text-[#a3a3a3]"
+      ref={ref}
+      role="log"
+    >
+      {text ? (
+        <>
+          {text}
+          <span aria-hidden="true" className="animate-pulse text-[#d6ff50]">
+            ▍
+          </span>
+        </>
+      ) : (
+        <span className="text-[#555]">아직 입력이 없습니다…</span>
+      )}
+    </div>
+  );
+}
+
 /* ---------- 문제 명세 ---------- */
 
 /** 문제 명세 마크다운. ProblemDetailPage의 PROBLEM 탭과 같은 시각 규칙을 따른다. */
 function ProblemSpec({ specMd }: { specMd: string }) {
   return (
-    <div className="max-w-full text-[13px] leading-[1.7] text-[#a3a3a3] [overflow-wrap:anywhere] [&_pre]:max-w-full [&_pre]:whitespace-pre-wrap">
+    <div className="max-w-full text-[13px] leading-[1.7] text-[#a3a3a3] [overflow-wrap:anywhere] [&_pre]:max-w-full [&_pre]:whitespace-pre-wrap [&_pre_code]:bg-transparent [&_pre_code]:p-0">
       <ReactMarkdown
         components={{
           h1: ({ children }) => (
@@ -888,7 +1126,45 @@ function ProblemSpec({ specMd }: { specMd: string }) {
           h6: ({ children }) => <h6 className="font-bold text-[#f5f5ef]">{children}</h6>,
           hr: () => <hr className="my-4 border-0 border-t border-[#777]" />,
           p: ({ children }) => <p className="m-0">{children}</p>,
+          // preflight가 목록의 불릿·번호·들여쓰기를 지운다 — 매핑이 없으면 명세의
+          // 조건 나열이 그냥 줄글로 보인다.
+          ul: ({ children }) => <ul className="my-2 list-disc pl-5">{children}</ul>,
+          ol: ({ children }) => <ol className="my-2 list-decimal pl-5">{children}</ol>,
+          li: ({ children }) => <li className="my-1">{children}</li>,
+          blockquote: ({ children }) => (
+            <blockquote className="my-3 border-0 border-l-2 border-[#343434] pl-3">
+              {children}
+            </blockquote>
+          ),
+          // preflight가 a의 색과 밑줄도 지워 링크가 본문에 묻힌다.
+          a: ({ children, href }) => (
+            <a className="text-[#d6ff50] underline" href={href} rel="noreferrer" target="_blank">
+              {children}
+            </a>
+          ),
+          code: ({ children }) => (
+            <code className="bg-[#202020] px-1 py-0.5 text-[12px] text-[#e3e3dd]">
+              {children}
+            </code>
+          ),
+          // 표는 셀 수만큼 넓어져 본문 폭을 밀어낸다 — 표만 따로 가로 스크롤시킨다.
+          table: ({ children }) => (
+            <div className="my-3 max-w-full overflow-x-auto">
+              <table className="w-full border-collapse text-[12px] whitespace-normal">
+                {children}
+              </table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="border border-[#343434] px-2.5 py-1.5 text-left font-bold text-[#f5f5ef]">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="border border-[#343434] px-2.5 py-1.5 align-top">{children}</td>
+          ),
         }}
+        remarkPlugins={[remarkGfm]}
       >
         {specMd}
       </ReactMarkdown>
@@ -924,7 +1200,7 @@ function RelayFileExplorer({
               className="flex min-h-7 items-center gap-2 whitespace-nowrap font-mono text-[12px] text-[#a3a3a3]"
               style={{ paddingLeft: `${8 + depth * 14}px` }}
             >
-              <span aria-hidden="true" className="text-[10px] text-[#777]">▼</span>
+              <span aria-hidden="true" className="text-[10px] text-[#a3a3a3]">▼</span>
               <span aria-hidden="true" className="text-[#d6ff50]">▱</span>
               <span>{node.name}</span>
             </div>
@@ -956,14 +1232,16 @@ function RelayFileExplorer({
       );
     });
 
+  // min-h-0이면 사이드바가 빡빡할 때 탐색기가 0까지 쪼그라들어 사라진다 — 최소
+  // 높이를 지키고, 넘치는 몫은 사이드바의 세로 스크롤로 넘긴다.
   return (
-    <section className="flex min-h-0 flex-1 flex-col border-t border-[#343434] pt-4 max-[900px]:max-h-[320px] max-[900px]:min-h-[180px]">
-      <div className={labelClasses}>FILE EXPLORER</div>
+    <section className="flex min-h-[180px] flex-1 flex-col border-t border-[#343434] pt-4 max-[900px]:max-h-[320px]">
+      <div className={koreanLabelClasses}>파일 탐색기</div>
       <div className="workspace-scrollbar mt-[18px] min-h-0 flex-1 overflow-auto">
         {fileTree.length > 0 ? (
           <div className="w-max min-w-full">{renderNodes(fileTree)}</div>
         ) : (
-          <p className="m-0 px-4 py-3 font-mono text-[11px] text-[#666]">
+          <p className="m-0 px-4 py-3 font-mono text-[11px] text-[#a3a3a3]">
             파일을 불러오는 중…
           </p>
         )}
@@ -974,22 +1252,34 @@ function RelayFileExplorer({
 
 function CodePanel({
   code,
+  previousCode,
   selectedPath,
 }: {
   code: ReturnType<typeof useRelayRoom>['code'];
+  previousCode: ReturnType<typeof useRelayRoom>['previousCode'];
   selectedPath: string | null;
 }) {
   const files = code?.files ?? [];
   const selected =
     files.find((file) => file.path === selectedPath) ?? files[0] ?? null;
+  // 마지막 턴이 바꾼 곳의 강조. 기준선이 없으면(게임 중간 입장 직후) 강조 없이 그린다.
+  const diff = useMemo(() => {
+    if (!selected || !previousCode) return undefined;
+
+    const before =
+      previousCode.files.find((file) => file.path === selected.path)?.content ??
+      null;
+    return diffLines(before, selected.content);
+  }, [previousCode, selected]);
 
   return (
     <section className="flex min-h-0 flex-col overflow-hidden border-r border-[#343434] px-6 py-[22px] max-[900px]:min-h-[420px] max-[900px]:border-r-0 max-[900px]:border-b">
       <div className="mb-5 flex items-start justify-between gap-[18px]">
-        <div className={labelClasses}>{selected?.path ?? 'FILE'}</div>
-        <div className="flex shrink-0 gap-2 font-mono text-[9px] text-[#a3a3a3]">
-          <span className="border border-[#494949] px-2 py-1.5">READ ONLY</span>
-          <span className="border border-[#494949] px-2 py-1.5">
+        <div className={selected ? labelClasses : koreanLabelClasses}>{selected?.path ?? '파일'}</div>
+        <div className="flex shrink-0 gap-2 text-[9px] text-[#a3a3a3]">
+          {/* 테두리 상자는 이 앱의 버튼 생김새다 — 상태 표시는 채움 배경으로 구분한다. */}
+          <span className="bg-[#202020] px-2 py-1.5">읽기 전용</span>
+          <span className="bg-[#202020] px-2 py-1.5">
             {code ? `${code.appliedTurns}턴 반영` : '로딩 중'}
           </span>
         </div>
@@ -999,11 +1289,14 @@ function CodePanel({
         {selected ? (
           <CodeViewer
             code={selected.content}
+            diff={diff}
             gutterWidth="2.5rem"
+            // 파일이나 턴이 바뀌면 펼쳐 둔 삭제 마커를 리셋한다.
+            key={`${selected.path}#${code?.appliedTurns ?? 0}`}
             path={selected.path}
           />
         ) : (
-          <div className="grid h-full place-items-center font-mono text-[11px] text-[#666]">
+          <div className="grid h-full place-items-center font-mono text-[11px] text-[#a3a3a3]">
             코드를 불러오는 중…
           </div>
         )}
@@ -1083,20 +1376,20 @@ function FinishedView({
       style={{ width: contentWidth }}
     >
       <header className="flex items-baseline justify-between gap-6 max-[640px]:gap-4">
-        <div className="min-w-0">
-          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-            RELAY FEEDBACK
-          </h1>
+        <h1 className="page-title m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--relay-acid)]">
+          릴레이 피드백
+        </h1>
+        <div className="flex min-w-0 items-baseline justify-end gap-3">
+          <span className="shrink-0 text-[28px] font-bold text-[#f5f5ef]">
+            방 #{room.roomId}
+          </span>
           {/* 이름 도입 전에 만들어진 방은 name이 없다 — 그때는 방 번호만으로 충분하다. */}
           {room.name && (
-            <p className="mt-2 mb-0 truncate text-[16px] font-bold tracking-[-0.02em]">
+            <span className="truncate text-[16px] font-bold tracking-[-0.02em]">
               「{room.name}」
-            </p>
+            </span>
           )}
         </div>
-        <span className="shrink-0 text-right font-mono text-[28px] font-bold tracking-[0.06em] text-[#f5f5ef]">
-          ROOM #{room.roomId}
-        </span>
       </header>
 
       <div
@@ -1108,8 +1401,8 @@ function FinishedView({
       >
         <section className="border border-[#393939] bg-transparent">
           <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
-            <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
-              SCOREBOARD
+            <h2 className="m-0 text-xl leading-[1.4] font-bold text-[#d6ff50]">
+              점수판
             </h2>
           </div>
           <div className="px-6 py-5 max-[760px]:px-5">
@@ -1122,7 +1415,7 @@ function FinishedView({
                     className="flex items-center gap-3 border-b border-[#393939] px-2 py-3 font-mono text-sm last:border-b-0"
                     key={participant.userId}
                   >
-                    <span className="text-[#666]">
+                    <span className="text-[#a3a3a3]">
                       #{(participant.seatOrder ?? 0) + 1}
                     </span>
                     <span>{participant.nickname}</span>
@@ -1144,8 +1437,8 @@ function FinishedView({
         {feedback && (
           <section className="border border-[#393939] bg-transparent [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]">
             <div className="flex min-h-[58px] items-center border-b border-[#393939] px-6 max-[760px]:px-5">
-              <h2 className="m-0 font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
-                OVERALL.MD
+              <h2 className="m-0 text-xl leading-[1.4] font-bold text-[#d6ff50]">
+                총평
               </h2>
             </div>
             <div className="px-6 pb-7 [&>div>h2:first-child]:border-t-0 [&>div>h2:first-child]:pt-0 max-[760px]:px-5 max-[760px]:pb-5">
@@ -1180,12 +1473,14 @@ function FinishedView({
           className="border border-[#393939] bg-[#121212] [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]"
         >
           <div className="grid min-h-[58px] grid-cols-[220px_40px_minmax(0,1fr)_40px] border-b border-[#393939] max-[760px]:grid-cols-[40px_minmax(0,1fr)_40px]">
-            <span className="grid place-items-center border-r border-[#393939] bg-[#121212] px-[22px] text-center font-mono text-xl leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50] max-[760px]:hidden">
-              TURN FEEDBACK
+            {/* 라이트 모드에서 랭킹 상단바와 같은 조합이 된다 — 조작부는 회색으로 물러나고
+                고른 턴만 본문 색으로 선다. 다크 모드는 지금까지처럼 연두다. */}
+            <span className="grid place-items-center border-r border-[#393939] bg-[#121212] px-[22px] text-center text-xl leading-[1.4] font-bold text-[var(--relay-turn-chrome)] max-[760px]:hidden">
+              턴별 피드백
             </span>
             <button
               aria-label="이전 턴 피드백 보기"
-              className="cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
+              className="cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[var(--relay-turn-chrome)] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
               disabled={selectedTurnPosition <= 0}
               onClick={() => moveSelectedTurn(-1)}
               type="button"
@@ -1202,10 +1497,10 @@ function FinishedView({
                 return (
                   <button
                     aria-selected={selected}
-                    className={`relative min-h-[58px] min-w-[100px] shrink-0 cursor-pointer border-0 bg-transparent px-3 font-mono text-sm font-bold tracking-[0.06em] whitespace-nowrap hover:text-[#f5f5ef] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:h-[3px] ${
+                    className={`relative min-h-[58px] min-w-[100px] shrink-0 cursor-pointer border-0 bg-transparent px-3 text-sm font-bold whitespace-nowrap hover:text-[#f5f5ef] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:h-[3px] ${
                       selected
-                        ? 'text-[#d6ff50] after:bg-[#d6ff50]'
-                        : 'text-[#a3a3a3] after:bg-transparent'
+                        ? 'text-[var(--relay-turn-selected)] after:bg-[var(--relay-turn-selected)]'
+                        : 'text-[var(--relay-turn-idle)] after:bg-transparent'
                     }`}
                     key={turn.turnIndex}
                     onClick={() => setSelectedTurnIndex(turn.turnIndex)}
@@ -1213,14 +1508,14 @@ function FinishedView({
                     tabIndex={selected ? 0 : -1}
                     type="button"
                   >
-                    TURN {String(turn.turnIndex + 1).padStart(2, '0')}
+                    턴 {turn.turnIndex + 1}
                   </button>
                 );
               })}
             </div>
             <button
               aria-label="다음 턴 피드백 보기"
-              className="cursor-pointer border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
+              className="cursor-pointer border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[var(--relay-turn-chrome)] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
               disabled={selectedTurnPosition >= feedback.turns.length - 1}
               onClick={() => moveSelectedTurn(1)}
               type="button"
@@ -1240,13 +1535,12 @@ function FinishedView({
                 role="tabpanel"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-                  <h2 className="m-0 font-mono text-lg leading-[1.4] font-bold tracking-[0.08em] text-[#d6ff50]">
-                    TURN {String(selectedFeedbackTurn.turnIndex + 1).padStart(2, '0')}{' '}
-                    FEEDBACK
+                  <h2 className="m-0 text-lg leading-[1.4] font-bold text-[#d6ff50]">
+                    턴 {selectedFeedbackTurn.turnIndex + 1} 피드백
                   </h2>
                   <div className="ml-auto flex flex-wrap items-baseline justify-end gap-3 font-mono text-[13px] font-bold">
                     <span className="text-[#f5f5ef]">{selectedFeedbackTurn.nickname}</span>
-                    <span className="text-[#777]">
+                    <span className="text-[#a3a3a3]">
                       {skipped
                         ? '건너뜀 (이탈 또는 시간 초과)'
                         : selectedFeedbackTurn.passedCount === null
@@ -1273,7 +1567,7 @@ function FinishedView({
                   {selectedFeedbackTurn.feedback ? (
                     <PromptFeedback feedback={selectedFeedbackTurn.feedback} />
                   ) : (
-                    <p className="m-0 font-mono text-xs text-[#777]">
+                    <p className="m-0 font-mono text-xs text-[#a3a3a3]">
                       제공된 피드백이 없습니다.
                     </p>
                   )}
@@ -1295,38 +1589,164 @@ function FinishedView({
 
 /* ---------- 음성 ---------- */
 
-function VoicePanel({
-  compact = false,
+/**
+ * 보이스 채널 패널. 참가해야 남의 소리가 들리고, 참가 후에는 마이크를
+ * 자유로 껐다 켠다. 참가 클릭(사용자 제스처)이 차단됐던 자동재생도 되살린다.
+ *
+ * 대기실은 framed(테두리 + "음성" 라벨) + stacked로 그린다 — 참가 버튼이 두 버튼
+ * 높이의 자리를 통째로 차지하다가, 참가하면 위(마이크)/아래(나가기)로 갈라진다.
+ * 자리 크기가 그대로라 참가 전후로 주변 레이아웃이 흔들리지 않는다.
+ */
+function VoiceChannelPanel({
+  className = '',
+  framed = false,
   labelClassName = smallLabelClasses,
   rtc,
+  stacked = false,
 }: {
-  compact?: boolean;
+  className?: string;
+  framed?: boolean;
   labelClassName?: string;
+  rtc: ReturnType<typeof useRelayRtc>;
+  stacked?: boolean;
+}) {
+  const controls = stacked ? (
+    <div className="grid h-[76px] w-[200px] grid-rows-2 gap-1 max-[640px]:w-full">
+      {rtc.voiceJoined ? (
+        <>
+          <VoiceMicButton rtc={rtc} />
+          <VoiceLeaveButton rtc={rtc} />
+        </>
+      ) : (
+        <VoiceJoinButton className="row-span-2" rtc={rtc} />
+      )}
+    </div>
+  ) : rtc.voiceJoined ? (
+    <div className="flex gap-2">
+      <VoiceMicButton className="flex-1" rtc={rtc} />
+      <VoiceLeaveButton rtc={rtc} />
+    </div>
+  ) : (
+    <VoiceJoinButton rtc={rtc} />
+  );
+
+  return (
+    <section
+      className={`${
+        framed
+          ? 'grid content-start gap-2 border border-[#2c2c2c] px-4 py-3'
+          : 'grid gap-2'
+      } ${className}`}
+    >
+      {framed && <span className={labelClassName}>음성</span>}
+      {controls}
+      {/* 안내와 에러가 한 줄을 늘 차지한다 — 참가 전후로 박스 높이가 변하지 않게. */}
+      <p
+        className={`m-0 min-h-[16px] font-mono text-[10px] ${
+          rtc.audioError ? 'text-[#ff786b]' : 'text-[#a3a3a3]'
+        }`}
+      >
+        {rtc.audioError ??
+          (rtc.voiceJoined ? '' : '참가하면 방 사람들의 음성이 들립니다.')}
+      </p>
+    </section>
+  );
+}
+
+function VoiceJoinButton({
+  className = '',
+  rtc,
+}: {
+  className?: string;
   rtc: ReturnType<typeof useRelayRtc>;
 }) {
   return (
-    <section
-      className={
-        compact ? 'grid gap-2' : 'grid gap-2 border border-[#2c2c2c] px-4 py-3'
-      }
+    <button
+      className={`${voiceButtonClasses(false)} ${className}`}
+      onClick={() => rtc.joinVoice()}
+      type="button"
     >
-      {!compact && <span className={labelClassName}>VOICE</span>}
-      <button
-        className={[
-          'cursor-pointer border px-3 py-2 font-mono text-[11px] font-bold',
-          rtc.audioOn
-            ? 'border-[#d6ff50] bg-[#d6ff50] text-[#090909]'
-            : 'border-[#3f3f3f] bg-transparent text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]',
-        ].join(' ')}
-        onClick={() => void rtc.toggleAudio()}
-        type="button"
-      >
-        {rtc.audioOn ? '🎤 마이크 끄기' : '🎤 마이크 켜기'}
-      </button>
-      {rtc.audioError && (
-        <p className="m-0 font-mono text-[10px] text-[#ff786b]">{rtc.audioError}</p>
+      🎧 보이스 채널 참가
+    </button>
+  );
+}
+
+function VoiceMicButton({
+  className = '',
+  rtc,
+}: {
+  className?: string;
+  rtc: ReturnType<typeof useRelayRtc>;
+}) {
+  return (
+    <button
+      className={`${voiceButtonClasses(rtc.micOn)} ${className}`}
+      onClick={() => void rtc.toggleMic()}
+      type="button"
+    >
+      {rtc.micOn ? '🎤 마이크 끄기' : '🔇 마이크 켜기'}
+    </button>
+  );
+}
+
+function VoiceLeaveButton({
+  className = '',
+  rtc,
+}: {
+  className?: string;
+  rtc: ReturnType<typeof useRelayRtc>;
+}) {
+  return (
+    <button
+      className={`${voiceButtonClasses(false)} ${className}`}
+      onClick={() => rtc.leaveVoice()}
+      title="보이스 채널 나가기"
+      type="button"
+    >
+      🎧 나가기
+    </button>
+  );
+}
+
+/** 보이스 채널 참가 표시. 마이크를 끈 참가자는 흐리게 그린다. */
+function VoiceChannelBadge({ joined, micOn }: { joined: boolean; micOn: boolean }) {
+  if (!joined) return null;
+
+  const label = micOn ? '보이스 참가 중 · 마이크 켬' : '보이스 참가 중 · 마이크 끔';
+  return (
+    <span
+      aria-label={label}
+      className={micOn ? 'text-[11px]' : 'text-[11px] opacity-40'}
+      role="img"
+      title={label}
+    >
+      🎧
+    </span>
+  );
+}
+
+function voiceButtonClasses(active: boolean): string {
+  return [
+    'cursor-pointer border px-3 py-2 text-[11px] font-bold',
+    active
+      ? 'border-[#d6ff50] bg-[#d6ff50] text-[#090909]'
+      : 'border-[#3f3f3f] bg-transparent text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]',
+  ].join(' ');
+}
+
+/**
+ * 발화 중 표시. 자리를 항상 차지해(고정 폭) 나타났다 사라져도 옆 요소가 밀리지 않는다.
+ * 판정은 useRelayRtc가 음량으로 한다 — 이 컴포넌트는 boolean을 그릴 뿐이다.
+ */
+function SpeakingBadge({ speaking }: { speaking: boolean }) {
+  return (
+    <span className="inline-flex w-4 shrink-0 justify-center text-[11px]">
+      {speaking && (
+        <span aria-label="발화 중" role="img">
+          🔊
+        </span>
       )}
-    </section>
+    </span>
   );
 }
 
@@ -1358,32 +1778,48 @@ function VoiceDot({
 
 /**
  * 피어들의 음성 출력. 화면에 보이지 않지만 stream이 있는 피어마다 하나씩 재생한다.
- * ref 콜백에서 srcObject를 잇는다 — audio 엘리먼트는 속성으로 스트림을 못 받는다.
+ * enabled가 꺼져 있으면 음소거로 돌린다 — 엘리먼트를 떼지 않아야 채널 참가 순간
+ * 이미 흐르던 스트림이 그대로 들린다.
  */
-function PeerAudios({ peers }: { peers: Map<number, RelayPeerView> }) {
+function PeerAudios({
+  enabled,
+  peers,
+}: {
+  enabled: boolean;
+  peers: Map<number, RelayPeerView>;
+}) {
   return (
     <>
       {[...peers.values()]
         .filter((peer) => peer.stream !== null)
         .map((peer) => (
-          <PeerAudio key={peer.userId} stream={peer.stream as MediaStream} />
+          <PeerAudio
+            enabled={enabled}
+            key={peer.userId}
+            stream={peer.stream as MediaStream}
+          />
         ))}
     </>
   );
 }
 
-function PeerAudio({ stream }: { stream: MediaStream }) {
+function PeerAudio({ enabled, stream }: { enabled: boolean; stream: MediaStream }) {
   const ref: RefObject<HTMLAudioElement | null> = useRef(null);
 
+  // ref 콜백이 아니라 effect에서 잇는다 — audio 엘리먼트는 속성으로 스트림을 못 받는다.
+  // enabled가 켜질 때 play를 다시 시도한다: 채널 참가 클릭이 사용자 제스처라
+  // 그전에 자동재생이 차단됐던 스트림도 이 재시도에서 살아난다.
   useEffect(() => {
     const audio = ref.current;
-    if (audio) {
-      audio.srcObject = stream;
+    if (!audio) return;
+    audio.srcObject = stream;
+    audio.muted = !enabled;
+    if (enabled) {
       void audio.play().catch(() => {
-        // 자동재생이 차단된 경우다. 사용자가 페이지와 상호작용하면 다음 스트림부터 재생된다.
+        // 여전히 차단된 경우다. 다음 상호작용 뒤의 enabled/stream 변화가 살린다.
       });
     }
-  }, [stream]);
+  }, [enabled, stream]);
 
-  return <audio autoPlay ref={ref} />;
+  return <audio autoPlay muted={!enabled} ref={ref} />;
 }

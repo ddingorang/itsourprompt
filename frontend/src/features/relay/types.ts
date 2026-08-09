@@ -47,6 +47,8 @@ export interface RelayRoomSummary {
   participantCount: number;
   maxParticipants: number;
   totalLaps: number;
+  /** 한 턴의 입력 제한시간(초). */
+  turnTimeLimitSeconds: number;
   createdAt: string;
 }
 
@@ -64,6 +66,8 @@ export interface RelayRoom {
   status: RelayRoomStatus;
   totalLaps: number;
   maxParticipants: number;
+  /** 한 턴의 입력 제한시간(초). 방장이 개설 시 정하지 않았으면 서버 기본값(120)이 채워져 있다. */
+  turnTimeLimitSeconds: number;
   /** 시작 시점에 확정된 좌석 수. 시작 전에는 null. */
   seatCount: number | null;
   /** 릴레이 진행 인덱스(0-based). 좌석은 seatCount로 나눈 나머지, 바퀴는 몫. */
@@ -226,4 +230,5 @@ export type RelaySignalType = 'signal.offer' | 'signal.answer' | 'signal.ice';
 /** DataChannel로 피어끼리 직접 주고받는 메시지. 서버는 이 채널을 모른다. */
 export type RelayDataMessage =
   | { kind: 'typing'; text: string }
-  | { kind: 'reaction'; emoji: string };
+  | { kind: 'reaction'; emoji: string }
+  | { kind: 'voice'; joined: boolean; micOn: boolean };

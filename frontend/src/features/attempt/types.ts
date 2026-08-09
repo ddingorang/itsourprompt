@@ -65,6 +65,26 @@ export interface Attempt {
   files: RepositoryFile[];
   turns: Turn[];
   status: AttemptStatus;
+  /**
+   * 주인의 표시 이름. 로그인 사용자는 닉네임, 게스트는 세션 UUID 앞 네 자다 —
+   * 응답만으로는 둘을 구분할 수 없으므로 `게스트` 같은 접두어는 붙이지 않는다.
+   *
+   * null이 되는 경우가 둘이다. **생성(POST /api/attempts) 응답은 항상 null이다** —
+   * 그 경로는 방금 쓴 엔티티로 응답을 만들어 닉네임을 조인하지 않는다(턴 추가와
+   * 조회는 채워 준다). 그래서 생성 직후 화면에서 이름을 그리면 로그인 사용자에게도
+   * 빈칸이 나온다. 나머지 하나는 **소유자 없는 과거 기록** — 소유자 컬럼이 생기기
+   * 전에 쌓인 행이라 주인을 알 수 없다.
+   *
+   * 즉 조회 응답이라고 해서 값이 있다고 단정할 수 없다.
+   */
+  ownerLabel: string | null;
+  /**
+   * 요청자 본인의 어템프트인지. **현재 백엔드 AttemptResponse는 이 필드를 싣지 않아
+   * undefined가 온다** — apiRequest는 응답을 검증 없이 캐스팅하므로 타입만 믿으면
+   * 모든 풀이가 남의 것으로 보인다. 값이 없으면 "모른다"로 다루고, 남의 것이라고
+   * 명시(false)될 때만 잠근다.
+   */
+  mine?: boolean;
   usage?: AttemptTokenUsage | null;
 }
 
@@ -96,6 +116,29 @@ export interface AttemptFeedback {
   turns: TurnFeedback[];
   overallMd: string;
   patternOverallMd: string | null;
+  /** 걸리는 습관이 없는 세션이면 null이다. 그때는 아무것도 그리지 않는다. */
+  carry: CarryLine | null;
+}
+
+/**
+ * 다음 문제의 상시 지시 파일에 붙여넣을 규칙 한 줄.
+ *
+ * 두 렌즈와 다르다 — 저 둘은 LLM이 쓴 문장이고 이건 어템프트를 읽은 순수 계산의 결과다.
+ * 읽는 사람도 다르다. 렌즈는 사용자에게 말하고, rule은 사용자의 AI에게 할 지시다.
+ * 그래서 문단이 아니라 복사해 갈 물건으로 그린다.
+ */
+export interface CarryLine {
+  /** 이 줄을 고른 신호의 키. 화면에 쓰지 않는다. */
+  signal: string;
+  /**
+   * 지시 파일에 그대로 붙여넣을 한 줄. 도구 중립이라 파일 이름이 들어 있지 않다.
+   *
+   * 다른 피드백 필드와 달리 Markdown이 아니다 — 사용자가 그대로 복사해 가므로 화면에 보이는
+   * 것과 클립보드에 담기는 것이 같아야 한다. Markdown으로 렌더하지 말 것.
+   */
+  rule: string;
+  /** 왜 이 줄인지. BE가 센 값으로 조립하는 평문 한 문장이다. */
+  reason: string;
 }
 
 export type CodeRunStatus =

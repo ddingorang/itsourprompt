@@ -44,6 +44,11 @@ export interface RelayRoomState {
   joinError: string | null;
   socketStatus: RelaySocketStatus;
   code: RelayCode | null;
+  /**
+   * 마지막 턴이 반영되기 직전의 코드. 코드 패널이 "이번 턴이 무엇을 바꿨는지"
+   * diff를 그리는 기준선이다. 게임 중간에 들어와 아직 새 턴을 못 본 동안은 null.
+   */
+  previousCode: RelayCode | null;
   turns: RelayTurnRecord[];
   /** 가장 최근에 끝난 턴의 요약. 대기자 화면의 "방금 무슨 일이 있었나". */
   lastTurn: RelayTurnSummary | null;
@@ -100,6 +105,7 @@ export function useRelayRoom(
     lastGrading: null,
     lastSkip: null,
     lastTurn: null,
+    previousCode: null,
     room: null,
     socketStatus: 'connecting',
     submitError: null,
@@ -116,7 +122,16 @@ export function useRelayRoom(
     try {
       const code = await getRelayCode(roomId);
       codeLoadedRef.current = true;
-      setState((prev) => ({ ...prev, code }));
+      // 턴이 새로 반영됐을 때만 직전 코드를 기준선으로 남긴다 — 같은 턴의 재조회
+      // (room.state 재시도 등)에 기준선을 덮으면 diff가 통째로 사라진다.
+      setState((prev) => ({
+        ...prev,
+        code,
+        previousCode:
+          prev.code && code.appliedTurns > prev.code.appliedTurns
+            ? prev.code
+            : prev.previousCode,
+      }));
     } catch {
       // 게임 시작 전(409)이거나 일시 실패다. room.state·turn.finished가 다시 시도한다.
     }

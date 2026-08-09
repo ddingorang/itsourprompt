@@ -11,6 +11,7 @@
 # Gradle build output
 **/.gradle/
 **/build/
+**/bin/
 
 # 로컬 실행 로그. logging.file.name 기본값이 ./logs/backend.log 라 작업 트리 안에 생긴다.
 logs/

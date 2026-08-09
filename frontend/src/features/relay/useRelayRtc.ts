@@ -26,6 +26,12 @@ export interface RelayPeerView {
   reaction: string | null;
   /** 이 피어의 음성 스트림. 오디오를 켠 피어만 값이 있다. */
   stream: MediaStream | null;
+  /** 지금 말하는 중인가. 수신 스트림의 음량을 로컬에서 재서 판정한다. */
+  speaking: boolean;
+  /** 보이스 채널에 참가 중인가. DataChannel의 voice 메시지로 안다. */
+  voiceJoined: boolean;
+  /** 참가 중일 때 마이크를 켰는가. */
+  micOn: boolean;
 }
 
 interface PeerEntry {
@@ -36,19 +42,44 @@ interface PeerEntry {
 
 const REACTION_VISIBLE_MS = 3000;
 
+/* 발화 감지. 임계값 하나로 켜고 끄면 말끝마다 깜빡이므로,
+   임계값을 넘긴 시각을 기억했다가 일정 시간 조용해야 끈다(히스테리시스). */
+const SPEAKING_LEVEL = 0.02;
+const SPEAKING_HOLD_MS = 400;
+const SPEAKING_POLL_MS = 200;
+/** 내 마이크의 probe 키. 피어 userId와 겹치지 않는 값이면 된다. */
+const SELF_PROBE_KEY = -1;
+
+interface VoiceProbe {
+  source: MediaStreamAudioSourceNode;
+  analyser: AnalyserNode;
+  buffer: Uint8Array<ArrayBuffer>;
+  lastLoudAt: number;
+  speaking: boolean;
+}
+
 export function useRelayRtc(
   myUserId: number | null,
   sendSignal: (type: RelaySignalType, targetUserId: number, payload: unknown) => void,
 ) {
   const [peers, setPeers] = useState<Map<number, RelayPeerView>>(new Map());
-  const [audioOn, setAudioOn] = useState(false);
+  /* 보이스 채널 모델: 참가(voiceJoined)해야 남의 소리가 들리고, 참가 중에만
+     마이크(micOn)를 껐다 켠다. */
+  const [voiceJoined, setVoiceJoined] = useState(false);
+  const [micOn, setMicOn] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
+  /** 내가 말하는 중인가. 내 항목은 peers에 없으므로 따로 든다 — 마이크가 실제로 잡히는지의 셀프 모니터. */
+  const [mySpeaking, setMySpeaking] = useState(false);
 
   const entriesRef = useRef<Map<number, PeerEntry>>(new Map());
   const iceServersRef = useRef<RTCIceServer[]>([]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const myIdRef = useRef<number | null>(myUserId);
   const reactionTimersRef = useRef<Map<number, number>>(new Map());
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const probesRef = useRef<Map<number, VoiceProbe>>(new Map());
+  /** 브로드캐스트용 내 보이스 상태. 새로 열리는 채널(onopen)에도 이 값을 알린다. */
+  const voiceStateRef = useRef({ joined: false, micOn: false });
 
   useEffect(() => {
     myIdRef.current = myUserId;
@@ -75,12 +106,16 @@ export function useRelayRtc(
 
     const entries = entriesRef.current;
     const timers = reactionTimersRef.current;
+    const probes = probesRef.current;
 
     return () => {
       entries.forEach((entry) => entry.connection.close());
       entries.clear();
       timers.forEach((timer) => window.clearTimeout(timer));
       localStreamRef.current?.getTracks().forEach((track) => track.stop());
+      probes.clear();
+      void audioContextRef.current?.close().catch(() => {});
+      audioContextRef.current = null;
     };
   }, []);
 
@@ -90,10 +125,13 @@ export function useRelayRtc(
         const next = new Map(prev);
         const current = next.get(userId) ?? {
           connectionState: 'new' as RTCPeerConnectionState,
+          micOn: false,
           reaction: null,
+          speaking: false,
           stream: null,
           typing: '',
           userId,
+          voiceJoined: false,
         };
         next.set(userId, { ...current, ...patch });
         return next;
@@ -102,26 +140,103 @@ export function useRelayRtc(
     [],
   );
 
-  const dropPeer = useCallback((userId: number) => {
-    entriesRef.current.get(userId)?.connection.close();
-    entriesRef.current.delete(userId);
-    setPeers((prev) => {
-      const next = new Map(prev);
-      next.delete(userId);
-      return next;
-    });
+  const detachProbe = useCallback((key: number) => {
+    const probe = probesRef.current.get(key);
+    if (!probe) return;
+    probe.source.disconnect();
+    probesRef.current.delete(key);
   }, []);
+
+  const attachProbe = useCallback(
+    (key: number, stream: MediaStream) => {
+      detachProbe(key);
+      if (stream.getAudioTracks().length === 0) return;
+
+      // 사용자 제스처 밖(ontrack)에서 만들어지면 suspended일 수 있다 — 폴링 쪽에서 되살린다.
+      audioContextRef.current ??= new AudioContext();
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      const analyser = audioContextRef.current.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser); // destination에는 잇지 않는다 — 재생은 PeerAudios의 몫이다.
+      probesRef.current.set(key, {
+        analyser,
+        buffer: new Uint8Array(analyser.fftSize),
+        lastLoudAt: 0,
+        source,
+        speaking: false,
+      });
+    },
+    [detachProbe],
+  );
+
+  // 발화 판정 폴링. 음량(RMS)이 임계값을 넘긴 지 SPEAKING_HOLD_MS 안이면 발화 중으로 본다.
+  // 상태 갱신은 판정이 뒤집힐 때만 — 200ms마다 리렌더가 나지 않게.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const context = audioContextRef.current;
+      if (!context || probesRef.current.size === 0) return;
+      if (context.state === 'suspended') void context.resume();
+
+      const now = Date.now();
+      probesRef.current.forEach((probe, key) => {
+        probe.analyser.getByteTimeDomainData(probe.buffer);
+        let sum = 0;
+        for (const sample of probe.buffer) {
+          const deviation = (sample - 128) / 128;
+          sum += deviation * deviation;
+        }
+        if (Math.sqrt(sum / probe.buffer.length) >= SPEAKING_LEVEL) {
+          probe.lastLoudAt = now;
+        }
+
+        const speaking = now - probe.lastLoudAt < SPEAKING_HOLD_MS;
+        if (speaking === probe.speaking) return;
+        probe.speaking = speaking;
+
+        if (key === SELF_PROBE_KEY) setMySpeaking(speaking);
+        else patchPeer(key, { speaking });
+      });
+    }, SPEAKING_POLL_MS);
+
+    return () => window.clearInterval(timer);
+  }, [patchPeer]);
+
+  const dropPeer = useCallback(
+    (userId: number) => {
+      detachProbe(userId);
+      entriesRef.current.get(userId)?.connection.close();
+      entriesRef.current.delete(userId);
+      setPeers((prev) => {
+        const next = new Map(prev);
+        next.delete(userId);
+        return next;
+      });
+    },
+    [detachProbe],
+  );
 
   const wireChannel = useCallback(
     (userId: number, channel: RTCDataChannel) => {
       const entry = entriesRef.current.get(userId);
       if (entry) entry.channel = channel;
 
+      // 채널이 열리면 내 보이스 상태를 알린다 — 뒤늦게 붙은 피어도 내 🎧 표시를 본다.
+      channel.onopen = () => {
+        const { joined, micOn: micState } = voiceStateRef.current;
+        if (!joined) return;
+        channel.send(JSON.stringify({ joined, kind: 'voice', micOn: micState }));
+      };
+
       channel.onmessage = (message: MessageEvent<string>) => {
         const data = JSON.parse(message.data) as RelayDataMessage;
 
         if (data.kind === 'typing') {
           patchPeer(userId, { typing: data.text });
+          return;
+        }
+
+        if (data.kind === 'voice') {
+          patchPeer(userId, { micOn: data.micOn, voiceJoined: data.joined });
           return;
         }
 
@@ -171,7 +286,9 @@ export function useRelayRtc(
 
       connection.ondatachannel = ({ channel }) => wireChannel(userId, channel);
       connection.ontrack = ({ streams }) => {
-        patchPeer(userId, { stream: streams[0] ?? null });
+        const stream = streams[0] ?? null;
+        patchPeer(userId, { stream });
+        if (stream) attachProbe(userId, stream);
       };
 
       if (initiator) {
@@ -277,6 +394,21 @@ export function useRelayRtc(
     [broadcastData],
   );
 
+  /**
+   * 모든 피어의 typing을 비운다. 제출한 입력자는 스스로 ''를 보내지만, 시간 초과로
+   * 턴이 건너뛰어지면 못 비운다 — 턴 경계마다 이걸 불러 지난 턴의 잔상을 지운다.
+   */
+  const resetTyping = useCallback(() => {
+    setPeers((prev) => {
+      if (![...prev.values()].some((peer) => peer.typing !== '')) return prev;
+      const next = new Map(prev);
+      next.forEach((peer, userId) => {
+        if (peer.typing !== '') next.set(userId, { ...peer, typing: '' });
+      });
+      return next;
+    });
+  }, []);
+
   const sendReaction = useCallback(
     (emoji: string) => {
       broadcastData({ emoji, kind: 'reaction' });
@@ -297,37 +429,94 @@ export function useRelayRtc(
     [broadcastData, myUserId, patchPeer],
   );
 
-  const toggleAudio = useCallback(async () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      localStreamRef.current = null;
-      setAudioOn(false);
-      // 트랙 제거로 재협상을 걸기보다 연결은 유지한다 — 끈 마이크는 무음 트랙일 뿐이다.
+  const broadcastVoiceState = useCallback(
+    (joined: boolean, micState: boolean) => {
+      voiceStateRef.current = { joined, micOn: micState };
+      broadcastData({ joined, kind: 'voice', micOn: micState });
+    },
+    [broadcastData],
+  );
+
+  /** 마이크 캡처를 완전히 놓는다. 브라우저의 "마이크 사용 중" 표시도 함께 꺼진다. */
+  const releaseMic = useCallback(() => {
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current = null;
+    detachProbe(SELF_PROBE_KEY);
+    setMySpeaking(false);
+    setMicOn(false);
+    // 트랙 제거로 재협상을 걸기보다 연결은 유지한다 — 끊긴 트랙은 무음일 뿐이다.
+  }, [detachProbe]);
+
+  /** 듣기 전용으로 채널에 들어간다. 마이크 권한은 처음 마이크를 켤 때에야 묻는다. */
+  const joinVoice = useCallback(() => {
+    setVoiceJoined(true);
+    broadcastVoiceState(true, voiceStateRef.current.micOn);
+    // 참가 클릭이 사용자 제스처다 — 여기서 되살려 두면 발화 감지가 확실히 돈다.
+    void audioContextRef.current?.resume();
+  }, [broadcastVoiceState]);
+
+  const leaveVoice = useCallback(() => {
+    releaseMic();
+    setVoiceJoined(false);
+    broadcastVoiceState(false, false);
+  }, [broadcastVoiceState, releaseMic]);
+
+  /**
+   * 채널 참가 중의 마이크 토글. 끌 때 캡처를 놓지 않고 트랙만 무음으로 둔다 —
+   * 다시 켤 때 권한 팝업도 재협상도 없다. 캡처 해제는 leaveVoice가 한다.
+   */
+  const toggleMic = useCallback(async () => {
+    if (micOn) {
+      localStreamRef.current?.getAudioTracks().forEach((track) => {
+        track.enabled = false;
+      });
+      detachProbe(SELF_PROBE_KEY);
+      setMySpeaking(false);
+      setMicOn(false);
+      broadcastVoiceState(voiceStateRef.current.joined, false);
+      return;
+    }
+
+    const held = localStreamRef.current;
+    if (held) {
+      held.getAudioTracks().forEach((track) => {
+        track.enabled = true;
+      });
+      attachProbe(SELF_PROBE_KEY, held);
+      setMicOn(true);
+      broadcastVoiceState(voiceStateRef.current.joined, true);
       return;
     }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamRef.current = stream;
+      attachProbe(SELF_PROBE_KEY, stream);
       setAudioError(null);
-      setAudioOn(true);
+      setMicOn(true);
       entriesRef.current.forEach((entry) => {
         stream.getTracks().forEach((track) => {
           entry.connection.addTrack(track, stream); // 재협상 유발
         });
       });
+      broadcastVoiceState(voiceStateRef.current.joined, true);
     } catch {
       setAudioError('마이크를 사용할 수 없습니다. 브라우저 권한을 확인해 주세요.');
     }
-  }, []);
+  }, [attachProbe, broadcastVoiceState, detachProbe, micOn]);
 
   return {
     audioError,
-    audioOn,
     handleEvent,
+    joinVoice,
+    leaveVoice,
+    micOn,
+    mySpeaking,
     peers,
+    resetTyping,
     sendReaction,
     sendTyping,
-    toggleAudio,
+    toggleMic,
+    voiceJoined,
   };
 }
