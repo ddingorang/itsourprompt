@@ -2,7 +2,7 @@
 
 주니어 개발자가 **문제를 정의하는 능력**을 기르는 코딩 연습 서비스입니다. 코드를 직접 쓰지 않고, LLM에게 보낼 프롬프트만 써서 문제를 풉니다.
 
-배포: **https://i15a505.p.ssafy.io/**
+배포: **https://lets.promptpractice.run/**
 
 ![풀이 화면](docs/images/02-workspace.png)
 
