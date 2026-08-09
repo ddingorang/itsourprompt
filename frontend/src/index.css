@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* mono 스택에는 한글 글리프가 없어, font-mono를 쓴 자리의 한글이 윈도우에서 굴림으로
+   떨어진다. 폰트 폴백은 글자 단위라 한글 폰트를 끼워 넣으면 영문·숫자는 mono 그대로
+   두고 한글만 본문과 같은 Noto Sans KR로 그려진다.
+   자리가 중요하다 — generic(monospace)보다 뒤에 두면 소용이 없다. 윈도우는 generic을
+   실제 폰트로 바꾸는 순간 없는 글리프를 시스템 폰트(굴림)로 메워 버려서, CSS 목록의
+   다음 폰트까지 오지 않는다. Noto Sans KR은 라틴 문자도 갖고 있으므로 mono 폰트들보다
+   앞에 두면 안 된다. */
+@theme {
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', 'Noto Sans KR', monospace;
+}
+
 html,
 body,
 #root {
@@ -218,6 +230,7 @@ html { scroll-behavior: smooth; }
   --landing-muted: #a3a3a3;
   --landing-border: #343434;
   --landing-grid-opacity: .11;
+  --landing-grid-line: var(--acid);
   --landing-guest-bg: var(--acid);
   --landing-guest-copy: #282828;
   --landing-guest-eyebrow: #090909;
@@ -233,6 +246,8 @@ html { scroll-behavior: smooth; }
   --landing-muted: #585858;
   --landing-border: #c7c7c1;
   --landing-grid-opacity: .2;
+  /* 흰 바탕에서는 연두 격자가 배경 얼룩처럼 떠 보인다 — 라이트만 회색 선으로 깐다. */
+  --landing-grid-line: var(--landing-muted);
   --landing-guest-bg: #fff;
   --landing-guest-copy: #090909;
   --landing-guest-eyebrow: var(--acid);
@@ -305,7 +320,12 @@ html { scroll-behavior: smooth; }
 .landing-problem:hover, .landing-problem:focus-visible { padding-right: 14px; padding-left: 14px; background: var(--landing-surface-hover); outline: none; }
 .landing-problem:hover span:last-child, .landing-problem:focus-visible span:last-child { transform: translate(3px, -3px); }
 .landing-final { background: radial-gradient(circle at 50% 50%, var(--landing-surface) 0, var(--landing-bg) 58%); }
-.landing-final-grid { position: absolute; inset: -50%; opacity: var(--landing-grid-opacity); transform: perspective(600px) rotateX(62deg); background-image: linear-gradient(var(--acid) 1px, transparent 1px), linear-gradient(90deg, var(--acid) 1px, transparent 1px); background-size: 64px 64px; mask-image: radial-gradient(circle, #000 5%, transparent 58%); }
+/* 격자는 perspective로 눕힌 평면이라 칸 간격은 원근에 맞게 줄어드는데, 평면의 먼 쪽
+   끝이 화면 안(섹션 위에서 148px 자리)에서 뚝 끊겼다 — 원형 마스크가 그 자리에서
+   아직 29%쯤 남아 끝선이 그대로 보였고, 끝선 직전 줄들은 9~16px까지 눌려 64px 무늬를
+   7배로 줄인 탓에 간격이 고르지 않게 그려졌다. 세로 반지름을 평면의 끝보다 짧은
+   타원으로 바꿔, 끝선에 닿기 전에 완전히 사라지게 한다(가로 도달 거리는 그대로). */
+.landing-final-grid { position: absolute; inset: -50%; opacity: var(--landing-grid-opacity); transform: perspective(600px) rotateX(62deg); background-image: linear-gradient(var(--landing-grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--landing-grid-line) 1px, transparent 1px); background-size: 64px 64px; mask-image: radial-gradient(ellipse 58% 40% at 50% 50%, #000 6%, transparent 100%); }
 .landing-page footer { border-color: var(--landing-border); color: var(--landing-muted); }
 .landing-page ::selection { background: var(--acid); color: #090909; }
 .problem-list-page ::selection { background: var(--problem-list-acid); color: #090909; }
