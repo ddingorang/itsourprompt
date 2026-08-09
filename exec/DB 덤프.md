@@ -41,3 +41,8 @@
 
 - **backend/src/main/resources/schema.sql**에 존재
 - 서버 실행 시 sql 자동 실행됨
+
+### 4. 랭킹 더미 데이터(옵션)
+
+- **backend/scripts/seed-ranking-dummy.sql
+- 더미 데이터로 랭킹을 채우고 싶을 때 실행
