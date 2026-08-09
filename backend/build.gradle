@@ -6,7 +6,7 @@ plugins {
 
 group = 'com.promptstudio'
 version = '0.0.1-SNAPSHOT'
-description = 'prompt.practice backend'
+description = '모두의 프롬프트 백엔드'
 
 java {
     toolchain {

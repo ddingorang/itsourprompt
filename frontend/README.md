@@ -1,6 +1,6 @@
 # Frontend
 
-prompt.practice의 화면입니다. 서비스 전체 설명은 [루트 README](../README.md)에 있습니다.
+모두의 프롬프트의 화면입니다. 서비스 전체 설명은 [루트 README](../README.md)에 있습니다.
 
 ## 구조
 
