@@ -22,6 +22,10 @@ final class AttemptTables {
     static final Field<String> FEEDBACK = field(name("attempt", "feedback"), SQLDataType.CLOB);
     static final Field<String> PATTERN_FEEDBACK = field(name("attempt", "pattern_feedback"), SQLDataType.CLOB);
 
+    static final Table<?> USERS = table(name("users"));
+    static final Field<Long> USERS_ID = field(name("users", "id"), SQLDataType.BIGINT);
+    static final Field<String> USERS_NICKNAME = field(name("users", "nickname"), SQLDataType.VARCHAR);
+
     static final Table<?> ATTEMPT_FILE = table(name("attempt_file"));
     static final Field<Long> FILE_ATTEMPT_ID = field(name("attempt_file", "attempt_id"), SQLDataType.BIGINT);
     static final Field<Integer> FILE_ORDINAL = field(name("attempt_file", "ordinal"), SQLDataType.INTEGER);

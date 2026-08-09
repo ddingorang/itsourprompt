@@ -14,7 +14,6 @@ import com.promptstudio.user.domain.User;
 import com.promptstudio.user.repository.UserRepository;
 import jakarta.servlet.http.Cookie;
 import org.jooq.DSLContext;
-import org.jooq.Field;
 import org.jooq.impl.SQLDataType;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,10 +24,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.nullValue;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
@@ -71,7 +72,6 @@ class RankingApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.totalCount").value(2))
                 .andExpect(jsonPath("$.entries.length()").value(2))
                 .andExpect(jsonPath("$.entries[0].rank").value(1))
-                .andExpect(jsonPath("$.entries[0].ownerType").value("USER"))
                 .andExpect(jsonPath("$.entries[0].ownerLabel").value("test owner"))
                 .andExpect(jsonPath("$.entries[0].cost").value(0.003))
                 .andExpect(jsonPath("$.entries[0].turns").value(1))
@@ -85,13 +85,13 @@ class RankingApiTest extends DatabaseTest {
     @Test
     void 익명_방문자에게는_내_순위가_없고_게스트_쿠키도_발급하지_않는다() throws Exception {
         Problem problem = newProblem();
-        submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        Long attemptId = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
 
         mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).with(anonymous()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.myBest").doesNotExist())
                 .andExpect(jsonPath("$.entries[0].mine").value(false))
-                .andExpect(jsonPath("$.entries[0].attemptId").doesNotExist())
+                .andExpect(jsonPath("$.entries[0].attemptId").value(attemptId))
                 .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
 
         // 구경만 한 방문자에게 게스트 세션 행이 생기면 안 된다.
@@ -102,7 +102,7 @@ class RankingApiTest extends DatabaseTest {
     void 로그인_사용자에게는_내_최고_기록을_함께_준다() throws Exception {
         Problem problem = newProblem();
         User other = newUser();
-        submittedAttempt(problem, AttemptOwner.user(other.id()), 1);
+        Long others = submittedAttempt(problem, AttemptOwner.user(other.id()), 1);
         Long mine = submittedAttempt(problem, AttemptOwner.user(ownerId), 2);
 
         mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).with(user(principalOf(ownerId))))
@@ -114,7 +114,7 @@ class RankingApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.entries[1].attemptId").value(mine))
                 .andExpect(jsonPath("$.entries[1].mine").value(true))
                 .andExpect(jsonPath("$.entries[0].mine").value(false))
-                .andExpect(jsonPath("$.entries[0].attemptId").doesNotExist());
+                .andExpect(jsonPath("$.entries[0].attemptId").value(others));
     }
 
     /**
@@ -126,7 +126,7 @@ class RankingApiTest extends DatabaseTest {
         Problem problem = newProblem();
         Long cheaper = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
         Long pricier = submittedAttempt(problem, AttemptOwner.user(ownerId), 2);
-        submittedAttempt(problem, AttemptOwner.user(newUser().id()), 3);
+        Long others = submittedAttempt(problem, AttemptOwner.user(newUser().id()), 3);
 
         mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).with(user(principalOf(ownerId))))
                 .andExpect(status().isOk())
@@ -135,25 +135,22 @@ class RankingApiTest extends DatabaseTest {
                 .andExpect(jsonPath("$.entries[1].mine").value(true))
                 .andExpect(jsonPath("$.entries[1].attemptId").value(pricier))
                 .andExpect(jsonPath("$.entries[2].mine").value(false))
-                .andExpect(jsonPath("$.entries[2].attemptId").doesNotExist())
+                .andExpect(jsonPath("$.entries[2].attemptId").value(others))
                 .andExpect(jsonPath("$.myBest.attemptId").value(cheaper));
     }
 
     @Test
-    void 게스트_쿠키로도_내_최고_기록을_찾는다() throws Exception {
+    void 게스트_쿠키가_있어도_내_최고_기록은_없다() throws Exception {
         Problem problem = newProblem();
         Cookie guestCookie = issueGuestCookie();
-        Long guestAttemptId = createGuestAttempt(problem, guestCookie);
+        createGuestAttempt(problem, guestCookie);
 
-        String guestSessionId = guestSessionIdOf(guestAttemptId);
-
+        // 자격 조건은 모두 갖췄지만 게스트라 랭킹에 들지 않는다. 남은 길은 로그인뿐이다.
         mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).cookie(guestCookie).with(anonymous()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.myBest.attemptId").value(guestAttemptId))
-                .andExpect(jsonPath("$.myBest.mine").value(true))
-                .andExpect(jsonPath("$.myBest.ownerType").value("GUEST"))
-                // 이름이 없는 게스트는 세션 ID 앞 네 자로 서로 구분한다.
-                .andExpect(jsonPath("$.myBest.ownerLabel").value(guestSessionId.substring(0, 4)));
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.entries").isEmpty())
+                .andExpect(jsonPath("$.myBest").doesNotExist());
     }
 
     @Test
@@ -164,6 +161,27 @@ class RankingApiTest extends DatabaseTest {
         mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).with(user(principalOf(ownerId))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.myBest").doesNotExist());
+    }
+
+    @Test
+    void 랭킹_줄에_소요_시간을_초로_싣는다() throws Exception {
+        Problem problem = newProblem();
+        Long mine = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        Long others = submittedAttempt(problem, AttemptOwner.user(newUser().id()), 1);
+        setCodeCallsCreatedAt(mine, "2026-08-01T00:00:00Z");
+        setSubmittedAt(mine, "2026-08-01T00:04:12Z");
+        // 제출 시각을 모르는 옛 기록은 소요 시간도 모른다.
+        dsl.execute("UPDATE attempt SET submitted_at = NULL WHERE id = ?", others);
+
+        mockMvc.perform(get("/api/problems/{id}/ranking", problem.id()).with(user(principalOf(ownerId))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.entries[0].attemptId").value(mine))
+                .andExpect(jsonPath("$.entries[0].durationSeconds").value(252))
+                .andExpect(jsonPath("$.myBest.durationSeconds").value(252))
+                .andExpect(jsonPath("$.entries[1].attemptId").value(others))
+                // doesNotExist()가 아니라 value(nullValue())다 — 전자는 필드가 통째로 사라져도 통과한다.
+                // 화면은 "모름"과 "필드 없음"을 가려야 하므로 null이 실려 오는 것까지가 계약이다.
+                .andExpect(jsonPath("$.entries[1].durationSeconds").value(nullValue()));
     }
 
     @Test
@@ -276,14 +294,19 @@ class RankingApiTest extends DatabaseTest {
         return new Cookie("GUEST_SESSION", setCookie.substring("GUEST_SESSION=".length(), setCookie.indexOf(';')));
     }
 
-    private String guestSessionIdOf(Long attemptId) {
-        Field<UUID> guestSessionId = field(name("attempt", "guest_session_id"), SQLDataType.UUID);
-
-        return dsl.select(guestSessionId)
-                .from(table(name("attempt")))
+    private void setSubmittedAt(Long attemptId, String submittedAt) {
+        dsl.update(table(name("attempt")))
+                .set(field(name("attempt", "submitted_at"), SQLDataType.INSTANT), Instant.parse(submittedAt))
                 .where(field(name("attempt", "id"), SQLDataType.BIGINT).eq(attemptId))
-                .fetchOne(guestSessionId)
-                .toString();
+                .execute();
+    }
+
+    private void setCodeCallsCreatedAt(Long attemptId, String createdAt) {
+        dsl.update(table(name("attempt_llm_call")))
+                .set(field(name("attempt_llm_call", "created_at"), SQLDataType.INSTANT), Instant.parse(createdAt))
+                .where(field(name("attempt_llm_call", "attempt_id"), SQLDataType.BIGINT).eq(attemptId))
+                .and(field(name("attempt_llm_call", "purpose"), SQLDataType.VARCHAR).eq("CODE"))
+                .execute();
     }
 
     private void succeedRun(Long attemptId, int turnOrdinal) {

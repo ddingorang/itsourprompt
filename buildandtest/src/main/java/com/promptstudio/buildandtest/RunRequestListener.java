@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,16 +17,37 @@ public class RunRequestListener {
 
     private final CodeExecutor codeExecutor;
     private final RabbitTemplate rabbitTemplate;
+    private final String workerLanguage;
 
-    public RunRequestListener(CodeExecutor codeExecutor, RabbitTemplate rabbitTemplate) {
+    public RunRequestListener(
+            CodeExecutor codeExecutor,
+            RabbitTemplate rabbitTemplate,
+            @Value("${worker.language:java}") String workerLanguage
+    ) {
         this.codeExecutor = codeExecutor;
         this.rabbitTemplate = rabbitTemplate;
+        this.workerLanguage = workerLanguage;
     }
 
-    @RabbitListener(queues = RunQueues.REQUEST_QUEUE)
+    @RabbitListener(queues = "#{'${worker.request-queues}'.split(',')}")
     public void onRequest(RunRequestMessage request) {
         if (request.runId() == null) {
             log.warn("[RUN] runId 없는 요청을 버립니다.");
+
+            return;
+        }
+
+        // 언어 불일치는 큐 바인딩·워커 구성이 어긋난 것이다. 그대로 실행하면 "javac가 .py를
+        // 컴파일하다 COMPILE_ERROR" 같은 그럴듯한 오채점이 되므로, 명확한 워커 오류로 돌려보낸다.
+        String requestedLanguage = request.language() == null ? "java" : request.language();
+
+        if (!workerLanguage.equals(requestedLanguage)) {
+            log.error("[RUN] 언어가 다른 요청이 도착했습니다 | runId={} | worker={} | requested={}",
+                    request.runId(), workerLanguage, requestedLanguage);
+
+            publish(request, RunOutcome.failure(RunStatus.RUNNER_ERROR,
+                    "워커 구성 오류: 이 워커는 " + workerLanguage + " 전용인데 "
+                            + requestedLanguage + " 요청이 도착했습니다.", 0));
 
             return;
         }

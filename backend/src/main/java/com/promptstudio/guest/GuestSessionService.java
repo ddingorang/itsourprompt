@@ -97,15 +97,6 @@ public class GuestSessionService {
         }
     }
 
-    /**
-     * 이미 있는 게스트만 확인한다. {@link #resolveOrCreate}와 달리 <b>세션을 만들지도 쿠키를 발급하지도
-     * 않는다</b> — 랭킹처럼 구경만 하는 공개 조회에서 방문자마다 DB 행이 생기면 안 되기 때문이다.
-     */
-    @Transactional(readOnly = true)
-    public Optional<UUID> findExistingSessionId(HttpServletRequest request) {
-        return findValid(request).map(GuestSession::id);
-    }
-
     private Optional<GuestSession> findValid(HttpServletRequest request) {
         String token = findCookieValue(request);
         if (token == null) {

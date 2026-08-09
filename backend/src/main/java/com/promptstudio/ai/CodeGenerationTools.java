@@ -31,10 +31,12 @@ final class CodeGenerationTools {
     private static final String EDIT_FILE = ToolCallEntry.EDIT_FILE;
     private static final String FILE_NOT_FOUND = "파일을 찾을 수 없습니다: %s. " + LIST_FILES + "로 파일 목록을 확인하세요.";
     private static final String EDIT_SUCCESS = "ok";
+    /** 언어를 가리지 않고 전부 보호한다 — 스켈레톤에 없는 파일이라 방어 겸이고, 나눠 얻는 것이 없다. */
     private static final Set<String> PROTECTED_BUILD_FILE_NAMES = Set.of(
-            "pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts", "gradle.properties"
+            "pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts",
+            "gradle.properties", "pyproject.toml", "requirements.txt", "setup.py", "setup.cfg", "Pipfile"
     );
-    private static final Pattern IMPORT_PATTERN = Pattern.compile("(?m)^\\s*import\\s+(?:static\\s+)?([^;]+);");
+    private static final Pattern JAVA_IMPORT_PATTERN = Pattern.compile("(?m)^\\s*import\\s+(?:static\\s+)?([^;]+);");
 
     /**
      * turn_tool_call.path 컬럼(VARCHAR(500)) 한도. 모델이 지어낸 긴 경로가 트레이스에 그대로 실리면
@@ -45,8 +47,18 @@ final class CodeGenerationTools {
     private final Map<String, String> workingCopy = new LinkedHashMap<>();
     private final List<ToolCallEntry> trace = new ArrayList<>();
     private final Set<String> editedPaths = new LinkedHashSet<>();
+    private final String language;
 
     CodeGenerationTools(List<ProblemFile> files) {
+        this(files, "java");
+    }
+
+    /**
+     * @param language 문제의 언어. import 정책 등 언어별 편집 검증에 쓴다.
+     */
+    CodeGenerationTools(List<ProblemFile> files, String language) {
+        this.language = language == null ? "java" : language;
+
         for (ProblemFile file : files) {
             workingCopy.put(file.path(), file.content());
         }
@@ -114,10 +126,17 @@ final class CodeGenerationTools {
         if (isProtectedBuildFile(request.path())) {
             return "이 수정은 적용하지 않았어요. " + request.path()
                     + "은(는) 의존성·빌드 설정 파일이라 변경할 수 없습니다. "
-                    + "현재 문제에서 수정해야 하는 Java 소스 파일을 선택해 다시 작성해 주세요.";
+                    + "현재 문제에서 수정해야 하는 소스 파일을 선택해 다시 작성해 주세요.";
         }
 
-        Matcher matcher = IMPORT_PATTERN.matcher(request.content());
+        // import 정적 검증은 java만 한다. 파이썬은 표준 라이브러리 목록 대조가 인터프리터
+        // 버전에 종속이라 여기서 하지 않는다 — 프롬프트 제약이 1차 방어이고, 워커에 서드파티가
+        // 설치돼 있지 않아 시도해도 채점에서 ModuleNotFoundError로 정직하게 드러난다.
+        if (!language.equals("java")) {
+            return null;
+        }
+
+        Matcher matcher = JAVA_IMPORT_PATTERN.matcher(request.content());
 
         while (matcher.find()) {
             String importedType = matcher.group(1).trim();

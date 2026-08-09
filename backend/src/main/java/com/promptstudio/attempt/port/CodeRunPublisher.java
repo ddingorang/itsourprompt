@@ -16,5 +16,8 @@ import java.util.UUID;
  */
 public interface CodeRunPublisher {
 
-    void publish(UUID runId, Long attemptId, List<ProblemFile> files, List<ProblemFile> testFiles);
+    /**
+     * @param language 문제의 채점 언어. 요청 시점의 값을 메시지에 박는다 — 파일을 실어 보내는 이유와 같다.
+     */
+    void publish(UUID runId, Long attemptId, String language, List<ProblemFile> files, List<ProblemFile> testFiles);
 }

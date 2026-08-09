@@ -1,6 +1,7 @@
 package com.promptstudio.ai;
 
 import com.openai.models.completions.CompletionUsage;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.GeneratedCode;
@@ -206,7 +207,7 @@ class OpenAiCodeGeneratorTest {
     private AttemptView attempt() {
         List<ProblemFile> files = List.of(new ProblemFile("src/Main.java", "class Main {}"));
 
-        return new AttemptView(1L, 1L, files, files, List.of(), AttemptStatus.IN_PROGRESS, null, null, null);
+        return new AttemptView(1L, 1L, AttemptOwner.user(1L), null, files, files, List.of(), AttemptStatus.IN_PROGRESS, null, null, null);
     }
 
     private ChatResponse textResponse(String text) {

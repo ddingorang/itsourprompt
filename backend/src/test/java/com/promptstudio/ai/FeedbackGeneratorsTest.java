@@ -2,9 +2,11 @@ package com.promptstudio.ai;
 
 import com.openai.models.completions.CompletionUsage;
 import com.promptstudio.attempt.domain.AttemptFeedback;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.attempt.port.FeedbackTimeoutException;
 import com.promptstudio.problem.domain.ProblemFile;
@@ -48,10 +50,10 @@ class FeedbackGeneratorsTest {
 
     @Test
     void 두_렌즈의_피드백을_한_봉투에_합친다() {
-        chatModel.queueFor(PROMPT_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 프롬프트\"],\"overall\":\"프롬프트 총평\"}"));
-        chatModel.queueFor(PATTERN_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"));
+        chatModel.queueFor(PROMPT_LENS, textResponse(response("프롬프트 총평", "턴 1 프롬프트")));
+        chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
-        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1));
+        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.turnFeedbacks()).containsExactly("턴 1 프롬프트");
         assertThat(feedback.overall()).isEqualTo("프롬프트 총평");
@@ -63,10 +65,10 @@ class FeedbackGeneratorsTest {
      */
     @Test
     void 패턴_총평_뒤에_출처_한_줄을_붙인다() {
-        chatModel.queueFor(PROMPT_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 프롬프트\"],\"overall\":\"프롬프트 총평\"}"));
-        chatModel.queueFor(PATTERN_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"));
+        chatModel.queueFor(PROMPT_LENS, textResponse(response("프롬프트 총평", "턴 1 프롬프트")));
+        chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
-        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1));
+        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.patternOverall()).isEqualTo("패턴 총평" + PatternPrompts.SOURCE_NOTE);
     }
@@ -77,11 +79,11 @@ class FeedbackGeneratorsTest {
     @Test
     void 두_렌즈의_사용량을_따로_싣는다() {
         chatModel.queueFor(PROMPT_LENS, withUsage(
-                textResponse("{\"turnFeedbacks\":[\"턴 1 프롬프트\"],\"overall\":\"프롬프트 총평\"}"), 500, 120));
+                textResponse(response("프롬프트 총평", "턴 1 프롬프트")), 500, 120));
         chatModel.queueFor(PATTERN_LENS, withUsage(
-                textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"), 300, 60));
+                textResponse(response("패턴 총평", "턴 1 패턴")), 300, 60));
 
-        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1));
+        AttemptFeedback feedback = feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.llmCalls()).extracting(LlmCallUsage::inputTokens).containsExactly(500L);
         assertThat(feedback.patternLlmCalls()).extracting(LlmCallUsage::inputTokens).containsExactly(300L);
@@ -93,10 +95,10 @@ class FeedbackGeneratorsTest {
      */
     @Test
     void 두_렌즈에_각각_자기_시스템_프롬프트를_보낸다() {
-        chatModel.queueFor(PROMPT_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 프롬프트\"],\"overall\":\"프롬프트 총평\"}"));
-        chatModel.queueFor(PATTERN_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"));
+        chatModel.queueFor(PROMPT_LENS, textResponse(response("프롬프트 총평", "턴 1 프롬프트")));
+        chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
-        feedbackGenerators.generate(problem, attempt(1));
+        feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(chatModel.receivedPrompts())
                 .hasSize(2)
@@ -115,9 +117,9 @@ class FeedbackGeneratorsTest {
         chatModel.queueFor(PROMPT_LENS, withUsage(textResponse("피드백을 드릴 수 없습니다."), 500, 120));
         chatModel.queueFor(PROMPT_LENS, withUsage(textResponse("피드백을 드릴 수 없습니다."), 500, 120));
         chatModel.queueFor(PATTERN_LENS, withUsage(
-                textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"), 300, 60));
+                textResponse(response("패턴 총평", "턴 1 패턴")), 300, 60));
 
-        assertThatThrownBy(() -> feedbackGenerators.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOfSatisfying(FeedbackGenerationException.class, exception -> {
                     assertThat(exception.reason()).isEqualTo("invalid-json");
                     assertThat(exception.llmCalls())
@@ -136,9 +138,9 @@ class FeedbackGeneratorsTest {
     void 합친_실패는_재시도_대상_표식으로_던지지_않는다() {
         chatModel.queueFor(PROMPT_LENS, textResponse("피드백을 드릴 수 없습니다."));
         chatModel.queueFor(PROMPT_LENS, textResponse("피드백을 드릴 수 없습니다."));
-        chatModel.queueFor(PATTERN_LENS, textResponse("{\"turnFeedbacks\":[\"턴 1 패턴\"],\"overall\":\"패턴 총평\"}"));
+        chatModel.queueFor(PATTERN_LENS, textResponse(response("패턴 총평", "턴 1 패턴")));
 
-        assertThatThrownBy(() -> feedbackGenerators.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerators.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .isNotInstanceOf(FeedbackResponseException.class);
     }
@@ -158,7 +160,7 @@ class FeedbackGeneratorsTest {
                 new OpenAiChatOptionsFactory("code-model", "feedback-model", "scope-model")
         );
 
-        assertThatThrownBy(() -> generators.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> generators.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOfSatisfying(FeedbackTimeoutException.class, exception ->
                         assertThat(exception.llmCalls())
                                 .extracting(LlmCallUsage::seq, LlmCallUsage::inputTokens)
@@ -193,6 +195,23 @@ class FeedbackGeneratorsTest {
         }
     }
 
+    /**
+     * 턴 항목이 인용 배열과 피드백 문자열을 함께 갖는 새 응답 모양. 인용은 대조용이라 여기서는 비워 둔다.
+     */
+    private String response(String overall, String... turnFeedbacks) {
+        StringBuilder entries = new StringBuilder();
+
+        for (String turnFeedback : turnFeedbacks) {
+            if (!entries.isEmpty()) {
+                entries.append(",");
+            }
+
+            entries.append("{\"quotes\":[],\"feedback\":\"").append(turnFeedback).append("\"}");
+        }
+
+        return "{\"turnFeedbacks\":[" + entries + "],\"overall\":\"" + overall + "\"}";
+    }
+
     private AttemptView attempt(int turnCount) {
         List<ProblemFile> files = List.of(new ProblemFile("src/Main.java", "class Main {}"));
         List<AttemptView.TurnView> turns = new ArrayList<>();
@@ -202,7 +221,7 @@ class FeedbackGeneratorsTest {
                     "프롬프트 " + index, "요약 " + index, List.of(), List.of(), null, null, null));
         }
 
-        return new AttemptView(1L, 1L, files, files, turns, AttemptStatus.IN_PROGRESS, null, null, null);
+        return new AttemptView(1L, 1L, AttemptOwner.user(1L), null, files, files, turns, AttemptStatus.IN_PROGRESS, null, null, null);
     }
 
     private LlmCallUsage usage(int seq, long inputTokens) {

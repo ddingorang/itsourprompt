@@ -120,4 +120,4 @@ app:
   cors:
     # 브라우저가 붙이는 Origin 헤더가 이 목록에 없으면 403 "Invalid CORS request"가 난다.
     # 배포에서 프런트가 올라가는 도메인이 바뀌면 CORS_ALLOWED_ORIGINS로 덮어쓴다.
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://i15a505.p.ssafy.io}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,https://i15a505.p.ssafy.io, https://lets.promptpractice.run}

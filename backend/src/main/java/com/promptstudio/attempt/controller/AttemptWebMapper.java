@@ -4,11 +4,15 @@ import com.promptstudio.attempt.controller.response.AttemptResponse;
 import com.promptstudio.attempt.controller.response.CodeRunListResponse;
 import com.promptstudio.attempt.controller.response.CodeRunResponse;
 import com.promptstudio.attempt.controller.response.FeedbackResponse;
+import com.promptstudio.attempt.domain.AttemptOwner;
+import com.promptstudio.attempt.domain.AttemptOwnerLabel;
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.CarryLine;
 import com.promptstudio.attempt.domain.CodeRunCase;
 import com.promptstudio.attempt.domain.CodeRunCaseTally;
 import com.promptstudio.attempt.domain.CodeRunSummary;
 import com.promptstudio.attempt.domain.CodeRunView;
+import com.promptstudio.attempt.domain.FeedbackView;
 import com.promptstudio.attempt.domain.FileChange;
 import com.promptstudio.attempt.domain.LlmUsageSummary;
 import com.promptstudio.attempt.domain.LlmUsageTotals;
@@ -22,12 +26,18 @@ import java.util.List;
 @Component
 public class AttemptWebMapper {
 
-    public AttemptResponse toAttemptResponse(AttemptView attempt) {
+    /**
+     * 주인의 신원(사용자 ID·세션 ID)은 응답에 싣지 않는다 — 제출된 어템프트는 누구나 읽으므로
+     * 그대로 내보내면 공개 조회로 남의 식별자가 새어 나간다. 표시 이름과 mine 판정만 내보낸다.
+     */
+    public AttemptResponse toAttemptResponse(AttemptView attempt, AttemptOwner requester) {
         List<AttemptResponse.TurnResponse> turns = new ArrayList<>();
 
         for (AttemptView.TurnView turn : attempt.turns()) {
             turns.add(toTurnResponse(turn));
         }
+
+        boolean mine = attempt.owner() != null && attempt.owner().equals(requester);
 
         return new AttemptResponse(
                 attempt.id(),
@@ -36,6 +46,8 @@ public class AttemptWebMapper {
                 toFileResponses(attempt.files()),
                 turns,
                 attempt.status(),
+                AttemptOwnerLabel.of(attempt.owner(), attempt.nickname()),
+                mine,
                 toUsageResponse(attempt.usage())
         );
     }
@@ -48,7 +60,8 @@ public class AttemptWebMapper {
      * <p>가드는 프롬프트 피드백만 본다. 두 스타일 모두 필수라 pattern만 있는 상태는 생기지 않고,
      * pattern 도입 이전에 제출된 어템프트는 pattern 자리가 null로 나간다.
      */
-    public FeedbackResponse toFeedbackResponse(AttemptView attempt) {
+    public FeedbackResponse toFeedbackResponse(FeedbackView feedback) {
+        AttemptView attempt = feedback.attempt();
         List<AttemptView.TurnView> turnViews = attempt.turns();
         List<FeedbackResponse.TurnFeedback> turns = new ArrayList<>();
 
@@ -60,7 +73,16 @@ public class AttemptWebMapper {
             }
         }
 
-        return new FeedbackResponse(turns, attempt.feedback(), attempt.patternFeedback());
+        return new FeedbackResponse(
+                turns, attempt.feedback(), attempt.patternFeedback(), toCarryResponse(feedback.carry()));
+    }
+
+    private FeedbackResponse.CarryLineResponse toCarryResponse(CarryLine carry) {
+        if (carry == null) {
+            return null;
+        }
+
+        return new FeedbackResponse.CarryLineResponse(carry.signal(), carry.rule(), carry.reason());
     }
 
     public CodeRunListResponse toCodeRunListResponse(List<CodeRunSummary> runs) {
