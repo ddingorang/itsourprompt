@@ -203,8 +203,10 @@ export default function HomePage() {
         </section>
 
         <section className="landing-guest min-h-[calc(100svh_-_var(--landing-header-h))] overflow-hidden border-b border-[var(--landing-border)] bg-[var(--landing-guest-bg)] text-[var(--landing-guest-text)]">
-          <div className="mx-auto grid min-h-[calc(100svh_-_var(--landing-header-h))] w-[80%] grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-[6vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[900px]:w-[calc(100%_-_32px)] max-[900px]:grid-cols-1 max-[900px]:gap-12 max-[900px]:py-16">
-            <div className="max-w-[560px]" data-reveal>
+          <div className="mx-auto grid min-h-[calc(100svh_-_var(--landing-header-h))] w-[80%] grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-[6vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[900px]:w-[calc(100%_-_32px)] max-[900px]:grid-cols-1 max-[900px]:gap-12 max-[900px]:pb-16">
+            {/* 미리보기는 가운데 정렬로 두고 글 단만 위로 붙인다 — 다른 섹션은 모두
+                섹션 위 패딩에서 바로 글이 시작하는데 여기만 가운데로 밀려 있었다. */}
+            <div className="max-w-[560px] self-start" data-reveal>
               <div className="mb-7 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--landing-guest-eyebrow)]">NO LOGIN NEEDED</div>
               <h2 className="m-0 text-[clamp(42px,5.4vw,76px)] leading-[1.1] font-black tracking-[-0.04em] [word-break:keep-all]">
                 로그인은
@@ -279,7 +281,7 @@ export default function HomePage() {
           {!isLoading && !errorMessage && (
             <div className="border-b border-[var(--landing-border)]">
               {problems.slice(0, 3).map((problem) => (
-                <Link className="landing-problem group grid min-h-[102px] grid-cols-[76px_minmax(0,1fr)_42px] items-center gap-4 border-t border-[var(--landing-border)] py-[18px] first:border-t-0 max-[760px]:min-h-[100px] max-[760px]:grid-cols-[44px_minmax(0,1fr)_28px]" key={problem.id} to={`/problems/${problem.id}`}>
+                <Link className="landing-problem group grid min-h-[102px] grid-cols-[76px_minmax(0,1fr)_42px] items-center gap-4 border-t border-[var(--landing-border)] py-[18px] max-[760px]:min-h-[100px] max-[760px]:grid-cols-[44px_minmax(0,1fr)_28px]" key={problem.id} to={`/problems/${problem.id}`}>
                   <span className="font-mono text-[17px] text-[var(--landing-muted)]">{String(problem.id).padStart(2, '0')}</span>
                   <div className="min-w-0 text-[clamp(19px,2.2vw,27px)] font-bold tracking-[-0.035em] [word-break:keep-all]">{problem.title}</div>
                   <span className="justify-self-end text-2xl text-[var(--acid)]" aria-hidden="true">↗</span>

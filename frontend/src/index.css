@@ -218,6 +218,7 @@ html { scroll-behavior: smooth; }
   --landing-muted: #a3a3a3;
   --landing-border: #343434;
   --landing-grid-opacity: .11;
+  --landing-grid-line: var(--acid);
   --landing-guest-bg: var(--acid);
   --landing-guest-copy: #282828;
   --landing-guest-eyebrow: #090909;
@@ -233,6 +234,8 @@ html { scroll-behavior: smooth; }
   --landing-muted: #585858;
   --landing-border: #c7c7c1;
   --landing-grid-opacity: .2;
+  /* 흰 바탕에서는 연두 격자가 배경 얼룩처럼 떠 보인다 — 라이트만 회색 선으로 깐다. */
+  --landing-grid-line: var(--landing-muted);
   --landing-guest-bg: #fff;
   --landing-guest-copy: #090909;
   --landing-guest-eyebrow: var(--acid);
@@ -305,7 +308,7 @@ html { scroll-behavior: smooth; }
 .landing-problem:hover, .landing-problem:focus-visible { padding-right: 14px; padding-left: 14px; background: var(--landing-surface-hover); outline: none; }
 .landing-problem:hover span:last-child, .landing-problem:focus-visible span:last-child { transform: translate(3px, -3px); }
 .landing-final { background: radial-gradient(circle at 50% 50%, var(--landing-surface) 0, var(--landing-bg) 58%); }
-.landing-final-grid { position: absolute; inset: -50%; opacity: var(--landing-grid-opacity); transform: perspective(600px) rotateX(62deg); background-image: linear-gradient(var(--acid) 1px, transparent 1px), linear-gradient(90deg, var(--acid) 1px, transparent 1px); background-size: 64px 64px; mask-image: radial-gradient(circle, #000 5%, transparent 58%); }
+.landing-final-grid { position: absolute; inset: -50%; opacity: var(--landing-grid-opacity); transform: perspective(600px) rotateX(62deg); background-image: linear-gradient(var(--landing-grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--landing-grid-line) 1px, transparent 1px); background-size: 64px 64px; mask-image: radial-gradient(circle, #000 5%, transparent 58%); }
 .landing-page footer { border-color: var(--landing-border); color: var(--landing-muted); }
 .landing-page ::selection { background: var(--acid); color: #090909; }
 .problem-list-page ::selection { background: var(--problem-list-acid); color: #090909; }
