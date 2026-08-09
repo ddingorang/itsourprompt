@@ -92,7 +92,7 @@ export default function Header({
         aria-label="홈으로 이동"
         onClick={onLogoClick}
       >
-        prompt<i className="not-italic text-[var(--acid,#d6ff50)]">.</i>practice
+        모두의 <i className="not-italic text-[var(--acid,#d6ff50)]">프롬프트</i>
       </Link>
 
       <button
@@ -143,7 +143,9 @@ export default function Header({
               <path d="M14.8 11.2A6.2 6.2 0 0 1 6.8 3.2a6.2 6.2 0 1 0 8 8Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
             </svg>
           )}
-          <b className="min-[761px]:sr-only">
+          {/* span이면 페이지별 `nav span`(구분선 색) 규칙에 걸려 색이 흐려지고
+              버튼 hover의 강조색도 덮인다. b를 두고 굵기만 없앤다. */}
+          <b className="font-normal min-[761px]:sr-only">
             {colorMode === 'dark' ? 'LIGHT' : 'DARK'}
           </b>
         </button>
