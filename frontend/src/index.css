@@ -30,6 +30,14 @@ html { scroll-behavior: smooth; }
   --relay-subtle: var(--relay-muted);
   --relay-border: #393939;
   --relay-acid: #d6ff50;
+  /* 섹션 머리줄 제목. 랭킹 페이지 상단바의 미선택 탭(--ranking-tab-idle)과 같은 값이다. */
+  --relay-label: #8f8f8f;
+  /* 결과 화면 턴 탭 바(라벨·화살표·탭). 다크는 지금까지의 색을 그대로 가리키고,
+     라이트에서만 랭킹 상단바처럼 조작부가 회색으로 물러나고 고른 턴만 본문 색으로 선다 —
+     흰 바탕에서는 연두 글자가 흐려 어느 턴을 보고 있는지 눈에 걸리지 않는다. */
+  --relay-turn-chrome: var(--relay-acid);
+  --relay-turn-selected: var(--relay-acid);
+  --relay-turn-idle: var(--relay-muted);
   /* 공통 컴포넌트(Header/Footer/Button/Pagination)가 읽는 공용 별칭 —
      페이지 변수를 가리키므로 라이트 값도 자동으로 따라간다. */
   --acid: var(--relay-acid);
@@ -48,6 +56,10 @@ html { scroll-behavior: smooth; }
   --relay-subtle: var(--relay-muted);
   --relay-border: #c7c7c1;
   --relay-acid: #bee034;
+  --relay-label: #70706a;
+  --relay-turn-chrome: var(--relay-label);
+  --relay-turn-selected: var(--relay-text);
+  --relay-turn-idle: var(--relay-label);
   background: var(--relay-bg) !important;
   color: var(--relay-text) !important;
   color-scheme: light;
@@ -105,6 +117,9 @@ html { scroll-behavior: smooth; }
 .relay-page[data-color-mode='light'] [class~="border-[#4b4b4b]"],
 .relay-page[data-color-mode='light'] [class~="border-[#535353]"] { border-color: var(--relay-border) !important; }
 .relay-page[data-color-mode='light'] [class~="border-[#777]"] { border-color: var(--relay-border) !important; }
+/* 방 목록 행은 칸마다 구분선을 그린다. 그 클래스 토큰이 `[&>*]:border-[#222]` 형태라
+   위의 hex 매핑(`border-[#222]`)에 걸리지 않아, 라이트 모드에서도 검은 선이 남았다. */
+.relay-page[data-color-mode='light'] [class~="[&>*]:border-[#222]"] > * { border-color: var(--relay-border) !important; }
 .relay-page[data-color-mode='light'] [class~="border-[#5a2c28]"] { border-color: #d94336 !important; }
 /* 건너뜀 경고 박스 — 크림 배경(#fff9e8) 위에서 읽히도록 앰버 계열을 어둡게. */
 .relay-page[data-color-mode='light'] [class~="border-[#4a3a1e]"] { border-color: #d29922 !important; }
@@ -113,7 +128,7 @@ html { scroll-behavior: smooth; }
 .relay-page[data-color-mode='light'] [class~="border-b-[#d6ff50]"] { border-bottom-color: var(--relay-acid) !important; }
 .relay-page[data-color-mode='light'] [class~="border-l-[#d6ff50]"] { border-left-color: var(--relay-acid) !important; }
 .relay-page[data-color-mode='light'] [class~="after:bg-[#d6ff50]"]::after { background-color: var(--relay-acid) !important; }
-.relay-page[data-color-mode='light'] [class~="hover:bg-[#202020]"]:hover { background-color: #e9efd7 !important; }
+.relay-page[data-color-mode='light'] [class~="hover:bg-[#202020]"]:hover { background-color: #ecf3d7 !important; }
 .relay-page[data-color-mode='light'] [class~="disabled:hover:bg-[#121212]"]:disabled:hover { background-color: var(--relay-bg) !important; }
 .relay-page[data-color-mode='light'] [class~="hover:border-[#d6ff50]"]:hover,
 .relay-page[data-color-mode='light'] [class~="enabled:hover:border-[#d6ff50]"]:enabled:hover,
@@ -136,6 +151,22 @@ html { scroll-behavior: smooth; }
 .relay-page[data-color-mode='light'] [class~="hover:!bg-transparent"]:hover,
 .relay-page[data-color-mode='light'] [class~="focus-visible:bg-transparent"]:focus-visible,
 .relay-page[data-color-mode='light'] [class~="focus-visible:!bg-transparent"]:focus-visible { background-color: transparent !important; }
+/* 우측 패널 탭(문제/실시간)의 선택 상태 — 문제 풀기 페이지 탭과 같은 처리.
+   결과 화면의 턴 탭(.turn-tab-scrollbar)은 밑줄형이라 제외한다.
+   !important는 위의 text-[#d6ff50]·border-b-[#d6ff50] 치환 규칙을 이기기 위해 필요하다. */
+/* 탭 바 바탕은 랭킹 상단바와 같은 베이지 — 흰 페이지 위에서 조작부임이 드러난다. */
+.relay-page[data-color-mode='light'] [role='tablist']:not(.turn-tab-scrollbar) {
+  background: #f7f7f2;
+}
+.relay-page[data-color-mode='light'] [role='tablist']:not(.turn-tab-scrollbar) [role='tab'][aria-selected='true'] {
+  color: #090909 !important;
+  border-bottom-color: #090909 !important;
+}
+/* 미선택 탭은 더 연한 회색으로 물러나 선택 탭(검정)과의 거리를 벌린다.
+   hover 시 진해지는 동작은 살리려고 :not(:hover)로 건다. */
+.relay-page[data-color-mode='light'] [role='tablist']:not(.turn-tab-scrollbar) [role='tab'][aria-selected='false']:not(:hover) {
+  color: #9c9c95 !important;
+}
 .relay-page[data-color-mode='light'] textarea,
 .relay-page[data-color-mode='light'] select,
 .relay-page[data-color-mode='light'] input {
@@ -261,8 +292,14 @@ html { scroll-behavior: smooth; }
 .landing-detail-preview-output i:nth-child(2) { width: 72%; }
 .landing-detail-preview-output i:nth-child(3) { width: 84%; }
 .landing-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--landing-border); border: 1px solid var(--landing-border); }
-.landing-step { min-height: 380px; padding: clamp(20px, 2.2vw, 30px); background: var(--landing-surface); }
-.landing-step-visual { display: flex; height: 150px; align-items: center; justify-content: center; margin: 18px 0 14px; border: 1px solid var(--landing-border); font: 900 clamp(25px, 2.6vw, 38px)/1 Arial, sans-serif; letter-spacing: -.06em; color: var(--acid); }
+/* 최소 높이는 내용(넓은 화면에서 260px)에 살짝 여유만 둔다 — 상자가 사라져 내용이
+   짧아진 만큼, 380px을 그대로 두면 글 아래로 빈 자리가 100px 넘게 남는다.
+   좁아져 설명이 여러 줄로 접히면 칸은 내용만큼 알아서 커진다. */
+.landing-step { min-height: 280px; padding: clamp(20px, 2.2vw, 30px); background: var(--landing-surface); }
+/* 테두리 상자로 두면 이 앱의 버튼(테두리 + 투명 배경 + 가운데 짧은 라벨)과 똑같이 생겨
+   누를 수 있는 것으로 읽힌다 — 상자를 버리고 아래 선 위에 단어를 앉혀 제목처럼 읽게 한다.
+   높이는 글자에 맡긴다. 고정하면 폰트가 줄어드는 좁은 화면에서 위쪽만 빈다. */
+.landing-step-visual { margin: 18px 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--landing-border); font: 900 clamp(25px, 2.6vw, 38px)/1 Arial, sans-serif; letter-spacing: -.06em; color: var(--acid); }
 .landing-problem { transition: background-color 180ms ease, padding 180ms ease; }
 .landing-problem span:last-child { transition: transform 180ms ease; }
 .landing-problem:hover, .landing-problem:focus-visible { padding-right: 14px; padding-left: 14px; background: var(--landing-surface-hover); outline: none; }
@@ -278,6 +315,9 @@ html { scroll-behavior: smooth; }
   --problem-list-muted: #a3a3a3;
   --problem-list-border: #343434;
   --problem-list-acid: #d6ff50;
+  /* 목록 행 hover 배경. 다크는 기존대로 강조색을 채우고,
+     라이트는 랜딩 예시 문제와 같은 연한 색(#ecf3d7)으로 맞춘다. */
+  --problem-list-hover-bg: var(--problem-list-acid);
   --acid: var(--problem-list-acid);
   --theme-bg: var(--problem-list-bg);
   --theme-text: var(--problem-list-text);
@@ -292,6 +332,7 @@ html { scroll-behavior: smooth; }
   --problem-list-muted: #585858;
   --problem-list-border: #c7c7c1;
   --problem-list-acid: #bee034;
+  --problem-list-hover-bg: #ecf3d7;
 }
 .problem-list-page > header {
   --header-menu-border: var(--problem-list-border);
@@ -364,7 +405,7 @@ html { scroll-behavior: smooth; }
   --ranking-border: #c7c7c1;
   --ranking-surface: #f7f7f2;
   --ranking-surface-border: #c7c7c1;
-  --ranking-surface-hover: #e9efd7;
+  --ranking-surface-hover: #ecf3d7;
   --ranking-tab-idle: #70706a;
   --ranking-acid: #bee034;
 }
@@ -427,6 +468,9 @@ html { scroll-behavior: smooth; }
   --problem-detail-border: #343434;
   --problem-detail-border-strong: #555;
   --problem-detail-acid: #d6ff50;
+  /* 패널 머리줄 라벨(파일 탐색기·파일 경로·프롬프트). 다크는 강조색 그대로,
+     라이트는 흰 바탕 위 연두가 흐려 다른 화면과 같은 muted 회색으로 바꾼다. */
+  --problem-detail-label: var(--problem-detail-acid);
   --acid: var(--problem-detail-acid);
   --theme-bg: var(--problem-detail-bg);
   --theme-text: var(--problem-detail-text);
@@ -448,11 +492,27 @@ html { scroll-behavior: smooth; }
   --problem-detail-border: #c7c7c1;
   --problem-detail-border-strong: #9c9c95;
   --problem-detail-acid: #bee034;
+  --problem-detail-label: #585858;
   --problem-detail-code-bg: #f3f3ee;
   --problem-detail-code-header: #e7e7df;
   --problem-detail-code-text: #232323;
   --problem-detail-surface: #f7f7f2;
   --problem-detail-input-bg: #f7f7f2;
+}
+/* 우측 패널 탭. 다크는 연두 글자+밑줄이 잘 읽히지만 라이트에서는 흰 바탕 위 연두가
+   흐리다 — 선택 탭을 검정 글자+검정 밑줄로 세우고, 탭 바 바탕은 랭킹 상단바와 같은
+   베이지로 둬 흰 페이지 위에서 조작부임이 드러나게 한다. */
+.problem-detail-page[data-color-mode='light'] [role='tablist'] {
+  background: #f7f7f2;
+}
+.problem-detail-page[data-color-mode='light'] [role='tab'][aria-selected='true'] {
+  color: #090909;
+  border-bottom-color: #090909;
+}
+/* 미선택 탭은 더 연한 회색으로 물러나 선택 탭(검정)과의 거리를 벌린다.
+   hover 시 진해지는 동작은 살리려고 :not(:hover)로 건다. */
+.problem-detail-page[data-color-mode='light'] [role='tab'][aria-selected='false']:not(:hover) {
+  color: #9c9c95;
 }
 .problem-detail-page > header {
   --header-menu-border: var(--problem-detail-border);
@@ -676,6 +736,8 @@ html { scroll-behavior: smooth; }
   --theme-border: var(--feedback-border);
   --feedback-surface: #121212;
   --feedback-surface-hover: #202020;
+  /* 패널 머리줄 제목. 릴레이 로비 섹션 머리줄(--relay-label)과 같은 값이다. */
+  --feedback-label: #8f8f8f;
   --feedback-code-bg: #0d0d0d;
   --feedback-code-text: #d8d8d2;
   --feedback-prompt-bg: #111;
@@ -689,7 +751,8 @@ html { scroll-behavior: smooth; }
   --feedback-border: #c7c7c1;
   --feedback-acid: #bee034;
   --feedback-surface: #f7f7f2;
-  --feedback-surface-hover: #e9efd7;
+  --feedback-surface-hover: #ecf3d7;
+  --feedback-label: #70706a;
   --feedback-code-bg: #f3f3ee;
   --feedback-code-text: #232323;
   --feedback-prompt-bg: #f7f7f2;
@@ -847,7 +910,6 @@ html { scroll-behavior: smooth; }
   .landing-scroll-cue { margin-top: 12px; justify-self: center; }
   .landing-steps { grid-template-columns: 1fr; }
   .landing-step { min-height: auto; }
-  .landing-step-visual { height: 160px; }
 }
 @media (max-width: 900px) {
   .landing-detail-preview { min-height: 380px; }
@@ -1027,4 +1089,23 @@ html { scroll-behavior: smooth; }
     padding: 0.75rem;
     text-align: left;
   }
+}
+
+/*
+ * 페이지 제목. 다크 모드에서는 강조색 글자 그대로 두고, 라이트 모드에서만 검은 글자에
+ * 강조색 그림자를 깐다 — 흰 바탕 위의 연두 글자는 대비가 낮아 읽기 어렵고, 강조색을
+ * 배경으로 채우면 피드백 페이지 패널 머리줄과 문법이 겹친다(채움 상자는 그쪽 몫이다).
+ */
+/* 자리 크기는 두 모드가 같아야 한다 — 라이트에서만 padding·line-height를 주면
+   모드를 바꿀 때마다 제목 높이가 변해 아래 내용이 통째로 오르내린다. */
+.page-title {
+  display: inline-block;
+  line-height: 1;
+  padding: 0.08em 0.12em;
+}
+/* 바뀌는 것은 색뿐이다. 그림자 거리는 em으로 둔다 — 제목이 화면 폭에 따라 36~64px로
+   오가므로, 그림자도 글자와 같은 비율로 2.5px에서 1.4px까지 함께 줄어든다. */
+[data-color-mode='light'] .page-title {
+  color: #090909;
+  text-shadow: 0.039em 0.039em 0 var(--acid);
 }

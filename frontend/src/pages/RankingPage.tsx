@@ -392,13 +392,13 @@ export default function RankingPage() {
 
       <main className="mx-auto w-[min(calc(90%_-_360px),1040px)] flex-1 pt-[clamp(28px,4vw,44px)] pb-16 max-[1200px]:w-[calc(100%_-_64px)] max-[640px]:w-[calc(100%_-_32px)] max-[640px]:pt-8">
         <header className="pb-10 max-[640px]:pb-8">
-          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--ranking-acid)]">
+          <h1 className="page-title m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--ranking-acid)]">
             랭킹
           </h1>
           <p className="mt-5 mb-0 text-[15px] leading-[1.7] text-[var(--ranking-muted)]">
             같은 문제를 푼 사람들의 기록을 견주어 보세요!
             <br />
-            순위는 AI를 사용하는데 든 비용이 적은 순서입니다 — 같은 답에 도달했다면 더 적은 토큰을 사용한 쪽이 앞섭니다.
+            순위는 AI를 사용하는 데 든 비용이 적은 순서입니다.
             <br />
             표에서 몇 번의 턴으로, 얼마나 걸려 풀었는지까지 확인할 수 있어요.
           </p>
@@ -419,13 +419,13 @@ export default function RankingPage() {
           >
             <div className="relative">
               {/* 오른쪽 끝 「전체 N」 버튼과 같은 120px 고정폭 — 조작부가 좌우 대칭이 된다. */}
-              <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[120px] place-items-center border-r border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] [font-family:Arial,'Noto_Sans_KR',sans-serif] text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--ranking-acid)] max-[760px]:hidden">
+              <span className="absolute top-0 bottom-0 left-0 z-20 grid w-[120px] place-items-center border-r border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] [font-family:Arial,'Noto_Sans_KR',sans-serif] text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--ranking-tab-idle)] max-[760px]:hidden">
                 문제 선택
               </span>
               {hasTabOverflow && (
                 <button
                   aria-label="이전 문제 보기"
-                  className="absolute top-0 bottom-0 left-[120px] z-20 w-10 cursor-pointer border-0 border-r border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-2xl font-bold text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
+                  className="absolute top-0 bottom-0 left-[120px] z-20 w-10 cursor-pointer border-0 border-r border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-2xl font-bold text-[var(--ranking-tab-idle)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px] max-[760px]:left-0"
                   onClick={() => scrollTabNav(-1)}
                   type="button"
                 >
@@ -450,7 +450,7 @@ export default function RankingPage() {
                       aria-current={isSelected ? 'page' : undefined}
                       className={`relative flex min-h-[58px] shrink-0 items-center gap-2.5 px-[22px] font-mono text-sm font-bold tracking-[0.06em] whitespace-nowrap hover:text-[var(--ranking-text)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-4px] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:z-10 after:h-[3px] ${
                         isSelected
-                          ? 'text-[var(--ranking-acid)] after:bg-[var(--ranking-acid)]'
+                          ? 'text-[var(--ranking-text)] after:bg-[var(--ranking-text)]'
                           : 'text-[var(--ranking-tab-idle)] after:bg-transparent'
                       } max-[760px]:px-3.5`}
                       key={problem.id}
@@ -469,7 +469,7 @@ export default function RankingPage() {
                 {hasTabOverflow && (
                   <button
                     aria-label="다음 문제 보기"
-                    className="w-10 cursor-pointer border-0 border-l border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-2xl font-bold text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px]"
+                    className="w-10 cursor-pointer border-0 border-l border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] font-mono text-2xl font-bold text-[var(--ranking-tab-idle)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px]"
                     onClick={() => scrollTabNav(1)}
                     type="button"
                   >
@@ -480,7 +480,7 @@ export default function RankingPage() {
                     건너뛰는 길이다 — 문제가 늘어날수록 탭만으로는 닿지 않는다. */}
                 <button
                   aria-expanded={isProblemListOpen}
-                  className="flex w-[120px] cursor-pointer items-center justify-center gap-1.5 border-0 border-l border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-acid)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px]"
+                  className="flex w-[120px] cursor-pointer items-center justify-center gap-1.5 border-0 border-l border-[var(--ranking-surface-border)] bg-[var(--ranking-surface)] text-[13px] font-bold tracking-[-0.01em] text-[var(--ranking-tab-idle)] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px]"
                   onClick={() => setIsProblemListOpen((open) => !open)}
                   type="button"
                 >
@@ -520,9 +520,9 @@ export default function RankingPage() {
                       <li key={problem.id}>
                         <Link
                           aria-current={isSelected ? 'page' : undefined}
-                          className={`flex items-center gap-2.5 border-b border-[var(--ranking-border)] px-[22px] py-2.5 text-[13px] tracking-[-0.01em] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px] ${
+                          className={`flex items-center gap-2.5 px-[22px] py-2.5 text-[13px] tracking-[-0.01em] hover:bg-[var(--ranking-surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--ranking-acid)] focus-visible:outline-offset-[-3px] ${
                             isSelected
-                              ? 'font-bold text-[var(--ranking-acid)]'
+                              ? 'font-bold text-[var(--ranking-text)]'
                               : 'text-[var(--ranking-tab-idle)] hover:text-[var(--ranking-text)]'
                           }`}
                           onClick={() => setIsProblemListOpen(false)}
@@ -753,7 +753,7 @@ export default function RankingPage() {
             className="mt-6 border border-[var(--ranking-border)] p-5 max-[640px]:p-4"
             aria-label="내 최고 기록"
           >
-            <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif] text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--ranking-acid)]">
+            <div className="[font-family:Arial,'Noto_Sans_KR',sans-serif] text-lg leading-[1.4] font-bold tracking-[0.08em] text-[var(--ranking-tab-idle)]">
               나의 최고 기록
             </div>
             {ranking.myBest ? (

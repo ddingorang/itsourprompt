@@ -73,10 +73,10 @@ interface FileTreeNode {
 }
 
 const labelClasses =
-  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[var(--problem-detail-acid)]';
+  'font-mono text-sm leading-[1.5] font-bold tracking-[0.08em] text-[var(--problem-detail-label)]';
 
 const koreanLabelClasses =
-  'text-sm leading-[1.5] font-bold text-[var(--problem-detail-acid)]';
+  'text-sm leading-[1.5] font-bold text-[var(--problem-detail-label)]';
 
 const pageStateClasses =
   'grid min-h-dvh place-items-center bg-[var(--problem-detail-bg)] p-10 ' +
@@ -1257,7 +1257,8 @@ export default function ProblemDetailPage() {
                 {selectedFile || '파일'}
               </div>
             </div>
-            <span className="shrink-0 border border-[var(--problem-detail-border-strong)] px-2 py-1.5 text-[9px] text-[var(--problem-detail-muted)]">
+            {/* 테두리 상자는 이 앱의 버튼 생김새다 — 상태 표시는 채움 배경으로 구분한다. */}
+            <span className="shrink-0 bg-[var(--problem-detail-code-bg)] px-2 py-1.5 text-[9px] text-[var(--problem-detail-muted)]">
               읽기 전용
             </span>
           </div>

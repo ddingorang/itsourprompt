@@ -123,7 +123,7 @@ export default function ProblemListPage() {
           양옆 24px. 화면마다 본문 시작선이 달라 보이던 것을 맞춘다. */}
       <main className="mx-auto w-full max-w-[880px] flex-1 px-6 pt-[clamp(28px,4vw,44px)] pb-16 max-[640px]:pt-8">
         <header className="flex items-end justify-between gap-6 pb-10 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-4 max-[640px]:pb-8">
-          <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--problem-list-acid)]">
+          <h1 className="page-title m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--problem-list-acid)]">
             문제 목록
           </h1>
           <IconLegend />
@@ -166,7 +166,7 @@ export default function ProblemListPage() {
             >
             {visibleProblems.map((problem) => (
               <Link
-                className="group grid min-h-18 grid-cols-[56px_minmax(0,1fr)_auto_auto] items-center gap-4 border-t border-[var(--problem-list-border)] py-3 text-inherit no-underline transition-[padding,background,color] duration-200 first:border-t-0 hover:bg-[var(--problem-list-acid)] hover:px-3.5 hover:text-[#090909] focus-visible:bg-[var(--problem-list-acid)] focus-visible:px-3.5 focus-visible:text-[#090909] focus-visible:outline-none max-[640px]:grid-cols-[42px_minmax(0,1fr)_auto_auto] max-[640px]:gap-3"
+                className="group grid min-h-18 grid-cols-[56px_minmax(0,1fr)_auto_auto] items-center gap-4 border-t border-[var(--problem-list-border)] py-3 text-inherit no-underline transition-[padding,background,color] duration-200 first:border-t-0 hover:bg-[var(--problem-list-hover-bg)] hover:px-3.5 hover:text-[#090909] focus-visible:bg-[var(--problem-list-hover-bg)] focus-visible:px-3.5 focus-visible:text-[#090909] focus-visible:outline-none max-[640px]:grid-cols-[42px_minmax(0,1fr)_auto_auto] max-[640px]:gap-3"
                 key={problem.id}
                 to={`/problems/${problem.id}`}
               >

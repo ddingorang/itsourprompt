@@ -1277,8 +1277,9 @@ function CodePanel({
       <div className="mb-5 flex items-start justify-between gap-[18px]">
         <div className={selected ? labelClasses : koreanLabelClasses}>{selected?.path ?? '파일'}</div>
         <div className="flex shrink-0 gap-2 text-[9px] text-[#a3a3a3]">
-          <span className="border border-[#494949] px-2 py-1.5">읽기 전용</span>
-          <span className="border border-[#494949] px-2 py-1.5">
+          {/* 테두리 상자는 이 앱의 버튼 생김새다 — 상태 표시는 채움 배경으로 구분한다. */}
+          <span className="bg-[#202020] px-2 py-1.5">읽기 전용</span>
+          <span className="bg-[#202020] px-2 py-1.5">
             {code ? `${code.appliedTurns}턴 반영` : '로딩 중'}
           </span>
         </div>
@@ -1375,7 +1376,7 @@ function FinishedView({
       style={{ width: contentWidth }}
     >
       <header className="flex items-baseline justify-between gap-6 max-[640px]:gap-4">
-        <h1 className="m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
+        <h1 className="page-title m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--relay-acid)]">
           릴레이 피드백
         </h1>
         <div className="flex min-w-0 items-baseline justify-end gap-3">
@@ -1472,12 +1473,14 @@ function FinishedView({
           className="border border-[#393939] bg-[#121212] [--feedback-acid:#d6ff50] [--feedback-border:#393939] [--feedback-text:#f5f5ef]"
         >
           <div className="grid min-h-[58px] grid-cols-[220px_40px_minmax(0,1fr)_40px] border-b border-[#393939] max-[760px]:grid-cols-[40px_minmax(0,1fr)_40px]">
-            <span className="grid place-items-center border-r border-[#393939] bg-[#121212] px-[22px] text-center text-xl leading-[1.4] font-bold text-[#d6ff50] max-[760px]:hidden">
+            {/* 라이트 모드에서 랭킹 상단바와 같은 조합이 된다 — 조작부는 회색으로 물러나고
+                고른 턴만 본문 색으로 선다. 다크 모드는 지금까지처럼 연두다. */}
+            <span className="grid place-items-center border-r border-[#393939] bg-[#121212] px-[22px] text-center text-xl leading-[1.4] font-bold text-[var(--relay-turn-chrome)] max-[760px]:hidden">
               턴별 피드백
             </span>
             <button
               aria-label="이전 턴 피드백 보기"
-              className="cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
+              className="cursor-pointer border-0 border-r border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[var(--relay-turn-chrome)] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
               disabled={selectedTurnPosition <= 0}
               onClick={() => moveSelectedTurn(-1)}
               type="button"
@@ -1496,8 +1499,8 @@ function FinishedView({
                     aria-selected={selected}
                     className={`relative min-h-[58px] min-w-[100px] shrink-0 cursor-pointer border-0 bg-transparent px-3 text-sm font-bold whitespace-nowrap hover:text-[#f5f5ef] after:absolute after:right-3.5 after:-bottom-px after:left-3.5 after:h-[3px] ${
                       selected
-                        ? 'text-[#d6ff50] after:bg-[#d6ff50]'
-                        : 'text-[#a3a3a3] after:bg-transparent'
+                        ? 'text-[var(--relay-turn-selected)] after:bg-[var(--relay-turn-selected)]'
+                        : 'text-[var(--relay-turn-idle)] after:bg-transparent'
                     }`}
                     key={turn.turnIndex}
                     onClick={() => setSelectedTurnIndex(turn.turnIndex)}
@@ -1512,7 +1515,7 @@ function FinishedView({
             </div>
             <button
               aria-label="다음 턴 피드백 보기"
-              className="cursor-pointer border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[#d6ff50] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
+              className="cursor-pointer border-0 border-l border-[#393939] bg-[#121212] font-mono text-2xl font-bold text-[var(--relay-turn-chrome)] hover:bg-[#202020] disabled:cursor-not-allowed disabled:text-[#555] disabled:hover:bg-[#121212]"
               disabled={selectedTurnPosition >= feedback.turns.length - 1}
               onClick={() => moveSelectedTurn(1)}
               type="button"
