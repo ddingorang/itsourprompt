@@ -6,7 +6,7 @@ plugins {
 
 group = 'com.promptstudio'
 version = '0.0.1-SNAPSHOT'
-description = 'Hello World backend'
+description = 'prompt.practice backend'
 
 java {
     toolchain {
