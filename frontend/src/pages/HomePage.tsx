@@ -180,7 +180,7 @@ export default function HomePage() {
 
         <section className="landing-how flex h-[calc(100svh_-_var(--landing-header-h))] min-h-[640px] items-start border-y border-[var(--landing-border)] bg-[var(--landing-surface)] pt-[clamp(34px,5vw,64px)] pb-8 max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:pb-16">
           <div className="mx-auto w-[80%] max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
-            <div className="mb-[clamp(36px,5vh,52px)] flex items-end justify-between gap-8 max-[680px]:items-start">
+            <div className="mb-[clamp(48px,7vh,72px)] flex items-end justify-between gap-8 max-[680px]:items-start">
               <div data-reveal>
                 <div className="mb-6 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--acid)]">HOW IT WORKS</div>
                 <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-[1.1] font-black tracking-[-0.04em]">
