@@ -63,6 +63,14 @@ const roomRowCellsClasses =
   '[&>*]:border-[#222] [&>*]:py-3 [&>*]:pr-4 ' +
   '[&>*:first-child]:pl-6 [&>*:last-child]:pr-6 last:[&>*]:border-b-0';
 
+/**
+ * 머리줄 조작 버튼 묶음(< > 새로고침)과 행의 입장 버튼이 같은 좌우 자리를 쓰도록
+ * 둘이 나눠 갖는 폭. 묶음의 제 폭을 재서 올림한 값이다 —
+ * 28(<) + 8 + 28(>) + 8 + 58.8(새로고침) = 130.8.
+ * 한쪽만 늘리면 글꼴에 따라 몇 px씩 어긋나므로 양쪽에 같은 값을 박아 맞춘다.
+ */
+const ENTRY_CONTROL_WIDTH = 'w-[131px]';
+
 const LAP_CHOICES = [1, 2, 3] as const;
 const SIZE_CHOICES = [2, 3, 4, 5, 6] as const;
 /** 백엔드 RelayRoom.MIN/MAX_TURN_TIME_LIMIT_SECONDS(30~300) 안에서 고른 프리셋. */
@@ -210,7 +218,8 @@ export default function RelayLobbyPage() {
         <section className="border border-[#343434]">
           <div className="flex items-center justify-between border-b border-[#343434] bg-[var(--relay-surface)] px-6 py-3">
             <span className={labelClasses}>방 목록</span>
-            <div className="flex items-center gap-2">
+            {/* 폭을 박으므로 안쪽 버튼이 줄어들지 않게 막는다. */}
+            <div className={`flex items-center justify-end gap-2 [&>*]:shrink-0 ${ENTRY_CONTROL_WIDTH}`}>
               <button
                 aria-label="이전 방 목록 페이지"
                 className="grid size-7 cursor-pointer place-items-center border border-[#3f3f3f] bg-transparent font-mono text-[12px] text-[#a3a3a3] enabled:hover:border-[#d6ff50] enabled:hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:text-[#444]"
@@ -303,7 +312,7 @@ export default function RelayLobbyPage() {
                     <span>
                       {full ? (
                       <span
-                        className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 border border-[#3f3f3f] bg-[#171717] px-[18px] text-[14px] leading-none font-extrabold tracking-[-0.01em] text-[#666]"
+                        className={`inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 border border-[#3f3f3f] bg-[#171717] px-[18px] text-[14px] leading-none font-extrabold tracking-[-0.01em] text-[#666] ${ENTRY_CONTROL_WIDTH}`}
                         role="status"
                       >
                         <svg
@@ -318,7 +327,7 @@ export default function RelayLobbyPage() {
                         정원 마감
                       </span>
                     ) : (
-                      <Button to={`/relay/rooms/${room.roomId}`}>
+                      <Button className={ENTRY_CONTROL_WIDTH} to={`/relay/rooms/${room.roomId}`}>
                         <svg
                           aria-hidden="true"
                           className="size-4"
