@@ -15,33 +15,33 @@ const tab = (page, name) => page.getByRole('tab', { name }).first().click();
 const shots = [
   { name: '01-landing', path: '/' },
   { name: '02-problems', path: '/problems' },
-  { name: '03-ranking', path: '/ranking?problem=4' },
+  { name: '11-ranking', path: '/ranking?problem=4' },
   {
-    name: '04-ranking-problem-list',
+    name: '12-ranking-problems',
     path: '/ranking?problem=4',
     act: (page) => page.getByRole('button', { name: /전체\s*\d+/ }).first().click(),
   },
-  { name: '05-workspace-start', path: '/problems/2', expand: true },
-  { name: '06-workspace-game', path: '/problems/6', expand: true },
-  { name: '07-workspace-python', path: '/problems/10', expand: true },
+  { name: '03-workspace', path: '/problems/2', expand: true },
+  { name: '04-workspace-game', path: '/problems/6', expand: true },
+  { name: '05-workspace-python', path: '/problems/10', expand: true },
   // 턴이 있는 어템프트를 열면 앱이 「프롬프트 기록」 탭을 스스로 연다(기본값 아님).
-  { name: '08-attempt-promptlog', path: `/attempts/${ATTEMPT}`, expand: true },
+  { name: '06-attempt-promptlog', path: `/attempts/${ATTEMPT}`, expand: true },
   {
-    name: '09-attempt-problem',
+    name: '07-attempt-problem',
     path: `/attempts/${ATTEMPT}`,
     expand: true,
     act: (page) => tab(page, '문제'),
   },
   {
-    name: '10-attempt-grading',
+    name: '08-attempt-grading',
     path: `/attempts/${ATTEMPT}`,
     expand: true,
     act: (page) => tab(page, '채점'),
   },
   // 피드백은 펼치지 않는다 — 코드 뷰어까지 풀면 4천 px가 넘어가 실제 화면과 딴판이 된다.
-  { name: '11-feedback-overview', path: `/attempts/${ATTEMPT}/feedback` },
+  { name: '09-feedback', path: `/attempts/${ATTEMPT}/feedback` },
   {
-    name: '12-feedback-turn',
+    name: '10-feedback-turn',
     path: `/attempts/${ATTEMPT}/feedback`,
     act: (page) => tab(page, '턴 2'),
   },
@@ -51,11 +51,11 @@ const shots = [
   { name: '16-notfound', path: '/this-route-does-not-exist' },
 
   // 라이트 모드는 대표 화면만. 최근 작업이 대부분 라이트 모드 손질이라 결과를 남긴다.
-  { name: 'L1-landing', path: '/', mode: 'light' },
-  { name: 'L2-problems', path: '/problems', mode: 'light' },
-  { name: 'L3-attempt', path: `/attempts/${ATTEMPT}`, mode: 'light', expand: true },
-  { name: 'L4-feedback', path: `/attempts/${ATTEMPT}/feedback`, mode: 'light' },
-  { name: 'L5-ranking', path: '/ranking?problem=4', mode: 'light' },
+  { name: 'light-01-landing', path: '/', mode: 'light' },
+  { name: 'light-02-problems', path: '/problems', mode: 'light' },
+  { name: 'light-03-attempt', path: `/attempts/${ATTEMPT}`, mode: 'light', expand: true },
+  { name: 'light-04-feedback', path: `/attempts/${ATTEMPT}/feedback`, mode: 'light' },
+  { name: 'light-05-ranking', path: '/ranking?problem=4', mode: 'light' },
 ];
 
 const targets = ONLY.length ? shots.filter((s) => ONLY.includes(s.name)) : shots;

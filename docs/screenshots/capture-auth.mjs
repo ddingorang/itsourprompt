@@ -29,9 +29,9 @@ async function ctxFor(mode) {
 
 const shots = [
   { name: '17-my', path: '/my', mode: 'dark' },
-  { name: '17b-ranking-mine', path: '/ranking?problem=1', mode: 'dark' },
-  { name: 'L6-relay-finished', path: `/relay/rooms/${ROOM}`, mode: 'light' },
-  { name: 'L7-my', path: '/my', mode: 'light' },
+  { name: '18-ranking-mine', path: '/ranking?problem=1', mode: 'dark' },
+  { name: 'light-06-relay-finished', path: `/relay/rooms/${ROOM}`, mode: 'light' },
+  { name: 'light-07-my', path: '/my', mode: 'light' },
 ];
 
 for (const shot of shots) {

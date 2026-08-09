@@ -3,8 +3,8 @@
 | 항목 | 값 |
 | --- | --- |
 | 대상 | <https://lets.promptpractice.run> (옛 주소 `i15a505.p.ssafy.io`는 이리로 301) |
-| 캡쳐일 | 2026-08-09 |
-| 기준 | `origin/FE-main` (`a9ce4c7`) — 배포 CSS에 같은 날 커밋 `4744c92`의 값이 들어 있어 확인했다 |
+| 캡쳐일 | 2026-08-10 |
+| 기준 | `origin/FE-main` (`27472fc`) — 배포본 헤더가 새 서비스 이름을 달고 문제 목록에 모아보기 탭이 있어 확인했다 |
 | 조건 | 뷰포트 1440×900, `deviceScaleFactor: 2`, `locale: ko-KR`, `fullPage` |
 | 장수 | 다크 28장 + 라이트 7장 = 35장 |
 
@@ -19,7 +19,7 @@
 | 파일 | 라우트 | 무엇이 담겼나 |
 | --- | --- | --- |
 | `01-landing.png` | `/` | 랜딩 5개 섹션 전체 (4237px) |
-| `02-problems.png` | `/problems` | 문제 11개 중 1페이지(10개), JAVA·PYTHON·GAME 구분 |
+| `02-problems.png` | `/problems` | 문제 14개 중 1페이지(10개)와 모아보기 탭 |
 | `03-workspace.png` | `/problems/2` | 작업장 — 아직 아무 턴도 없는 상태 |
 | `04-workspace-game.png` | `/problems/6` | 게임 문제. 오른쪽 셋째 탭이 「채점」이 아니라 **「플레이」** |
 | `05-workspace-python.png` | `/problems/10` | 파이썬 문제 |
@@ -29,7 +29,7 @@
 | `09-feedback.png` | `/attempts/267/feedback` | 프롬프트 총평 + 작업 패턴 총평(가져갈 한 줄) + 턴별 피드백 |
 | `10-feedback-turn.png` | `/attempts/267/feedback` | 턴 2 탭 |
 | `11-ranking.png` | `/ranking?problem=4` | 비용순 랭킹 3건 |
-| `12-ranking-problems.png` | `/ranking?problem=4` | 「전체 11」로 문제 목록을 펼친 상태 |
+| `12-ranking-problems.png` | `/ranking?problem=4` | 「전체 14」로 문제 목록을 펼친 상태 |
 | `13-login.png` | `/login` | |
 | `14-signup.png` | `/signup` | |
 | `15-error.png` | `/error` | 사유 없이 직접 열었을 때의 기본 문구 |
@@ -43,18 +43,18 @@
 
 | 파일 | 라우트 | 무엇이 담겼나 |
 | --- | --- | --- |
-| `17-my.png` | `/my` | 진도 2/11, 제출 2건 |
+| `17-my.png` | `/my` | 진도 2/14, 제출 2건 |
 | `18-ranking-mine.png` | `/ranking?problem=1` | 로그인 상태라 「나의 최고 기록」이 채워진 랭킹 |
 | `19-relay-lobby.png` | `/relay` | 방 목록 + 방 만들기 폼(모달이 아니라 로비 아래에 늘 펼쳐져 있다) |
 | `20-relay-create.png` | `/relay` | 방 이름을 넣어 버튼이 「방 만들기」로 바뀐 상태 |
-| `21-relay-waiting-host.png` | `/relay/rooms/84` | 대기실 — 방장 시점(게임 시작 버튼) |
-| `22-relay-waiting-guest.png` | `/relay/rooms/84` | 대기실 — 참가자 시점 |
-| `23-relay-my-turn.png` | `/relay/rooms/84` | 진행 중, 내 차례 (프롬프트 입력 가능) |
-| `24-relay-other-turn.png` | `/relay/rooms/84` | 진행 중, 남의 차례 |
-| `25-relay-generating.png` | `/relay/rooms/84` | 주자가 낸 프롬프트로 AI가 코드를 만드는 동안의 대기자 화면 |
-| `26-relay-my-turn-2.png` | `/relay/rooms/84` | 두 번째 주자 차례 |
-| `27-relay-finished.png` | `/relay/rooms/84` | 종료 — 점수판·총평·턴별 피드백 |
-| `28-relay-finished-turn.png` | `/relay/rooms/84` | 종료 화면에서 턴 2 탭 |
+| `21-relay-waiting-host.png` | `/relay/rooms/85` | 대기실 — 방장 시점(게임 시작 버튼) |
+| `22-relay-waiting-guest.png` | `/relay/rooms/85` | 대기실 — 참가자 시점 |
+| `23-relay-my-turn.png` | `/relay/rooms/85` | 진행 중, 내 차례 (프롬프트 입력 가능) |
+| `24-relay-other-turn.png` | `/relay/rooms/85` | 진행 중, 남의 차례 |
+| `25-relay-generating.png` | `/relay/rooms/85` | 주자가 낸 프롬프트로 AI가 코드를 만드는 동안의 대기자 화면 |
+| `26-relay-my-turn-2.png` | `/relay/rooms/85` | 두 번째 주자 차례 |
+| `27-relay-finished.png` | `/relay/rooms/85` | 종료 — 점수판·총평·턴별 피드백 |
+| `28-relay-finished-turn.png` | `/relay/rooms/85` | 종료 화면에서 턴 2 탭 |
 
 ## 라이트 모드
 
@@ -78,7 +78,7 @@
   제출까지 끝난 어템프트는 로그인 없이 누구나 열 수 있어 그대로 찍힌다. 프롬프트 3턴,
   줄 단위 diff, 5/5 통과한 채점 결과가 모두 그 사람의 것이다.
 - **`17`·`18`의 제출 2건**과 **`19`~`28`의 릴레이 한 판**은 캡쳐용 계정
-  `shotuser1`(테스터1)·`shotuser2`(테스터2)로 이번에 직접 만들었다. 릴레이는 방 #84에서
+  `shotuser1`(테스터1)·`shotuser2`(테스터2)로 이번에 직접 만들었다. 릴레이는 방 #85에서
   문제 1(Hello World)을 1바퀴·2좌석으로 끝까지 진행했고, 두 턴 모두 실제 AI 호출이다.
 
 계정 비밀번호는 문서와 스크립트에 넣지 않는다 — 아래처럼 환경변수로 넘긴다.

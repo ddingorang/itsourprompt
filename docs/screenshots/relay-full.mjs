@@ -60,8 +60,8 @@ const ROOM = room.roomId;
 log('room:', ROOM);
 
 // ── 로비 ─────────────────────────────────────────────────────
-await shot(a, '18-relay-lobby', { path: '/relay' });
-await shot(a, '19-relay-create-filled', {
+await shot(a, '19-relay-lobby', { path: '/relay' });
+await shot(a, '20-relay-create', {
   path: '/relay',
   act: async (page) => {
     await page.locator('input[type=text]').first().fill('점심시간 한 판');
@@ -70,25 +70,25 @@ await shot(a, '19-relay-create-filled', {
 
 // ── 대기실 ───────────────────────────────────────────────────
 await b.api.post(`${BASE}/api/relay/rooms/${ROOM}/participants`);
-await shot(a, '20-relay-waiting-host', { path: `/relay/rooms/${ROOM}` });
-await shot(b, '21-relay-waiting-guest', { path: `/relay/rooms/${ROOM}` });
+await shot(a, '21-relay-waiting-host', { path: `/relay/rooms/${ROOM}` });
+await shot(b, '22-relay-waiting-guest', { path: `/relay/rooms/${ROOM}` });
 
 // ── 시작 → 진행 ──────────────────────────────────────────────
 const started = await a.api.post(`${BASE}/api/relay/rooms/${ROOM}/start`);
 log('start:', started.status());
-await shot(a, '22-relay-my-turn', { reload: true, wait: 3500 });
-await shot(b, '23-relay-other-turn', { reload: true, wait: 3500 });
+await shot(a, '23-relay-my-turn', { reload: true, wait: 3500 });
+await shot(b, '24-relay-other-turn', { reload: true, wait: 3500 });
 
 // 1턴 — 응답을 기다리지 않고 대기자 화면(생성 중)을 찍는다.
 const turn1 = a.api.post(`${BASE}/api/relay/rooms/${ROOM}/turns`, {
   data: { prompt: '표준 출력으로 Hello, World! 를 출력하도록 만들어줘.' },
   timeout: 240000,
 });
-await shot(b, '24-relay-generating', { wait: 8000 });
+await shot(b, '25-relay-generating', { wait: 8000 });
 log('turn1:', (await turn1).status());
 
 // 2턴 — 이제 테스터2 차례
-await shot(b, '25-relay-my-turn-second', { reload: true, wait: 4000 });
+await shot(b, '26-relay-my-turn-2', { reload: true, wait: 4000 });
 const turn2 = await b.api.post(`${BASE}/api/relay/rooms/${ROOM}/turns`, {
   data: { prompt: '출력 문자열의 대소문자와 문장부호가 정확한지 확인하고 고쳐줘.' },
   timeout: 240000,
@@ -103,13 +103,13 @@ for (let i = 0; i < 40; i++) {
   if (status === 'FINISHED') break;
   await a.page.waitForTimeout(5000);
 }
-await shot(a, '26-relay-finished', { reload: true, wait: 5000 });
+await shot(a, '27-relay-finished', { reload: true, wait: 5000 });
 
 const tabs = await a.page.getByRole('tab').all();
 log('  finished tabs:', tabs.length);
 if (tabs.length > 1) {
   await tabs[1].click();
-  await shot(a, '27-relay-finished-turn', { wait: 2500 });
+  await shot(a, '28-relay-finished-turn', { wait: 2500 });
 }
 
 fs.writeFileSync(
