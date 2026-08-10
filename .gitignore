@@ -22,3 +22,11 @@ mise.toml
 # Claude
 .claude
 CLAUDE.md
+
+# Windows에서 받은 파일을 WSL로 복사할 때 딸려오는 찌꺼기.
+#
+# NTFS는 파일 본체 옆에 이름 붙은 부수 스트림(ADS)을 매달 수 있고, Windows는
+# 인터넷에서 받은 파일에 Zone.Identifier 스트림을 찍어 출처를 표시한다.
+# ext4에는 스트림을 담을 곳이 없어 "이름:Zone.Identifier"라는 별도 파일로 떨어진다.
+# 본체 파일을 옮기거나 이름을 바꿔도 따라가지 않아 고아로 남는다.
+*:Zone.Identifier
