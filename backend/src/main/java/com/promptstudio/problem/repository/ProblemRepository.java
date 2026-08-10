@@ -32,4 +32,11 @@ public interface ProblemRepository {
      * @return 저장 순서대로. 테스트가 없는 문제면 빈 목록
      */
     List<ProblemFile> findTestFiles(Long problemId);
+
+    /**
+     * 채점 언어만 읽는다. 채점 요청마다 부르는 경로라 수 KB짜리 명세가 딸린 엔티티를 꺼내지 않는다.
+     *
+     * @return 없는 문제면 Optional.empty()
+     */
+    Optional<String> findLanguageById(Long problemId);
 }

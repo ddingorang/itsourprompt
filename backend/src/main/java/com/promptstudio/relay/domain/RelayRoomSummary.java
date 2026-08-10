@@ -16,6 +16,7 @@ public record RelayRoomSummary(
         int participantCount,
         int maxParticipants,
         int totalLaps,
+        int turnTimeLimitSeconds,
         Instant createdAt
 ) {
 }

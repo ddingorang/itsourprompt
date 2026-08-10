@@ -6,6 +6,7 @@ import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.domain.LlmCallUsage;
 import com.promptstudio.attempt.domain.PromptScopeDecision;
 import com.promptstudio.attempt.domain.ToolCallEntry;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.attempt.port.PromptScopeValidator;
@@ -190,15 +191,17 @@ public class FakeAiConfiguration {
 
         private ProblemView receivedProblem;
         private AttemptView receivedAttempt;
+        private TurnTestResults receivedTestResults;
         private RuntimeException nextFailure;
         private CountDownLatch nextEntered;
         private CountDownLatch nextGate;
 
         @Override
-        public AttemptFeedback generate(ProblemView problem, AttemptView attempt) {
+        public AttemptFeedback generate(ProblemView problem, AttemptView attempt, TurnTestResults testResults) {
             invocationCount.incrementAndGet();
             this.receivedProblem = problem;
             this.receivedAttempt = attempt;
+            this.receivedTestResults = testResults;
 
             block();
 
@@ -271,6 +274,10 @@ public class FakeAiConfiguration {
             return receivedAttempt;
         }
 
+        public TurnTestResults receivedTestResults() {
+            return receivedTestResults;
+        }
+
         public int invocationCount() {
             return invocationCount.get();
         }
@@ -282,6 +289,7 @@ public class FakeAiConfiguration {
             invocationCount.set(0);
             receivedProblem = null;
             receivedAttempt = null;
+            receivedTestResults = null;
             nextFailure = null;
             nextEntered = null;
             nextGate = null;

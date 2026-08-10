@@ -3,6 +3,7 @@ package com.promptstudio.ranking.repository;
 import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.service.AttemptService;
+import com.promptstudio.guest.repository.GuestAttemptOwnershipRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.repository.ProblemRepository;
@@ -50,6 +51,9 @@ class RankingQueryRepositoryTest extends DatabaseTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private GuestAttemptOwnershipRepository guestAttemptOwnershipRepository;
 
     @Autowired
     private DSLContext dsl;
@@ -147,7 +151,7 @@ class RankingQueryRepositoryTest extends DatabaseTest {
         assertThat(entry.uncachedInputTokens()).isEqualTo(3_000L);
         assertThat(entry.cachedInputTokens()).isEqualTo(2_000L);
         assertThat(entry.outputTokens()).isEqualTo(1_000L);
-        assertThat(entry.owner()).isEqualTo(AttemptOwner.user(ownerId));
+        assertThat(entry.userId()).isEqualTo(ownerId);
         assertThat(entry.nickname()).isEqualTo("test owner");
         assertThat(entry.submittedAt()).isNotNull();
     }
@@ -206,17 +210,88 @@ class RankingQueryRepositoryTest extends DatabaseTest {
     }
 
     @Test
-    void 게스트도_랭킹에_들고_세션_UUID_앞_네_자로_표시된다() {
+    void 소요_시간은_첫_CODE_호출부터_제출까지를_초로_잰다() {
+        Problem problem = newProblem();
+        Long attemptId = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        setCodeCallCreatedAt(attemptId, 1, "2026-08-01T00:00:00Z");
+        setCodeCallCreatedAt(attemptId, 2, "2026-08-01T00:01:00Z");
+        setSubmittedAt(attemptId, "2026-08-01T00:04:12Z");
+
+        // 두 번째 호출(192초)이 아니라 첫 호출부터 잰다.
+        assertThat(top(problem.id(), 10).getFirst().durationSeconds()).isEqualTo(252L);
+    }
+
+    @Test
+    void 실패한_CODE_호출도_시작으로_친다() {
+        Problem problem = newProblem();
+        Long attemptId = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        setCodeCallCreatedAt(attemptId, 1, "2026-08-01T00:01:00Z");
+        setCodeCallCreatedAt(attemptId, 2, "2026-08-01T00:01:00Z");
+        insertFailedCodeCall(attemptId, "2026-08-01T00:00:00Z");
+        setSubmittedAt(attemptId, "2026-08-01T00:05:00Z");
+
+        assertThat(top(problem.id(), 10).getFirst().durationSeconds()).isEqualTo(300L);
+    }
+
+    @Test
+    void 피드백_호출은_시작으로_치지_않는다() {
+        Problem problem = newProblem();
+        Long attemptId = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        setCodeCallCreatedAt(attemptId, 1, "2026-08-01T00:00:00Z");
+        setCodeCallCreatedAt(attemptId, 2, "2026-08-01T00:00:00Z");
+        insertFeedbackCall(attemptId, "2026-07-31T23:50:00Z");
+        setSubmittedAt(attemptId, "2026-08-01T00:00:42Z");
+
+        assertThat(top(problem.id(), 10).getFirst().durationSeconds()).isEqualTo(42L);
+    }
+
+    @Test
+    void 제출_시각을_모르면_소요_시간도_모른다() {
+        Problem problem = newProblem();
+        Long attemptId = submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
+        dsl.execute("UPDATE attempt SET submitted_at = NULL WHERE id = ?", attemptId);
+
+        assertThat(top(problem.id(), 10).getFirst().durationSeconds()).isNull();
+    }
+
+    @Test
+    void 게스트의_제출은_랭킹에_들지_않는다() {
+        Problem problem = newProblem();
+        submittedAttempt(problem, AttemptOwner.guest(newGuestSession()), 1);
+
+        RankedPage page = rankingQueryRepository.findTop(problem.id(), 10);
+
+        assertThat(page.entries()).isEmpty();
+        assertThat(page.totalCount()).isZero();
+    }
+
+    @Test
+    void 게스트가_더_싸도_등수와_전체_수는_로그인_사용자만_센다() {
+        Problem problem = newProblem();
+        submittedAttempt(problem, AttemptOwner.guest(newGuestSession()), 1);
+        Long mine = submittedAttempt(problem, AttemptOwner.user(ownerId), 2);
+
+        RankedPage page = rankingQueryRepository.findTop(problem.id(), 10);
+
+        assertThat(page.entries()).extracting(RankingEntry::attemptId).containsExactly(mine);
+        assertThat(page.entries()).extracting(RankingEntry::rank).containsExactly(1);
+        assertThat(page.totalCount()).isEqualTo(1);
+    }
+
+    /** 랭킹에서 빠진 게스트에게 남은 길은 로그인 하나뿐이라, 그 길이 열려 있는지를 여기서 지킨다. */
+    @Test
+    void 게스트가_로그인하면_그때까지_푼_기록이_랭킹에_오른다() {
         Problem problem = newProblem();
         UUID guestSessionId = newGuestSession();
         Long attemptId = submittedAttempt(problem, AttemptOwner.guest(guestSessionId), 1);
+        assertThat(top(problem.id(), 10)).isEmpty();
+
+        guestAttemptOwnershipRepository.transferToUser(guestSessionId, ownerId);
 
         RankingEntry entry = top(problem.id(), 10).getFirst();
-
         assertThat(entry.attemptId()).isEqualTo(attemptId);
-        // 게스트는 닉네임이 없다. 표시 이름을 세션 ID로 만드는 것은 응답 계층의 일이다.
-        assertThat(entry.owner()).isEqualTo(AttemptOwner.guest(guestSessionId));
-        assertThat(entry.nickname()).isNull();
+        assertThat(entry.userId()).isEqualTo(ownerId);
+        assertThat(entry.nickname()).isEqualTo("test owner");
     }
 
     @Test
@@ -253,7 +328,7 @@ class RankingQueryRepositoryTest extends DatabaseTest {
         Long cheap = submittedAttempt(problem, owner, 1);
         submittedAttempt(problem, AttemptOwner.user(otherUserId()), 2);
 
-        RankingEntry best = rankingQueryRepository.findBestOf(problem.id(), owner).orElseThrow();
+        RankingEntry best = rankingQueryRepository.findBestOf(problem.id(), ownerId).orElseThrow();
 
         assertThat(best.attemptId()).isEqualTo(cheap);
         assertThat(best.rank()).isEqualTo(1);
@@ -261,25 +336,11 @@ class RankingQueryRepositoryTest extends DatabaseTest {
     }
 
     @Test
-    void 게스트의_가장_좋은_한_줄도_찾는다() {
-        Problem problem = newProblem();
-        UUID guestSessionId = newGuestSession();
-        AttemptOwner owner = AttemptOwner.guest(guestSessionId);
-        submittedAttempt(problem, AttemptOwner.user(ownerId), 1);
-        Long guestAttemptId = submittedAttempt(problem, owner, 2);
-
-        RankingEntry best = rankingQueryRepository.findBestOf(problem.id(), owner).orElseThrow();
-
-        assertThat(best.attemptId()).isEqualTo(guestAttemptId);
-        assertThat(best.rank()).isEqualTo(2);
-    }
-
-    @Test
     void 자격을_갖춘_내_어템프트가_없으면_비어_있다() {
         Problem problem = newProblem();
         submittedAttempt(problem, AttemptOwner.user(otherUserId()), 1);
 
-        assertThat(rankingQueryRepository.findBestOf(problem.id(), AttemptOwner.user(ownerId))).isEmpty();
+        assertThat(rankingQueryRepository.findBestOf(problem.id(), ownerId)).isEmpty();
     }
 
     /** 턴을 turns개 쌓고 제출한 뒤, 마지막 턴에 대한 SUCCEEDED 실행을 남긴다. */
@@ -320,6 +381,41 @@ class RankingQueryRepositoryTest extends DatabaseTest {
         dsl.update(table(name("attempt")))
                 .set(field(name("attempt", "submitted_at"), SQLDataType.INSTANT), Instant.parse(submittedAt))
                 .where(field(name("attempt", "id"), SQLDataType.BIGINT).eq(attemptId))
+                .execute();
+    }
+
+    private void setCodeCallCreatedAt(Long attemptId, int seq, String createdAt) {
+        dsl.update(table(name("attempt_llm_call")))
+                .set(field(name("attempt_llm_call", "created_at"), SQLDataType.INSTANT), Instant.parse(createdAt))
+                .where(field(name("attempt_llm_call", "attempt_id"), SQLDataType.BIGINT).eq(attemptId))
+                .and(field(name("attempt_llm_call", "purpose"), SQLDataType.VARCHAR).eq("CODE"))
+                .and(field(name("attempt_llm_call", "seq"), SQLDataType.INTEGER).eq(seq))
+                .execute();
+    }
+
+    /** 실패한 호출은 턴이 저장되지 않아 turn_ordinal도 model도 없다. */
+    private void insertFailedCodeCall(Long attemptId, String createdAt) {
+        insertUnturnedCall(attemptId, "CODE", "FAILED", createdAt);
+    }
+
+    /** 제출이 내는 피드백 호출은 비동기라, 시각을 정해 검사하려면 직접 넣어야 한다. */
+    private void insertFeedbackCall(Long attemptId, String createdAt) {
+        insertUnturnedCall(attemptId, "FEEDBACK", "SUCCESS", createdAt);
+    }
+
+    /**
+     * 턴에 속하지 않는 호출 1건. seq는 턴 호출(1, 2)과 부딪히지 않게 크게 잡는다. 토큰과 모델을
+     * 비워도 자격은 흔들리지 않는다 — 자격은 turn_ordinal이 있는 행만 본다.
+     */
+    private void insertUnturnedCall(Long attemptId, String purpose, String status, String createdAt) {
+        dsl.insertInto(table(name("attempt_llm_call")))
+                .columns(
+                        field(name("attempt_id"), SQLDataType.BIGINT),
+                        field(name("purpose"), SQLDataType.VARCHAR),
+                        field(name("seq"), SQLDataType.INTEGER),
+                        field(name("status"), SQLDataType.VARCHAR),
+                        field(name("created_at"), SQLDataType.INSTANT))
+                .values(attemptId, purpose, 99, status, Instant.parse(createdAt))
                 .execute();
     }
 

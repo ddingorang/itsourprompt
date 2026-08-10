@@ -1,5 +1,6 @@
 package com.promptstudio.relay.ws;
 
+import jakarta.servlet.ServletContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -49,9 +50,36 @@ public class RelayWebSocketConfig implements WebSocketConfigurer {
      */
     @Bean
     public ServletServerContainerFactoryBean webSocketContainer() {
-        ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean();
+        ServletServerContainerFactoryBean container = new MockTolerantServerContainerFactoryBean();
         container.setMaxTextMessageBufferSize(64 * 1024);
 
         return container;
+    }
+
+    /**
+     * 통합 테스트의 목 서블릿 환경에는 jakarta.websocket ServerContainer가 없어, 원본 팩토리 빈의
+     * 단언이 컨텍스트 로드째 무너뜨린다. 실제 컨테이너에서만 설정을 적용하고 목 환경에서는
+     * 건너뛴다 — 소켓 연결 자체가 없는 환경이라 잃는 동작도 없다.
+     */
+    private static final class MockTolerantServerContainerFactoryBean extends ServletServerContainerFactoryBean {
+
+        private static final String SERVER_CONTAINER_ATTRIBUTE = "jakarta.websocket.server.ServerContainer";
+
+        private ServletContext servletContext;
+
+        @Override
+        public void setServletContext(ServletContext servletContext) {
+            this.servletContext = servletContext;
+            super.setServletContext(servletContext);
+        }
+
+        @Override
+        public void afterPropertiesSet() {
+            if (servletContext == null || servletContext.getAttribute(SERVER_CONTAINER_ATTRIBUTE) == null) {
+                return;
+            }
+
+            super.afterPropertiesSet();
+        }
     }
 }

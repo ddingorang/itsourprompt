@@ -4,12 +4,14 @@ import com.promptstudio.attempt.domain.AttemptFeedback;
 import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
+import com.promptstudio.attempt.domain.CarryLine;
+import com.promptstudio.attempt.domain.FeedbackView;
 import com.promptstudio.attempt.domain.GeneratedCode;
 import com.promptstudio.attempt.domain.LlmCallPurpose;
 import com.promptstudio.attempt.domain.PromptScopeDecision;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.exception.AttemptAlreadySubmittedException;
 import com.promptstudio.attempt.exception.AttemptHasNoTurnsException;
-import com.promptstudio.attempt.exception.AttemptNotFoundException;
 import com.promptstudio.attempt.exception.CodeGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackGenerationInProgressException;
 import com.promptstudio.attempt.exception.FeedbackNotFoundException;
@@ -19,7 +21,6 @@ import com.promptstudio.attempt.port.CodeGenerator;
 import com.promptstudio.attempt.port.FeedbackGenerator;
 import com.promptstudio.attempt.port.LlmUsageCarrier;
 import com.promptstudio.attempt.port.PromptScopeValidator;
-import com.promptstudio.attempt.repository.AttemptQueryRepository;
 import com.promptstudio.problem.domain.Problem;
 import com.promptstudio.problem.domain.ProblemView;
 import com.promptstudio.problem.exception.ProblemNotFoundException;
@@ -36,34 +37,37 @@ public class AttemptService {
     private static final Logger log = LoggerFactory.getLogger(AttemptService.class);
 
     private final ProblemRepository problemRepository;
-    private final AttemptQueryRepository attemptQueryRepository;
+    private final AttemptReader attemptReader;
     private final AttemptWriter attemptWriter;
     private final IdempotencyGuard idempotencyGuard;
     private final FeedbackGenerationGuard feedbackGenerationGuard;
     private final CodeGenerationGuard codeGenerationGuard;
     private final CodeGenerator codeGenerator;
     private final FeedbackGenerator feedbackGenerator;
+    private final TurnTestResultLoader turnTestResultLoader;
     private final PromptScopeValidator promptScopeValidator;
 
     public AttemptService(
             ProblemRepository problemRepository,
-            AttemptQueryRepository attemptQueryRepository,
+            AttemptReader attemptReader,
             AttemptWriter attemptWriter,
             IdempotencyGuard idempotencyGuard,
             FeedbackGenerationGuard feedbackGenerationGuard,
             CodeGenerationGuard codeGenerationGuard,
             CodeGenerator codeGenerator,
             FeedbackGenerator feedbackGenerator,
+            TurnTestResultLoader turnTestResultLoader,
             PromptScopeValidator promptScopeValidator
     ) {
         this.problemRepository = problemRepository;
-        this.attemptQueryRepository = attemptQueryRepository;
+        this.attemptReader = attemptReader;
         this.attemptWriter = attemptWriter;
         this.idempotencyGuard = idempotencyGuard;
         this.feedbackGenerationGuard = feedbackGenerationGuard;
         this.codeGenerationGuard = codeGenerationGuard;
         this.codeGenerator = codeGenerator;
         this.feedbackGenerator = feedbackGenerator;
+        this.turnTestResultLoader = turnTestResultLoader;
         this.promptScopeValidator = promptScopeValidator;
     }
 
@@ -86,9 +90,12 @@ public class AttemptService {
         return getAttempt(attemptId, AttemptOwner.user(userId));
     }
 
+    /**
+     * 소유자 조회 — 턴 추가(generateTurnWhileGuarded)와 제출이 소유권 관문으로 재사용한다.
+     * 그래서 여기를 제출 완료까지 열도록 완화하면 안 된다. 근거는 {@link AttemptReader#requireOwned}에 있다.
+     */
     public AttemptView getAttempt(Long attemptId, AttemptOwner owner) {
-        return findAttempt(attemptId, owner)
-                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+        return attemptReader.requireOwned(attemptId, owner);
     }
 
     public AttemptView getFeedback(Long attemptId, Long userId) {
@@ -103,6 +110,40 @@ public class AttemptService {
         }
 
         return attempt;
+    }
+
+    /**
+     * 읽기 전용 조회 — 공개 범위는 {@link AttemptReader#requireReadable}가 정한다.
+     * 쓰기가 지나는 {@link #getAttempt(Long, AttemptOwner)}와 갈라 둔 이유도 거기 적혀 있다.
+     */
+    public AttemptView readAttempt(Long attemptId, AttemptOwner requester) {
+        return attemptReader.requireReadable(attemptId, requester);
+    }
+
+    /**
+     * 피드백도 제출 완료면 누구나 읽는다. 공개 범위는 {@link #readAttempt}와 같다 —
+     * 피드백은 제출된 어템프트에만 있으므로 상태 검사가 한 번 더 걸릴 뿐이다.
+     */
+    public FeedbackView readFeedback(Long attemptId, AttemptOwner requester) {
+        AttemptView attempt = readAttempt(attemptId, requester);
+
+        if (attempt.status() != AttemptStatus.SUBMITTED) {
+            throw new FeedbackNotFoundException(attemptId);
+        }
+
+        return withCarryLine(attempt, turnTestResults(attempt));
+    }
+
+    /**
+     * 규칙 한 줄은 저장하지 않고 읽을 때마다 계산한다 — LLM을 부르지 않으므로 값이 싸고, 규칙이 생기기
+     * 전에 제출된 어템프트도 마이그레이션 없이 받는다.
+     */
+    private FeedbackView withCarryLine(AttemptView attempt, TurnTestResults testResults) {
+        return new FeedbackView(attempt, CarryLine.of(attempt.turns(), testResults));
+    }
+
+    private TurnTestResults turnTestResults(AttemptView attempt) {
+        return turnTestResultLoader.load(attempt.id(), attempt.turns().size());
     }
 
     public AttemptView addTurn(Long attemptId, Long userId, String userPrompt) {
@@ -231,11 +272,11 @@ public class AttemptService {
         return idempotencyKey;
     }
 
-    public AttemptView submit(Long attemptId, Long userId) {
+    public FeedbackView submit(Long attemptId, Long userId) {
         return submit(attemptId, AttemptOwner.user(userId));
     }
 
-    public AttemptView submit(Long attemptId, AttemptOwner owner) {
+    public FeedbackView submit(Long attemptId, AttemptOwner owner) {
         if (codeGenerationGuard.isGenerating(attemptId)) {
             log.warn("Feedback generation rejected because AI code generation is in progress | attemptId={}", attemptId);
             throw new CodeGenerationInProgressException(attemptId);
@@ -253,13 +294,16 @@ public class AttemptService {
             }
 
             if (attempt.status() == AttemptStatus.SUBMITTED) {
-                return attempt;
+                return withCarryLine(attempt, turnTestResults(attempt));
             }
 
             AttemptFeedback feedback;
+            // 채점 결과는 이미 code_run에 쌓여 있다. 없는 턴은 태그가 붙지 않고, 그것이 곧 솔로 판본이다.
+            TurnTestResults testResults = turnTestResultLoader.load(attemptId, attempt.turns().size());
 
             try {
-                feedback = feedbackGenerator.generate(ProblemView.from(getProblem(attempt.problemId())), attempt);
+                feedback = feedbackGenerator.generate(
+                        ProblemView.from(getProblem(attempt.problemId())), attempt, testResults);
             } catch (RuntimeException exception) {
                 // 피드백 프롬프트는 사용자 입력이 아니라 어댑터 산출물이고, 제출이 되지 않아
                 // 그 입력(problem·turns·baseFiles)은 어템프트에 그대로 남는다.
@@ -268,7 +312,8 @@ public class AttemptService {
                 throw exception;
             }
 
-            return attemptWriter.submit(attemptId, owner, feedback);
+            // 규칙 줄은 방금 읽은 채점 결과를 그대로 쓴다 — 제출이 실행을 만들지 않으므로 다시 읽을 것이 없다.
+            return withCarryLine(attemptWriter.submit(attemptId, owner, feedback), testResults);
         } finally {
             feedbackGenerationGuard.release(attemptId);
         }
@@ -298,13 +343,6 @@ public class AttemptService {
         }
 
         return problem;
-    }
-
-    private java.util.Optional<AttemptView> findAttempt(Long attemptId, AttemptOwner owner) {
-        if (owner.isUser()) {
-            return attemptQueryRepository.findByIdAndUserId(attemptId, owner.userId());
-        }
-        return attemptQueryRepository.findByIdAndGuestSessionId(attemptId, owner.guestSessionId());
     }
 
     private long elapsedMillis(long startedAt) {

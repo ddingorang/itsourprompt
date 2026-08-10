@@ -25,9 +25,16 @@ export async function createRelayRoom(
   problemId: number,
   totalLaps: number,
   maxParticipants: number,
+  turnTimeLimitSeconds?: number,
 ): Promise<RelayRoom> {
   return apiRequest<RelayRoom>('/relay/rooms', {
-    body: JSON.stringify({ maxParticipants, name, problemId, totalLaps }),
+    body: JSON.stringify({
+      maxParticipants,
+      name,
+      problemId,
+      totalLaps,
+      turnTimeLimitSeconds,
+    }),
     method: 'POST',
   });
 }

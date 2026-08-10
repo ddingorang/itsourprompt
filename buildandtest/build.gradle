@@ -57,5 +57,10 @@ tasks.named('test') {
         systemProperty 'worker.junit-console-jar',
                 layout.buildDirectory.file('junit-console/junit-platform-console-standalone.jar')
                         .get().asFile.absolutePath
+
+        // 파이썬 실행기 테스트의 인터프리터 재정의(선택). 없으면 테스트가 PATH에서 찾는다.
+        if (System.getProperty('worker.python-binary') != null) {
+            systemProperty 'worker.python-binary', System.getProperty('worker.python-binary')
+        }
     }
 }

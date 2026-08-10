@@ -6,6 +6,7 @@ import com.promptstudio.attempt.controller.response.AttemptResponse;
 import com.promptstudio.attempt.controller.response.CodeRunListResponse;
 import com.promptstudio.attempt.controller.response.CodeRunResponse;
 import com.promptstudio.attempt.controller.response.FeedbackResponse;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.service.AttemptService;
 import com.promptstudio.attempt.service.CodeRunService;
 import com.promptstudio.global.exception.ApiErrorResponse;
@@ -96,14 +97,17 @@ public class AttemptController {
             @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody CreateAttemptRequest request
     ) {
+        AttemptOwner requester = owner(principal, httpRequest);
+
         return attemptWebMapper.toAttemptResponse(
-                attemptService.startAttempt(request.problemId(), owner(principal, httpRequest), idempotencyKey));
+                attemptService.startAttempt(request.problemId(), requester, idempotencyKey), requester);
     }
 
     @GetMapping("/{id}")
     @Operation(
             summary = "어템프트 조회",
-            description = "어템프트의 현재 파일 전체와 턴 기록을 반환합니다."
+            description = "어템프트의 현재 파일 전체와 턴 기록을 반환합니다. "
+                    + "제출 완료된 어템프트는 누구나 조회할 수 있고, 진행 중이면 소유자만 조회할 수 있습니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -122,14 +126,16 @@ public class AttemptController {
             HttpServletRequest httpRequest,
             @PathVariable("id") Long id
     ) {
-        return attemptWebMapper.toAttemptResponse(attemptService.getAttempt(id, owner(principal, httpRequest)));
+        AttemptOwner requester = owner(principal, httpRequest);
+
+        return attemptWebMapper.toAttemptResponse(attemptService.readAttempt(id, requester), requester);
     }
 
     @GetMapping("/{id}/feedback")
     @Operation(
             summary = "피드백 조회",
             description = "제출 시 생성해 저장한 프롬프트 피드백을 턴별 피드백과 전체 피드백으로 반환합니다. "
-                    + "제출 전에는 조회할 수 없습니다."
+                    + "제출 전에는 조회할 수 없고, 제출 완료된 어템프트의 피드백은 누구나 조회할 수 있습니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -148,7 +154,7 @@ public class AttemptController {
             HttpServletRequest httpRequest,
             @PathVariable("id") Long id
     ) {
-        return attemptWebMapper.toFeedbackResponse(attemptService.getFeedback(id, owner(principal, httpRequest)));
+        return attemptWebMapper.toFeedbackResponse(attemptService.readFeedback(id, owner(principal, httpRequest)));
     }
 
     @PostMapping("/{id}/turns")
@@ -200,8 +206,10 @@ public class AttemptController {
             @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody TurnRequest request
     ) {
+        AttemptOwner requester = owner(principal, httpRequest);
+
         return attemptWebMapper.toAttemptResponse(
-                attemptService.addTurn(id, owner(principal, httpRequest), request.prompt(), idempotencyKey));
+                attemptService.addTurn(id, requester, request.prompt(), idempotencyKey), requester);
     }
 
     @PostMapping("/{id}/submit")
@@ -288,7 +296,8 @@ public class AttemptController {
     @Operation(
             summary = "코드 빌드/실행 요청 (턴 지정)",
             description = "지정한 턴 시점의 파일로 빌드/실행합니다. 턴은 불변이므로 과거 턴을 다시 실행하면 "
-                    + "그때의 코드가 그대로 실행됩니다. 어느 프롬프트까지 테스트를 통과했는지 확인할 때 씁니다."
+                    + "그때의 코드가 그대로 실행됩니다. 어느 프롬프트까지 테스트를 통과했는지 확인할 때 씁니다. "
+                    + "제출 완료 여부와 무관하게 소유자만 요청할 수 있습니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -308,11 +317,14 @@ public class AttemptController {
             )
     })
     public CodeRunResponse requestTurnRun(
+            @AuthenticationPrincipal AppUserDetails principal,
+            HttpServletRequest httpRequest,
             @PathVariable("id") Long id,
             @Parameter(description = "실행할 턴 번호(0-based)", example = "0")
             @PathVariable("ordinal") int ordinal
     ) {
-        return attemptWebMapper.toCodeRunResponse(codeRunService.requestRun(id, ordinal));
+        return attemptWebMapper.toCodeRunResponse(
+                codeRunService.requestRun(id, owner(principal, httpRequest), ordinal));
     }
 
     @GetMapping("/{id}/runs")
@@ -320,7 +332,8 @@ public class AttemptController {
             summary = "코드 빌드/실행 목록 조회",
             description = "이 어템프트에서 지금까지 요청한 빌드/실행을 최근 순으로 반환합니다. "
                     + "실행 ID를 잃어버려도 진행 중인 실행과 지난 결과를 되찾을 수 있습니다. "
-                    + "응답에는 stdout·stderr가 없으므로 본문은 실행 ID로 단건 조회하세요."
+                    + "응답에는 stdout·stderr가 없으므로 본문은 실행 ID로 단건 조회하세요. "
+                    + "제출 완료된 어템프트는 누구나 조회할 수 있고, 진행 중이면 소유자만 조회할 수 있습니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -339,13 +352,14 @@ public class AttemptController {
             HttpServletRequest httpRequest,
             @PathVariable("id") Long id
     ) {
-        return attemptWebMapper.toCodeRunListResponse(codeRunService.getRuns(id, owner(principal, httpRequest)));
+        return attemptWebMapper.toCodeRunListResponse(codeRunService.readRuns(id, owner(principal, httpRequest)));
     }
 
     @GetMapping("/{id}/runs/{runId}")
     @Operation(
             summary = "코드 빌드/실행 결과 조회",
-            description = "실행 상태와 결과를 반환합니다. 아직 끝나지 않았으면 status가 QUEUED이고 결과 필드는 모두 null입니다."
+            description = "실행 상태와 결과를 반환합니다. 아직 끝나지 않았으면 status가 QUEUED이고 결과 필드는 모두 null입니다. "
+                    + "제출 완료된 어템프트는 누구나 조회할 수 있고, 진행 중이면 소유자만 조회할 수 있습니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -365,13 +379,10 @@ public class AttemptController {
             @PathVariable("id") Long id,
             @PathVariable("runId") UUID runId
     ) {
-        return attemptWebMapper.toCodeRunResponse(codeRunService.getRun(id, owner(principal, httpRequest), runId));
+        return attemptWebMapper.toCodeRunResponse(codeRunService.readRun(id, owner(principal, httpRequest), runId));
     }
 
-    private com.promptstudio.attempt.domain.AttemptOwner owner(
-            AppUserDetails principal,
-            HttpServletRequest request
-    ) {
+    private AttemptOwner owner(AppUserDetails principal, HttpServletRequest request) {
         return attemptOwnerResolver.resolve(principal, request);
     }
 }

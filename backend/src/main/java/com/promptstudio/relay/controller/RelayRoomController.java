@@ -88,7 +88,8 @@ public class RelayRoomController {
                 request.problemId(),
                 principal.id(),
                 request.totalLaps(),
-                request.maxParticipants()
+                request.maxParticipants(),
+                request.turnTimeLimitSeconds()
         ));
     }
 

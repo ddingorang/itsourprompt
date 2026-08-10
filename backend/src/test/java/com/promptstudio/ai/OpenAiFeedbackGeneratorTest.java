@@ -1,9 +1,11 @@
 package com.promptstudio.ai;
 
 import com.openai.models.completions.CompletionUsage;
+import com.promptstudio.attempt.domain.AttemptOwner;
 import com.promptstudio.attempt.domain.AttemptStatus;
 import com.promptstudio.attempt.domain.AttemptView;
 import com.promptstudio.attempt.domain.LlmCallUsage;
+import com.promptstudio.attempt.domain.TurnTestResults;
 import com.promptstudio.attempt.port.FeedbackGenerationException;
 import com.promptstudio.problem.domain.ProblemFile;
 import com.promptstudio.problem.domain.ProblemView;
@@ -45,21 +47,35 @@ class OpenAiFeedbackGeneratorTest {
 
     @Test
     void 구조화_응답을_턴별_피드백과_전체_피드백으로_변환한다() {
-        chatModel.queue(textResponse("""
-                {"turnFeedbacks":["첫 턴 피드백","둘째 턴 피드백"],"overall":"전체 피드백"}
-                """));
+        chatModel.queue(textResponse(response("첫 턴 피드백", "둘째 턴 피드백")));
 
-        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(2));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(2), TurnTestResults.EMPTY);
 
         assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴 피드백", "둘째 턴 피드백");
         assertThat(feedback.overall()).isEqualTo("전체 피드백");
     }
 
+    /**
+     * 인용은 응답이 입력에 붙어 있는지 재는 계량기라 대조를 마치면 버린다. 저장 봉투는 그대로다 —
+     * 인용이 draft로 새면 화면과 DB에 근거 문장이 그대로 나간다.
+     */
+    @Test
+    void 근거_인용은_턴_피드백에_남기지_않는다() {
+        chatModel.queue(textResponse("""
+                {"turnFeedbacks":[{"quotes":["프롬프트 1","요약 1"],"feedback":"첫 턴 피드백"}],\
+                "overall":"전체 피드백"}"""));
+
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY);
+
+        assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴 피드백");
+        assertThat(feedback.overall()).doesNotContain("프롬프트 1");
+    }
+
     @Test
     void 요청_옵션에_턴_수만큼의_구조화_출력_스키마를_싣는다() {
-        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
+        chatModel.queue(textResponse(response("첫 턴 피드백")));
 
-        feedbackGenerator.generate(problem, attempt(1));
+        feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         OpenAiChatOptions options = (OpenAiChatOptions) chatModel.receivedPrompts().getFirst().getOptions();
         assertThat(options.getResponseFormat()).isNotNull();
@@ -67,7 +83,9 @@ class OpenAiFeedbackGeneratorTest {
                 .contains("turnFeedbacks")
                 .contains("정확히 1개")
                 .contains("\"minItems\": 1")
-                .contains("\"maxItems\": 1");
+                .contains("\"maxItems\": 1")
+                .contains("\"quotes\"")
+                .contains("\"required\": [\"quotes\", \"feedback\"]");
     }
 
     @Test
@@ -75,7 +93,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse("피드백을 드릴 수 없습니다."));
         chatModel.queue(textResponse("피드백을 드릴 수 없습니다."));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("invalid-json");
@@ -86,7 +104,7 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(textResponse(""));
         chatModel.queue(textResponse(""));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("empty-content");
@@ -94,10 +112,10 @@ class OpenAiFeedbackGeneratorTest {
 
     @Test
     void 턴_피드백_개수가_턴_수와_다르면_turn_count_mismatch로_실패한다() {
-        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
-        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
+        chatModel.queue(textResponse(response("첫 턴 피드백")));
+        chatModel.queue(textResponse(response("첫 턴 피드백")));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("turn-count-mismatch");
@@ -105,10 +123,10 @@ class OpenAiFeedbackGeneratorTest {
 
     @Test
     void 전체_피드백이_비어_있으면_empty_overall로_실패한다() {
-        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"  \"}"));
-        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"  \"}"));
+        chatModel.queue(textResponse(responseWithOverall("  ", "첫 턴 피드백")));
+        chatModel.queue(textResponse(responseWithOverall("  ", "첫 턴 피드백")));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("empty-overall");
@@ -121,9 +139,9 @@ class OpenAiFeedbackGeneratorTest {
      */
     @Test
     void 완성_토큰_상한에서_잘린_응답이면_다시_부르지_않고_truncated로_실패한다() {
-        chatModel.queue(truncatedResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
+        chatModel.queue(truncatedResponse(response("첫 턴 피드백")));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("truncated");
@@ -136,10 +154,10 @@ class OpenAiFeedbackGeneratorTest {
      */
     @Test
     void 응답_형태가_어긋나면_한_번_다시_호출한다() {
-        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
-        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴\",\"둘째 턴\"],\"overall\":\"전체 피드백\"}"));
+        chatModel.queue(textResponse(response("첫 턴 피드백")));
+        chatModel.queue(textResponse(response("첫 턴", "둘째 턴")));
 
-        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(2));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(2), TurnTestResults.EMPTY);
 
         assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴", "둘째 턴");
         assertThat(chatModel.receivedPrompts()).hasSize(2);
@@ -150,10 +168,10 @@ class OpenAiFeedbackGeneratorTest {
      */
     @Test
     void 다시_호출한_응답도_어긋나면_두_번째에서_멈춘다() {
-        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
-        chatModel.queue(textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"));
+        chatModel.queue(textResponse(response("첫 턴 피드백")));
+        chatModel.queue(textResponse(response("첫 턴 피드백")));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(2), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class);
         assertThat(chatModel.receivedPrompts()).hasSize(2);
     }
@@ -165,7 +183,7 @@ class OpenAiFeedbackGeneratorTest {
     void 모델_호출이_실패하면_다시_부르지_않고_provider_error로_변환한다() {
         chatModel.failWith(new IllegalStateException("provider 오류"));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOf(FeedbackGenerationException.class)
                 .extracting("reason")
                 .isEqualTo("provider-error");
@@ -174,10 +192,9 @@ class OpenAiFeedbackGeneratorTest {
 
     @Test
     void 성공_피드백에_사용량이_실린다() {
-        chatModel.queue(withUsage(
-                textResponse("{\"turnFeedbacks\":[\"첫 턴 피드백\"],\"overall\":\"전체 피드백\"}"), 500, 120, 300L, 80L));
+        chatModel.queue(withUsage(textResponse(response("첫 턴 피드백")), 500, 120, 300L, 80L));
 
-        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1));
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY);
 
         assertThat(feedback.llmCalls()).hasSize(1);
 
@@ -199,12 +216,78 @@ class OpenAiFeedbackGeneratorTest {
         chatModel.queue(withUsage(textResponse("피드백을 드릴 수 없습니다."), 500, 120, null, null));
         chatModel.queue(withUsage(textResponse("피드백을 드릴 수 없습니다."), 500, 120, null, null));
 
-        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1)))
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
                 .isInstanceOfSatisfying(FeedbackGenerationException.class, exception -> {
                     assertThat(exception.errorType()).isEqualTo("invalid-json");
                     assertThat(exception.llmCalls()).hasSize(2);
                     assertThat(exception.llmCalls().getFirst().inputTokens()).isEqualTo(500L);
                 });
+    }
+
+    /**
+     * 인용이 입력에 있으면 그대로 통과한다. 대조는 조립한 유저 프롬프트 전체를 상대로 한다.
+     */
+    @Test
+    void 입력에_있는_문장을_인용하면_다시_부르지_않는다() {
+        chatModel.queue(textResponse(responseWithQuote("프롬프트 1", "첫 턴 피드백")));
+
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY);
+
+        assertThat(feedback.turnFeedbacks()).containsExactly("첫 턴 피드백");
+        assertThat(chatModel.receivedPrompts()).hasSize(1);
+    }
+
+    /**
+     * 관측된 실패가 이것이다 — 모델이 입력에 없는 사실을 근거로 내놓았다. 지어낸 근거 위에 선 판정은
+     * 믿을 수 없으므로 같은 요청을 한 번 더 보낸다.
+     */
+    @Test
+    void 입력에_없는_문장을_인용하면_한_번_다시_호출한다() {
+        chatModel.queue(textResponse(responseWithQuote("사용자가 diff를 열어 확인했어요", "첫 턴 피드백")));
+        chatModel.queue(textResponse(responseWithQuote("프롬프트 1", "다시 부른 피드백")));
+
+        FeedbackDraft feedback = feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY);
+
+        assertThat(feedback.turnFeedbacks()).containsExactly("다시 부른 피드백");
+        assertThat(chatModel.receivedPrompts()).hasSize(2);
+    }
+
+    @Test
+    void 다시_부른_응답도_없는_문장을_인용하면_quote_not_found로_실패한다() {
+        chatModel.queue(textResponse(responseWithQuote("사용자가 diff를 열어 확인했어요", "첫 턴 피드백")));
+        chatModel.queue(textResponse(responseWithQuote("사용자가 diff를 열어 확인했어요", "첫 턴 피드백")));
+
+        assertThatThrownBy(() -> feedbackGenerator.generate(problem, attempt(1), TurnTestResults.EMPTY))
+                .isInstanceOf(FeedbackGenerationException.class)
+                .extracting("reason")
+                .isEqualTo("quote-not-found");
+        assertThat(chatModel.receivedPrompts()).hasSize(2);
+    }
+
+    private String responseWithQuote(String quote, String turnFeedback) {
+        return "{\"turnFeedbacks\":[{\"quotes\":[\"" + quote + "\"],\"feedback\":\"" + turnFeedback
+                + "\"}],\"overall\":\"전체 피드백\"}";
+    }
+
+    /**
+     * 턴 항목이 인용 배열과 피드백 문자열을 함께 갖는 새 응답 모양. 인용은 대조용이라 여기서는 비워 둔다.
+     */
+    private String response(String... turnFeedbacks) {
+        return responseWithOverall("전체 피드백", turnFeedbacks);
+    }
+
+    private String responseWithOverall(String overall, String... turnFeedbacks) {
+        StringBuilder entries = new StringBuilder();
+
+        for (String turnFeedback : turnFeedbacks) {
+            if (!entries.isEmpty()) {
+                entries.append(",");
+            }
+
+            entries.append("{\"quotes\":[],\"feedback\":\"").append(turnFeedback).append("\"}");
+        }
+
+        return "{\"turnFeedbacks\":[" + entries + "],\"overall\":\"" + overall + "\"}";
     }
 
     private AttemptView attempt(int turnCount) {
@@ -216,7 +299,7 @@ class OpenAiFeedbackGeneratorTest {
                     new AttemptView.TurnView("프롬프트 " + index, "요약 " + index, List.of(), List.of(), null, null, null));
         }
 
-        return new AttemptView(1L, 1L, files, files, turns, AttemptStatus.IN_PROGRESS, null, null, null);
+        return new AttemptView(1L, 1L, AttemptOwner.user(1L), null, files, files, turns, AttemptStatus.IN_PROGRESS, null, null, null);
     }
 
     private ChatResponse textResponse(String text) {

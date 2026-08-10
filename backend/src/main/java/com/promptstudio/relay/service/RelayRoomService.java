@@ -9,6 +9,7 @@ import com.promptstudio.relay.domain.RelayRoom;
 import com.promptstudio.relay.domain.RelayRoomSummary;
 import com.promptstudio.relay.domain.RelayRoomView;
 import com.promptstudio.relay.exception.NotRelayParticipantException;
+import com.promptstudio.relay.exception.RelayParticipantLeftException;
 import com.promptstudio.relay.exception.RelayRoomAlreadyStartedException;
 import com.promptstudio.relay.exception.RelayRoomFullException;
 import com.promptstudio.relay.exception.RelayRoomNotFoundException;
@@ -18,10 +19,12 @@ import com.promptstudio.user.domain.User;
 import com.promptstudio.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +48,13 @@ public class RelayRoomService {
     private final RelayFeedbackService feedbackService;
     private final ApplicationEventPublisher eventPublisher;
 
+    /**
+     * 방장이 turnTimeLimitSeconds를 정하지 않았을 때 쓸 기본값. RelayGameWriter의 예전 전역
+     * 설정과 같은 프로퍼티를 그대로 쓴다 — 방마다 다르게 열 수 있게 된 지금도 "아무도 안 정하면
+     * 어떻게 되는가"의 기본값은 그대로 유지해야 하기 때문이다.
+     */
+    private final Duration defaultTurnTimeLimit;
+
     public RelayRoomService(
             RelayRoomRepository roomRepository,
             RelayParticipantRepository participantRepository,
@@ -53,7 +63,8 @@ public class RelayRoomService {
             RelayRoomViewFactory viewFactory,
             RelayGameWriter gameWriter,
             RelayFeedbackService feedbackService,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            @Value("${relay.turn-input-timeout:PT2M}") Duration defaultTurnTimeLimit
     ) {
         this.roomRepository = roomRepository;
         this.participantRepository = participantRepository;
@@ -63,10 +74,18 @@ public class RelayRoomService {
         this.gameWriter = gameWriter;
         this.feedbackService = feedbackService;
         this.eventPublisher = eventPublisher;
+        this.defaultTurnTimeLimit = defaultTurnTimeLimit;
     }
 
     @Transactional
-    public RelayRoomView openRoom(String name, Long problemId, Long hostUserId, int totalLaps, int maxParticipants) {
+    public RelayRoomView openRoom(
+            String name,
+            Long problemId,
+            Long hostUserId,
+            int totalLaps,
+            int maxParticipants,
+            Integer turnTimeLimitSeconds
+    ) {
         Problem problem = problemRepository.findById(problemId)
                 .orElseThrow(() -> new ProblemNotFoundException(problemId));
 
@@ -74,15 +93,21 @@ public class RelayRoomService {
             throw new InactiveProblemException(problemId);
         }
 
+        int resolvedTurnTimeLimitSeconds = turnTimeLimitSeconds != null
+                ? turnTimeLimitSeconds
+                : (int) defaultTurnTimeLimit.toSeconds();
+
         RelayRoom room = roomRepository.save(
-                RelayRoom.open(name, problemId, hostUserId, totalLaps, maxParticipants));
+                RelayRoom.open(name, problemId, hostUserId, totalLaps, maxParticipants, resolvedTurnTimeLimitSeconds));
 
         // 방장은 개설과 동시에 첫 참가자가 된다. 방을 만드는 것과 참가하는 것을 따로 두면
         // 방장이 입장을 빠뜨린 방이 생기고, 그 방은 1번 좌석의 주인이 없다.
         participantRepository.save(RelayParticipant.join(room.id(), hostUserId));
 
-        log.info("[RELAY] room opened | roomId={} | problemId={} | hostUserId={} | laps={} | maxParticipants={}",
-                room.id(), problemId, hostUserId, totalLaps, maxParticipants);
+        log.info(
+                "[RELAY] room opened | roomId={} | problemId={} | hostUserId={} | laps={} | maxParticipants={} "
+                        + "| turnTimeLimitSeconds={}",
+                room.id(), problemId, hostUserId, totalLaps, maxParticipants, resolvedTurnTimeLimitSeconds);
 
         return toView(room);
     }
@@ -151,6 +176,7 @@ public class RelayRoomService {
                     headcount,
                     room.maxParticipants(),
                     room.totalLaps(),
+                    room.turnTimeLimitSeconds(),
                     room.createdAt()
             ));
         }
@@ -161,6 +187,7 @@ public class RelayRoomService {
     /**
      * 입장은 멱등하다. 이미 참가자면 새로 넣지 않고 현재 상태를 그대로 돌려준다 — 새로고침이나
      * 재접속으로 같은 요청이 다시 오는 것이 정상 경로이고, 그걸 409로 막으면 방에 돌아올 수 없다.
+     * 단 게임 중 이탈은 예외다 — 이탈은 확답을 받은 최종 결정이라 되돌아올 수 없다.
      *
      * <p>정원 검사 때문에 방 행에 쓰기 락을 걸고 시작한다({@code findByIdForUpdate} 주석 참고).
      */
@@ -174,15 +201,10 @@ public class RelayRoomService {
         if (existing.isPresent()) {
             RelayParticipant participant = existing.get();
 
-            // 게임 중 이탈했다 돌아온 참가자. 낙인을 지우지 않으면 이탈 좌석 즉시 스킵에
-            // 걸려, 돌아왔는데도 자기 차례가 오는 족족 건너뛰어진다.
+            // 게임 중 이탈한 참가자는 돌아올 수 없다. 좌석은 남아 있지만(진행 인덱스 보전용)
+            // 남은 차례는 전부 스킵된다.
             if (participant.hasLeft()) {
-                participant.rejoin();
-                participantRepository.save(participant);
-
-                log.info("[RELAY] participant rejoined | roomId={} | userId={}", roomId, userId);
-
-                return publishChanged(toView(room));
+                throw new RelayParticipantLeftException(roomId);
             }
 
             return toView(room);

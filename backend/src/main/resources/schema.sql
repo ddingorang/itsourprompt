@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS problem (
     title   VARCHAR(255) NOT NULL,
     spec_md TEXT         NOT NULL,
     problem_type VARCHAR(20) NOT NULL DEFAULT 'coding',
+    -- 채점 언어. 언어별 워커 라우팅과 AI 생성 프롬프트가 이 값을 본다.
+    language VARCHAR(20) NOT NULL DEFAULT 'java',
     slug    VARCHAR(255),
     active  BOOLEAN      NOT NULL DEFAULT TRUE
 );
@@ -10,6 +12,8 @@ CREATE TABLE IF NOT EXISTS problem (
 ALTER TABLE problem ADD COLUMN IF NOT EXISTS slug VARCHAR(255);
 ALTER TABLE problem ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE problem ADD COLUMN IF NOT EXISTS problem_type VARCHAR(20) NOT NULL DEFAULT 'coding';
+-- 언어 도입 전에 만들어진 DB를 위한 마이그레이션. 그때의 문제는 전부 java였다.
+ALTER TABLE problem ADD COLUMN IF NOT EXISTS language VARCHAR(20) NOT NULL DEFAULT 'java';
 -- 시더 시절 하드코딩 문제를 GitLab 디렉토리명으로 백필한다(신규 DB에선 no-op).
 UPDATE problem SET slug = 'hello-world'     WHERE slug IS NULL AND title = 'Hello World 출력';
 UPDATE problem SET slug = 'print-ssafy'     WHERE slug IS NULL AND title = 'SSAFY 출력';
@@ -280,6 +284,8 @@ CREATE TABLE IF NOT EXISTS relay_room (
     status             VARCHAR(30) NOT NULL,
     total_laps         INT         NOT NULL,
     max_participants   INT         NOT NULL,
+    -- 한 턴의 입력 제한시간(초). 방장이 개설 시 정하지 않으면 서비스가 전역 기본값(2분)을 채운다.
+    turn_time_limit_seconds INT    NOT NULL,
     -- 시작 시 확정한 참가자 수. 이후 이탈해도 좌석 수는 변하지 않는다.
     seat_count         INT,
     -- 릴레이 진행 인덱스. 좌석은 seat_count로 나눈 나머지, 바퀴는 몫이다.
@@ -305,6 +311,8 @@ ALTER TABLE relay_room ADD COLUMN IF NOT EXISTS baseline_passed INT;
 ALTER TABLE relay_room ADD COLUMN IF NOT EXISTS baseline_total INT;
 -- 방 이름 이전 버전으로 만들어진 개발 DB를 위한 마이그레이션.
 ALTER TABLE relay_room ADD COLUMN IF NOT EXISTS name VARCHAR(30);
+-- 턴 제한시간 방별 설정 이전 버전으로 만들어진 행은 그때까지 전역 기본값이었던 2분(120초)으로 채운다.
+ALTER TABLE relay_room ADD COLUMN IF NOT EXISTS turn_time_limit_seconds INT NOT NULL DEFAULT 120;
 
 -- 방 참가자. seat_order는 입장 시점이 아니라 게임 시작 시점에 joined_at 순으로 부여한다 —
 -- 시작 전 이탈 때문에 좌석 번호를 재정렬할 일이 없어진다.

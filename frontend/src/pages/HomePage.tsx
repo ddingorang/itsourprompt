@@ -132,7 +132,7 @@ export default function HomePage() {
             스크롤 안내가 스크롤되지 못하고 잘려 나간다. */}
         <section className="landing-hero mx-auto flex min-h-[calc(100svh_-_var(--landing-header-h))] w-[80%] flex-col justify-between pt-[clamp(34px,5vw,64px)] pb-4 max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
           <div className="flex flex-1 flex-col justify-center">
-            <div className="flex items-center gap-4 font-mono text-[19px] font-bold tracking-[0.14em] text-[var(--acid)]">
+            <div className="flex items-center gap-4 font-mono text-[30px] font-bold tracking-[0.14em] text-[var(--acid)]">
               <span>PROMPT ENGINEERING PRACTICE</span>
             </div>
             <div className="pt-7 pb-6">
@@ -180,9 +180,9 @@ export default function HomePage() {
 
         <section className="landing-how flex h-[calc(100svh_-_var(--landing-header-h))] min-h-[640px] items-start border-y border-[var(--landing-border)] bg-[var(--landing-surface)] pt-[clamp(34px,5vw,64px)] pb-8 max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:pb-16">
           <div className="mx-auto w-[80%] max-[1100px]:w-[90%] max-[760px]:w-[calc(100%_-_32px)]">
-            <div className="mb-[clamp(36px,5vh,52px)] flex items-end justify-between gap-8 max-[680px]:items-start">
+            <div className="mb-[clamp(48px,7vh,72px)] flex items-end justify-between gap-8 max-[680px]:items-start">
               <div data-reveal>
-                <div className="mb-6 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--acid)]">HOW IT WORKS</div>
+                <div className="mb-6 font-mono text-[20px] font-bold tracking-[0.16em] text-[var(--acid)]">HOW IT WORKS</div>
                 <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-[1.1] font-black tracking-[-0.04em]">
                   세 단계면 충분합니다.
                 </h2>
@@ -203,9 +203,11 @@ export default function HomePage() {
         </section>
 
         <section className="landing-guest min-h-[calc(100svh_-_var(--landing-header-h))] overflow-hidden border-b border-[var(--landing-border)] bg-[var(--landing-guest-bg)] text-[var(--landing-guest-text)]">
-          <div className="mx-auto grid min-h-[calc(100svh_-_var(--landing-header-h))] w-[80%] grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-[6vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[900px]:w-[calc(100%_-_32px)] max-[900px]:grid-cols-1 max-[900px]:gap-12 max-[900px]:py-16">
-            <div className="max-w-[560px]" data-reveal>
-              <div className="mb-7 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--landing-guest-eyebrow)]">NO LOGIN NEEDED</div>
+          <div className="mx-auto grid min-h-[calc(100svh_-_var(--landing-header-h))] w-[80%] grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-center gap-[6vw] pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[900px]:w-[calc(100%_-_32px)] max-[900px]:grid-cols-1 max-[900px]:gap-12 max-[900px]:pb-16">
+            {/* 미리보기는 가운데 정렬로 두고 글 단만 위로 붙인다 — 다른 섹션은 모두
+                섹션 위 패딩에서 바로 글이 시작하는데 여기만 가운데로 밀려 있었다. */}
+            <div className="max-w-[560px] self-start" data-reveal>
+              <div className="mb-7 font-mono text-[20px] font-bold tracking-[0.16em] text-[var(--landing-guest-eyebrow)]">NO LOGIN NEEDED</div>
               <h2 className="m-0 text-[clamp(42px,5.4vw,76px)] leading-[1.1] font-black tracking-[-0.04em] [word-break:keep-all]">
                 로그인은
                 <br />
@@ -257,7 +259,7 @@ export default function HomePage() {
         <section className="mx-auto flex h-[calc(100svh_-_var(--landing-header-h))] min-h-[620px] w-[80%] flex-col pt-[clamp(34px,5vw,64px)] pb-8 max-[1100px]:w-[90%] max-[760px]:h-auto max-[760px]:min-h-0 max-[760px]:w-[calc(100%_-_32px)] max-[760px]:pb-20">
           <div className="relative mb-8 flex items-end justify-between gap-8 pb-6" data-reveal>
             <div>
-              <div className="mb-5 font-mono text-[16px] font-bold tracking-[0.16em] text-[var(--acid)]">PRACTICE NOW</div>
+              <div className="mb-5 font-mono text-[20px] font-bold tracking-[0.16em] text-[var(--acid)]">PRACTICE NOW</div>
               <h2 className="m-0 text-[clamp(38px,5vw,70px)] leading-none font-black tracking-[-0.04em]">어떤 문제부터 풀어볼까요?</h2>
             </div>
             <Link
@@ -279,7 +281,7 @@ export default function HomePage() {
           {!isLoading && !errorMessage && (
             <div className="border-b border-[var(--landing-border)]">
               {problems.slice(0, 3).map((problem) => (
-                <Link className="landing-problem group grid min-h-[102px] grid-cols-[76px_minmax(0,1fr)_42px] items-center gap-4 border-t border-[var(--landing-border)] py-[18px] first:border-t-0 max-[760px]:min-h-[100px] max-[760px]:grid-cols-[44px_minmax(0,1fr)_28px]" key={problem.id} to={`/problems/${problem.id}`}>
+                <Link className="landing-problem group grid min-h-[102px] grid-cols-[76px_minmax(0,1fr)_42px] items-center gap-4 border-t border-[var(--landing-border)] py-[18px] max-[760px]:min-h-[100px] max-[760px]:grid-cols-[44px_minmax(0,1fr)_28px]" key={problem.id} to={`/problems/${problem.id}`}>
                   <span className="font-mono text-[17px] text-[var(--landing-muted)]">{String(problem.id).padStart(2, '0')}</span>
                   <div className="min-w-0 text-[clamp(19px,2.2vw,27px)] font-bold tracking-[-0.035em] [word-break:keep-all]">{problem.title}</div>
                   <span className="justify-self-end text-2xl text-[var(--acid)]" aria-hidden="true">↗</span>
@@ -293,8 +295,11 @@ export default function HomePage() {
           <section className="landing-final relative flex flex-1 items-center justify-center overflow-hidden border-t border-[var(--landing-border)] px-[5vw] py-[clamp(64px,8vh,100px)] text-center">
             <div className="landing-final-grid" aria-hidden="true" />
             <div className="relative z-[1]" data-reveal>
-              <p className="mb-7 font-mono text-[20px] font-bold tracking-[0.18em] text-[var(--acid)]">READY WHEN YOU ARE</p>
-              <h2 className="mx-auto mb-10 max-w-[1000px] text-[clamp(50px,9vw,100px)] leading-[1.0] font-black tracking-[-0.05em]">
+              <p className="mb-7 font-mono text-[25px] font-bold tracking-[0.18em] text-[var(--acid)]">READY WHEN YOU ARE</p>
+              {/* 최소 폰트를 28px까지 낮춘다 — 50px 바닥에서는 좁은 창에서
+                  "달라집니다."가 음절 단위로 꺾여 세 줄이 된다. 9vw면 어느 너비에서든
+                  한 줄이 90vw 안에 들어와 두 줄이 유지된다. */}
+              <h2 className="mx-auto mb-10 max-w-[1000px] text-[clamp(28px,9vw,100px)] leading-[1.0] font-black tracking-[-0.05em]">
                 연습이 쌓이면
                 <br />
                 프롬프트가 달라집니다.

@@ -57,19 +57,30 @@ final class Workspace implements AutoCloseable {
             List<RunRequestMessage.RunFileMessage> files,
             List<RunRequestMessage.RunFileMessage> testFiles
     ) throws IOException {
-        Files.createDirectories(outputDir());
-
-        return new Sources(write(files), write(testFiles));
+        return writeFiles(files, testFiles, ".java");
     }
 
     /**
-     * @return 작업 디렉토리 기준 상대 경로로 표현한 .java 파일 목록
+     * @param sourceSuffix 소스로 취급할 확장자(예: ".java", ".py"). 언어별 실행기가 정한다.
      */
-    private List<String> write(List<RunRequestMessage.RunFileMessage> files) throws IOException {
-        List<String> javaSources = new ArrayList<>();
+    Sources writeFiles(
+            List<RunRequestMessage.RunFileMessage> files,
+            List<RunRequestMessage.RunFileMessage> testFiles,
+            String sourceSuffix
+    ) throws IOException {
+        Files.createDirectories(outputDir());
+
+        return new Sources(write(files, sourceSuffix), write(testFiles, sourceSuffix));
+    }
+
+    /**
+     * @return 작업 디렉토리 기준 상대 경로로 표현한 소스 파일 목록
+     */
+    private List<String> write(List<RunRequestMessage.RunFileMessage> files, String sourceSuffix) throws IOException {
+        List<String> sources = new ArrayList<>();
 
         if (files == null) {
-            return javaSources;
+            return sources;
         }
 
         for (RunRequestMessage.RunFileMessage file : files) {
@@ -79,12 +90,12 @@ final class Workspace implements AutoCloseable {
             Files.createDirectories(target.getParent());
             Files.writeString(target, file.content() == null ? "" : file.content(), StandardCharsets.UTF_8);
 
-            if (relativePath.endsWith(".java")) {
-                javaSources.add(relativePath);
+            if (relativePath.endsWith(sourceSuffix)) {
+                sources.add(relativePath);
             }
         }
 
-        return javaSources;
+        return sources;
     }
 
     /**

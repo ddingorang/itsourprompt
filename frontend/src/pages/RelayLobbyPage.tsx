@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { getProblems } from '../features/problem/api';
 import type { ProblemSummary } from '../features/problem/types';
 import { createRelayRoom, getRelayRooms } from '../features/relay/api';
+import { formatTurnTimeLimit } from '../features/relay/format';
 import type { RelayRoomSummary } from '../features/relay/types';
 import { useTheme } from '../features/theme/ThemeContext';
 import { ApiError, isAbortError } from '../shared/api/apiClient';
@@ -11,19 +12,88 @@ import Button from '../shared/components/Button';
 import Footer from '../shared/components/Footer';
 import Header from '../shared/components/Header';
 
+/** 섹션 머리줄 제목. 색은 랭킹 페이지 상단바의 미선택 탭과 같은 값을 쓴다. */
 const labelClasses =
-  'font-mono text-[20px] leading-[1.5] font-bold tracking-[0.08em] text-[#d6ff50]';
+  'text-[20px] leading-[1.5] font-bold text-[var(--relay-label)]';
 
 const fieldClasses =
-  'w-full border border-[#3f3f3f] bg-[#151515] px-3 py-2.5 font-mono text-sm ' +
+  'w-full border border-[#3f3f3f] bg-[#151515] px-3 py-2.5 text-sm ' +
   'text-[#f5f5ef] focus:border-[#d6ff50] focus:outline-none';
+
+/**
+ * 네이티브 select의 토글 화살표는 브라우저가 오른쪽 테두리에 붙여 그리고 padding-right를
+ * 무시한다 — 기본 화살표를 끄고 배경 이미지로 직접 그려야 위치를 잡을 수 있다.
+ */
+const selectClasses = `${fieldClasses} appearance-none pr-10`;
+
+/** 테두리에서 14px 떨어뜨린 토글 화살표. 회색이라 라이트 모드에서도 그대로 읽힌다. */
+const selectArrowStyle = {
+  backgroundImage:
+    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%23a3a3a3' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+  backgroundPosition: 'right 14px center',
+  backgroundRepeat: 'no-repeat',
+} as const;
+
+/**
+ * 방 목록의 열 구성. 격자를 ul에 두고 각 행은 display:contents로 풀어, 열 폭이
+ * 행 단위가 아니라 목록 전체에서 계산되게 한다 — auto 열은 가장 긴 내용에 딱 맞춰
+ * 잡히므로 정렬을 지키면서도 남는 여백이 생기지 않는다.
+ *
+ * 번호·방 이름·문제 이름·방장·바퀴·시간·인원·버튼 순. 방 이름의 271px는 17px 볼드
+ * 한글 15자(255px)에 칸 사이 여백 16px을 더한 값이고, 문제 이름만 남는 폭을 받는다.
+ */
+const roomRowColumnsClasses =
+  'grid-cols-[auto_271px_minmax(0,1fr)_auto_auto_auto_auto_auto] ' +
+  // 1024px 아래에서는 방장·바퀴·시간·인원을 감추고 번호·방 이름·문제 이름·버튼만 남긴다.
+  // 감춘 칸 수만큼 열도 줄여야 한다 — 열이 남아 있으면 다음 행이 빈 열부터 이어져
+  // 격자가 어긋난다. 560px 아래에서는 문제 이름까지 접는다.
+  'max-[1024px]:grid-cols-[auto_minmax(0,1.3fr)_minmax(0,1fr)_auto] ' +
+  'max-[560px]:grid-cols-[auto_minmax(0,1fr)_auto]';
+
+/**
+ * 행의 각 칸에 공통으로 걸리는 스타일. 칸 사이는 gap 대신 padding-right로 벌린다 —
+ * gap을 쓰면 아래 구분선이 열 사이에서 끊겨 점선처럼 보인다.
+ *
+ * 칸은 행 높이까지 늘어나야(stretch) 아래 구분선이 한 줄로 이어진다. 격자에
+ * items-center를 주면 칸마다 높이가 제 내용만큼이라 구분선이 층층이 어긋난다 —
+ * 세로 가운데 정렬은 칸 안쪽에서 flex로 해결한다.
+ */
+const roomRowCellsClasses =
+  'contents [&>*]:flex [&>*]:min-w-0 [&>*]:items-center [&>*]:border-b ' +
+  '[&>*]:border-[#222] [&>*]:py-3 [&>*]:pr-4 ' +
+  '[&>*:first-child]:pl-6 [&>*:last-child]:pr-6 last:[&>*]:border-b-0';
+
+/**
+ * 머리줄 조작 버튼 묶음(< > 새로고침)과 행의 입장 버튼이 같은 좌우 자리를 쓰도록
+ * 둘이 나눠 갖는 폭. 묶음의 제 폭을 재서 올림한 값이다 —
+ * 28(<) + 8 + 28(>) + 8 + 58.8(새로고침) = 130.8.
+ * 한쪽만 늘리면 글꼴에 따라 몇 px씩 어긋나므로 양쪽에 같은 값을 박아 맞춘다.
+ */
+const ENTRY_CONTROL_WIDTH = 'w-[131px]';
 
 const LAP_CHOICES = [1, 2, 3] as const;
 const SIZE_CHOICES = [2, 3, 4, 5, 6] as const;
+/** 백엔드 RelayRoom.MIN/MAX_TURN_TIME_LIMIT_SECONDS(30~300) 안에서 고른 프리셋. */
+const TURN_TIME_LIMIT_CHOICES = [30, 60, 90, 120, 180, 240, 300] as const;
+/** 안 정하면 서버가 채우는 기본값과 같다(relay.turn-input-timeout, 2분). */
+const DEFAULT_TURN_TIME_LIMIT_SECONDS = 120;
 const ROOMS_PER_PAGE = 3;
 
-/** 백엔드 RelayRoom.MAX_NAME_LENGTH와 같은 값. 로비 목록 한 줄에 들어가는 길이. */
-const ROOM_NAME_MAX_LENGTH = 30;
+/**
+ * 방 이름 입력 제한. 백엔드 RelayRoom.MAX_NAME_LENGTH(30)보다 좁게 잡은 값으로,
+ * 로비 목록 한 줄에 이름·문제·설정이 함께 들어가는 길이를 기준으로 정했다.
+ */
+const ROOM_NAME_MAX_LENGTH = 15;
+
+/** 목록에 그대로 보여줄 길이. 제한이 15자로 좁아지기 전에 만들어진 방은 이보다 길 수 있다. */
+const ROOM_NAME_DISPLAY_LENGTH = ROOM_NAME_MAX_LENGTH;
+
+/** 긴 이름 하나가 목록 한 줄의 나머지 정보를 밀어내지 않게 자른다. */
+function truncateRoomName(name: string): string {
+  return name.length > ROOM_NAME_DISPLAY_LENGTH
+    ? `${name.slice(0, ROOM_NAME_DISPLAY_LENGTH)}…`
+    : name;
+}
 
 /** 로비가 스스로 목록을 다시 읽는 주기. 방 개설·입장은 수시로 일어나 손 새로고침만으론 낡는다. */
 const ROOM_LIST_REFRESH_MS = 10_000;
@@ -43,6 +113,9 @@ export default function RelayLobbyPage() {
   const [problemId, setProblemId] = useState<number | null>(null);
   const [totalLaps, setTotalLaps] = useState<number>(1);
   const [maxParticipants, setMaxParticipants] = useState<number>(3);
+  const [turnTimeLimitSeconds, setTurnTimeLimitSeconds] = useState<number>(
+    DEFAULT_TURN_TIME_LIMIT_SECONDS,
+  );
   const [creating, setCreating] = useState(false);
   const [rooms, setRooms] = useState<RelayRoomSummary[]>([]);
   const [roomPage, setRoomPage] = useState(0);
@@ -97,7 +170,13 @@ export default function RelayLobbyPage() {
     setCreating(true);
     setError(null);
     try {
-      const room = await createRelayRoom(name, problemId, totalLaps, maxParticipants);
+      const room = await createRelayRoom(
+        name,
+        problemId,
+        totalLaps,
+        maxParticipants,
+        turnTimeLimitSeconds,
+      );
       navigate(`/relay/rooms/${room.roomId}`);
     } catch (cause) {
       setError(
@@ -116,28 +195,31 @@ export default function RelayLobbyPage() {
 
       <main className="mx-auto grid w-full max-w-[880px] gap-8 px-6 py-12">
         <div>
-          <h1 className="m-0 font-mono text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[#d6ff50]">
-            RELAY MODE
+          <h1 className="page-title m-0 text-[clamp(36px,6vw,64px)] leading-[0.82] font-bold tracking-[-0.04em] text-[var(--relay-acid)]">
+            릴레이 모드
           </h1>
-          <p className="mt-2 mb-0 text-[13px] leading-[1.7] text-[#a3a3a3]">
-            여러 명이 한 문제를 정해진 순서대로 이어 풉니다. 각자 프롬프트 한 번씩 —
-            앞사람이 만든 코드 위에서 다음 사람이 이어갑니다.
+          <p className="mt-5 mb-0 text-[15px] leading-[1.7] text-[#a3a3a3]">
+            릴레이 모드로 프롬프트를 연습하세요! 
             <br />
-            턴이 끝날 때마다
-            자동 채점되고, 직전 대비 통과 증가분이 그 사람의 기여도가 됩니다.
+            여러 명이 하나의 문제에 대해 정해진 순서대로 프롬프트를 제출하고, 빌드/테스트 결과와 수정된 코드를 확인합니다.
+            <br />
+            각자 프롬프트 한 번씩 —
+            앞사람이 만든 코드 위에서 다음 사람이 이어가며 문제를 해결해 보세요!
+            <br />
           </p>
         </div>
 
         {error && (
-          <p className="m-0 border border-[#5a2c28] bg-[#1c0f0e] px-4 py-3 font-mono text-xs text-[#ff786b]">
+          <p className="m-0 border border-[#5a2c28] bg-[#1c0f0e] px-4 py-3 text-xs text-[#ff786b]">
             {error}
           </p>
         )}
 
         <section className="border border-[#343434]">
-          <div className="flex items-center justify-between border-b border-[#343434] px-6 py-3">
-            <span className={labelClasses}>OPEN ROOMS</span>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between border-b border-[#343434] bg-[var(--relay-surface)] px-6 py-3">
+            <span className={labelClasses}>방 목록</span>
+            {/* 폭을 박으므로 안쪽 버튼이 줄어들지 않게 막는다. */}
+            <div className={`flex items-center justify-end gap-2 [&>*]:shrink-0 ${ENTRY_CONTROL_WIDTH}`}>
               <button
                 aria-label="이전 방 목록 페이지"
                 className="grid size-7 cursor-pointer place-items-center border border-[#3f3f3f] bg-transparent font-mono text-[12px] text-[#a3a3a3] enabled:hover:border-[#d6ff50] enabled:hover:text-[#d6ff50] disabled:cursor-not-allowed disabled:text-[#444]"
@@ -157,7 +239,7 @@ export default function RelayLobbyPage() {
                 &gt;
               </button>
               <button
-                className="cursor-pointer border border-[#3f3f3f] bg-transparent px-2.5 py-1 font-mono text-[10px] text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]"
+                className="cursor-pointer border border-[#3f3f3f] bg-transparent px-2.5 py-1 text-[10px] text-[#a3a3a3] hover:border-[#d6ff50] hover:text-[#d6ff50]"
                 onClick={() => void refreshRooms()}
                 type="button"
               >
@@ -167,51 +249,70 @@ export default function RelayLobbyPage() {
           </div>
 
           {!roomsLoaded ? (
-            <p className="m-0 px-4 py-6 font-mono text-[11px] text-[#666]">
+            <p className="m-0 px-4 py-6 text-[11px] text-[#a3a3a3]">
               방 목록을 불러오는 중…
             </p>
           ) : rooms.length === 0 ? (
-            <p className="m-0 px-4 py-6 font-mono text-[11px] leading-[1.7] text-[#666]">
+            <p className="m-0 px-4 py-6 text-[11px] leading-[1.7] text-[#a3a3a3]">
               입장을 기다리는 방이 없습니다. 아래에서 새 방을 만들어 보세요.
             </p>
           ) : (
-            <ul className="m-0 grid list-none gap-0 p-0">
+            <ul className={`m-0 grid list-none p-0 ${roomRowColumnsClasses}`}>
               {visibleRooms.map((room) => {
                 const full = room.participantCount >= room.maxParticipants;
 
                 return (
-                  <li
-                    className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-[#222] px-6 py-3 last:border-b-0"
-                    key={room.roomId}
-                  >
-                    <span className="font-mono text-[13px] text-[#666]">
-                      {String(room.roomId).padStart(2, '0')}
+                  <li className={roomRowCellsClasses} key={room.roomId}>
+                    {/* 좁아지면 방 이름·문제 이름·입장 버튼만 남긴다 — 나머지는 줄여
+                        봐야 서로 침범할 뿐이고, 방을 고르는 데 꼭 필요하지도 않다. */}
+                    {/* 방 번호는 순번이 아니라 방의 고유 번호다 — 닫힌 방이 빠져 중간이
+                        비므로, #을 붙여 목록 순서로 읽히지 않게 한다. */}
+                    <span className="font-mono text-[13px] text-[#a3a3a3]">
+                      #{String(room.roomId).padStart(2, '0')}
                     </span>
-                    {/* 이름 도입 전에 만들어진 방은 name이 없다 — 문제 제목이 그 자리를 대신한다. */}
-                    <span className="min-w-0 flex-1 text-[17px] font-bold">
-                      {room.name ?? room.problemTitle ?? `문제 ${room.problemId}번`}
-                    </span>
-                    {room.name && (
-                      <span className="font-mono text-[11px] text-[#a3a3a3]">
-                        {room.problemTitle ?? `문제 ${room.problemId}번`}
+                    {/* 이름 도입 전에 만들어진 방은 name이 없어 문제 제목이 그 자리를 대신한다.
+                        그때도 문제 이름 칸은 빈 칸으로 남겨 뒤 열의 위치를 지킨다. */}
+                    {/* 칸이 flex 상자가 되어 줄임표는 안쪽 블록에 걸어야 먹는다. */}
+                    <span
+                      className="text-[17px] font-bold"
+                      title={room.name ?? undefined}
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {room.name
+                          ? truncateRoomName(room.name)
+                          : (room.problemTitle ?? `문제 ${room.problemId}번`)}
                       </span>
-                    )}
-                    <span className="font-mono text-[11px] text-[#a3a3a3]">
-                      {room.hostNickname} 님의 방
-                    </span>
-                    <span className="font-mono text-[11px] text-[#a3a3a3]">
-                      {room.totalLaps}바퀴
                     </span>
                     <span
-                      className={`font-mono text-[11px] font-bold ${
+                      className="text-[11px] text-[#a3a3a3] max-[560px]:hidden!"
+                      title={room.problemTitle ?? undefined}
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {room.name
+                          ? (room.problemTitle ?? `문제 ${room.problemId}번`)
+                          : ''}
+                      </span>
+                    </span>
+                    <span className="text-[11px] whitespace-nowrap text-[#a3a3a3] max-[1024px]:hidden!">
+                      {room.hostNickname} 님의 방
+                    </span>
+                    <span className="text-[11px] text-[#a3a3a3] max-[1024px]:hidden!">
+                      {room.totalLaps}바퀴
+                    </span>
+                    <span className="font-mono text-[11px] text-[#a3a3a3] max-[1024px]:hidden!">
+                      ⏱ {formatTurnTimeLimit(room.turnTimeLimitSeconds)}
+                    </span>
+                    <span
+                      className={`font-mono text-[11px] font-bold max-[1024px]:hidden! ${
                         full ? 'text-[#ff786b]' : 'text-[#d6ff50]'
                       }`}
                     >
                       {room.participantCount}/{room.maxParticipants}
                     </span>
-                    {full ? (
+                    <span>
+                      {full ? (
                       <span
-                        className="inline-flex min-h-11 min-w-[128px] cursor-not-allowed items-center justify-center gap-2 border border-[#3f3f3f] bg-[#171717] px-[18px] text-[14px] leading-none font-extrabold tracking-[-0.01em] text-[#666]"
+                        className={`inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 border border-[#3f3f3f] bg-[#171717] px-[18px] text-[14px] leading-none font-extrabold tracking-[-0.01em] text-[#666] ${ENTRY_CONTROL_WIDTH}`}
                         role="status"
                       >
                         <svg
@@ -226,10 +327,7 @@ export default function RelayLobbyPage() {
                         정원 마감
                       </span>
                     ) : (
-                      <Button
-                        className="min-w-[128px]"
-                        to={`/relay/rooms/${room.roomId}`}
-                      >
+                      <Button className={ENTRY_CONTROL_WIDTH} to={`/relay/rooms/${room.roomId}`}>
                         <svg
                           aria-hidden="true"
                           className="size-4"
@@ -241,7 +339,8 @@ export default function RelayLobbyPage() {
                         </svg>
                         입장 가능
                       </Button>
-                    )}
+                      )}
+                    </span>
                   </li>
                 );
               })}
@@ -249,13 +348,16 @@ export default function RelayLobbyPage() {
           )}
         </section>
 
-        <section className="border border-[#343434] p-6">
-          <div className={labelClasses}>CREATE ROOM</div>
+        <section className="border border-[#343434]">
+          {/* 방 목록과 같은 머리줄 — 제목 아래 구분선을 긋고 배경으로 한 단 띄운다. */}
+          <div className="border-b border-[#343434] bg-[var(--relay-surface)] px-6 py-3">
+            <span className={labelClasses}>방 만들기</span>
+          </div>
 
-          <div className="mt-5 grid gap-4">
+          <div className="grid gap-4 p-6">
             <label className="grid gap-1.5">
-              <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                ROOM NAME — 로비 목록에 그대로 보입니다
+              <span className="text-[12px] text-[#a3a3a3]">
+                방 이름 — 로비 목록에 그대로 보입니다 (최대 {ROOM_NAME_MAX_LENGTH}자)
               </span>
               <input
                 className={fieldClasses}
@@ -268,12 +370,13 @@ export default function RelayLobbyPage() {
             </label>
 
             <label className="grid gap-1.5">
-              <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                PROBLEM
+              <span className="text-[12px] text-[#a3a3a3]">
+                문제 — 함께 풀어볼 문제를 고르세요
               </span>
               <select
-                className={fieldClasses}
+                className={selectClasses}
                 onChange={(event) => setProblemId(Number(event.target.value))}
+                style={selectArrowStyle}
                 value={problemId ?? ''}
               >
                 {problems.map((problem) => (
@@ -284,14 +387,35 @@ export default function RelayLobbyPage() {
               </select>
             </label>
 
-            <div className="grid grid-cols-2 gap-4 max-[480px]:grid-cols-1">
-              <label className="grid gap-1.5">
-                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                  LAPS — 인원 × 바퀴 = 총 턴 수
+            <div className="grid grid-cols-3 gap-4 max-[760px]:grid-cols-1">
+              <label className="grid content-start gap-1.5">
+                <span className="text-[12px] text-[#a3a3a3]">
+                  최대 인원
                 </span>
                 <select
-                  className={fieldClasses}
+                  className={selectClasses}
+                  onChange={(event) =>
+                    setMaxParticipants(Number(event.target.value))
+                  }
+                  style={selectArrowStyle}
+                  value={maxParticipants}
+                >
+                  {SIZE_CHOICES.map((size) => (
+                    <option key={size} value={size}>
+                      {size}명
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid content-start gap-1.5">
+                <span className="text-[12px] text-[#a3a3a3]">
+                  바퀴 수 — 인원 × 바퀴 = 총 턴 수
+                </span>
+                <select
+                  className={selectClasses}
                   onChange={(event) => setTotalLaps(Number(event.target.value))}
+                  style={selectArrowStyle}
                   value={totalLaps}
                 >
                   {LAP_CHOICES.map((laps) => (
@@ -302,20 +426,21 @@ export default function RelayLobbyPage() {
                 </select>
               </label>
 
-              <label className="grid gap-1.5">
-                <span className="font-mono text-[12px] tracking-[0.12em] text-[#777]">
-                  MAX PLAYERS
+              <label className="grid content-start gap-1.5">
+                <span className="text-[12px] text-[#a3a3a3]">
+                  턴 제한시간
                 </span>
                 <select
-                  className={fieldClasses}
+                  className={selectClasses}
                   onChange={(event) =>
-                    setMaxParticipants(Number(event.target.value))
+                    setTurnTimeLimitSeconds(Number(event.target.value))
                   }
-                  value={maxParticipants}
+                  style={selectArrowStyle}
+                  value={turnTimeLimitSeconds}
                 >
-                  {SIZE_CHOICES.map((size) => (
-                    <option key={size} value={size}>
-                      {size}명
+                  {TURN_TIME_LIMIT_CHOICES.map((seconds) => (
+                    <option key={seconds} value={seconds}>
+                      {formatTurnTimeLimit(seconds)}
                     </option>
                   ))}
                 </select>

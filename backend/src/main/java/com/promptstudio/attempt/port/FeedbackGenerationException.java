@@ -35,6 +35,11 @@ public class FeedbackGenerationException extends RuntimeException implements Llm
     public static final String EMPTY_OVERALL = "empty-overall";
 
     /**
+     * 근거로 내놓은 인용이 입력에 없는 응답. 모델이 없는 사실을 지어낸 것이라 그 판정을 믿을 수 없다.
+     */
+    public static final String QUOTE_NOT_FOUND = "quote-not-found";
+
+    /**
      * 모델 호출 자체가 실패한 경우(rate limit, 5xx 등).
      */
     public static final String PROVIDER_ERROR = "provider-error";

@@ -36,6 +36,8 @@ class ProblemApiTest extends DatabaseTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.problems.length()").value(2))
                 .andExpect(jsonPath("$.problems[0].title").value("Hello World 출력"))
+                .andExpect(jsonPath("$.problems[0].type").value("coding"))
+                .andExpect(jsonPath("$.problems[0].language").value("java"))
                 .andExpect(jsonPath("$.problems[1].title").value("SSAFY 출력"));
     }
 
@@ -103,6 +105,7 @@ class ProblemApiTest extends DatabaseTest {
                 "block dodge",
                 "# block dodge",
                 "game",
+                "java",
                 List.of(new ProblemFile("index.html", "<!doctype html>")),
                 List.of()
         ));
@@ -110,6 +113,24 @@ class ProblemApiTest extends DatabaseTest {
         mockMvc.perform(get("/api/problems/{id}", saved.id()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.type").value("game"));
+    }
+
+    /**
+     * type·language는 FE가 목록에서 아이콘을 고르는 근거다. 두 필드가 요약 응답에
+     * 실리기 전, FE만 먼저 배포되어 목록 페이지가 통째로 죽은 전례가 있어
+     * 기본값(coding·java)이 아닌 값이 그대로 실려 내려오는지 못박는다.
+     */
+    @Test
+    void 목록에_문제_타입과_언어를_싣는다() throws Exception {
+        problemRepository.save(newProblem("sum-py", "두 수의 합", "coding", "python"));
+        problemRepository.save(newProblem("block-dodge", "블럭 피하기", "game", "java"));
+
+        mockMvc.perform(get("/api/problems"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.problems[0].type").value("coding"))
+                .andExpect(jsonPath("$.problems[0].language").value("python"))
+                .andExpect(jsonPath("$.problems[1].type").value("game"))
+                .andExpect(jsonPath("$.problems[1].language").value("java"));
     }
 
     private Problem deactivated(String slug, String title) {
@@ -120,7 +141,11 @@ class ProblemApiTest extends DatabaseTest {
     }
 
     private Problem newProblem(String slug, String title) {
-        return new Problem(slug, title, "# " + title, List.of(
+        return newProblem(slug, title, "coding", "java");
+    }
+
+    private Problem newProblem(String slug, String title, String type, String language) {
+        return new Problem(slug, title, "# " + title, type, language, List.of(
                 new ProblemFile("src/main/java/Main.java", "class Main {}")
         ), List.of(
                 new ProblemFile("src/test/java/MainTest.java", "class MainTest {}")
