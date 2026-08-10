@@ -4,7 +4,7 @@
 
 배포: **https://lets.promptpractice.run/**
 
-![풀이 화면](docs/images/02-workspace.png)
+![풀이 화면](docs/screenshots/06-attempt-promptlog.png)
 
 ## 왜 만들었나
 
@@ -78,7 +78,7 @@ AI가 코드를 대신 써주면서 개발자가 덜 하게 된 일이 둘 있�
 
 **1. 문제를 고른다**
 
-![문제 목록](docs/images/01-problems.png)
+![문제 목록](docs/screenshots/02-problems.png)
 
 Java·Python 문제와 게임 문제가 있습니다. 앞의 둘은 테스트로 채점되고, 게임 문제는 테스트 채점 없이 브라우저 미리보기로 직접 확인합니다.
 
@@ -90,13 +90,13 @@ Java·Python 문제와 게임 문제가 있습니다. 앞의 둘은 테스트로
 
 **3. 채점한다**
 
-![채점 결과](docs/images/03-grading.png)
+![채점 결과](docs/screenshots/08-attempt-grading.png)
 
 `채점` 탭을 누르면 그 시점의 코드가 워커로 넘어가 실제로 컴파일되고 테스트가 돌아갑니다. 테스트 이름이 한글 문장이라 통과·실패 목록이 그대로 요구사항 체크리스트가 됩니다. 몇 번이든 다시 돌릴 수 있습니다.
 
 **4. 제출하고 피드백을 받는다**
 
-![피드백](docs/images/04-feedback.png)
+![피드백](docs/screenshots/09-feedback.png)
 
 제출하면 그 세션 전체가 되짚어집니다. 위쪽 두 상자가 총평이고 — 왼쪽은 프롬프트에서 무엇이 부족했는지, 오른쪽은 이번 세션의 작업 패턴에 붙인 이름과 다음 문제에 가져갈 것입니다 — 아래에 턴별 피드백이 턴 수만큼 붙습니다.
 
@@ -104,7 +104,7 @@ Java·Python 문제와 게임 문제가 있습니다. 앞의 둘은 테스트로
 
 ## 시스템 구성
 
-![아키텍처](docs/images/architecture.png)
+![아키텍처](docs/screenshots/architecture.png)
 
 | 이름 | 무엇인가 |
 |---|---|
