@@ -47,7 +47,7 @@ AI가 코드를 대신 써주면서 개발자가 덜 하게 된 일이 둘 있�
 - **채점** — 원할 때. 생성된 코드를 실제로 **빌드**하고 **테스트**를 돌립니다. 통과 여부가 사람 판단이 아니라 테스트로 결정됩니다.
 - **피드백** — **최종 제출할 때 한 번**. 그 세션의 프롬프트 전체를 되짚어, 무엇을 전달했고 무엇이 빠졌는지 알려줍니다.
 
-혼자 푸는 것 말고 여러 명이 한 문제를 번갈아 이어 푸는 **릴레이 모드**도 있습니다 ([아래](#릴레이-모드)).
+<br>
 
 ## :mag_right: 핵심 개념
 
@@ -93,7 +93,7 @@ AI가 코드를 대신 써주면서 개발자가 덜 하게 된 일이 둘 있�
 
 <br>
 
-## 문제 풀이 - 사용자 흐름
+## :triangular_flag_on_post: 문제 풀이 - 사용자 흐름
 
 #### **1. 문제 선택**
 
@@ -135,7 +135,7 @@ AI가 코드를 대신 써주면서 개발자가 덜 하게 된 일이 둘 있�
 - **제출된 기록은 누구나 볼 수 있습니다.** 
     - 타 유저가 같은 문제를 어떤 프롬프트로 풀었는지 확인할 수 있습니다.
 
-## 릴레이 모드
+## :runner: 릴레이 모드
 
 <img src="docs/screenshots/22-relay-waiting-guest.png" alt="사진 설명" style="height: 500px; object-fit: cover; object-position: top;">
 <img src="docs/screenshots/23-relay-my-turn.png" alt="사진 설명" style="height: 500px; object-fit: cover; object-position: top;">
@@ -152,7 +152,9 @@ AI가 코드를 대신 써주면서 개발자가 덜 하게 된 일이 둘 있�
 - **WebSocket 활용**
     - 게임 상태와 WebRTC 시그널링은 WebSocket 하나로 흐르고, 음성은 coturn 서버가 중계를 담당합니다.
 
-## :wrench: 시스템 아키텍처
+<br>
+
+## :earth_asia: 시스템 아키텍처
 
 ![아키텍처](docs/screenshots/architecture.png)
 
@@ -198,7 +200,7 @@ AI가 코드를 대신 써주면서 개발자가 덜 하게 된 일이 둘 있�
 
 <br>
 
-## 기술 스택
+## :wrench: 기술 스택
 
 | 구분 | 스택 |
 |---|---|
@@ -212,7 +214,7 @@ AI가 코드를 대신 써주면서 개발자가 덜 하게 된 일이 둘 있�
 
 <br>
 
-## 데이터 모델과 문서
+## :elephant: 데이터 모델과 문서
 
 ```mermaid
 erDiagram
@@ -254,7 +256,7 @@ erDiagram
 
 <br>
 
-## 설계 판단 요소
+## :exclamation: 설계 판단 요소
 
 구현에서 갈림길이 있었던 결정 넷입니다. 근거와 관련 코드는 **[설계 판단 요소 문서](docs/design-decisions.md)**에 있습니다.
 
@@ -267,7 +269,7 @@ erDiagram
 
 <br>
 
-## 문서 목록
+## :card_file_box: 문서 목록
 
 | 문서 | 무엇이 있나 |
 |---|---|
